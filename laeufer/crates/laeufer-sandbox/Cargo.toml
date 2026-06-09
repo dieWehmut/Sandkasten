@@ -1,0 +1,15 @@
+[package]
+name = "laeufer-sandbox"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+laeufer-core = { path = "../laeufer-core" }
+libc.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

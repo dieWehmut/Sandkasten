@@ -1,0 +1,42 @@
+[package]
+name = "laeufer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+members = [
+  "crates/laeufer-core",
+  "crates/laeufer-go",
+  "crates/laeufer-sandbox",
+  "crates/laeufer-store",
+]
+resolver = "2"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+bytes = { version = "1", features = ["serde"] }
+flate2 = "1"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+tar = "0.4"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt-multi-thread", "signal", "sync", "time"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[dependencies]
+anyhow.workspace = true
+laeufer-core = { path = "crates/laeufer-core" }
+laeufer-go = { path = "crates/laeufer-go" }
+laeufer-sandbox = { path = "crates/laeufer-sandbox" }
+laeufer-store = { path = "crates/laeufer-store" }
+tokio.workspace = true
+
+[[bin]]
+name = "laeufer"
+path = "src/bin/laeufer.rs"

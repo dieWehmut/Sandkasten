@@ -1,0 +1,12 @@
+[package]
+name = "laeufer-go"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+async-trait.workspace = true
+flate2.workspace = true
+laeufer-core = { path = "../laeufer-core" }
+tar.workspace = true
+thiserror.workspace = true
