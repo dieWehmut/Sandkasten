@@ -12,8 +12,9 @@ The current runner implementation applies these controls for each child command:
 - Per-command cgroup v2 limits for CPU, memory, process count, and output.
 - `unshare` via libc for mount, IPC, UTS, and network namespaces.
 - Private mount propagation for the child mount namespace.
-- `PR_SET_NO_NEW_PRIVS`, rlimit address-space cap, and uid/gid drop to `65534`.
+- `PR_SET_NO_NEW_PRIVS` and uid/gid drop to `65534`.
 - Go builds forced through `-mod=vendor` with per-job `GOCACHE` and temp directories.
+- A separate `LAEUFER_COMPILE_MEMORY_LIMIT_BYTES` setting for Go compilation, while job memory limits still apply to the executed binary.
 - No fallback to Docker or unsandboxed host execution.
 
 ## Hardening Backlog

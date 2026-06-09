@@ -32,7 +32,7 @@ fi
 
 if [[ -f "$ROOT/vertrag/buf.yaml" ]]; then
   if command -v buf >/dev/null 2>&1; then
-    run_or_fail "buf lint" bash -c 'cd "$1" && buf lint' bash "$ROOT/vertrag"
+    run_or_fail "buf lint" bash -c "cd \"\$1\" && buf lint" bash "$ROOT/vertrag"
   else
     missing buf "Install buf to lint protobuf contracts."
   fi
@@ -40,8 +40,8 @@ fi
 
 if [[ -f "$ROOT/schnittstelle/go.mod" ]]; then
   if command -v go >/dev/null 2>&1; then
-    run_or_fail "go fmt check" bash -c 'cd "$1" && test -z "$(gofmt -l .)"' bash "$ROOT/schnittstelle"
-    run_or_fail "go vet" bash -c 'cd "$1" && go vet ./...' bash "$ROOT/schnittstelle"
+    run_or_fail "go fmt check" bash -c "cd \"\$1\" && test -z \"\$(gofmt -l .)\"" bash "$ROOT/schnittstelle"
+    run_or_fail "go vet" bash -c "cd \"\$1\" && go vet ./..." bash "$ROOT/schnittstelle"
   else
     missing go "Install Go 1.22+ to format and vet the API."
   fi
@@ -49,8 +49,8 @@ fi
 
 if [[ -f "$ROOT/laeufer/Cargo.toml" ]]; then
   if command -v cargo >/dev/null 2>&1; then
-    run_or_fail "cargo fmt check" bash -c 'cd "$1" && cargo fmt --all -- --check' bash "$ROOT/laeufer"
-    run_or_fail "cargo clippy" bash -c 'cd "$1" && cargo clippy --all-targets --all-features -- -D warnings' bash "$ROOT/laeufer"
+    run_or_fail "cargo fmt check" bash -c "cd \"\$1\" && cargo fmt --all -- --check" bash "$ROOT/laeufer"
+    run_or_fail "cargo clippy" bash -c "cd \"\$1\" && cargo clippy --all-targets --all-features -- -D warnings" bash "$ROOT/laeufer"
   else
     missing cargo "Install the Rust toolchain to format and lint the runner."
   fi

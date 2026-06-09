@@ -395,7 +395,7 @@ fn configure_child_process(
             }
             if libc::mount(
                 std::ptr::null::<libc::c_char>(),
-                b"/\0".as_ptr().cast(),
+                c"/".as_ptr(),
                 std::ptr::null::<libc::c_char>(),
                 (libc::MS_REC | libc::MS_PRIVATE) as libc::c_ulong,
                 std::ptr::null::<libc::c_void>(),

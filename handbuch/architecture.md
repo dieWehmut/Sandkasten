@@ -18,7 +18,7 @@ The repository uses German directory names for component ownership:
 1. A client sends `SubmitGoProject` with a `tar.gz` archive containing a full Go module.
 2. The API validates request shape, applies default limits, and stores the job in Postgres.
 3. A `laeufer` process leases queued jobs using the database lease fields.
-4. The runner validates the archive, prepares a Go build/run plan, and executes it with Linux cgroup, namespace, rlimit, and uid/gid isolation.
+4. The runner validates the archive, prepares a Go build/run plan, and executes it with Linux cgroup, namespace, `no_new_privs`, and uid/gid isolation.
 5. Status changes and final artifacts are written to Postgres.
 6. Clients call `GetJob` or `StreamJobEvents` to observe progress.
 

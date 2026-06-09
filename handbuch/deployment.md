@@ -13,9 +13,9 @@ docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
 
 Current assumptions:
 
-- The checked-in handwritten Go bindings are enough for the API image; `./werkzeug/gen-proto.sh` can replace them when `buf` is available.
+- Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
 - The runner image includes the Go toolchain because v1 executes Go projects.
-- Production tags replace the placeholder image names in Kubernetes manifests.
+- Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development
 
@@ -31,6 +31,14 @@ Start optional images when their build dependencies are available:
 ./werkzeug/dev-up.sh --with-api
 ./werkzeug/dev-up.sh --with-api --with-runner
 ```
+
+Run the local end-to-end Go execution smoke test after Postgres is reachable:
+
+```sh
+./werkzeug/smoke-go.sh
+```
+
+The smoke script builds the API and runner locally, starts both processes, submits `beispiele/go-hello`, and requires a `SUCCEEDED` job with `hello, Sandkasten` output.
 
 ## Kubernetes
 

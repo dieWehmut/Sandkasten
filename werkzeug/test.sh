@@ -23,7 +23,7 @@ missing() {
 
 if [[ -f "$ROOT/schnittstelle/go.mod" ]]; then
   if command -v go >/dev/null 2>&1; then
-    run_or_fail "Go API tests" bash -c 'cd "$1" && go test ./...' bash "$ROOT/schnittstelle"
+    run_or_fail "Go API tests" bash -c "cd \"\$1\" && go test ./..." bash "$ROOT/schnittstelle"
   else
     missing go "Install Go 1.22+ or run this script in the API builder image."
   fi
@@ -31,7 +31,7 @@ fi
 
 if [[ -f "$ROOT/laeufer/Cargo.toml" ]]; then
   if command -v cargo >/dev/null 2>&1; then
-    run_or_fail "Rust runner tests" bash -c 'cd "$1" && cargo test --all' bash "$ROOT/laeufer"
+    run_or_fail "Rust runner tests" bash -c "cd \"\$1\" && cargo test --all" bash "$ROOT/laeufer"
   else
     missing cargo "Install the Rust toolchain or run this script in the runner builder image."
   fi

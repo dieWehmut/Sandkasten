@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	api "github.com/dieWehmut/sandkasten/schnittstelle/internal/grpc"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/auth"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/config"
+	api "github.com/dieWehmut/sandkasten/schnittstelle/internal/grpc"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/postgres"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 )
 
