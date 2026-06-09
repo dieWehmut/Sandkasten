@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use laeufer_core::{CommandPlan, JobResult, RunnerError, Sandbox};
-use std::ffi::OsString;
+use std::ffi::{CStr, CString, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
@@ -12,6 +13,8 @@ use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::time;
 
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 
@@ -160,6 +163,7 @@ async fn execute_command(
     config: &SandboxConfig,
 ) -> Result<JobResult, RunnerError> {
     let _intent = IsolationIntent::for_plan(plan);
+    let cgroup = CgroupGuard::prepare(config, plan)?;
     let mut command = Command::new(&plan.program);
     command
         .args(&plan.args)
@@ -176,20 +180,13 @@ async fn execute_command(
         config.child_uid,
         config.child_gid,
         config.require_private_namespaces,
+        cgroup.procs_path(),
     )?;
 
     let started = Instant::now();
     let mut child = command.spawn().map_err(|error| {
         RunnerError::System(format!("failed to spawn {:?}: {error}", plan.program))
     })?;
-    let cgroup = match CgroupGuard::attach(config, plan, child.id()).await {
-        Ok(cgroup) => cgroup,
-        Err(error) => {
-            terminate_child(&mut child, None).await;
-            let _ = child.wait().await;
-            return Err(error);
-        }
-    };
 
     let stdin = child
         .stdin
@@ -274,31 +271,35 @@ async fn execute_command(
 #[derive(Debug)]
 struct CgroupGuard {
     path: PathBuf,
+    procs_path: PathBuf,
 }
 
 const RUNNER_CGROUP_NAME: &str = "sandkasten";
 const REQUIRED_CGROUP_CONTROLLERS: [&str; 3] = ["cpu", "memory", "pids"];
+static NEXT_CGROUP_ID: AtomicU64 = AtomicU64::new(1);
 
 impl CgroupGuard {
-    async fn attach(
-        config: &SandboxConfig,
-        plan: &CommandPlan,
-        child_id: Option<u32>,
-    ) -> Result<Self, RunnerError> {
-        let pid =
-            child_id.ok_or_else(|| RunnerError::System("child process has no pid".to_owned()))?;
+    fn prepare(config: &SandboxConfig, plan: &CommandPlan) -> Result<Self, RunnerError> {
         let parent = ensure_runner_cgroup(&config.cgroup_root)
             .map_err(|error| RunnerError::System(format!("prepare runner cgroup: {error}")))?;
-        let path = parent.join(format!("laeufer-{pid}"));
+        let id = NEXT_CGROUP_ID.fetch_add(1, Ordering::Relaxed);
+        let path = parent.join(format!("laeufer-{}-{id}", std::process::id()));
+        let procs_path = path.join("cgroup.procs");
         fs::create_dir_all(&path)
             .map_err(|error| RunnerError::System(format!("create cgroup {:?}: {error}", path)))?;
 
         write_cgroup_file(path.join("memory.max"), memory_max(plan.memory_limit_bytes))?;
         write_cgroup_file(path.join("pids.max"), "64")?;
         write_cgroup_file(path.join("cpu.max"), cpu_max(plan.cpu_millis))?;
-        write_cgroup_file(path.join("cgroup.procs"), pid.to_string())?;
+        #[cfg(test)]
+        fs::write(&procs_path, "")
+            .map_err(|error| RunnerError::System(format!("create fake cgroup.procs: {error}")))?;
 
-        Ok(Self { path })
+        Ok(Self { path, procs_path })
+    }
+
+    fn procs_path(&self) -> &Path {
+        &self.procs_path
     }
 
     fn memory_oom_kill(&self) -> bool {
@@ -435,10 +436,17 @@ fn install_child_setup(
     child_uid: u32,
     child_gid: u32,
     require_private_namespaces: bool,
+    cgroup_procs_path: &Path,
 ) -> Result<(), RunnerError> {
+    let cgroup_procs_path = cstring_path(cgroup_procs_path)?;
     unsafe {
         command.pre_exec(move || {
-            configure_child_process(child_uid, child_gid, require_private_namespaces)
+            configure_child_process(
+                child_uid,
+                child_gid,
+                require_private_namespaces,
+                &cgroup_procs_path,
+            )
         });
     }
     Ok(())
@@ -448,8 +456,10 @@ fn configure_child_process(
     child_uid: u32,
     child_gid: u32,
     require_private_namespaces: bool,
+    cgroup_procs_path: &CStr,
 ) -> io::Result<()> {
     unsafe {
+        move_current_process_to_cgroup(cgroup_procs_path)?;
         if require_private_namespaces {
             let flags =
                 libc::CLONE_NEWNS | libc::CLONE_NEWIPC | libc::CLONE_NEWUTS | libc::CLONE_NEWNET;
@@ -486,6 +496,64 @@ fn configure_child_process(
         }
     }
     Ok(())
+}
+
+fn cstring_path(path: &Path) -> Result<CString, RunnerError> {
+    CString::new(path.as_os_str().as_bytes())
+        .map_err(|_| RunnerError::System(format!("path contains nul byte: {:?}", path)))
+}
+
+fn move_current_process_to_cgroup(cgroup_procs_path: &CStr) -> io::Result<()> {
+    unsafe {
+        let fd = libc::open(cgroup_procs_path.as_ptr(), libc::O_WRONLY | libc::O_CLOEXEC);
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        let pid = libc::getpid();
+        let write_result = write_pid(fd, pid);
+        let close_result = libc::close(fd);
+        if let Err(error) = write_result {
+            return Err(error);
+        }
+        if close_result != 0 {
+            return Err(io::Error::last_os_error());
+        }
+    }
+    Ok(())
+}
+
+fn write_pid(fd: libc::c_int, pid: libc::pid_t) -> io::Result<()> {
+    if pid <= 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "pid must be positive",
+        ));
+    }
+
+    let mut value = pid as u32;
+    let mut buffer = [0u8; 16];
+    let mut index = buffer.len();
+    index -= 1;
+    buffer[index] = b'\n';
+    while value > 0 {
+        index -= 1;
+        buffer[index] = b'0' + (value % 10) as u8;
+        value /= 10;
+    }
+
+    let bytes = &buffer[index..];
+    let written = unsafe { libc::write(fd, bytes.as_ptr().cast(), bytes.len()) };
+    if written == bytes.len() as isize {
+        Ok(())
+    } else if written < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::WriteZero,
+            "short write to cgroup.procs",
+        ))
+    }
 }
 
 fn env_u32(name: &str, fallback: u32) -> Result<u32, RunnerError> {
@@ -775,9 +843,40 @@ mod tests {
         fs::write(root.path().join("memory.peak"), "12345\n").expect("memory peak");
         let cgroup = CgroupGuard {
             path: root.path().to_path_buf(),
+            procs_path: root.path().join("cgroup.procs"),
         };
 
         assert_eq!(cgroup.memory_peak_bytes(), 12345);
+    }
+
+    #[test]
+    fn prepares_command_cgroup_before_spawn() {
+        let root = tempfile::tempdir().expect("tempdir");
+        seed_fake_cgroup(root.path());
+        let mut config = SandboxConfig::default();
+        config.cgroup_root = root.path().to_path_buf();
+        let plan = shell_plan("true", 1024);
+
+        let cgroup = CgroupGuard::prepare(&config, &plan).expect("command cgroup");
+
+        assert!(cgroup
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with(&format!("laeufer-{}-", std::process::id()))));
+        assert_eq!(
+            fs::read_to_string(cgroup.path.join("memory.max")).expect("memory max"),
+            "134217728"
+        );
+        assert_eq!(
+            fs::read_to_string(cgroup.path.join("pids.max")).expect("pids max"),
+            "64"
+        );
+        assert_eq!(
+            fs::read_to_string(cgroup.path.join("cpu.max")).expect("cpu max"),
+            "100000 100000"
+        );
+        assert_eq!(cgroup.procs_path(), cgroup.path.join("cgroup.procs"));
     }
 
     fn shell_plan(script: &str, max_output_bytes: u64) -> CommandPlan {
