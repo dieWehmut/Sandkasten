@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandkasten-api
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten-api
+    app.kubernetes.io/part-of: sandkasten
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandkasten-laeufer
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten-laeufer
+    app.kubernetes.io/part-of: sandkasten
+automountServiceAccountToken: false

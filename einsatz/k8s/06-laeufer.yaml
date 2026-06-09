@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sandkasten-laeufer
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten-laeufer
+    app.kubernetes.io/part-of: sandkasten
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sandkasten-laeufer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sandkasten-laeufer
+        app.kubernetes.io/part-of: sandkasten
+    spec:
+      serviceAccountName: sandkasten-laeufer
+      automountServiceAccountToken: false
+      hostPID: true
+      nodeSelector:
+        sandkasten.dev/runner: "true"
+      tolerations:
+        - key: sandkasten.dev/runner
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: laeufer
+          image: ghcr.io/replace-me/sandkasten-laeufer:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: sandkasten-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sandkasten-secret
+                  key: DATABASE_URL
+            - name: LAEUFER_RUNNER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+            seccompProfile:
+              type: Unconfined
+          volumeMounts:
+            - name: work
+              mountPath: /var/lib/sandkasten/laeufer
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: work
+          hostPath:
+            path: /var/lib/sandkasten/laeufer
+            type: DirectoryOrCreate
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+        - name: modules
+          hostPath:
+            path: /lib/modules
+            type: Directory

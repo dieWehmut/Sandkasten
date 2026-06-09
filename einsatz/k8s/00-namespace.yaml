@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten
+    app.kubernetes.io/part-of: sandkasten

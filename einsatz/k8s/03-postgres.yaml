@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandkasten-postgres
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten-postgres
+    app.kubernetes.io/part-of: sandkasten
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    app.kubernetes.io/name: sandkasten-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sandkasten-postgres
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten-postgres
+    app.kubernetes.io/part-of: sandkasten
+spec:
+  serviceName: sandkasten-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sandkasten-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sandkasten-postgres
+        app.kubernetes.io/part-of: sandkasten
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: sandkasten-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: sandkasten-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sandkasten-secret
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - sandkasten
+                - -d
+                - sandkasten
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

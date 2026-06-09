@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandkasten-config
+  namespace: sandkasten
+  labels:
+    app.kubernetes.io/name: sandkasten
+    app.kubernetes.io/part-of: sandkasten
+data:
+  SANDKASTEN_API_GRPC_ADDR: ":50051"
+  SANDKASTEN_DB_MAX_OPEN_CONNS: "10"
+  SANDKASTEN_DB_MAX_IDLE_CONNS: "5"
+  SANDKASTEN_DB_CONN_MAX_LIFETIME: "30m"
+  SANDKASTEN_EVENT_POLL_INTERVAL: "1s"
+  SANDKASTEN_RUNTIME_LANGUAGE: "go"
+  SANDKASTEN_RUNTIME_VERSION: "1.23"
+  SANDKASTEN_RUNTIME_IMAGE: "sandkasten/go:1.23"
+  SANDKASTEN_RUNTIME_REQUIRES_VENDOR: "true"
+  LAEUFER_POLL_INTERVAL_MS: "1000"
+  LAEUFER_LEASE_TTL_MS: "60000"
+  LAEUFER_WORK_DIR: "/var/lib/sandkasten/laeufer"
+  LAEUFER_SANDBOX_ROOT: "/var/lib/sandkasten/laeufer/sandbox"
+  LAEUFER_CGROUP_ROOT: "/sys/fs/cgroup"
+  LAEUFER_MAX_ARCHIVE_BYTES: "67108864"
+  LAEUFER_MAX_ARCHIVE_FILES: "20000"
+  LAEUFER_REQUIRE_PRIVATE_NAMESPACES: "1"
+  LAEUFER_CHILD_UID: "65534"
+  LAEUFER_CHILD_GID: "65534"

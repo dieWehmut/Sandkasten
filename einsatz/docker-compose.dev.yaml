@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sandkasten-postgres-dev
+    environment:
+      POSTGRES_DB: sandkasten
+      POSTGRES_USER: sandkasten
+      POSTGRES_PASSWORD: sandkasten
+    ports:
+      - "5432:5432"
+    volumes:
+      - sandkasten-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sandkasten -d sandkasten"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    profiles:
+      - api
+    build:
+      context: ..
+      dockerfile: einsatz/docker/api.Dockerfile
+    image: sandkasten-api:dev
+    environment:
+      DATABASE_URL: postgres://sandkasten:sandkasten@postgres:5432/sandkasten?sslmode=disable
+      SANDKASTEN_API_GRPC_ADDR: ":50051"
+      SANDKASTEN_API_TOKEN: dev-token
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  laeufer:
+    profiles:
+      - runner
+    build:
+      context: ..
+      dockerfile: einsatz/docker/laeufer.Dockerfile
+    image: sandkasten-laeufer:dev
+    privileged: true
+    environment:
+      DATABASE_URL: postgres://sandkasten:sandkasten@postgres:5432/sandkasten?sslmode=disable
+      LAEUFER_RUNNER_ID: docker-dev
+      LAEUFER_WORK_DIR: /var/lib/sandkasten/laeufer
+      LAEUFER_POLL_INTERVAL_MS: "1000"
+      LAEUFER_LEASE_TTL_MS: "60000"
+      LAEUFER_MAX_ARCHIVE_BYTES: "67108864"
+      LAEUFER_MAX_ARCHIVE_FILES: "20000"
+      LAEUFER_CGROUP_ROOT: /sys/fs/cgroup
+      LAEUFER_REQUIRE_PRIVATE_NAMESPACES: "1"
+      LAEUFER_CHILD_UID: "65534"
+      LAEUFER_CHILD_GID: "65534"
+    volumes:
+      - sandkasten-laeufer:/var/lib/sandkasten/laeufer
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /lib/modules:/lib/modules:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  sandkasten-postgres:
+  sandkasten-laeufer:
