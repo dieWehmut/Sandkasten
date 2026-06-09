@@ -124,7 +124,7 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 	}
 	entrypoint := req.Entrypoint
 	if entrypoint == "" {
-		entrypoint = "."
+		entrypoint = defaultEntrypoint(language)
 	}
 	compileTimeout := req.CompileTimeoutMs
 	if compileTimeout == 0 {
@@ -190,6 +190,29 @@ func normalizeLanguage(language string) string {
 		return "typescript"
 	default:
 		return language
+	}
+}
+
+func defaultEntrypoint(language string) string {
+	switch normalizeLanguage(language) {
+	case "c":
+		return "main.c"
+	case "cpp":
+		return "main.cpp"
+	case "csharp":
+		return "Program.cs"
+	case "java":
+		return "Main.java"
+	case "javascript":
+		return "main.js"
+	case "python":
+		return "main.py"
+	case "rust":
+		return "main.rs"
+	case "typescript":
+		return "main.ts"
+	default:
+		return "."
 	}
 }
 

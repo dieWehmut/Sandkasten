@@ -49,6 +49,48 @@ func TestSubmitGoProjectAppliesDefaults(t *testing.T) {
 	}
 }
 
+func TestSubmitProjectAppliesLanguageRuntimeAndEntrypoint(t *testing.T) {
+	repo := &fakeRepo{}
+	service := NewServiceWithRuntimes(
+		repo,
+		&pb.Runtime{Language: "go", Version: "1.23"},
+		[]*pb.Runtime{
+			{Language: "go", Version: "1.23"},
+			{Language: "python", Version: "3.11"},
+		},
+	)
+
+	_, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{
+		Language:     "py",
+		ArchiveTargz: []byte("tgz"),
+	})
+	if err != nil {
+		t.Fatalf("SubmitGoProject() error = %v", err)
+	}
+
+	if repo.created.Runtime.GetLanguage() != "python" {
+		t.Fatalf("Runtime.Language = %q", repo.created.Runtime.GetLanguage())
+	}
+	if repo.created.Entrypoint != "main.py" {
+		t.Fatalf("Entrypoint = %q", repo.created.Entrypoint)
+	}
+}
+
+func TestSubmitProjectRejectsUnsupportedLanguage(t *testing.T) {
+	service := NewServiceWithRuntimes(
+		&fakeRepo{},
+		&pb.Runtime{Language: "go", Version: "1.23"},
+		[]*pb.Runtime{{Language: "go", Version: "1.23"}},
+	)
+
+	if _, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{
+		Language:     "ruby",
+		ArchiveTargz: []byte("tgz"),
+	}); err == nil {
+		t.Fatal("SubmitGoProject() error = nil")
+	}
+}
+
 func TestSubmitGoProjectRequiresArchive(t *testing.T) {
 	service := NewService(&fakeRepo{}, &pb.Runtime{Language: "go", Version: "1.23"})
 	if _, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{}); err == nil {

@@ -698,8 +698,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "laeufer-core",
- "laeufer-go",
  "laeufer-sandbox",
+ "laeufer-sprachen",
  "laeufer-store",
  "tokio",
 ]
@@ -740,6 +740,21 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "laeufer-sprachen"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "chrono",
+ "flate2",
+ "laeufer-core",
+ "tar",
+ "tempfile",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]

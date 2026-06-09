@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use laeufer_core::{execute_job, JobStore, RunnerConfig, Sandbox};
-use laeufer_go::GoRuntime;
 use laeufer_sandbox::LinuxSandbox;
+use laeufer_sprachen::{ArchiveLimits, SprachenRuntime, SprachenRuntimeOptions};
 use laeufer_store::PgJobStore;
 use std::fs;
 use tokio::time;
@@ -14,10 +14,10 @@ async fn main() -> Result<()> {
     let store = PgJobStore::connect(&config.database_url)
         .await
         .context("connect to postgres")?;
-    let runtime = GoRuntime::with_options(
+    let runtime = SprachenRuntime::with_options(
         &config.work_dir,
-        laeufer_go::GoRuntimeOptions {
-            archive_limits: laeufer_go::ArchiveLimits {
+        SprachenRuntimeOptions {
+            archive_limits: ArchiveLimits {
                 max_archive_bytes: config.max_archive_bytes,
                 max_files: config.max_archive_files,
             },
