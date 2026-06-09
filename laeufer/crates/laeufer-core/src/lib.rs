@@ -188,9 +188,7 @@ impl TryFrom<&str> for JobStatus {
             "SUCCEEDED" | "JOB_STATUS_SUCCEEDED" => Ok(Self::Succeeded),
             "COMPILE_FAILED" | "JOB_STATUS_COMPILE_FAILED" => Ok(Self::CompileFailed),
             "RUNTIME_FAILED" | "JOB_STATUS_RUNTIME_FAILED" => Ok(Self::RuntimeFailed),
-            "TIME_LIMIT_EXCEEDED" | "JOB_STATUS_TIME_LIMIT_EXCEEDED" => {
-                Ok(Self::TimeLimitExceeded)
-            }
+            "TIME_LIMIT_EXCEEDED" | "JOB_STATUS_TIME_LIMIT_EXCEEDED" => Ok(Self::TimeLimitExceeded),
             "MEMORY_LIMIT_EXCEEDED" | "JOB_STATUS_MEMORY_LIMIT_EXCEEDED" => {
                 Ok(Self::MemoryLimitExceeded)
             }
@@ -445,7 +443,12 @@ where
     result.absorb_compile_output(compile_output);
     if let Some(status) = compile_status {
         store
-            .finish(job.job_id, status, result, "compile did not complete successfully")
+            .finish(
+                job.job_id,
+                status,
+                result,
+                "compile did not complete successfully",
+            )
             .await?;
         return Ok(status);
     }

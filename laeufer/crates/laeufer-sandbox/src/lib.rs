@@ -13,8 +13,6 @@ use tokio::sync::mpsc;
 use tokio::time;
 
 #[cfg(unix)]
-use std::os::unix::process::CommandExt;
-#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 
 #[derive(Clone, Debug)]
@@ -131,7 +129,10 @@ fn preflight(config: &SandboxConfig) -> Result<(), SandboxError> {
     require_file(&cgroup_controllers)?;
     let controllers = fs::read_to_string(&cgroup_controllers)?;
     for controller in ["cpu", "memory", "pids"] {
-        if !controllers.split_whitespace().any(|value| value == controller) {
+        if !controllers
+            .split_whitespace()
+            .any(|value| value == controller)
+        {
             return Err(SandboxError::MissingCgroupController(controller));
         }
     }
@@ -178,9 +179,9 @@ async fn execute_command(
     )?;
 
     let started = Instant::now();
-    let mut child = command
-        .spawn()
-        .map_err(|error| RunnerError::System(format!("failed to spawn {:?}: {error}", plan.program)))?;
+    let mut child = command.spawn().map_err(|error| {
+        RunnerError::System(format!("failed to spawn {:?}: {error}", plan.program))
+    })?;
     let cgroup = match CgroupGuard::attach(config, plan, child.id()).await {
         Ok(cgroup) => cgroup,
         Err(error) => {
@@ -212,7 +213,11 @@ async fn execute_command(
     });
 
     let (limit_tx, mut limit_rx) = mpsc::channel(1);
-    let stdout_task = tokio::spawn(read_limited(stdout, plan.max_output_bytes, limit_tx.clone()));
+    let stdout_task = tokio::spawn(read_limited(
+        stdout,
+        plan.max_output_bytes,
+        limit_tx.clone(),
+    ));
     let stderr_task = tokio::spawn(read_limited(stderr, plan.max_output_bytes, limit_tx));
 
     let status = tokio::select! {
@@ -276,7 +281,8 @@ impl CgroupGuard {
         plan: &CommandPlan,
         child_id: Option<u32>,
     ) -> Result<Self, RunnerError> {
-        let pid = child_id.ok_or_else(|| RunnerError::System("child process has no pid".to_owned()))?;
+        let pid =
+            child_id.ok_or_else(|| RunnerError::System("child process has no pid".to_owned()))?;
         let parent = config.cgroup_root.join("sandkasten");
         let path = parent.join(format!("laeufer-{pid}"));
         fs::create_dir_all(&path)
@@ -448,7 +454,9 @@ async fn await_stdin(task: tokio::task::JoinHandle<io::Result<()>>) -> Result<()
     match task.await {
         Ok(Ok(())) => Ok(()),
         Ok(Err(error)) if error.kind() == io::ErrorKind::BrokenPipe => Ok(()),
-        Ok(Err(error)) => Err(RunnerError::System(format!("failed to write stdin: {error}"))),
+        Ok(Err(error)) => Err(RunnerError::System(format!(
+            "failed to write stdin: {error}"
+        ))),
         Err(error) => Err(RunnerError::System(format!("stdin task failed: {error}"))),
     }
 }
@@ -458,7 +466,9 @@ async fn await_output(
 ) -> Result<LimitedOutput, RunnerError> {
     match task.await {
         Ok(Ok(output)) => Ok(output),
-        Ok(Err(error)) => Err(RunnerError::System(format!("failed to read output: {error}"))),
+        Ok(Err(error)) => Err(RunnerError::System(format!(
+            "failed to read output: {error}"
+        ))),
         Err(error) => Err(RunnerError::System(format!("output task failed: {error}"))),
     }
 }
@@ -555,7 +565,9 @@ fn require_file(path: impl AsRef<Path>) -> Result<(), SandboxError> {
     if metadata.is_file() {
         Ok(())
     } else {
-        Err(SandboxError::RequiredFileMissing(path.as_os_str().to_os_string()))
+        Err(SandboxError::RequiredFileMissing(
+            path.as_os_str().to_os_string(),
+        ))
     }
 }
 
@@ -607,7 +619,9 @@ mod tests {
     async fn executes_command_and_captures_output() {
         let plan = shell_plan("printf out; printf err >&2", 1024);
 
-        let result = execute_command_without_cgroup(&plan).await.expect("command runs");
+        let result = execute_command_without_cgroup(&plan)
+            .await
+            .expect("command runs");
 
         assert_eq!(result.exit_code, Some(0));
         assert_eq!(&result.stdout[..], b"out");
@@ -620,7 +634,9 @@ mod tests {
     async fn caps_output() {
         let plan = shell_plan("printf 123456", 3);
 
-        let result = execute_command_without_cgroup(&plan).await.expect("command runs");
+        let result = execute_command_without_cgroup(&plan)
+            .await
+            .expect("command runs");
 
         assert_eq!(&result.stdout[..], b"123");
         assert!(result.stdout_truncated);
@@ -631,7 +647,9 @@ mod tests {
         let mut plan = shell_plan("sleep 2", 1024);
         plan.timeout = Duration::from_millis(20);
 
-        let err = execute_command_without_cgroup(&plan).await.expect_err("times out");
+        let err = execute_command_without_cgroup(&plan)
+            .await
+            .expect_err("times out");
 
         assert!(matches!(err, RunnerError::TimeLimitExceeded(_)));
     }

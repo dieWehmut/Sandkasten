@@ -98,7 +98,13 @@ impl JobStore for PgJobStore {
         };
 
         let job = row_to_job(row)?;
-        insert_event(&mut tx, job.job_id, JobStatus::Validating, "leased by runner").await?;
+        insert_event(
+            &mut tx,
+            job.job_id,
+            JobStatus::Validating,
+            "leased by runner",
+        )
+        .await?;
         tx.commit().await.map_err(store_error)?;
         Ok(Some(job))
     }

@@ -135,7 +135,10 @@ fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ),
         (
             "GOCACHE".to_owned(),
-            job_dir.join(RUNNER_CACHE_DIR).to_string_lossy().into_owned(),
+            job_dir
+                .join(RUNNER_CACHE_DIR)
+                .to_string_lossy()
+                .into_owned(),
         ),
         (
             "GOTMPDIR".to_owned(),
@@ -347,11 +350,14 @@ mod tests {
 
     #[test]
     fn rejects_path_traversal() {
-        let archive = archive_with(&[
-            ("go.mod", b"module example.com/demo\n".as_slice()),
-            ("../escape", b"nope".as_slice()),
-            ("vendor/modules.txt", b"# vendor\n".as_slice()),
-        ]);
+        let archive = archive_with_raw_file(
+            "../escape",
+            b"nope",
+            &[
+                ("go.mod", b"module example.com/demo\n".as_slice()),
+                ("vendor/modules.txt", b"# vendor\n".as_slice()),
+            ],
+        );
 
         let err = GoRuntime::validate_archive(&archive).expect_err("invalid archive");
 
@@ -484,6 +490,32 @@ mod tests {
             builder
                 .append_data(&mut header, path, std::io::empty())
                 .expect("append special entry");
+
+            let encoder = builder.into_inner().expect("finish tar");
+            encoder.finish().expect("finish gzip");
+        }
+        targz
+    }
+
+    fn archive_with_raw_file(path: &str, body: &[u8], regular_files: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut targz = Vec::new();
+        {
+            let encoder = GzEncoder::new(&mut targz, Compression::default());
+            let mut builder = Builder::new(encoder);
+
+            for (file_path, file_body) in regular_files {
+                append_file(&mut builder, file_path, file_body);
+            }
+
+            let mut header = Header::new_gnu();
+            header.set_size(body.len() as u64);
+            header.set_mode(0o644);
+            header.set_entry_type(EntryType::Regular);
+            header.as_mut_bytes()[..path.len()].copy_from_slice(path.as_bytes());
+            header.set_cksum();
+            builder
+                .append(&header, body)
+                .expect("append raw fixture entry");
 
             let encoder = builder.into_inner().expect("finish tar");
             encoder.finish().expect("finish gzip");
