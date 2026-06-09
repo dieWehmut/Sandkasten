@@ -1,0 +1,31 @@
+.DS_Store
+
+# Build output
+bin/
+dist/
+target/
+coverage/
+
+# Go
+schnittstelle/gen/
+schnittstelle/vendor/
+
+# Rust
+**/*.rs.bk
+
+# Local runtime state
+.env
+.env.*
+!.env.example
+.sandkasten/
+tmp/
+
+# Database and tooling
+*.db
+*.sqlite
+*.sqlite3
+
+# Rootfs artifacts
+wurzelwerk/**/*.tar
+wurzelwerk/**/*.tar.gz
+wurzelwerk/**/*.img
