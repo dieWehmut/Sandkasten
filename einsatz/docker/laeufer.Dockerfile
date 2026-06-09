@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 FROM rust:1.82-bookworm AS build
 
 WORKDIR /src
@@ -19,9 +17,7 @@ RUN mkdir -p src crates/laeufer-core/src crates/laeufer-go/src crates/laeufer-sa
     printf 'pub fn _cargo_cache_probe() {}\n' > crates/laeufer-go/src/lib.rs && \
     printf 'pub fn _cargo_cache_probe() {}\n' > crates/laeufer-sandbox/src/lib.rs && \
     printf 'pub fn _cargo_cache_probe() {}\n' > crates/laeufer-store/src/lib.rs
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/laeufer/target \
-    cargo fetch
+RUN cargo fetch
 
 WORKDIR /src
 COPY vertrag ./vertrag
@@ -29,9 +25,7 @@ COPY laeufer ./laeufer
 
 WORKDIR /src/laeufer
 RUN test -f src/bin/laeufer.rs || test -f src/main.rs || (echo "missing laeufer runner binary source; add src/bin/laeufer.rs or src/main.rs before building the runner image" >&2; exit 1)
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/laeufer/target \
-    cargo build --release --bin laeufer && \
+RUN cargo build --release --bin laeufer && \
     cp target/release/laeufer /out-laeufer
 
 FROM golang:1.23-bookworm
