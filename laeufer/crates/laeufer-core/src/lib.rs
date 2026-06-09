@@ -20,6 +20,7 @@ pub struct RunnerConfig {
     pub work_dir: PathBuf,
     pub max_archive_bytes: u64,
     pub max_archive_files: usize,
+    pub compile_memory_limit_bytes: u64,
 }
 
 impl RunnerConfig {
@@ -36,6 +37,8 @@ impl RunnerConfig {
             .unwrap_or_else(|_| std::env::temp_dir().join("laeufer"));
         let max_archive_bytes = u64_env("LAEUFER_MAX_ARCHIVE_BYTES", 64 * 1024 * 1024)?;
         let max_archive_files = usize_env("LAEUFER_MAX_ARCHIVE_FILES", 20_000)?;
+        let compile_memory_limit_bytes =
+            u64_env("LAEUFER_COMPILE_MEMORY_LIMIT_BYTES", 1024 * 1024 * 1024)?;
 
         Ok(Self {
             runner_id,
@@ -45,6 +48,7 @@ impl RunnerConfig {
             work_dir,
             max_archive_bytes,
             max_archive_files,
+            compile_memory_limit_bytes,
         })
     }
 }

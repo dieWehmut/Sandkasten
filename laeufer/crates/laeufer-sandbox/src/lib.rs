@@ -128,7 +128,7 @@ fn preflight(config: &SandboxConfig) -> Result<(), SandboxError> {
     let cgroup_controllers = config.cgroup_root.join("cgroup.controllers");
     require_file(&cgroup_controllers)?;
     let controllers = fs::read_to_string(&cgroup_controllers)?;
-    for controller in ["cpu", "memory", "pids"] {
+    for controller in REQUIRED_CGROUP_CONTROLLERS {
         if !controllers
             .split_whitespace()
             .any(|value| value == controller)
@@ -136,6 +136,7 @@ fn preflight(config: &SandboxConfig) -> Result<(), SandboxError> {
             return Err(SandboxError::MissingCgroupController(controller));
         }
     }
+    ensure_runner_cgroup(&config.cgroup_root)?;
 
     if let Ok(value) = fs::read_to_string("/proc/sys/kernel/unprivileged_userns_clone") {
         if value.trim() == "0" {
@@ -172,7 +173,6 @@ async fn execute_command(
 
     install_child_setup(
         &mut command,
-        plan.memory_limit_bytes,
         config.child_uid,
         config.child_gid,
         config.require_private_namespaces,
@@ -275,6 +275,9 @@ struct CgroupGuard {
     path: PathBuf,
 }
 
+const RUNNER_CGROUP_NAME: &str = "sandkasten";
+const REQUIRED_CGROUP_CONTROLLERS: [&str; 3] = ["cpu", "memory", "pids"];
+
 impl CgroupGuard {
     async fn attach(
         config: &SandboxConfig,
@@ -283,7 +286,8 @@ impl CgroupGuard {
     ) -> Result<Self, RunnerError> {
         let pid =
             child_id.ok_or_else(|| RunnerError::System("child process has no pid".to_owned()))?;
-        let parent = config.cgroup_root.join("sandkasten");
+        let parent = ensure_runner_cgroup(&config.cgroup_root)
+            .map_err(|error| RunnerError::System(format!("prepare runner cgroup: {error}")))?;
         let path = parent.join(format!("laeufer-{pid}"));
         fs::create_dir_all(&path)
             .map_err(|error| RunnerError::System(format!("create cgroup {:?}: {error}", path)))?;
@@ -310,6 +314,30 @@ impl CgroupGuard {
                     > 0
         })
     }
+}
+
+fn ensure_runner_cgroup(cgroup_root: &Path) -> io::Result<PathBuf> {
+    let parent = cgroup_root.join(RUNNER_CGROUP_NAME);
+    fs::create_dir_all(&parent)?;
+    enable_cgroup_controllers(&parent, &REQUIRED_CGROUP_CONTROLLERS)?;
+    Ok(parent)
+}
+
+fn enable_cgroup_controllers(cgroup: &Path, controllers: &[&str]) -> io::Result<()> {
+    let available = fs::read_to_string(cgroup.join("cgroup.controllers"))?;
+    let available = available.split_whitespace().collect::<Vec<_>>();
+    let requested = controllers
+        .iter()
+        .copied()
+        .filter(|controller| available.contains(controller))
+        .map(|controller| format!("+{controller}"))
+        .collect::<Vec<_>>();
+
+    if requested.is_empty() {
+        return Ok(());
+    }
+
+    fs::write(cgroup.join("cgroup.subtree_control"), requested.join(" "))
 }
 
 impl Drop for CgroupGuard {
@@ -341,27 +369,19 @@ fn memory_max(memory_limit_bytes: u64) -> String {
 
 fn install_child_setup(
     command: &mut Command,
-    memory_limit_bytes: u64,
     child_uid: u32,
     child_gid: u32,
     require_private_namespaces: bool,
 ) -> Result<(), RunnerError> {
-    let memory_limit = memory_limit_bytes;
     unsafe {
         command.pre_exec(move || {
-            configure_child_process(
-                memory_limit,
-                child_uid,
-                child_gid,
-                require_private_namespaces,
-            )
+            configure_child_process(child_uid, child_gid, require_private_namespaces)
         });
     }
     Ok(())
 }
 
 fn configure_child_process(
-    memory_limit_bytes: u64,
     child_uid: u32,
     child_gid: u32,
     require_private_namespaces: bool,
@@ -389,15 +409,6 @@ fn configure_child_process(
         }
         if libc::setsid() < 0 {
             return Err(io::Error::last_os_error());
-        }
-        if memory_limit_bytes > 0 {
-            let limit = libc::rlimit {
-                rlim_cur: memory_limit_bytes as libc::rlim_t,
-                rlim_max: memory_limit_bytes as libc::rlim_t,
-            };
-            if libc::setrlimit(libc::RLIMIT_AS, &limit) != 0 {
-                return Err(io::Error::last_os_error());
-            }
         }
         if libc::geteuid() == 0 {
             if libc::setgroups(0, std::ptr::null()) != 0 {
@@ -432,7 +443,7 @@ pub struct IsolationIntent {
     pub requires_private_network_namespace: bool,
     pub enforces_no_new_privs: bool,
     pub drops_to_unprivileged_uid_gid: bool,
-    pub enforces_rlimit_as: bool,
+    pub enforces_cgroup_limits: bool,
 }
 
 impl IsolationIntent {
@@ -445,7 +456,7 @@ impl IsolationIntent {
             requires_private_network_namespace: true,
             enforces_no_new_privs: true,
             drops_to_unprivileged_uid_gid: true,
-            enforces_rlimit_as: plan.memory_limit_bytes > 0,
+            enforces_cgroup_limits: plan.memory_limit_bytes > 0,
         }
     }
 }
@@ -675,7 +686,24 @@ mod tests {
         assert!(intent.requires_private_network_namespace);
         assert!(intent.enforces_no_new_privs);
         assert!(intent.drops_to_unprivileged_uid_gid);
-        assert!(intent.enforces_rlimit_as);
+        assert!(intent.enforces_cgroup_limits);
+    }
+
+    #[test]
+    fn prepares_runner_cgroup_and_enables_controllers() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let parent = root.path().join(RUNNER_CGROUP_NAME);
+        fs::create_dir_all(&parent).expect("parent cgroup");
+        fs::write(parent.join("cgroup.controllers"), "cpu memory pids io").expect("controllers");
+        fs::write(parent.join("cgroup.subtree_control"), "").expect("subtree control");
+
+        let parent = ensure_runner_cgroup(root.path()).expect("runner cgroup");
+
+        assert_eq!(parent, root.path().join(RUNNER_CGROUP_NAME));
+        assert_eq!(
+            fs::read_to_string(parent.join("cgroup.subtree_control")).expect("subtree control"),
+            "+cpu +memory +pids"
+        );
     }
 
     fn shell_plan(script: &str, max_output_bytes: u64) -> CommandPlan {
@@ -697,6 +725,14 @@ mod tests {
         config.require_private_namespaces = false;
         let cgroup_root = tempfile::tempdir().expect("tempdir");
         config.cgroup_root = cgroup_root.path().to_path_buf();
+        seed_fake_cgroup(&config.cgroup_root);
         execute_command(plan, &config).await
+    }
+
+    fn seed_fake_cgroup(root: &Path) {
+        let parent = root.join(RUNNER_CGROUP_NAME);
+        fs::create_dir_all(&parent).expect("parent cgroup");
+        fs::write(parent.join("cgroup.controllers"), "cpu memory pids").expect("controllers");
+        fs::write(parent.join("cgroup.subtree_control"), "").expect("subtree control");
     }
 }

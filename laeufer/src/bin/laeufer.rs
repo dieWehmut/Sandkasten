@@ -14,11 +14,14 @@ async fn main() -> Result<()> {
     let store = PgJobStore::connect(&config.database_url)
         .await
         .context("connect to postgres")?;
-    let runtime = GoRuntime::with_limits(
+    let runtime = GoRuntime::with_options(
         &config.work_dir,
-        laeufer_go::ArchiveLimits {
-            max_archive_bytes: config.max_archive_bytes,
-            max_files: config.max_archive_files,
+        laeufer_go::GoRuntimeOptions {
+            archive_limits: laeufer_go::ArchiveLimits {
+                max_archive_bytes: config.max_archive_bytes,
+                max_files: config.max_archive_files,
+            },
+            compile_memory_limit_bytes: config.compile_memory_limit_bytes,
         },
     );
     let sandbox = LinuxSandbox::from_env().context("load sandbox config")?;

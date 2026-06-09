@@ -11,11 +11,13 @@ const RUNNER_CACHE_DIR: &str = ".laeufer-cache";
 const RUNNER_TMP_DIR: &str = ".laeufer-tmp";
 const DEFAULT_MAX_ARCHIVE_BYTES: u64 = 64 * 1024 * 1024;
 const DEFAULT_MAX_ARCHIVE_FILES: usize = 20_000;
+const DEFAULT_COMPILE_MEMORY_LIMIT_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Clone, Debug)]
 pub struct GoRuntime {
     work_root: PathBuf,
     limits: ArchiveLimits,
+    compile_memory_limit_bytes: u64,
 }
 
 impl GoRuntime {
@@ -23,13 +25,25 @@ impl GoRuntime {
         Self {
             work_root: work_root.into(),
             limits: ArchiveLimits::default(),
+            compile_memory_limit_bytes: DEFAULT_COMPILE_MEMORY_LIMIT_BYTES,
         }
     }
 
     pub fn with_limits(work_root: impl Into<PathBuf>, limits: ArchiveLimits) -> Self {
+        Self::with_options(
+            work_root,
+            GoRuntimeOptions {
+                archive_limits: limits,
+                compile_memory_limit_bytes: DEFAULT_COMPILE_MEMORY_LIMIT_BYTES,
+            },
+        )
+    }
+
+    pub fn with_options(work_root: impl Into<PathBuf>, options: GoRuntimeOptions) -> Self {
         Self {
             work_root: work_root.into(),
-            limits,
+            limits: options.archive_limits,
+            compile_memory_limit_bytes: options.compile_memory_limit_bytes,
         }
     }
 
@@ -61,7 +75,7 @@ impl GoRuntime {
         Ok(layout)
     }
 
-    pub fn plan(job: &Job, source_dir: PathBuf) -> BuildPlan {
+    pub fn plan(job: &Job, source_dir: PathBuf, compile_memory_limit_bytes: u64) -> BuildPlan {
         let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
         let env = runner_env(&source_dir);
         let compile = CommandPlan {
@@ -78,7 +92,7 @@ impl GoRuntime {
             cwd: source_dir.clone(),
             stdin: Default::default(),
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
             cpu_millis: job.limits.cpu_millis,
             max_output_bytes: job.limits.max_output_bytes,
         };
@@ -113,8 +127,14 @@ impl LanguageRuntime for GoRuntime {
             .map_err(|error| RunnerError::Validation(error.to_string()))?;
         prepare_runner_dirs(&job_dir).map_err(|error| RunnerError::System(error.to_string()))?;
 
-        Ok(Self::plan(job, job_dir))
+        Ok(Self::plan(job, job_dir, self.compile_memory_limit_bytes))
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GoRuntimeOptions {
+    pub archive_limits: ArchiveLimits,
+    pub compile_memory_limit_bytes: u64,
 }
 
 fn prepare_runner_dirs(job_dir: &Path) -> std::io::Result<()> {
@@ -311,10 +331,15 @@ fn normalize_archive_path(path: &Path) -> Result<PathBuf, GoArchiveError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
+    use chrono::Utc;
     use flate2::write::GzEncoder;
     use flate2::Compression;
+    use laeufer_core::{JobLimits, JobStatus};
     use std::io::Write;
+    use std::time::Duration;
     use tar::{Builder, EntryType, Header};
+    use uuid::Uuid;
 
     #[test]
     fn accepts_project_with_go_mod_and_vendor() {
@@ -448,6 +473,17 @@ mod tests {
         assert!(matches!(err, GoArchiveError::TooManyFiles { limit: 2 }));
     }
 
+    #[test]
+    fn compile_plan_uses_separate_memory_limit() {
+        let job = test_job();
+        let compile_memory_limit = 1024 * 1024 * 1024;
+
+        let plan = GoRuntime::plan(&job, PathBuf::from("/work/job/src"), compile_memory_limit);
+
+        assert_eq!(plan.compile.memory_limit_bytes, compile_memory_limit);
+        assert_eq!(plan.run.memory_limit_bytes, job.limits.memory_limit_bytes);
+    }
+
     fn archive_with(files: &[(&str, &[u8])]) -> Vec<u8> {
         let mut targz = Vec::new();
         {
@@ -531,5 +567,28 @@ mod tests {
         builder
             .append_data(&mut header, path, body)
             .expect("append fixture");
+    }
+
+    fn test_job() -> Job {
+        Job {
+            job_id: Uuid::new_v4(),
+            status: JobStatus::Queued,
+            language: "go".to_owned(),
+            runtime_version: "1.26".to_owned(),
+            entrypoint: ".".to_owned(),
+            args: Vec::new(),
+            stdin: Bytes::new(),
+            archive_targz: Bytes::new(),
+            limits: JobLimits {
+                compile_timeout: Duration::from_secs(30),
+                run_timeout: Duration::from_secs(5),
+                memory_limit_bytes: 256 * 1024 * 1024,
+                cpu_millis: 1000,
+                max_output_bytes: 1024 * 1024,
+            },
+            created_at: Utc::now(),
+            started_at: None,
+            finished_at: None,
+        }
     }
 }
