@@ -7,7 +7,6 @@ target/
 coverage/
 
 # Go
-schnittstelle/gen/
 schnittstelle/vendor/
 
 # Rust
