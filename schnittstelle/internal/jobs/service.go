@@ -22,16 +22,16 @@ type Repository interface {
 }
 
 type CreateJob struct {
-	ArchiveTargz      []byte
-	Entrypoint        string
-	Stdin             []byte
-	Args              []string
-	CompileTimeoutMS  uint32
-	RunTimeoutMS      uint32
-	MemoryLimitBytes  uint64
-	CPUMillis         uint32
-	MaxOutputBytes    uint64
-	Runtime           *pb.Runtime
+	ArchiveTargz     []byte
+	Entrypoint       string
+	Stdin            []byte
+	Args             []string
+	CompileTimeoutMS uint32
+	RunTimeoutMS     uint32
+	MemoryLimitBytes uint64
+	CPUMillis        uint32
+	MaxOutputBytes   uint64
+	Runtime          *pb.Runtime
 }
 
 type Service struct {
@@ -110,15 +110,15 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 		maxOutput = 1024 * 1024
 	}
 	return CreateJob{
-		ArchiveTargz:      req.ArchiveTargz,
-		Entrypoint:        entrypoint,
-		Stdin:             req.Stdin,
-		Args:              append([]string(nil), req.Args...),
-		CompileTimeoutMS:  compileTimeout,
-		RunTimeoutMS:      runTimeout,
-		MemoryLimitBytes:  memoryLimit,
-		CPUMillis:         cpuMillis,
-		MaxOutputBytes:    maxOutput,
-		Runtime:           s.defaultRuntime,
+		ArchiveTargz:     append([]byte(nil), req.ArchiveTargz...),
+		Entrypoint:       entrypoint,
+		Stdin:            append([]byte{}, req.Stdin...),
+		Args:             append([]string{}, req.Args...),
+		CompileTimeoutMS: compileTimeout,
+		RunTimeoutMS:     runTimeout,
+		MemoryLimitBytes: memoryLimit,
+		CPUMillis:        cpuMillis,
+		MaxOutputBytes:   maxOutput,
+		Runtime:          s.defaultRuntime,
 	}, nil
 }

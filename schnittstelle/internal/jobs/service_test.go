@@ -41,6 +41,12 @@ func TestSubmitGoProjectAppliesDefaults(t *testing.T) {
 	if repo.created.CompileTimeoutMS == 0 || repo.created.RunTimeoutMS == 0 || repo.created.MemoryLimitBytes == 0 || repo.created.CPUMillis == 0 || repo.created.MaxOutputBytes == 0 {
 		t.Fatalf("expected resource defaults, got %+v", repo.created)
 	}
+	if repo.created.Stdin == nil {
+		t.Fatal("Stdin = nil, want empty byte slice")
+	}
+	if repo.created.Args == nil {
+		t.Fatal("Args = nil, want empty string slice")
+	}
 }
 
 func TestSubmitGoProjectRequiresArchive(t *testing.T) {
