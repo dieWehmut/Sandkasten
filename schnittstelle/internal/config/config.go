@@ -83,4 +83,3 @@ func envDuration(name string, fallback time.Duration) time.Duration {
 	}
 	return time.Duration(millis) * time.Millisecond
 }
-

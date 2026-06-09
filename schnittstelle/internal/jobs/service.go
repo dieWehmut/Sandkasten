@@ -122,4 +122,3 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 		Runtime:           s.defaultRuntime,
 	}, nil
 }
-

@@ -48,4 +48,3 @@ func authorize(ctx context.Context, token string) error {
 	}
 	return status.Error(codes.Unauthenticated, "invalid credentials")
 }
-

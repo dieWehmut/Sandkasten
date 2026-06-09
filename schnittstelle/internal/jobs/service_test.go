@@ -49,4 +49,3 @@ func TestSubmitGoProjectRequiresArchive(t *testing.T) {
 		t.Fatal("SubmitGoProject() error = nil")
 	}
 }
-
