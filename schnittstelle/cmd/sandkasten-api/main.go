@@ -51,7 +51,7 @@ func run() error {
 	}
 
 	repo := postgres.NewRepository(db, cfg.EventPollInterval, cfg.DefaultRuntime)
-	service := jobs.NewService(repo, cfg.DefaultRuntime)
+	service := jobs.NewServiceWithRuntimes(repo, cfg.DefaultRuntime, cfg.SupportedRuntimes)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryInterceptor(cfg.AuthToken)),

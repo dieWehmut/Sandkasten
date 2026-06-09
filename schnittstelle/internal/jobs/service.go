@@ -3,6 +3,8 @@ package jobs
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 	"time"
 
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
@@ -37,10 +39,25 @@ type CreateJob struct {
 type Service struct {
 	repo           Repository
 	defaultRuntime *pb.Runtime
+	runtimes       map[string]*pb.Runtime
 }
 
 func NewService(repo Repository, defaultRuntime *pb.Runtime) *Service {
-	return &Service{repo: repo, defaultRuntime: defaultRuntime}
+	return NewServiceWithRuntimes(repo, defaultRuntime, []*pb.Runtime{defaultRuntime})
+}
+
+func NewServiceWithRuntimes(repo Repository, defaultRuntime *pb.Runtime, runtimes []*pb.Runtime) *Service {
+	byLanguage := make(map[string]*pb.Runtime, len(runtimes))
+	for _, runtime := range runtimes {
+		if runtime == nil || strings.TrimSpace(runtime.Language) == "" {
+			continue
+		}
+		byLanguage[normalizeLanguage(runtime.Language)] = cloneRuntime(runtime)
+	}
+	if defaultRuntime != nil && defaultRuntime.Language != "" {
+		byLanguage[normalizeLanguage(defaultRuntime.Language)] = cloneRuntime(defaultRuntime)
+	}
+	return &Service{repo: repo, defaultRuntime: cloneRuntime(defaultRuntime), runtimes: byLanguage}
 }
 
 func (s *Service) SubmitGoProject(ctx context.Context, req *pb.SubmitGoProjectRequest) (*pb.SubmitGoProjectResponse, error) {
@@ -66,9 +83,21 @@ func (s *Service) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.
 }
 
 func (s *Service) ListRuntimes(ctx context.Context, req *pb.ListRuntimesRequest) (*pb.ListRuntimesResponse, error) {
-	runtimes, err := s.repo.ListRuntimes(ctx)
-	if err != nil {
-		return nil, err
+	if len(s.runtimes) == 0 {
+		runtimes, err := s.repo.ListRuntimes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &pb.ListRuntimesResponse{Runtimes: runtimes}, nil
+	}
+	languages := make([]string, 0, len(s.runtimes))
+	for language := range s.runtimes {
+		languages = append(languages, language)
+	}
+	sort.Strings(languages)
+	runtimes := make([]*pb.Runtime, 0, len(languages))
+	for _, language := range languages {
+		runtimes = append(runtimes, cloneRuntime(s.runtimes[language]))
 	}
 	return &pb.ListRuntimesResponse{Runtimes: runtimes}, nil
 }
@@ -83,6 +112,14 @@ func (s *Service) StreamJobEvents(ctx context.Context, req *pb.StreamJobEventsRe
 
 func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 	if req == nil || len(req.ArchiveTargz) == 0 {
+		return CreateJob{}, ErrInvalidArgument
+	}
+	language := normalizeLanguage(req.Language)
+	if language == "" && s.defaultRuntime != nil {
+		language = normalizeLanguage(s.defaultRuntime.Language)
+	}
+	runtime := s.runtimeFor(language)
+	if runtime == nil {
 		return CreateJob{}, ErrInvalidArgument
 	}
 	entrypoint := req.Entrypoint
@@ -119,6 +156,51 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 		MemoryLimitBytes: memoryLimit,
 		CPUMillis:        cpuMillis,
 		MaxOutputBytes:   maxOutput,
-		Runtime:          s.defaultRuntime,
+		Runtime:          runtime,
 	}, nil
+}
+
+func (s *Service) runtimeFor(language string) *pb.Runtime {
+	if language == "" {
+		return cloneRuntime(s.defaultRuntime)
+	}
+	runtime := s.runtimes[language]
+	if runtime == nil {
+		return nil
+	}
+	return cloneRuntime(runtime)
+}
+
+func normalizeLanguage(language string) string {
+	language = strings.ToLower(strings.TrimSpace(language))
+	switch language {
+	case "golang":
+		return "go"
+	case "c++":
+		return "cpp"
+	case "cs", "c#":
+		return "csharp"
+	case "js", "node":
+		return "javascript"
+	case "py", "python3":
+		return "python"
+	case "rs":
+		return "rust"
+	case "ts":
+		return "typescript"
+	default:
+		return language
+	}
+}
+
+func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {
+	if runtime == nil {
+		return nil
+	}
+	return &pb.Runtime{
+		Language:       runtime.Language,
+		Version:        runtime.Version,
+		Image:          runtime.Image,
+		RequiresVendor: runtime.RequiresVendor,
+	}
 }

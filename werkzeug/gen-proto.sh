@@ -36,7 +36,7 @@ elif [[ -d "$ROOT/schnittstelle/gen" ]]; then
 fi
 
 if command -v rustfmt >/dev/null 2>&1 && [[ -d "$ROOT/laeufer/crates/laeufer-core/src/pb" ]]; then
-  find "$ROOT/laeufer/crates/laeufer-core/src/pb" -type f -name '*.rs' -print0 | xargs -0r rustfmt
+  find "$ROOT/laeufer/crates/laeufer-core/src/pb" -type f -name '*.rs' -print0 | xargs -0r rustfmt --edition 2021
 elif [[ -d "$ROOT/laeufer/crates/laeufer-core/src/pb" ]]; then
   printf 'rustfmt not found; generated Rust files were not formatted\n' >&2
 fi

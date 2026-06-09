@@ -20,9 +20,16 @@ type Config struct {
 	DBConnMaxLifetime time.Duration
 	EventPollInterval time.Duration
 	DefaultRuntime    *pb.Runtime
+	SupportedRuntimes []*pb.Runtime
 }
 
 func Load() Config {
+	defaultRuntime := &pb.Runtime{
+		Language:       envString("SANDKASTEN_RUNTIME_LANGUAGE", "go"),
+		Version:        envString("SANDKASTEN_RUNTIME_VERSION", "1.23"),
+		Image:          envString("SANDKASTEN_RUNTIME_IMAGE", "sandkasten/go:1.23"),
+		RequiresVendor: envBool("SANDKASTEN_RUNTIME_REQUIRES_VENDOR", true),
+	}
 	return Config{
 		GRPCListenAddr:    envString("SANDKASTEN_API_GRPC_ADDR", ":50051"),
 		HTTPListenAddr:    envString("SANDKASTEN_API_HTTP_ADDR", "127.0.0.1:8080"),
@@ -33,12 +40,54 @@ func Load() Config {
 		DBMaxIdleConns:    envInt("SANDKASTEN_DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime: envDuration("SANDKASTEN_DB_CONN_MAX_LIFETIME", 30*time.Minute),
 		EventPollInterval: envDuration("SANDKASTEN_EVENT_POLL_INTERVAL", time.Second),
-		DefaultRuntime: &pb.Runtime{
-			Language:       envString("SANDKASTEN_RUNTIME_LANGUAGE", "go"),
-			Version:        envString("SANDKASTEN_RUNTIME_VERSION", "1.23"),
-			Image:          envString("SANDKASTEN_RUNTIME_IMAGE", "sandkasten/go:1.23"),
-			RequiresVendor: envBool("SANDKASTEN_RUNTIME_REQUIRES_VENDOR", true),
-		},
+		DefaultRuntime:    defaultRuntime,
+		SupportedRuntimes: supportedRuntimes(defaultRuntime),
+	}
+}
+
+func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
+	languages := envList("SANDKASTEN_RUNTIME_LANGUAGES", []string{
+		"go",
+		"c",
+		"cpp",
+		"csharp",
+		"java",
+		"javascript",
+		"python",
+		"rust",
+		"typescript",
+	})
+	runtimes := make([]*pb.Runtime, 0, len(languages))
+	for _, language := range languages {
+		language = strings.ToLower(strings.TrimSpace(language))
+		if language == "" {
+			continue
+		}
+		if defaultRuntime != nil && language == strings.ToLower(defaultRuntime.Language) {
+			runtimes = append(runtimes, cloneRuntime(defaultRuntime))
+			continue
+		}
+		versionName := "SANDKASTEN_RUNTIME_" + strings.ToUpper(strings.ReplaceAll(language, "-", "_")) + "_VERSION"
+		imageName := "SANDKASTEN_RUNTIME_" + strings.ToUpper(strings.ReplaceAll(language, "-", "_")) + "_IMAGE"
+		runtimes = append(runtimes, &pb.Runtime{
+			Language:       language,
+			Version:        envString(versionName, "system"),
+			Image:          envString(imageName, "sandkasten/"+language+":system"),
+			RequiresVendor: language == "go",
+		})
+	}
+	return runtimes
+}
+
+func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {
+	if runtime == nil {
+		return nil
+	}
+	return &pb.Runtime{
+		Language:       runtime.Language,
+		Version:        runtime.Version,
+		Image:          runtime.Image,
+		RequiresVendor: runtime.RequiresVendor,
 	}
 }
 

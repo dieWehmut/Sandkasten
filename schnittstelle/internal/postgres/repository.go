@@ -52,9 +52,10 @@ func (r *Repository) CreateJob(ctx context.Context, job jobs.CreateJob) (*pb.Sub
 			cpu_millis,
 			max_output_bytes
 		)
-		VALUES ('go', $1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING job_id::text, status::text
 	`,
+		runtimeLanguage(runtime),
 		runtimeVersion(runtime),
 		job.Entrypoint,
 		string(args),
@@ -303,6 +304,7 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 	result.MemoryPeakBytes = int64ToUint64(memoryPeak)
 	job.Result = result
 	job.Runtime = cloneRuntime(runtime)
+	job.Runtime.Language = job.Language
 	job.Runtime.Version = runtimeVersion
 	return &job, nil
 }
@@ -343,6 +345,13 @@ func runtimeVersion(runtime *pb.Runtime) string {
 		return "1.23"
 	}
 	return runtime.Version
+}
+
+func runtimeLanguage(runtime *pb.Runtime) string {
+	if runtime == nil || runtime.Language == "" {
+		return "go"
+	}
+	return runtime.Language
 }
 
 func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {

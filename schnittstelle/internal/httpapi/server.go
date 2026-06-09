@@ -62,6 +62,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /v1/runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /v1/go/run", s.handleRunGo)
+	mux.HandleFunc("POST /v1/{language}/run", s.handleRunLanguage)
+	mux.HandleFunc("POST /v1/run", s.handleRun)
 	mux.HandleFunc("GET /v1/jobs/{job_id}", s.handleGetJob)
 	return s.withCORS(mux)
 }
@@ -83,10 +85,22 @@ func (s *Server) handleRuntimes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRunGo(w http.ResponseWriter, r *http.Request) {
+	s.handleRunWithLanguage(w, r, "go")
+}
+
+func (s *Server) handleRunLanguage(w http.ResponseWriter, r *http.Request) {
+	s.handleRunWithLanguage(w, r, r.PathValue("language"))
+}
+
+func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
+	s.handleRunWithLanguage(w, r, "")
+}
+
+func (s *Server) handleRunWithLanguage(w http.ResponseWriter, r *http.Request, pathLanguage string) {
 	if !s.authorize(w, r) {
 		return
 	}
-	var req runGoRequest
+	var req runRequest
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 512*1024))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
@@ -94,6 +108,9 @@ func (s *Server) handleRunGo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Language == "" {
+		req.Language = pathLanguage
+	}
 	submit, err := req.toProto()
 	if err != nil {
 		writeHTTPError(w, http.StatusBadRequest, "invalid_request", err.Error())
@@ -110,7 +127,7 @@ func (s *Server) handleRunGo(w http.ResponseWriter, r *http.Request) {
 		wait = true
 	}
 	if !wait {
-		writeJSON(w, http.StatusAccepted, submitGoResponse{JobID: resp.JobId, Status: resp.Status.String()})
+		writeJSON(w, http.StatusAccepted, submitResponse{JobID: resp.JobId, Status: resp.Status.String()})
 		return
 	}
 
@@ -220,7 +237,8 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-type runGoRequest struct {
+type runRequest struct {
+	Language         string   `json:"language"`
 	Source           string   `json:"source"`
 	ArchiveTargz     string   `json:"archiveTargz"`
 	Entrypoint       string   `json:"entrypoint"`
@@ -235,9 +253,10 @@ type runGoRequest struct {
 	WaitTimeoutMs    uint32   `json:"waitTimeoutMs"`
 }
 
-func (r runGoRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
+func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 	var archive []byte
 	var entrypoint = r.Entrypoint
+	language := normalizeLanguage(r.Language)
 	switch {
 	case r.ArchiveTargz != "":
 		decoded, err := base64.StdEncoding.DecodeString(r.ArchiveTargz)
@@ -246,19 +265,20 @@ func (r runGoRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 		}
 		archive = decoded
 	case strings.TrimSpace(r.Source) != "":
-		generated, err := goSourceArchive(r.Source)
+		generated, err := sourceArchive(language, r.Source)
 		if err != nil {
 			return nil, err
 		}
 		archive = generated
 		if entrypoint == "" {
-			entrypoint = "."
+			entrypoint = defaultEntrypoint(language)
 		}
 	default:
 		return nil, errors.New("source or archiveTargz is required")
 	}
 
 	return &pb.SubmitGoProjectRequest{
+		Language:         language,
 		ArchiveTargz:     archive,
 		Entrypoint:       entrypoint,
 		Stdin:            []byte(r.Stdin),
@@ -271,19 +291,85 @@ func (r runGoRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 	}, nil
 }
 
-func goSourceArchive(source string) ([]byte, error) {
-	var buffer bytes.Buffer
-	gzipWriter := gzip.NewWriter(&buffer)
-	tarWriter := tar.NewWriter(gzipWriter)
+func normalizeLanguage(language string) string {
+	language = strings.ToLower(strings.TrimSpace(language))
+	switch language {
+	case "", "golang":
+		return "go"
+	case "c++":
+		return "cpp"
+	case "cs", "c#":
+		return "csharp"
+	case "js", "node":
+		return "javascript"
+	case "py", "python3":
+		return "python"
+	case "rs":
+		return "rust"
+	case "ts":
+		return "typescript"
+	default:
+		return language
+	}
+}
 
-	files := []struct {
-		name string
-		body []byte
-	}{
+func defaultEntrypoint(language string) string {
+	switch language {
+	case "go":
+		return "."
+	case "c":
+		return "main.c"
+	case "cpp":
+		return "main.cpp"
+	case "csharp":
+		return "Program.cs"
+	case "java":
+		return "Main.java"
+	case "javascript":
+		return "main.js"
+	case "python":
+		return "main.py"
+	case "rust":
+		return "main.rs"
+	case "typescript":
+		return "main.ts"
+	default:
+		return "main"
+	}
+}
+
+func sourceArchive(language, source string) ([]byte, error) {
+	switch language {
+	case "go":
+		return goSourceArchive(source)
+	case "c", "cpp", "csharp", "java", "javascript", "python", "rust", "typescript":
+		return singleFileArchive(defaultEntrypoint(language), []byte(source))
+	default:
+		return nil, fmt.Errorf("unsupported language %q", language)
+	}
+}
+
+func goSourceArchive(source string) ([]byte, error) {
+	return archiveWithFiles([]archiveFile{
 		{name: "go.mod", body: []byte("module example.com/sandkasten/http-run\n\ngo 1.22\n")},
 		{name: "main.go", body: []byte(source)},
 		{name: "vendor/modules.txt", body: []byte("# no external module dependencies\n")},
-	}
+	})
+}
+
+func singleFileArchive(name string, body []byte) ([]byte, error) {
+	return archiveWithFiles([]archiveFile{{name: name, body: body}})
+}
+
+type archiveFile struct {
+	name string
+	body []byte
+}
+
+func archiveWithFiles(files []archiveFile) ([]byte, error) {
+	var buffer bytes.Buffer
+	gzipWriter := gzip.NewWriter(&buffer)
+	tarWriter := tar.NewWriter(gzipWriter)
 
 	for _, file := range files {
 		header := &tar.Header{
@@ -308,7 +394,7 @@ func goSourceArchive(source string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-type submitGoResponse struct {
+type submitResponse struct {
 	JobID  string `json:"jobId"`
 	Status string `json:"status"`
 }

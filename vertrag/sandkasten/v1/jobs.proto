@@ -23,6 +23,7 @@ message SubmitGoProjectRequest {
   uint64 memory_limit_bytes = 7;
   uint32 cpu_millis = 8;
   uint64 max_output_bytes = 9;
+  string language = 10;
 }
 
 message SubmitGoProjectResponse {

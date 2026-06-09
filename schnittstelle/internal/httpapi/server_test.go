@@ -52,12 +52,31 @@ func TestRunGoFromSourceSubmitsArchive(t *testing.T) {
 	if service.submitted == nil || len(service.submitted.ArchiveTargz) == 0 {
 		t.Fatal("archive was not submitted")
 	}
-	var response submitGoResponse
+	var response submitResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
 	if response.JobID != "job-1" || response.Status != "JOB_STATUS_QUEUED" {
 		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestRunLanguageFromSourceSubmitsLanguage(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/python/run", strings.NewReader(`{"source":"print('ok')","wait":false}`))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.submitted == nil {
+		t.Fatal("request was not submitted")
+	}
+	if service.submitted.Language != "python" || service.submitted.Entrypoint != "main.py" {
+		t.Fatalf("submitted = %+v", service.submitted)
 	}
 }
 
