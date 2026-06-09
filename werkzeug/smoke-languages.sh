@@ -8,7 +8,7 @@ DB_URL="${DATABASE_URL:-postgres://sandkasten:sandkasten@localhost:5432/sandkast
 API_ADDR="${SANDKASTEN_ADDR:-127.0.0.1:50051}"
 HTTP_ADDR="${SANDKASTEN_HTTP_ADDR:-127.0.0.1:8080}"
 API_TOKEN="${SANDKASTEN_API_TOKEN:-dev-token}"
-RUNNER_WORK_DIR="${LAEUFER_WORK_DIR:-/tmp/sandkasten-laeufer-smoke}"
+RUNNER_WORK_DIR="${LAEUFER_WORK_DIR:-/tmp/sandkasten-laeufer-smoke-languages}"
 COMPILE_MEMORY_LIMIT_BYTES="${LAEUFER_COMPILE_MEMORY_LIMIT_BYTES:-1073741824}"
 RUNTIME_PATH="${LAEUFER_RUNTIME_PATH:-/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin}"
 
@@ -45,6 +45,45 @@ need_runtime_tool() {
   fi
 }
 
+json_string() {
+  jq -Rs .
+}
+
+run_language() {
+  local language="$1"
+  local expected="$2"
+  local source="$3"
+  local memory="${4:-805306368}"
+  local source_json
+  source_json="$(printf '%s' "$source" | json_string)"
+
+  printf 'Submitting %s example...\n' "$language"
+  local response
+  response="$(
+    curl -fsS \
+      -H "authorization: Bearer ${API_TOKEN}" \
+      -H 'content-type: application/json' \
+      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
+      "http://${HTTP_ADDR}/v1/${language}/run"
+  )"
+  local status stdout got_language compile_stderr stderr job_id
+  status="$(jq -r '.status' <<<"$response")"
+  stdout="$(jq -r '.stdout' <<<"$response")"
+  got_language="$(jq -r '.language' <<<"$response")"
+  compile_stderr="$(jq -r '.compileStderr' <<<"$response")"
+  stderr="$(jq -r '.stderr' <<<"$response")"
+  job_id="$(jq -r '.jobId' <<<"$response")"
+
+  if [[ "$status" != "JOB_STATUS_SUCCEEDED" || "$got_language" != "$language" || "$stdout" != "$expected" ]]; then
+    printf '%s smoke failed\njob: %s\nstatus: %s\nlanguage: %s\nstdout: %q\nstderr: %q\ncompileStderr: %q\nresponse: %s\n' \
+      "$language" "$job_id" "$status" "$got_language" "$stdout" "$stderr" "$compile_stderr" "$response" >&2
+    printf 'runner log:\n' >&2
+    cat /tmp/sandkasten-runner-smoke-languages.log >&2
+    exit 1
+  fi
+  printf '  ok %s: %s\n' "$language" "$stdout"
+}
+
 need_tool go "Install Go 1.25+ for the API module."
 need_tool cargo "Install Rust/Cargo for the runner."
 need_tool grpcurl "Install grpcurl or run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest"
@@ -52,6 +91,16 @@ need_tool curl "Install curl to exercise the HTTP API."
 need_tool jq "Install jq to parse smoke-test responses."
 need_tool psql "Install postgresql-client."
 need_runtime_tool go "Install Go 1.25+ where the runner child PATH can execute it."
+need_runtime_tool gcc "Install gcc for C jobs."
+need_runtime_tool g++ "Install g++ for C++ jobs."
+need_runtime_tool javac "Install OpenJDK for Java jobs."
+need_runtime_tool java "Install OpenJDK for Java jobs."
+need_runtime_tool mcs "Install Mono mcs for C# jobs."
+need_runtime_tool mono "Install Mono runtime for C# jobs."
+need_runtime_tool node "Install Node.js for JavaScript jobs."
+need_runtime_tool python3 "Install Python 3 for Python jobs."
+need_runtime_tool rustc "Install rustc for Rust jobs."
+need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
 
 printf 'Checking database connectivity...\n'
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'select 1' >/dev/null
@@ -67,16 +116,16 @@ psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$ROOT/speicher/schema.sql" >/dev/null
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'truncate job_events, job_artifacts, jobs restart identity cascade;' >/dev/null
 
 printf 'Building API and runner...\n'
-(cd "$ROOT/schnittstelle" && go build -trimpath -o /tmp/sandkasten-api-smoke ./cmd/sandkasten-api)
+(cd "$ROOT/schnittstelle" && go build -trimpath -o /tmp/sandkasten-api-smoke-languages ./cmd/sandkasten-api)
 (cd "$ROOT/laeufer" && cargo build --bin laeufer >/dev/null)
 
-printf 'Starting API on %s...\n' "$API_ADDR"
+printf 'Starting API on %s / HTTP %s...\n' "$API_ADDR" "$HTTP_ADDR"
 DATABASE_URL="$DB_URL" \
 SANDKASTEN_API_TOKEN="$API_TOKEN" \
 SANDKASTEN_API_GRPC_ADDR="$API_ADDR" \
 SANDKASTEN_API_HTTP_ADDR="$HTTP_ADDR" \
 SANDKASTEN_API_CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https://diewehmut.github.io" \
-  /tmp/sandkasten-api-smoke >/tmp/sandkasten-api-smoke.log 2>&1 &
+  /tmp/sandkasten-api-smoke-languages >/tmp/sandkasten-api-smoke-languages.log 2>&1 &
 api_pid="$!"
 
 for _ in {1..50}; do
@@ -98,14 +147,14 @@ if ! grpcurl -plaintext \
   "$API_ADDR" \
   sandkasten.v1.RuntimeService/ListRuntimes >/dev/null 2>&1; then
   printf 'API did not become ready; log follows:\n' >&2
-  cat /tmp/sandkasten-api-smoke.log >&2
+  cat /tmp/sandkasten-api-smoke-languages.log >&2
   exit 1
 fi
 
 printf 'Starting runner...\n'
 rm -rf "$RUNNER_WORK_DIR"
 DATABASE_URL="$DB_URL" \
-LAEUFER_RUNNER_ID=smoke-go \
+LAEUFER_RUNNER_ID=smoke-languages \
 LAEUFER_WORK_DIR="$RUNNER_WORK_DIR" \
 LAEUFER_POLL_INTERVAL_MS=200 \
 LAEUFER_LEASE_TTL_MS=60000 \
@@ -115,80 +164,40 @@ LAEUFER_COMPILE_MEMORY_LIMIT_BYTES="$COMPILE_MEMORY_LIMIT_BYTES" \
 LAEUFER_RUNTIME_PATH="$RUNTIME_PATH" \
 LAEUFER_CHILD_UID="${LAEUFER_CHILD_UID:-65534}" \
 LAEUFER_CHILD_GID="${LAEUFER_CHILD_GID:-65534}" \
-  "$ROOT/laeufer/target/debug/laeufer" >/tmp/sandkasten-runner-smoke.log 2>&1 &
+  "$ROOT/laeufer/target/debug/laeufer" >/tmp/sandkasten-runner-smoke-languages.log 2>&1 &
 runner_pid="$!"
 
 sleep 1
 if ! kill -0 "$runner_pid" >/dev/null 2>&1; then
   printf 'runner exited during startup; log follows:\n' >&2
-  cat /tmp/sandkasten-runner-smoke.log >&2
+  cat /tmp/sandkasten-runner-smoke-languages.log >&2
   exit 1
 fi
 
-printf 'Submitting Go example...\n'
-submit_json="$(
-  SANDKASTEN_ADDR="$API_ADDR" \
-  SANDKASTEN_API_TOKEN="$API_TOKEN" \
-  "$ROOT/beispiele/grpc-client/submit-go-project.sh" "$ROOT/beispiele/go-hello"
-)"
-job_id="$(jq -r '.jobId' <<<"$submit_json")"
-if [[ -z "$job_id" || "$job_id" == "null" ]]; then
-  printf 'submit response did not contain jobId: %s\n' "$submit_json" >&2
-  exit 1
-fi
+run_language go "hello, go" 'package main
+import "fmt"
+func main(){fmt.Println("hello, go")}'
 
-printf 'Waiting for job %s...\n' "$job_id"
-terminal_status=""
-for _ in {1..120}; do
-  terminal_status="$(psql "$DB_URL" -At -c "select status::text from jobs where job_id = '${job_id}'::uuid")"
-  case "$terminal_status" in
-    SUCCEEDED|COMPILE_FAILED|RUNTIME_FAILED|TIME_LIMIT_EXCEEDED|MEMORY_LIMIT_EXCEEDED|OUTPUT_LIMIT_EXCEEDED|CANCELED|SYSTEM_ERROR)
-      break
-      ;;
-  esac
-  sleep 0.5
-done
+run_language c "hello, c" '#include <stdio.h>
+int main(void){puts("hello, c");return 0;}'
 
-job_json="$(
-  grpcurl -plaintext \
-    -H "authorization: Bearer ${API_TOKEN}" \
-    -import-path "$ROOT/vertrag" \
-    -proto sandkasten/v1/jobs.proto \
-    -d "{\"jobId\":\"${job_id}\"}" \
-    "$API_ADDR" \
-    sandkasten.v1.JobService/GetJob
-)"
+run_language cpp "hello, cpp" '#include <iostream>
+int main(){std::cout << "hello, cpp\n"; return 0;}'
 
-status="$(jq -r '.status' <<<"$job_json")"
-stdout_b64="$(jq -r '.result.stdout // ""' <<<"$job_json")"
-expected_stdout_b64="$(printf 'hello, Sandkasten\n' | base64 | tr -d '\n')"
+run_language csharp "hello, csharp" 'using System;
+class Program { static void Main() { Console.WriteLine("hello, csharp"); } }'
 
-if [[ "$status" != "JOB_STATUS_SUCCEEDED" || "$stdout_b64" != "$expected_stdout_b64" ]]; then
-  stdout="$(printf '%s' "$stdout_b64" | base64 -d 2>/dev/null || true)"
-  printf 'smoke failed\nstatus: %s\nstdout: %q\njob: %s\n' "$status" "$stdout" "$job_json" >&2
-  printf 'runner log:\n' >&2
-  cat /tmp/sandkasten-runner-smoke.log >&2
-  exit 1
-fi
+run_language java "hello, java" 'public class Main {
+  public static void main(String[] args) { System.out.println("hello, java"); }
+}'
 
-printf 'gRPC smoke passed: %s -> hello, Sandkasten\n' "$job_id"
+run_language javascript "hello, javascript" 'console.log("hello, javascript");'
 
-printf 'Submitting Go example through HTTP API...\n'
-http_json="$(
-  curl -fsS \
-    -H "authorization: Bearer ${API_TOKEN}" \
-    -H 'content-type: application/json' \
-    -H 'origin: http://localhost:5173' \
-    -d '{"source":"package main\nimport \"fmt\"\nfunc main(){fmt.Println(\"hello, Sandkasten\")}\n","wait":true,"waitTimeoutMs":30000}' \
-    "http://${HTTP_ADDR}/v1/go/run"
-)"
-http_status="$(jq -r '.status' <<<"$http_json")"
-http_stdout="$(jq -r '.stdout' <<<"$http_json")"
-if [[ "$http_status" != "JOB_STATUS_SUCCEEDED" || "$http_stdout" != "hello, Sandkasten" ]]; then
-  printf 'http smoke failed\nstatus: %s\nstdout: %q\njob: %s\n' "$http_status" "$http_stdout" "$http_json" >&2
-  printf 'runner log:\n' >&2
-  cat /tmp/sandkasten-runner-smoke.log >&2
-  exit 1
-fi
+run_language python "hello, python" 'print("hello, python")'
 
-printf 'HTTP smoke passed: %s -> hello, Sandkasten\n' "$(jq -r '.jobId' <<<"$http_json")"
+run_language rust "hello, rust" 'fn main() { println!("hello, rust"); }'
+
+run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
+console.log(msg);'
+
+printf 'multi-language smoke passed\n'

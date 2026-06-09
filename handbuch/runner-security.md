@@ -14,7 +14,8 @@ The current runner implementation applies these controls for each child command:
 - Private mount propagation for the child mount namespace.
 - `PR_SET_NO_NEW_PRIVS` and uid/gid drop to `65534`.
 - Go builds forced through `-mod=vendor` with per-job `GOCACHE` and temp directories.
-- A separate `LAEUFER_COMPILE_MEMORY_LIMIT_BYTES` setting for Go compilation, while job memory limits still apply to the executed binary.
+- Language-specific compile/run plans for C, C++, C#, Java, JavaScript, Python, Rust, and TypeScript.
+- A separate `LAEUFER_COMPILE_MEMORY_LIMIT_BYTES` setting for compilation, while job memory limits still apply to the executed program.
 - No fallback to Docker or unsandboxed host execution.
 
 ## Hardening Backlog
@@ -43,7 +44,7 @@ The runner pod is privileged because the runner must configure kernel isolation 
 
 ## Rootfs and Network
 
-The runner image currently includes the Go toolchain because v1 supports Go projects only. Jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes.
+The runner image includes system toolchains for the supported languages. Go jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`; first-pass non-Go jobs are single-file source programs. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes.
 
 ## Seccomp Placeholder
 

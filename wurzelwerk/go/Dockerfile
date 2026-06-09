@@ -1,4 +1,4 @@
-FROM golang:1.23-bookworm
+FROM golang:1.26-bookworm
 
 LABEL org.opencontainers.image.title="sandkasten-go-rootfs"
 LABEL org.opencontainers.image.description="Go rootfs skeleton for Sandkasten v1 vendored builds"

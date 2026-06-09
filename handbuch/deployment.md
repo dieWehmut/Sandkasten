@@ -14,7 +14,7 @@ docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
 Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
-- The runner image includes the Go toolchain because v1 executes Go projects.
+- The runner image includes Go plus system toolchains for C, C++, C#, Java, JavaScript, Python, Rust, and TypeScript execution.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development
@@ -39,6 +39,14 @@ Run the local end-to-end Go execution smoke test after Postgres is reachable:
 ```
 
 The smoke script builds the API and runner locally, starts both processes, submits `beispiele/go-hello`, and requires a `SUCCEEDED` job with `hello, Sandkasten` output.
+
+Run the full language smoke when all supported local toolchains are installed:
+
+```sh
+./werkzeug/smoke-languages.sh
+```
+
+The full smoke submits source through the HTTP API for `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `python`, `rust`, and `typescript`.
 
 ## Kubernetes
 

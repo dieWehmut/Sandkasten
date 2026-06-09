@@ -26,8 +26,8 @@ type Config struct {
 func Load() Config {
 	defaultRuntime := &pb.Runtime{
 		Language:       envString("SANDKASTEN_RUNTIME_LANGUAGE", "go"),
-		Version:        envString("SANDKASTEN_RUNTIME_VERSION", "1.23"),
-		Image:          envString("SANDKASTEN_RUNTIME_IMAGE", "sandkasten/go:1.23"),
+		Version:        envString("SANDKASTEN_RUNTIME_VERSION", "1.26"),
+		Image:          envString("SANDKASTEN_RUNTIME_IMAGE", "sandkasten/go:1.26"),
 		RequiresVendor: envBool("SANDKASTEN_RUNTIME_REQUIRES_VENDOR", true),
 	}
 	return Config{

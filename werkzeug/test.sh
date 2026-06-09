@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 failures=0
 
 run_or_fail() {
@@ -25,7 +26,7 @@ if [[ -f "$ROOT/schnittstelle/go.mod" ]]; then
   if command -v go >/dev/null 2>&1; then
     run_or_fail "Go API tests" bash -c "cd \"\$1\" && go test ./..." bash "$ROOT/schnittstelle"
   else
-    missing go "Install Go 1.22+ or run this script in the API builder image."
+    missing go "Install Go 1.25+ or run this script in the API builder image."
   fi
 fi
 

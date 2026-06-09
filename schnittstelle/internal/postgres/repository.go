@@ -342,7 +342,7 @@ func statusFromDB(value string) pb.JobStatus {
 
 func runtimeVersion(runtime *pb.Runtime) string {
 	if runtime == nil || runtime.Version == "" {
-		return "1.23"
+		return "1.26"
 	}
 	return runtime.Version
 }
@@ -356,7 +356,7 @@ func runtimeLanguage(runtime *pb.Runtime) string {
 
 func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {
 	if runtime == nil {
-		return &pb.Runtime{Language: "go", Version: "1.23", Image: "sandkasten/go:1.23", RequiresVendor: true}
+		return &pb.Runtime{Language: "go", Version: "1.26", Image: "sandkasten/go:1.26", RequiresVendor: true}
 	}
 	return &pb.Runtime{
 		Language:       runtime.Language,

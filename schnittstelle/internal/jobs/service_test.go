@@ -26,7 +26,7 @@ func (f *fakeRepo) StreamEvents(ctx context.Context, jobID string, afterSequence
 
 func TestSubmitGoProjectAppliesDefaults(t *testing.T) {
 	repo := &fakeRepo{}
-	service := NewService(repo, &pb.Runtime{Language: "go", Version: "1.23"})
+	service := NewService(repo, &pb.Runtime{Language: "go", Version: "1.26"})
 
 	resp, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{ArchiveTargz: []byte("tgz")})
 	if err != nil {
@@ -53,9 +53,9 @@ func TestSubmitProjectAppliesLanguageRuntimeAndEntrypoint(t *testing.T) {
 	repo := &fakeRepo{}
 	service := NewServiceWithRuntimes(
 		repo,
-		&pb.Runtime{Language: "go", Version: "1.23"},
+		&pb.Runtime{Language: "go", Version: "1.26"},
 		[]*pb.Runtime{
-			{Language: "go", Version: "1.23"},
+			{Language: "go", Version: "1.26"},
 			{Language: "python", Version: "3.11"},
 		},
 	)
@@ -79,8 +79,8 @@ func TestSubmitProjectAppliesLanguageRuntimeAndEntrypoint(t *testing.T) {
 func TestSubmitProjectRejectsUnsupportedLanguage(t *testing.T) {
 	service := NewServiceWithRuntimes(
 		&fakeRepo{},
-		&pb.Runtime{Language: "go", Version: "1.23"},
-		[]*pb.Runtime{{Language: "go", Version: "1.23"}},
+		&pb.Runtime{Language: "go", Version: "1.26"},
+		[]*pb.Runtime{{Language: "go", Version: "1.26"}},
 	)
 
 	if _, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{
@@ -92,7 +92,7 @@ func TestSubmitProjectRejectsUnsupportedLanguage(t *testing.T) {
 }
 
 func TestSubmitGoProjectRequiresArchive(t *testing.T) {
-	service := NewService(&fakeRepo{}, &pb.Runtime{Language: "go", Version: "1.23"})
+	service := NewService(&fakeRepo{}, &pb.Runtime{Language: "go", Version: "1.26"})
 	if _, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{}); err == nil {
 		t.Fatal("SubmitGoProject() error = nil")
 	}

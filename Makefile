@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: help gen-proto test lint docker-build preflight dev-up smoke-go
+.PHONY: help gen-proto test lint docker-build preflight dev-up smoke-go smoke-languages
 
 help:
 	@printf "sandkasten targets:\n"
@@ -9,6 +9,7 @@ help:
 	@printf "  lint          Run format and static checks\n"
 	@printf "  preflight     Check runner host capabilities\n"
 	@printf "  smoke-go      Run local API + runner Go execution smoke test\n"
+	@printf "  smoke-languages Run local HTTP smoke test for all supported languages\n"
 	@printf "  docker-build  Build service images\n"
 
 gen-proto:
@@ -32,3 +33,6 @@ dev-up:
 
 smoke-go:
 	./werkzeug/smoke-go.sh
+
+smoke-languages:
+	./werkzeug/smoke-languages.sh

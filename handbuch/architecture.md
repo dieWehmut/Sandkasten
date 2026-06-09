@@ -1,6 +1,6 @@
 # Architecture
 
-Sandkasten v1 is a self-hosted code execution system for complete Go modules.
+Sandkasten v1 is a self-hosted code execution system for Go, C, C++, C#, Java, JavaScript, Python, Rust, and TypeScript jobs.
 The repository uses German directory names for component ownership:
 
 - `schnittstelle/`: Go gRPC API.
@@ -15,10 +15,10 @@ The repository uses German directory names for component ownership:
 
 ## v1 Flow
 
-1. A client sends `SubmitGoProject` with a `tar.gz` archive containing a full Go module.
+1. A client sends `SubmitGoProject` with a `tar.gz` archive, or uses the HTTP `/v1/{language}/run` endpoint for single-file source.
 2. The API validates request shape, applies default limits, and stores the job in Postgres.
 3. A `laeufer` process leases queued jobs using the database lease fields.
-4. The runner validates the archive, prepares a Go build/run plan, and executes it with Linux cgroup, namespace, `no_new_privs`, and uid/gid isolation.
+4. The runner validates the archive, prepares a language-specific compile/run plan, and executes it with Linux cgroup, namespace, `no_new_privs`, and uid/gid isolation.
 5. Status changes and final artifacts are written to Postgres.
 6. Clients call `GetJob` or `StreamJobEvents` to observe progress.
 
@@ -34,7 +34,9 @@ Go jobs must provide:
 - `vendor/` directory.
 - An entrypoint path, defaulting to `.`.
 
-The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored builds and restricted networking.
+The first non-Go runtime contract is single-file source with language-specific default entrypoints: `main.c`, `main.cpp`, `Program.cs`, `Main.java`, `main.js`, `main.py`, `main.rs`, and `main.ts`.
+
+The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking.
 
 ## Security Boundary
 

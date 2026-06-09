@@ -28,18 +28,33 @@ Clients may authenticate with either metadata key:
 - `authorization: Bearer <token>`
 - `x-sandkasten-token: <token>`
 
-## SubmitGoProject Defaults
+## Submit Defaults
 
 If omitted, the API applies these v1 defaults:
 
-- `entrypoint`: `.`
+- `language`: `go`
+- `entrypoint`: language-specific default
 - `compile_timeout_ms`: `30000`
 - `run_timeout_ms`: `5000`
 - `memory_limit_bytes`: `268435456`
 - `cpu_millis`: `1000`
 - `max_output_bytes`: `1048576`
 
-The `archive_targz` field is required and must contain a Go module archive. The module must include `go.mod` and `vendor/`.
+Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `python`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `py`, `rs`, and `ts` are normalized.
+
+Default entrypoints:
+
+- Go: `.`
+- C: `main.c`
+- C++: `main.cpp`
+- C#: `Program.cs`
+- Java: `Main.java`
+- JavaScript: `main.js`
+- Python: `main.py`
+- Rust: `main.rs`
+- TypeScript: `main.ts`
+
+The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; other first-pass language archives may contain a single entrypoint source file.
 
 ## grpcurl Example
 
@@ -75,15 +90,17 @@ Configure HTTP with:
 - `SANDKASTEN_API_CORS_ORIGINS`, comma-separated, default local Vite origins
 - `SANDKASTEN_API_TOKEN`, accepted as `authorization: Bearer <token>` or `x-sandkasten-token`
 
-Run a single-file Go program and wait for the result:
+Run a single-file program and wait for the result:
 
 ```sh
 curl -fsS \
   -H "authorization: Bearer dev-token" \
   -H "content-type: application/json" \
-  -d '{"source":"package main\nimport \"fmt\"\nfunc main(){fmt.Println(\"hello\")}\n","wait":true,"waitTimeoutMs":30000}' \
-  http://127.0.0.1:8080/v1/go/run
+  -d '{"source":"print(\"hello\")\n","wait":true,"waitTimeoutMs":30000}' \
+  http://127.0.0.1:8080/v1/python/run
 ```
+
+The HTTP API accepts `POST /v1/{language}/run` and `POST /v1/run` with a JSON `language` field.
 
 Response artifacts are UTF-8 strings:
 

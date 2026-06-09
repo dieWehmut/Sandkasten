@@ -19,7 +19,7 @@ CREATE TABLE jobs (
   job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   status job_status NOT NULL DEFAULT 'QUEUED',
   language TEXT NOT NULL DEFAULT 'go',
-  runtime_version TEXT NOT NULL DEFAULT '1.23',
+  runtime_version TEXT NOT NULL DEFAULT '1.26',
   entrypoint TEXT NOT NULL DEFAULT '.',
   args JSONB NOT NULL DEFAULT '[]'::jsonb,
   stdin BYTEA NOT NULL DEFAULT ''::bytea,

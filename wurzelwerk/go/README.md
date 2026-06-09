@@ -5,14 +5,14 @@ This directory contains the v1 Go runtime asset skeleton.
 Build the image:
 
 ```sh
-docker build -f wurzelwerk/go/Dockerfile -t sandkasten/go-rootfs:1.23 .
+docker build -f wurzelwerk/go/Dockerfile -t sandkasten/go-rootfs:1.26 .
 ```
 
 Export a rootfs tarball for runner experiments:
 
 ```sh
-container="$(docker create sandkasten/go-rootfs:1.23)"
-docker export "$container" -o wurzelwerk/go/go-rootfs-1.23.tar
+container="$(docker create sandkasten/go-rootfs:1.26)"
+docker export "$container" -o wurzelwerk/go/go-rootfs-1.26.tar
 docker rm "$container"
 ```
 

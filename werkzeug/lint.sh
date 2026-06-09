@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 failures=0
 
 run_or_fail() {
@@ -43,7 +44,7 @@ if [[ -f "$ROOT/schnittstelle/go.mod" ]]; then
     run_or_fail "go fmt check" bash -c "cd \"\$1\" && test -z \"\$(gofmt -l .)\"" bash "$ROOT/schnittstelle"
     run_or_fail "go vet" bash -c "cd \"\$1\" && go vet ./..." bash "$ROOT/schnittstelle"
   else
-    missing go "Install Go 1.22+ to format and vet the API."
+    missing go "Install Go 1.25+ to format and vet the API."
   fi
 fi
 
