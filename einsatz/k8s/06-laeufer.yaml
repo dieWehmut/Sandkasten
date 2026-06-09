@@ -28,7 +28,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: laeufer
-          image: ghcr.io/replace-me/sandkasten-laeufer:dev
+          image: ghcr.io/diewehmut/sandkasten-laeufer:dev
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:

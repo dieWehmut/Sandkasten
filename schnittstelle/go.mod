@@ -1,4 +1,4 @@
-module github.com/sandkasten/sandkasten/schnittstelle
+module github.com/dieWehmut/sandkasten/schnittstelle
 
 go 1.22
 

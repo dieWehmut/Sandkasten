@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	pb "github.com/sandkasten/sandkasten/schnittstelle/gen/sandkasten/v1"
-	"github.com/sandkasten/sandkasten/schnittstelle/internal/jobs"
+	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
+	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -4,7 +4,7 @@ package sandkasten.v1;
 
 import "sandkasten/v1/runtime.proto";
 
-option go_package = "github.com/sandkasten/sandkasten/schnittstelle/gen/sandkasten/v1;sandkastenv1";
+option go_package = "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1;sandkastenv1";
 
 service JobService {
   rpc SubmitGoProject(SubmitGoProjectRequest) returns (SubmitGoProjectResponse);

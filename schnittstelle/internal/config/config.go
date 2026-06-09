@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	pb "github.com/sandkasten/sandkasten/schnittstelle/gen/sandkasten/v1"
+	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
 )
 
 type Config struct {

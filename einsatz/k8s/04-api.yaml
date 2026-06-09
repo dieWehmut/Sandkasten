@@ -38,7 +38,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: api
-          image: ghcr.io/replace-me/sandkasten-api:dev
+          image: ghcr.io/diewehmut/sandkasten-api:dev
           imagePullPolicy: IfNotPresent
           ports:
             - name: grpc
