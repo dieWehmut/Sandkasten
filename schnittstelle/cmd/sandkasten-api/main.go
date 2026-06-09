@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ import (
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/auth"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/config"
 	api "github.com/dieWehmut/sandkasten/schnittstelle/internal/grpc"
+	"github.com/dieWehmut/sandkasten/schnittstelle/internal/httpapi"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/postgres"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -51,11 +53,11 @@ func run() error {
 	repo := postgres.NewRepository(db, cfg.EventPollInterval, cfg.DefaultRuntime)
 	service := jobs.NewService(repo, cfg.DefaultRuntime)
 
-	server := grpc.NewServer(
+	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryInterceptor(cfg.AuthToken)),
 		grpc.StreamInterceptor(auth.StreamInterceptor(cfg.AuthToken)),
 	)
-	api.Register(server, service)
+	api.Register(grpcServer, service)
 
 	lis, err := net.Listen("tcp", cfg.GRPCListenAddr)
 	if err != nil {
@@ -65,12 +67,27 @@ func run() error {
 	errCh := make(chan error, 1)
 	go func() {
 		log.Printf("sandkasten-api listening on %s", cfg.GRPCListenAddr)
-		errCh <- server.Serve(lis)
+		errCh <- grpcServer.Serve(lis)
+	}()
+
+	httpServer := &http.Server{
+		Addr:              cfg.HTTPListenAddr,
+		Handler:           httpapi.New(service, cfg.AuthToken, cfg.HTTPCORSOrigins).Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		log.Printf("sandkasten-api http listening on %s", cfg.HTTPListenAddr)
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
 	}()
 
 	select {
 	case <-ctx.Done():
-		server.GracefulStop()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = httpServer.Shutdown(shutdownCtx)
+		grpcServer.GracefulStop()
 		return nil
 	case err := <-errCh:
 		if errors.Is(err, grpc.ErrServerStopped) {

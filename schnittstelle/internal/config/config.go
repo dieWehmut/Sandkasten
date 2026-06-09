@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
@@ -10,6 +11,8 @@ import (
 
 type Config struct {
 	GRPCListenAddr    string
+	HTTPListenAddr    string
+	HTTPCORSOrigins   []string
 	DatabaseURL       string
 	AuthToken         string
 	DBMaxOpenConns    int
@@ -22,6 +25,8 @@ type Config struct {
 func Load() Config {
 	return Config{
 		GRPCListenAddr:    envString("SANDKASTEN_API_GRPC_ADDR", ":50051"),
+		HTTPListenAddr:    envString("SANDKASTEN_API_HTTP_ADDR", "127.0.0.1:8080"),
+		HTTPCORSOrigins:   envList("SANDKASTEN_API_CORS_ORIGINS", []string{"http://localhost:5173", "http://127.0.0.1:5173"}),
 		DatabaseURL:       envString("DATABASE_URL", "postgres://sandkasten:sandkasten@localhost:5432/sandkasten?sslmode=disable"),
 		AuthToken:         os.Getenv("SANDKASTEN_API_TOKEN"),
 		DBMaxOpenConns:    envInt("SANDKASTEN_DB_MAX_OPEN_CONNS", 10),
@@ -35,6 +40,24 @@ func Load() Config {
 			RequiresVendor: envBool("SANDKASTEN_RUNTIME_REQUIRES_VENDOR", true),
 		},
 	}
+}
+
+func envList(name string, fallback []string) []string {
+	value := os.Getenv(name)
+	if value == "" {
+		return append([]string(nil), fallback...)
+	}
+	var output []string
+	for _, item := range strings.Split(value, ",") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			output = append(output, item)
+		}
+	}
+	if len(output) == 0 {
+		return append([]string(nil), fallback...)
+	}
+	return output
 }
 
 func envString(name, fallback string) string {

@@ -4,6 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB_URL="${DATABASE_URL:-postgres://sandkasten:sandkasten@localhost:5432/sandkasten?sslmode=disable}"
 API_ADDR="${SANDKASTEN_ADDR:-127.0.0.1:50051}"
+HTTP_ADDR="${SANDKASTEN_HTTP_ADDR:-127.0.0.1:8080}"
 API_TOKEN="${SANDKASTEN_API_TOKEN:-dev-token}"
 RUNNER_WORK_DIR="${LAEUFER_WORK_DIR:-/tmp/sandkasten-laeufer-smoke}"
 COMPILE_MEMORY_LIMIT_BYTES="${LAEUFER_COMPILE_MEMORY_LIMIT_BYTES:-1073741824}"
@@ -35,6 +36,7 @@ need_tool() {
 need_tool go "Install Go 1.25+ for the API module."
 need_tool cargo "Install Rust/Cargo for the runner."
 need_tool grpcurl "Install grpcurl or run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest"
+need_tool curl "Install curl to exercise the HTTP API."
 need_tool jq "Install jq to parse smoke-test responses."
 need_tool psql "Install postgresql-client."
 
@@ -59,6 +61,8 @@ printf 'Starting API on %s...\n' "$API_ADDR"
 DATABASE_URL="$DB_URL" \
 SANDKASTEN_API_TOKEN="$API_TOKEN" \
 SANDKASTEN_API_GRPC_ADDR="$API_ADDR" \
+SANDKASTEN_API_HTTP_ADDR="$HTTP_ADDR" \
+SANDKASTEN_API_CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https://diewehmut.github.io" \
   /tmp/sandkasten-api-smoke >/tmp/sandkasten-api-smoke.log 2>&1 &
 api_pid="$!"
 
@@ -153,4 +157,24 @@ if [[ "$status" != "JOB_STATUS_SUCCEEDED" || "$stdout_b64" != "$expected_stdout_
   exit 1
 fi
 
-printf 'smoke passed: %s -> hello, Sandkasten\n' "$job_id"
+printf 'gRPC smoke passed: %s -> hello, Sandkasten\n' "$job_id"
+
+printf 'Submitting Go example through HTTP API...\n'
+http_json="$(
+  curl -fsS \
+    -H "authorization: Bearer ${API_TOKEN}" \
+    -H 'content-type: application/json' \
+    -H 'origin: http://localhost:5173' \
+    -d '{"source":"package main\nimport \"fmt\"\nfunc main(){fmt.Println(\"hello, Sandkasten\")}\n","wait":true,"waitTimeoutMs":30000}' \
+    "http://${HTTP_ADDR}/v1/go/run"
+)"
+http_status="$(jq -r '.status' <<<"$http_json")"
+http_stdout="$(jq -r '.stdout' <<<"$http_json")"
+if [[ "$http_status" != "JOB_STATUS_SUCCEEDED" || "$http_stdout" != "hello, Sandkasten" ]]; then
+  printf 'http smoke failed\nstatus: %s\nstdout: %q\njob: %s\n' "$http_status" "$http_stdout" "$http_json" >&2
+  printf 'runner log:\n' >&2
+  cat /tmp/sandkasten-runner-smoke.log >&2
+  exit 1
+fi
+
+printf 'HTTP smoke passed: %s -> hello, Sandkasten\n' "$(jq -r '.jobId' <<<"$http_json")"
