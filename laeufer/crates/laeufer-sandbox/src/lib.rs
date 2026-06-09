@@ -8,7 +8,7 @@ use std::process::Stdio;
 use std::time::Instant;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::time;
 
@@ -185,7 +185,7 @@ async fn execute_command(
     let cgroup = match CgroupGuard::attach(config, plan, child.id()).await {
         Ok(cgroup) => cgroup,
         Err(error) => {
-            let _ = child.kill().await;
+            terminate_child(&mut child, None).await;
             let _ = child.wait().await;
             return Err(error);
         }
@@ -225,11 +225,11 @@ async fn execute_command(
             status.map_err(|error| RunnerError::System(format!("failed to wait for child: {error}")))?
         }
         _ = limit_rx.recv() => {
-            let _ = child.kill().await;
+            terminate_child(&mut child, Some(&cgroup)).await;
             child.wait().await.map_err(|error| RunnerError::System(format!("failed to wait after output limit: {error}")))?
         }
         _ = time::sleep(plan.timeout) => {
-            let _ = child.kill().await;
+            terminate_child(&mut child, Some(&cgroup)).await;
             let _ = child.wait().await;
             await_stdin(stdin_task).await?;
             let _ = await_output(stdout_task).await;
@@ -247,6 +247,7 @@ async fn execute_command(
     let stderr = await_output(stderr_task).await?;
 
     let wall_time = started.elapsed();
+    let memory_peak_bytes = cgroup.memory_peak_bytes();
     if cgroup.memory_oom_kill() {
         drop(cgroup);
         return Err(RunnerError::MemoryLimitExceeded(format!(
@@ -264,7 +265,7 @@ async fn execute_command(
         exit_code: status.code(),
         signal: exit_signal(status),
         wall_time,
-        memory_peak_bytes: 0,
+        memory_peak_bytes,
         stdout_truncated: stdout.truncated,
         stderr_truncated: stderr.truncated,
     })
@@ -314,6 +315,21 @@ impl CgroupGuard {
                     > 0
         })
     }
+
+    fn memory_peak_bytes(&self) -> u64 {
+        read_cgroup_u64(self.path.join("memory.peak")).unwrap_or(0)
+    }
+
+    fn kill_all(&self) {
+        let _ = fs::write(self.path.join("cgroup.kill"), "1");
+
+        let Ok(procs) = fs::read_to_string(self.path.join("cgroup.procs")) else {
+            return;
+        };
+        for pid in procs.lines().filter_map(|line| line.trim().parse().ok()) {
+            kill_pid(pid);
+        }
+    }
 }
 
 fn ensure_runner_cgroup(cgroup_root: &Path) -> io::Result<PathBuf> {
@@ -350,6 +366,53 @@ fn write_cgroup_file(path: PathBuf, value: impl AsRef<str>) -> Result<(), Runner
     fs::write(&path, value.as_ref())
         .map_err(|error| RunnerError::System(format!("write cgroup file {:?}: {error}", path)))
 }
+
+fn read_cgroup_u64(path: PathBuf) -> io::Result<u64> {
+    fs::read_to_string(path)?
+        .trim()
+        .parse::<u64>()
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
+}
+
+async fn terminate_child(child: &mut Child, cgroup: Option<&CgroupGuard>) {
+    kill_process_group(child.id());
+    if let Some(cgroup) = cgroup {
+        cgroup.kill_all();
+    }
+    let _ = child.kill().await;
+}
+
+#[cfg(unix)]
+fn kill_process_group(child_id: Option<u32>) {
+    let Some(child_id) = child_id else {
+        return;
+    };
+    let Ok(pid) = i32::try_from(child_id) else {
+        return;
+    };
+    if pid <= 1 {
+        return;
+    }
+    unsafe {
+        let _ = libc::kill(-pid, libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_process_group(_: Option<u32>) {}
+
+#[cfg(unix)]
+fn kill_pid(pid: libc::pid_t) {
+    if pid <= 1 {
+        return;
+    }
+    unsafe {
+        let _ = libc::kill(pid, libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_pid(_: i32) {}
 
 fn cpu_max(cpu_millis: u32) -> String {
     if cpu_millis == 0 {
@@ -704,6 +767,17 @@ mod tests {
             fs::read_to_string(parent.join("cgroup.subtree_control")).expect("subtree control"),
             "+cpu +memory +pids"
         );
+    }
+
+    #[test]
+    fn reads_memory_peak_from_cgroup() {
+        let root = tempfile::tempdir().expect("tempdir");
+        fs::write(root.path().join("memory.peak"), "12345\n").expect("memory peak");
+        let cgroup = CgroupGuard {
+            path: root.path().to_path_buf(),
+        };
+
+        assert_eq!(cgroup.memory_peak_bytes(), 12345);
     }
 
     fn shell_plan(script: &str, max_output_bytes: u64) -> CommandPlan {

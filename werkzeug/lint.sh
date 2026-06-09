@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export PATH="/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/usr/local/go/bin:$PATH:/usr/local/bin:/usr/bin:/bin"
 failures=0
 
 run_or_fail() {

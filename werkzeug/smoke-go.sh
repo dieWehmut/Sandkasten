@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export PATH="/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/usr/local/go/bin:$PATH:/usr/local/bin:/usr/bin:/bin"
 
 DB_URL="${DATABASE_URL:-postgres://sandkasten:sandkasten@localhost:5432/sandkasten?sslmode=disable}"
 API_ADDR="${SANDKASTEN_ADDR:-127.0.0.1:50051}"
