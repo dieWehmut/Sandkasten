@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package sandkasten.v1;
+
+option go_package = "github.com/sandkasten/sandkasten/schnittstelle/gen/sandkasten/v1;sandkastenv1";
+
+service RuntimeService {
+  rpc ListRuntimes(ListRuntimesRequest) returns (ListRuntimesResponse);
+}
+
+message ListRuntimesRequest {}
+
+message ListRuntimesResponse {
+  repeated Runtime runtimes = 1;
+}
+
+message Runtime {
+  string language = 1;
+  string version = 2;
+  string image = 3;
+  bool requires_vendor = 4;
+}
