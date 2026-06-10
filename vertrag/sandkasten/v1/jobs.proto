@@ -79,6 +79,10 @@ message JobResult {
   uint64 memory_peak_bytes = 8;
   bool stdout_truncated = 9;
   bool stderr_truncated = 10;
+  uint64 cpu_usage_usec = 11;
+  uint64 cpu_throttled_usec = 12;
+  uint64 pids_peak = 13;
+  uint64 memory_oom_kill_count = 14;
 }
 
 message JobEvent {

@@ -8,21 +8,42 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
+)
+
+const (
+	jobEventsChannel = "sandkasten_job_events"
+	jobQueueChannel  = "sandkasten_job_queue"
 )
 
 type Repository struct {
 	db                *sql.DB
 	eventPollInterval time.Duration
 	defaultRuntime    *pb.Runtime
+	maxQueuedJobs     int
+	maxActiveJobs     int
 }
 
 func NewRepository(db *sql.DB, eventPollInterval time.Duration, defaultRuntime *pb.Runtime) *Repository {
+	return NewRepositoryWithOptions(db, eventPollInterval, defaultRuntime, RepositoryOptions{})
+}
+
+type RepositoryOptions struct {
+	MaxQueuedJobs int
+	MaxActiveJobs int
+}
+
+func NewRepositoryWithOptions(db *sql.DB, eventPollInterval time.Duration, defaultRuntime *pb.Runtime, options RepositoryOptions) *Repository {
 	return &Repository{
 		db:                db,
 		eventPollInterval: eventPollInterval,
 		defaultRuntime:    defaultRuntime,
+		maxQueuedJobs:     nonnegative(options.MaxQueuedJobs),
+		maxActiveJobs:     nonnegative(options.MaxActiveJobs),
 	}
 }
 
@@ -36,9 +57,20 @@ func (r *Repository) CreateJob(ctx context.Context, job jobs.CreateJob) (*pb.Sub
 		runtime = r.defaultRuntime
 	}
 
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := r.checkBackpressure(ctx, tx); err != nil {
+		return nil, err
+	}
+
 	var jobID string
 	var statusText string
-	err = r.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		INSERT INTO jobs (
 			language,
 			runtime_version,
@@ -72,10 +104,57 @@ func (r *Repository) CreateJob(ctx context.Context, job jobs.CreateJob) (*pb.Sub
 	}
 
 	statusValue := statusFromDB(statusText)
-	if err := r.insertEvent(ctx, jobID, statusText, "job queued"); err != nil {
+	if err := r.insertEventTx(ctx, tx, jobID, statusText, "job queued"); err != nil {
+		return nil, err
+	}
+	if err := notifyTx(ctx, tx, jobQueueChannel, jobID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return &pb.SubmitGoProjectResponse{JobId: jobID, Status: statusValue}, nil
+}
+
+func (r *Repository) checkBackpressure(ctx context.Context, tx *sql.Tx) error {
+	if r.maxQueuedJobs == 0 && r.maxActiveJobs == 0 {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `LOCK TABLE jobs IN SHARE ROW EXCLUSIVE MODE`); err != nil {
+		return err
+	}
+	if r.maxQueuedJobs > 0 {
+		var queued int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT count(*)
+			FROM jobs
+			WHERE status = 'QUEUED'::job_status
+		`).Scan(&queued); err != nil {
+			return err
+		}
+		if queued >= r.maxQueuedJobs {
+			return fmt.Errorf("%w: queued job limit reached", jobs.ErrResourceExhausted)
+		}
+	}
+	if r.maxActiveJobs > 0 {
+		var active int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT count(*)
+			FROM jobs
+			WHERE status IN (
+				'QUEUED'::job_status,
+				'VALIDATING'::job_status,
+				'COMPILING'::job_status,
+				'RUNNING'::job_status
+			)
+		`).Scan(&active); err != nil {
+			return err
+		}
+		if active >= r.maxActiveJobs {
+			return fmt.Errorf("%w: active job limit reached", jobs.ErrResourceExhausted)
+		}
+	}
+	return nil
 }
 
 func (r *Repository) GetJob(ctx context.Context, jobID string) (*pb.Job, error) {
@@ -105,7 +184,11 @@ func (r *Repository) GetJob(ctx context.Context, jobID string) (*pb.Job, error) 
 			COALESCE(a.wall_time_ms, 0),
 			COALESCE(a.memory_peak_bytes, 0),
 			COALESCE(a.stdout_truncated, false),
-			COALESCE(a.stderr_truncated, false)
+			COALESCE(a.stderr_truncated, false),
+			COALESCE(a.cpu_usage_usec, 0),
+			COALESCE(a.cpu_throttled_usec, 0),
+			COALESCE(a.pids_peak, 0),
+			COALESCE(a.memory_oom_kill_count, 0)
 		FROM jobs j
 		LEFT JOIN job_artifacts a ON a.job_id = j.job_id
 		WHERE j.job_id = $1::uuid
@@ -179,6 +262,8 @@ func (r *Repository) StreamEvents(ctx context.Context, jobID string, afterSequen
 		sequence := afterSequence
 		ticker := time.NewTicker(r.eventPollInterval)
 		defer ticker.Stop()
+		notifications, stopNotifications := r.listenJobEvents(ctx, jobID)
+		defer stopNotifications()
 
 		for {
 			found, err := r.emitEvents(ctx, jobID, sequence, events)
@@ -193,6 +278,10 @@ func (r *Repository) StreamEvents(ctx context.Context, jobID string, afterSequen
 			select {
 			case <-ctx.Done():
 				return
+			case _, ok := <-notifications:
+				if !ok {
+					notifications = nil
+				}
 			case <-ticker.C:
 			}
 		}
@@ -234,11 +323,77 @@ func (r *Repository) emitEvents(ctx context.Context, jobID string, afterSequence
 }
 
 func (r *Repository) insertEvent(ctx context.Context, jobID, statusText, message string) error {
-	_, err := r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := r.insertEventTx(ctx, tx, jobID, statusText, message); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *Repository) insertEventTx(ctx context.Context, tx *sql.Tx, jobID, statusText, message string) error {
+	_, err := tx.ExecContext(ctx, `
 		INSERT INTO job_events (job_id, status, message)
 		VALUES ($1::uuid, $2::job_status, $3)
 	`, jobID, statusText, message)
+	if err != nil {
+		return err
+	}
+	return notifyTx(ctx, tx, jobEventsChannel, jobID)
+}
+
+func notifyTx(ctx context.Context, tx *sql.Tx, channel, payload string) error {
+	_, err := tx.ExecContext(ctx, `SELECT pg_notify($1, $2)`, channel, payload)
 	return err
+}
+
+func (r *Repository) listenJobEvents(ctx context.Context, jobID string) (<-chan struct{}, func()) {
+	notifications := make(chan struct{}, 1)
+	listenCtx, stop := context.WithCancel(ctx)
+	go func() {
+		defer close(notifications)
+		conn, err := r.db.Conn(listenCtx)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		err = conn.Raw(func(driverConn any) error {
+			pgxConn, ok := driverConn.(*stdlib.Conn)
+			if !ok {
+				return nil
+			}
+			return listenPgxNotifications(listenCtx, pgxConn.Conn(), jobID, notifications)
+		})
+		if err != nil {
+			return
+		}
+	}()
+	return notifications, stop
+}
+
+func listenPgxNotifications(ctx context.Context, conn *pgx.Conn, jobID string, notifications chan<- struct{}) error {
+	if _, err := conn.Exec(ctx, `LISTEN `+pgx.Identifier{jobEventsChannel}.Sanitize()); err != nil {
+		return err
+	}
+	for {
+		notification, err := conn.WaitForNotification(ctx)
+		if err != nil {
+			return err
+		}
+		if notification.Payload != jobID {
+			continue
+		}
+		select {
+		case notifications <- struct{}{}:
+		default:
+		}
+	}
 }
 
 type scanner interface {
@@ -256,6 +411,10 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 	var signal sql.NullInt32
 	var wallTime int64
 	var memoryPeak int64
+	var cpuUsageUsec int64
+	var cpuThrottledUsec int64
+	var pidsPeak int64
+	var memoryOomKillCount int64
 
 	result := &pb.JobResult{}
 	err := row.Scan(
@@ -284,6 +443,10 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 		&memoryPeak,
 		&result.StdoutTruncated,
 		&result.StderrTruncated,
+		&cpuUsageUsec,
+		&cpuThrottledUsec,
+		&pidsPeak,
+		&memoryOomKillCount,
 	)
 	if err != nil {
 		return nil, err
@@ -302,6 +465,10 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 	job.MaxOutputBytes = int64ToUint64(maxOutput)
 	result.WallTimeMs = int64ToUint64(wallTime)
 	result.MemoryPeakBytes = int64ToUint64(memoryPeak)
+	result.CpuUsageUsec = int64ToUint64(cpuUsageUsec)
+	result.CpuThrottledUsec = int64ToUint64(cpuThrottledUsec)
+	result.PidsPeak = int64ToUint64(pidsPeak)
+	result.MemoryOomKillCount = int64ToUint64(memoryOomKillCount)
 	job.Result = result
 	job.Runtime = cloneRuntime(runtime)
 	job.Runtime.Language = job.Language
@@ -359,10 +526,44 @@ func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {
 		return &pb.Runtime{Language: "go", Version: "1.26", Image: "sandkasten/go:1.26", RequiresVendor: true}
 	}
 	return &pb.Runtime{
-		Language:       runtime.Language,
-		Version:        runtime.Version,
-		Image:          runtime.Image,
-		RequiresVendor: runtime.RequiresVendor,
+		Language:          runtime.Language,
+		Version:           runtime.Version,
+		Image:             runtime.Image,
+		RequiresVendor:    runtime.RequiresVendor,
+		Aliases:           append([]string(nil), runtime.Aliases...),
+		Status:            runtime.Status,
+		DefaultEntrypoint: runtime.DefaultEntrypoint,
+		CompilePhase:      cloneRuntimePhase(runtime.CompilePhase),
+		RunPhase:          cloneRuntimePhase(runtime.RunPhase),
+		DefaultLimits:     cloneRuntimeLimits(runtime.DefaultLimits),
+		MaxLimits:         cloneRuntimeLimits(runtime.MaxLimits),
+	}
+}
+
+func cloneRuntimePhase(phase *pb.RuntimePhase) *pb.RuntimePhase {
+	if phase == nil {
+		return nil
+	}
+	return &pb.RuntimePhase{
+		Command: append([]string(nil), phase.Command...),
+		Enabled: phase.Enabled,
+	}
+}
+
+func cloneRuntimeLimits(limits *pb.RuntimeLimits) *pb.RuntimeLimits {
+	if limits == nil {
+		return nil
+	}
+	return &pb.RuntimeLimits{
+		CompileTimeoutMs: limits.CompileTimeoutMs,
+		RunTimeoutMs:     limits.RunTimeoutMs,
+		MemoryLimitBytes: limits.MemoryLimitBytes,
+		CpuMillis:        limits.CpuMillis,
+		OutputBytes:      limits.OutputBytes,
+		ArchiveBytes:     limits.ArchiveBytes,
+		StdinBytes:       limits.StdinBytes,
+		Args:             limits.Args,
+		ArgBytes:         limits.ArgBytes,
 	}
 }
 
@@ -378,4 +579,11 @@ func int64ToUint64(value int64) uint64 {
 		return 0
 	}
 	return uint64(value)
+}
+
+func nonnegative(value int) int {
+	if value < 0 {
+		return 0
+	}
+	return value
 }

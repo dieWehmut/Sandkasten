@@ -109,11 +109,12 @@ printf 'Loading schema...\n'
 psql "$DB_URL" -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
 DROP TABLE IF EXISTS job_events CASCADE;
 DROP TABLE IF EXISTS job_artifacts CASCADE;
+DROP TABLE IF EXISTS job_attempts CASCADE;
 DROP TABLE IF EXISTS jobs CASCADE;
 DROP TYPE IF EXISTS job_status CASCADE;
 SQL
 psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$ROOT/speicher/schema.sql" >/dev/null
-psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'truncate job_events, job_artifacts, jobs restart identity cascade;' >/dev/null
+psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'truncate job_events, job_artifacts, job_attempts, jobs restart identity cascade;' >/dev/null
 
 printf 'Building API and runner...\n'
 (cd "$ROOT/schnittstelle" && go build -trimpath -o /tmp/sandkasten-api-smoke-languages ./cmd/sandkasten-api)

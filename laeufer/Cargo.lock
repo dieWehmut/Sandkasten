@@ -711,8 +711,10 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
+ "libc",
  "serde",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 
@@ -768,6 +770,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 

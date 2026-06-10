@@ -438,8 +438,10 @@ fn plan_go(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        compile_memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
         job,
     );
     let run = command_plan(
@@ -448,8 +450,10 @@ fn plan_go(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -483,8 +487,10 @@ fn plan_native(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        compile_memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
         job,
     );
     let run = command_plan(
@@ -493,8 +499,10 @@ fn plan_native(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -521,8 +529,10 @@ fn plan_rust(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        compile_memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
         job,
     );
     let run = command_plan(
@@ -531,8 +541,10 @@ fn plan_rust(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -564,8 +576,10 @@ fn plan_java(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        compile_memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
         job,
     );
     let mut run_args = vec![
@@ -580,8 +594,10 @@ fn plan_java(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -606,8 +622,10 @@ fn plan_csharp(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        compile_memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
         job,
     );
     let mut run_args = vec![binary_path.to_string_lossy().into_owned()];
@@ -618,8 +636,10 @@ fn plan_csharp(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -639,8 +659,10 @@ fn plan_javascript(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
     let mut run_args = vec![entrypoint];
@@ -651,8 +673,10 @@ fn plan_javascript(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -676,8 +700,10 @@ fn plan_python(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
     let mut run_args = vec!["-B".to_owned(), entrypoint];
@@ -688,8 +714,10 @@ fn plan_python(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
@@ -726,8 +754,10 @@ fn plan_typescript(
         env.clone(),
         source_dir.clone(),
         Default::default(),
-        job.limits.compile_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
     let mut run_args = vec![output_path.to_string_lossy().into_owned()];
@@ -738,12 +768,19 @@ fn plan_typescript(
         env,
         source_dir,
         job.stdin.clone(),
-        job.limits.run_timeout,
-        job.limits.memory_limit_bytes,
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
         job,
     );
 
     BuildPlan { compile, run }
+}
+
+struct PhaseBudget {
+    timeout: std::time::Duration,
+    memory_limit_bytes: u64,
 }
 
 fn command_plan(
@@ -752,8 +789,7 @@ fn command_plan(
     env: Vec<(String, String)>,
     cwd: PathBuf,
     stdin: bytes::Bytes,
-    timeout: std::time::Duration,
-    memory_limit_bytes: u64,
+    phase_budget: PhaseBudget,
     job: &Job,
 ) -> CommandPlan {
     CommandPlan {
@@ -762,8 +798,8 @@ fn command_plan(
         env,
         cwd,
         stdin,
-        timeout,
-        memory_limit_bytes,
+        timeout: phase_budget.timeout,
+        memory_limit_bytes: phase_budget.memory_limit_bytes,
         cpu_millis: job.limits.cpu_millis,
         max_output_bytes: job.limits.max_output_bytes,
     }
@@ -897,6 +933,7 @@ mod tests {
     fn job(language: &str, entrypoint: &str) -> Job {
         Job {
             job_id: Uuid::new_v4(),
+            attempt_id: Uuid::new_v4(),
             status: JobStatus::Queued,
             language: language.to_owned(),
             runtime_version: "test".to_owned(),

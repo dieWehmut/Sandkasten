@@ -9,14 +9,19 @@ import (
 	"testing"
 
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
+	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
 )
 
 type fakeService struct {
 	submitted *pb.SubmitGoProjectRequest
 	job       *pb.Job
+	submitErr error
 }
 
 func (f *fakeService) SubmitGoProject(ctx context.Context, req *pb.SubmitGoProjectRequest) (*pb.SubmitGoProjectResponse, error) {
+	if f.submitErr != nil {
+		return nil, f.submitErr
+	}
 	f.submitted = req
 	return &pb.SubmitGoProjectResponse{JobId: "job-1", Status: pb.JobStatus_JOB_STATUS_QUEUED}, nil
 }
@@ -80,7 +85,27 @@ func TestRunLanguageFromSourceSubmitsLanguage(t *testing.T) {
 	}
 }
 
-func TestGetJobReturnsPlainTextArtifacts(t *testing.T) {
+func TestRunReturnsServiceUnavailableOnResourceExhaustion(t *testing.T) {
+	service := &fakeService{submitErr: jobs.ErrResourceExhausted}
+	server := New(service, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/python/run", strings.NewReader(`{"source":"print('ok')"}`))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var response errorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != "resource_exhausted" {
+		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestGetJobReturnsAutoEncodedArtifacts(t *testing.T) {
 	service := &fakeService{
 		job: &pb.Job{
 			JobId:    "job-1",
@@ -88,9 +113,15 @@ func TestGetJobReturnsPlainTextArtifacts(t *testing.T) {
 			Language: "go",
 			Runtime:  &pb.Runtime{Version: "1.26"},
 			Result: &pb.JobResult{
-				Stdout:     []byte("hello\n"),
-				WallTimeMs: 42,
-				ExitCode:   0,
+				Stdout:             []byte("hello\n"),
+				Stderr:             []byte{0xff, 0x00},
+				WallTimeMs:         42,
+				MemoryPeakBytes:    1024,
+				ExitCode:           0,
+				CpuUsageUsec:       7000,
+				CpuThrottledUsec:   300,
+				PidsPeak:           8,
+				MemoryOomKillCount: 1,
 			},
 		},
 	}
@@ -108,5 +139,55 @@ func TestGetJobReturnsPlainTextArtifacts(t *testing.T) {
 	}
 	if response.Status != "JOB_STATUS_SUCCEEDED" || response.Stdout != "hello\n" || response.DurationMs != 42 {
 		t.Fatalf("response = %+v", response)
+	}
+	if response.StdoutEnc != "utf8" || response.Stderr != "/wA=" || response.StderrEnc != "base64" {
+		t.Fatalf("response = %+v", response)
+	}
+	if response.Diagnostics.MemoryPeakBytes != 1024 ||
+		response.Diagnostics.CPUUsageUsec != 7000 ||
+		response.Diagnostics.CPUThrottledUsec != 300 ||
+		response.Diagnostics.PidsPeak != 8 ||
+		response.Diagnostics.MemoryOOMKillCount != 1 {
+		t.Fatalf("diagnostics = %+v", response.Diagnostics)
+	}
+}
+
+func TestGetJobCanForceBase64Artifacts(t *testing.T) {
+	service := &fakeService{
+		job: &pb.Job{
+			JobId:    "job-1",
+			Status:   pb.JobStatus_JOB_STATUS_SUCCEEDED,
+			Language: "go",
+			Result:   &pb.JobResult{Stdout: []byte("hello\n")},
+		},
+	}
+	server := New(service, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1?outputEncoding=base64", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var response jobResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Stdout != "aGVsbG8K" || response.StdoutEnc != "base64" {
+		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestGetJobRejectsInvalidOutputEncoding(t *testing.T) {
+	service := &fakeService{
+		job: &pb.Job{JobId: "job-1", Status: pb.JobStatus_JOB_STATUS_SUCCEEDED, Result: &pb.JobResult{}},
+	}
+	server := New(service, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1?outputEncoding=hex", nil))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }

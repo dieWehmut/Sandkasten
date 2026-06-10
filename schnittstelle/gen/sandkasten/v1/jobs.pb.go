@@ -625,19 +625,23 @@ func (x *Job) GetFinishedAt() string {
 }
 
 type JobResult struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Stdout          []byte                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
-	Stderr          []byte                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	CompileStdout   []byte                 `protobuf:"bytes,3,opt,name=compile_stdout,json=compileStdout,proto3" json:"compile_stdout,omitempty"`
-	CompileStderr   []byte                 `protobuf:"bytes,4,opt,name=compile_stderr,json=compileStderr,proto3" json:"compile_stderr,omitempty"`
-	ExitCode        int32                  `protobuf:"varint,5,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
-	Signal          int32                  `protobuf:"varint,6,opt,name=signal,proto3" json:"signal,omitempty"`
-	WallTimeMs      uint64                 `protobuf:"varint,7,opt,name=wall_time_ms,json=wallTimeMs,proto3" json:"wall_time_ms,omitempty"`
-	MemoryPeakBytes uint64                 `protobuf:"varint,8,opt,name=memory_peak_bytes,json=memoryPeakBytes,proto3" json:"memory_peak_bytes,omitempty"`
-	StdoutTruncated bool                   `protobuf:"varint,9,opt,name=stdout_truncated,json=stdoutTruncated,proto3" json:"stdout_truncated,omitempty"`
-	StderrTruncated bool                   `protobuf:"varint,10,opt,name=stderr_truncated,json=stderrTruncated,proto3" json:"stderr_truncated,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Stdout             []byte                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr             []byte                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	CompileStdout      []byte                 `protobuf:"bytes,3,opt,name=compile_stdout,json=compileStdout,proto3" json:"compile_stdout,omitempty"`
+	CompileStderr      []byte                 `protobuf:"bytes,4,opt,name=compile_stderr,json=compileStderr,proto3" json:"compile_stderr,omitempty"`
+	ExitCode           int32                  `protobuf:"varint,5,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Signal             int32                  `protobuf:"varint,6,opt,name=signal,proto3" json:"signal,omitempty"`
+	WallTimeMs         uint64                 `protobuf:"varint,7,opt,name=wall_time_ms,json=wallTimeMs,proto3" json:"wall_time_ms,omitempty"`
+	MemoryPeakBytes    uint64                 `protobuf:"varint,8,opt,name=memory_peak_bytes,json=memoryPeakBytes,proto3" json:"memory_peak_bytes,omitempty"`
+	StdoutTruncated    bool                   `protobuf:"varint,9,opt,name=stdout_truncated,json=stdoutTruncated,proto3" json:"stdout_truncated,omitempty"`
+	StderrTruncated    bool                   `protobuf:"varint,10,opt,name=stderr_truncated,json=stderrTruncated,proto3" json:"stderr_truncated,omitempty"`
+	CpuUsageUsec       uint64                 `protobuf:"varint,11,opt,name=cpu_usage_usec,json=cpuUsageUsec,proto3" json:"cpu_usage_usec,omitempty"`
+	CpuThrottledUsec   uint64                 `protobuf:"varint,12,opt,name=cpu_throttled_usec,json=cpuThrottledUsec,proto3" json:"cpu_throttled_usec,omitempty"`
+	PidsPeak           uint64                 `protobuf:"varint,13,opt,name=pids_peak,json=pidsPeak,proto3" json:"pids_peak,omitempty"`
+	MemoryOomKillCount uint64                 `protobuf:"varint,14,opt,name=memory_oom_kill_count,json=memoryOomKillCount,proto3" json:"memory_oom_kill_count,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *JobResult) Reset() {
@@ -738,6 +742,34 @@ func (x *JobResult) GetStderrTruncated() bool {
 		return x.StderrTruncated
 	}
 	return false
+}
+
+func (x *JobResult) GetCpuUsageUsec() uint64 {
+	if x != nil {
+		return x.CpuUsageUsec
+	}
+	return 0
+}
+
+func (x *JobResult) GetCpuThrottledUsec() uint64 {
+	if x != nil {
+		return x.CpuThrottledUsec
+	}
+	return 0
+}
+
+func (x *JobResult) GetPidsPeak() uint64 {
+	if x != nil {
+		return x.PidsPeak
+	}
+	return 0
+}
+
+func (x *JobResult) GetMemoryOomKillCount() uint64 {
+	if x != nil {
+		return x.MemoryOomKillCount
+	}
+	return 0
 }
 
 type JobEvent struct {
@@ -872,7 +904,7 @@ const file_sandkasten_v1_jobs_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\x0f \x01(\tR\tstartedAt\x12\x1f\n" +
 	"\vfinished_at\x18\x10 \x01(\tR\n" +
-	"finishedAt\"\xe2\x02\n" +
+	"finishedAt\"\x86\x04\n" +
 	"\tJobResult\x12\x16\n" +
 	"\x06stdout\x18\x01 \x01(\fR\x06stdout\x12\x16\n" +
 	"\x06stderr\x18\x02 \x01(\fR\x06stderr\x12%\n" +
@@ -885,7 +917,11 @@ const file_sandkasten_v1_jobs_proto_rawDesc = "" +
 	"\x11memory_peak_bytes\x18\b \x01(\x04R\x0fmemoryPeakBytes\x12)\n" +
 	"\x10stdout_truncated\x18\t \x01(\bR\x0fstdoutTruncated\x12)\n" +
 	"\x10stderr_truncated\x18\n" +
-	" \x01(\bR\x0fstderrTruncated\"\xa8\x01\n" +
+	" \x01(\bR\x0fstderrTruncated\x12$\n" +
+	"\x0ecpu_usage_usec\x18\v \x01(\x04R\fcpuUsageUsec\x12,\n" +
+	"\x12cpu_throttled_usec\x18\f \x01(\x04R\x10cpuThrottledUsec\x12\x1b\n" +
+	"\tpids_peak\x18\r \x01(\x04R\bpidsPeak\x121\n" +
+	"\x15memory_oom_kill_count\x18\x0e \x01(\x04R\x12memoryOomKillCount\"\xa8\x01\n" +
 	"\bJobEvent\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x120\n" +

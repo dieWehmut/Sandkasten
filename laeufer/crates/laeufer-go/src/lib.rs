@@ -572,6 +572,7 @@ mod tests {
     fn test_job() -> Job {
         Job {
             job_id: Uuid::new_v4(),
+            attempt_id: Uuid::new_v4(),
             status: JobStatus::Queued,
             language: "go".to_owned(),
             runtime_version: "1.26".to_owned(),

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
@@ -20,6 +21,9 @@ import (
 const (
 	defaultHTTPPollInterval = 200 * time.Millisecond
 	defaultHTTPWaitTimeout  = 20 * time.Second
+	outputEncodingAuto      = "auto"
+	outputEncodingUTF8      = "utf8"
+	outputEncodingBase64    = "base64"
 )
 
 type jobService interface {
@@ -140,7 +144,12 @@ func (s *Server) handleRunWithLanguage(w http.ResponseWriter, r *http.Request, p
 		s.writeError(w, err)
 		return
 	}
-	writeJSON(w, statusForJob(job), jobResponseFromProto(job))
+	response, err := jobResponseFromProto(job, req.OutputEncoding)
+	if err != nil {
+		writeHTTPError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	writeJSON(w, statusForJob(job), response)
 }
 
 func (s *Server) handleGetJob(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +166,12 @@ func (s *Server) handleGetJob(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, jobResponseFromProto(job))
+	response, err := jobResponseFromProto(job, r.URL.Query().Get("outputEncoding"))
+	if err != nil {
+		writeHTTPError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *Server) waitForJob(ctx context.Context, jobID string, timeout time.Duration) (*pb.Job, error) {
@@ -232,6 +246,8 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 		writeHTTPError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, jobs.ErrNotFound):
 		writeHTTPError(w, http.StatusNotFound, "not_found", err.Error())
+	case errors.Is(err, jobs.ErrResourceExhausted):
+		writeHTTPError(w, http.StatusServiceUnavailable, "resource_exhausted", err.Error())
 	default:
 		writeHTTPError(w, http.StatusInternalServerError, "internal_error", err.Error())
 	}
@@ -249,6 +265,7 @@ type runRequest struct {
 	MemoryLimitBytes uint64   `json:"memoryLimitBytes"`
 	CPUMillis        uint32   `json:"cpuMillis"`
 	MaxOutputBytes   uint64   `json:"maxOutputBytes"`
+	OutputEncoding   string   `json:"outputEncoding"`
 	Wait             bool     `json:"wait"`
 	WaitTimeoutMs    uint32   `json:"waitTimeoutMs"`
 }
@@ -400,19 +417,24 @@ type submitResponse struct {
 }
 
 type jobResponse struct {
-	JobID        string     `json:"jobId"`
-	Status       string     `json:"status"`
-	Language     string     `json:"language"`
-	Runtime      string     `json:"runtime"`
-	Stdout       string     `json:"stdout"`
-	Stderr       string     `json:"stderr"`
-	CompileOut   string     `json:"compileStdout"`
-	CompileErr   string     `json:"compileStderr"`
-	ExitCode     int32      `json:"exitCode,omitempty"`
-	Signal       int32      `json:"signal,omitempty"`
-	DurationMs   uint64     `json:"durationMs"`
-	ErrorMessage string     `json:"errorMessage"`
-	Truncated    truncation `json:"truncated"`
+	JobID         string      `json:"jobId"`
+	Status        string      `json:"status"`
+	Language      string      `json:"language"`
+	Runtime       string      `json:"runtime"`
+	Stdout        string      `json:"stdout"`
+	Stderr        string      `json:"stderr"`
+	CompileOut    string      `json:"compileStdout"`
+	CompileErr    string      `json:"compileStderr"`
+	StdoutEnc     string      `json:"stdoutEncoding"`
+	StderrEnc     string      `json:"stderrEncoding"`
+	CompileOutEnc string      `json:"compileStdoutEncoding"`
+	CompileErrEnc string      `json:"compileStderrEncoding"`
+	ExitCode      int32       `json:"exitCode,omitempty"`
+	Signal        int32       `json:"signal,omitempty"`
+	DurationMs    uint64      `json:"durationMs"`
+	ErrorMessage  string      `json:"errorMessage"`
+	Truncated     truncation  `json:"truncated"`
+	Diagnostics   diagnostics `json:"diagnostics"`
 }
 
 type truncation struct {
@@ -420,29 +442,84 @@ type truncation struct {
 	Stderr bool `json:"stderr"`
 }
 
-func jobResponseFromProto(job *pb.Job) jobResponse {
+type diagnostics struct {
+	MemoryPeakBytes    uint64 `json:"memoryPeakBytes"`
+	MemoryOOMKillCount uint64 `json:"memoryOomKillCount"`
+	CPUUsageUsec       uint64 `json:"cpuUsageUsec"`
+	CPUThrottledUsec   uint64 `json:"cpuThrottledUsec"`
+	PidsPeak           uint64 `json:"pidsPeak"`
+}
+
+func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, error) {
+	encoding, err := normalizeOutputEncoding(requestedEncoding)
+	if err != nil {
+		return jobResponse{}, err
+	}
 	result := job.GetResult()
 	runtimeVersion := ""
 	if job.GetRuntime() != nil {
 		runtimeVersion = job.GetRuntime().GetVersion()
 	}
+	stdout, stdoutEncoding := encodeArtifact(result.GetStdout(), encoding)
+	stderr, stderrEncoding := encodeArtifact(result.GetStderr(), encoding)
+	compileOut, compileOutEncoding := encodeArtifact(result.GetCompileStdout(), encoding)
+	compileErr, compileErrEncoding := encodeArtifact(result.GetCompileStderr(), encoding)
+
 	return jobResponse{
-		JobID:        job.GetJobId(),
-		Status:       job.GetStatus().String(),
-		Language:     job.GetLanguage(),
-		Runtime:      runtimeVersion,
-		Stdout:       string(result.GetStdout()),
-		Stderr:       string(result.GetStderr()),
-		CompileOut:   string(result.GetCompileStdout()),
-		CompileErr:   string(result.GetCompileStderr()),
-		ExitCode:     result.GetExitCode(),
-		Signal:       result.GetSignal(),
-		DurationMs:   result.GetWallTimeMs(),
-		ErrorMessage: job.GetErrorMessage(),
+		JobID:         job.GetJobId(),
+		Status:        job.GetStatus().String(),
+		Language:      job.GetLanguage(),
+		Runtime:       runtimeVersion,
+		Stdout:        stdout,
+		Stderr:        stderr,
+		CompileOut:    compileOut,
+		CompileErr:    compileErr,
+		StdoutEnc:     stdoutEncoding,
+		StderrEnc:     stderrEncoding,
+		CompileOutEnc: compileOutEncoding,
+		CompileErrEnc: compileErrEncoding,
+		ExitCode:      result.GetExitCode(),
+		Signal:        result.GetSignal(),
+		DurationMs:    result.GetWallTimeMs(),
+		ErrorMessage:  job.GetErrorMessage(),
 		Truncated: truncation{
 			Stdout: result.GetStdoutTruncated(),
 			Stderr: result.GetStderrTruncated(),
 		},
+		Diagnostics: diagnostics{
+			MemoryPeakBytes:    result.GetMemoryPeakBytes(),
+			MemoryOOMKillCount: result.GetMemoryOomKillCount(),
+			CPUUsageUsec:       result.GetCpuUsageUsec(),
+			CPUThrottledUsec:   result.GetCpuThrottledUsec(),
+			PidsPeak:           result.GetPidsPeak(),
+		},
+	}, nil
+}
+
+func normalizeOutputEncoding(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", outputEncodingAuto:
+		return outputEncodingAuto, nil
+	case outputEncodingUTF8:
+		return outputEncodingUTF8, nil
+	case outputEncodingBase64:
+		return outputEncodingBase64, nil
+	default:
+		return "", fmt.Errorf("outputEncoding must be one of %q, %q, or %q", outputEncodingAuto, outputEncodingUTF8, outputEncodingBase64)
+	}
+}
+
+func encodeArtifact(body []byte, encoding string) (string, string) {
+	switch encoding {
+	case outputEncodingBase64:
+		return base64.StdEncoding.EncodeToString(body), outputEncodingBase64
+	case outputEncodingUTF8:
+		return string(body), outputEncodingUTF8
+	default:
+		if utf8.Valid(body) {
+			return string(body), outputEncodingUTF8
+		}
+		return base64.StdEncoding.EncodeToString(body), outputEncodingBase64
 	}
 }
 

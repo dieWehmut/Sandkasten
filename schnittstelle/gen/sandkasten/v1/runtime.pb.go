@@ -102,13 +102,20 @@ func (x *ListRuntimesResponse) GetRuntimes() []*Runtime {
 }
 
 type Runtime struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Language       string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
-	Version        string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	Image          string                 `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	RequiresVendor bool                   `protobuf:"varint,4,opt,name=requires_vendor,json=requiresVendor,proto3" json:"requires_vendor,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Language          string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
+	Version           string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Image             string                 `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+	RequiresVendor    bool                   `protobuf:"varint,4,opt,name=requires_vendor,json=requiresVendor,proto3" json:"requires_vendor,omitempty"`
+	Aliases           []string               `protobuf:"bytes,5,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	Status            string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	DefaultEntrypoint string                 `protobuf:"bytes,7,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
+	CompilePhase      *RuntimePhase          `protobuf:"bytes,8,opt,name=compile_phase,json=compilePhase,proto3" json:"compile_phase,omitempty"`
+	RunPhase          *RuntimePhase          `protobuf:"bytes,9,opt,name=run_phase,json=runPhase,proto3" json:"run_phase,omitempty"`
+	DefaultLimits     *RuntimeLimits         `protobuf:"bytes,10,opt,name=default_limits,json=defaultLimits,proto3" json:"default_limits,omitempty"`
+	MaxLimits         *RuntimeLimits         `protobuf:"bytes,11,opt,name=max_limits,json=maxLimits,proto3" json:"max_limits,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Runtime) Reset() {
@@ -169,6 +176,215 @@ func (x *Runtime) GetRequiresVendor() bool {
 	return false
 }
 
+func (x *Runtime) GetAliases() []string {
+	if x != nil {
+		return x.Aliases
+	}
+	return nil
+}
+
+func (x *Runtime) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Runtime) GetDefaultEntrypoint() string {
+	if x != nil {
+		return x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *Runtime) GetCompilePhase() *RuntimePhase {
+	if x != nil {
+		return x.CompilePhase
+	}
+	return nil
+}
+
+func (x *Runtime) GetRunPhase() *RuntimePhase {
+	if x != nil {
+		return x.RunPhase
+	}
+	return nil
+}
+
+func (x *Runtime) GetDefaultLimits() *RuntimeLimits {
+	if x != nil {
+		return x.DefaultLimits
+	}
+	return nil
+}
+
+func (x *Runtime) GetMaxLimits() *RuntimeLimits {
+	if x != nil {
+		return x.MaxLimits
+	}
+	return nil
+}
+
+type RuntimePhase struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Command       []string               `protobuf:"bytes,1,rep,name=command,proto3" json:"command,omitempty"`
+	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RuntimePhase) Reset() {
+	*x = RuntimePhase{}
+	mi := &file_sandkasten_v1_runtime_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimePhase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimePhase) ProtoMessage() {}
+
+func (x *RuntimePhase) ProtoReflect() protoreflect.Message {
+	mi := &file_sandkasten_v1_runtime_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimePhase.ProtoReflect.Descriptor instead.
+func (*RuntimePhase) Descriptor() ([]byte, []int) {
+	return file_sandkasten_v1_runtime_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RuntimePhase) GetCommand() []string {
+	if x != nil {
+		return x.Command
+	}
+	return nil
+}
+
+func (x *RuntimePhase) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type RuntimeLimits struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	CompileTimeoutMs uint32                 `protobuf:"varint,1,opt,name=compile_timeout_ms,json=compileTimeoutMs,proto3" json:"compile_timeout_ms,omitempty"`
+	RunTimeoutMs     uint32                 `protobuf:"varint,2,opt,name=run_timeout_ms,json=runTimeoutMs,proto3" json:"run_timeout_ms,omitempty"`
+	MemoryLimitBytes uint64                 `protobuf:"varint,3,opt,name=memory_limit_bytes,json=memoryLimitBytes,proto3" json:"memory_limit_bytes,omitempty"`
+	CpuMillis        uint32                 `protobuf:"varint,4,opt,name=cpu_millis,json=cpuMillis,proto3" json:"cpu_millis,omitempty"`
+	OutputBytes      uint64                 `protobuf:"varint,5,opt,name=output_bytes,json=outputBytes,proto3" json:"output_bytes,omitempty"`
+	ArchiveBytes     uint64                 `protobuf:"varint,6,opt,name=archive_bytes,json=archiveBytes,proto3" json:"archive_bytes,omitempty"`
+	StdinBytes       uint64                 `protobuf:"varint,7,opt,name=stdin_bytes,json=stdinBytes,proto3" json:"stdin_bytes,omitempty"`
+	Args             uint32                 `protobuf:"varint,8,opt,name=args,proto3" json:"args,omitempty"`
+	ArgBytes         uint64                 `protobuf:"varint,9,opt,name=arg_bytes,json=argBytes,proto3" json:"arg_bytes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RuntimeLimits) Reset() {
+	*x = RuntimeLimits{}
+	mi := &file_sandkasten_v1_runtime_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeLimits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeLimits) ProtoMessage() {}
+
+func (x *RuntimeLimits) ProtoReflect() protoreflect.Message {
+	mi := &file_sandkasten_v1_runtime_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeLimits.ProtoReflect.Descriptor instead.
+func (*RuntimeLimits) Descriptor() ([]byte, []int) {
+	return file_sandkasten_v1_runtime_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RuntimeLimits) GetCompileTimeoutMs() uint32 {
+	if x != nil {
+		return x.CompileTimeoutMs
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetRunTimeoutMs() uint32 {
+	if x != nil {
+		return x.RunTimeoutMs
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetMemoryLimitBytes() uint64 {
+	if x != nil {
+		return x.MemoryLimitBytes
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetCpuMillis() uint32 {
+	if x != nil {
+		return x.CpuMillis
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetOutputBytes() uint64 {
+	if x != nil {
+		return x.OutputBytes
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetArchiveBytes() uint64 {
+	if x != nil {
+		return x.ArchiveBytes
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetStdinBytes() uint64 {
+	if x != nil {
+		return x.StdinBytes
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetArgs() uint32 {
+	if x != nil {
+		return x.Args
+	}
+	return 0
+}
+
+func (x *RuntimeLimits) GetArgBytes() uint64 {
+	if x != nil {
+		return x.ArgBytes
+	}
+	return 0
+}
+
 var File_sandkasten_v1_runtime_proto protoreflect.FileDescriptor
 
 const file_sandkasten_v1_runtime_proto_rawDesc = "" +
@@ -176,12 +392,36 @@ const file_sandkasten_v1_runtime_proto_rawDesc = "" +
 	"\x1bsandkasten/v1/runtime.proto\x12\rsandkasten.v1\"\x15\n" +
 	"\x13ListRuntimesRequest\"J\n" +
 	"\x14ListRuntimesResponse\x122\n" +
-	"\bruntimes\x18\x01 \x03(\v2\x16.sandkasten.v1.RuntimeR\bruntimes\"~\n" +
+	"\bruntimes\x18\x01 \x03(\v2\x16.sandkasten.v1.RuntimeR\bruntimes\"\xdd\x03\n" +
 	"\aRuntime\x12\x1a\n" +
 	"\blanguage\x18\x01 \x01(\tR\blanguage\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
 	"\x05image\x18\x03 \x01(\tR\x05image\x12'\n" +
-	"\x0frequires_vendor\x18\x04 \x01(\bR\x0erequiresVendor2i\n" +
+	"\x0frequires_vendor\x18\x04 \x01(\bR\x0erequiresVendor\x12\x18\n" +
+	"\aaliases\x18\x05 \x03(\tR\aaliases\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12-\n" +
+	"\x12default_entrypoint\x18\a \x01(\tR\x11defaultEntrypoint\x12@\n" +
+	"\rcompile_phase\x18\b \x01(\v2\x1b.sandkasten.v1.RuntimePhaseR\fcompilePhase\x128\n" +
+	"\trun_phase\x18\t \x01(\v2\x1b.sandkasten.v1.RuntimePhaseR\brunPhase\x12C\n" +
+	"\x0edefault_limits\x18\n" +
+	" \x01(\v2\x1c.sandkasten.v1.RuntimeLimitsR\rdefaultLimits\x12;\n" +
+	"\n" +
+	"max_limits\x18\v \x01(\v2\x1c.sandkasten.v1.RuntimeLimitsR\tmaxLimits\"B\n" +
+	"\fRuntimePhase\x12\x18\n" +
+	"\acommand\x18\x01 \x03(\tR\acommand\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\"\xca\x02\n" +
+	"\rRuntimeLimits\x12,\n" +
+	"\x12compile_timeout_ms\x18\x01 \x01(\rR\x10compileTimeoutMs\x12$\n" +
+	"\x0erun_timeout_ms\x18\x02 \x01(\rR\frunTimeoutMs\x12,\n" +
+	"\x12memory_limit_bytes\x18\x03 \x01(\x04R\x10memoryLimitBytes\x12\x1d\n" +
+	"\n" +
+	"cpu_millis\x18\x04 \x01(\rR\tcpuMillis\x12!\n" +
+	"\foutput_bytes\x18\x05 \x01(\x04R\voutputBytes\x12#\n" +
+	"\rarchive_bytes\x18\x06 \x01(\x04R\farchiveBytes\x12\x1f\n" +
+	"\vstdin_bytes\x18\a \x01(\x04R\n" +
+	"stdinBytes\x12\x12\n" +
+	"\x04args\x18\b \x01(\rR\x04args\x12\x1b\n" +
+	"\targ_bytes\x18\t \x01(\x04R\bargBytes2i\n" +
 	"\x0eRuntimeService\x12W\n" +
 	"\fListRuntimes\x12\".sandkasten.v1.ListRuntimesRequest\x1a#.sandkasten.v1.ListRuntimesResponseBNZLgithub.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1;sandkastenv1b\x06proto3"
 
@@ -197,21 +437,27 @@ func file_sandkasten_v1_runtime_proto_rawDescGZIP() []byte {
 	return file_sandkasten_v1_runtime_proto_rawDescData
 }
 
-var file_sandkasten_v1_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_sandkasten_v1_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_sandkasten_v1_runtime_proto_goTypes = []any{
 	(*ListRuntimesRequest)(nil),  // 0: sandkasten.v1.ListRuntimesRequest
 	(*ListRuntimesResponse)(nil), // 1: sandkasten.v1.ListRuntimesResponse
 	(*Runtime)(nil),              // 2: sandkasten.v1.Runtime
+	(*RuntimePhase)(nil),         // 3: sandkasten.v1.RuntimePhase
+	(*RuntimeLimits)(nil),        // 4: sandkasten.v1.RuntimeLimits
 }
 var file_sandkasten_v1_runtime_proto_depIdxs = []int32{
 	2, // 0: sandkasten.v1.ListRuntimesResponse.runtimes:type_name -> sandkasten.v1.Runtime
-	0, // 1: sandkasten.v1.RuntimeService.ListRuntimes:input_type -> sandkasten.v1.ListRuntimesRequest
-	1, // 2: sandkasten.v1.RuntimeService.ListRuntimes:output_type -> sandkasten.v1.ListRuntimesResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: sandkasten.v1.Runtime.compile_phase:type_name -> sandkasten.v1.RuntimePhase
+	3, // 2: sandkasten.v1.Runtime.run_phase:type_name -> sandkasten.v1.RuntimePhase
+	4, // 3: sandkasten.v1.Runtime.default_limits:type_name -> sandkasten.v1.RuntimeLimits
+	4, // 4: sandkasten.v1.Runtime.max_limits:type_name -> sandkasten.v1.RuntimeLimits
+	0, // 5: sandkasten.v1.RuntimeService.ListRuntimes:input_type -> sandkasten.v1.ListRuntimesRequest
+	1, // 6: sandkasten.v1.RuntimeService.ListRuntimes:output_type -> sandkasten.v1.ListRuntimesResponse
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_sandkasten_v1_runtime_proto_init() }
@@ -225,7 +471,7 @@ func file_sandkasten_v1_runtime_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sandkasten_v1_runtime_proto_rawDesc), len(file_sandkasten_v1_runtime_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

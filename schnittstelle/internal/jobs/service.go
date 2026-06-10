@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -11,8 +12,9 @@ import (
 )
 
 var (
-	ErrInvalidArgument = errors.New("invalid argument")
-	ErrNotFound        = errors.New("not found")
+	ErrInvalidArgument   = errors.New("invalid argument")
+	ErrNotFound          = errors.New("not found")
+	ErrResourceExhausted = errors.New("resource exhausted")
 )
 
 type Repository interface {
@@ -37,9 +39,13 @@ type CreateJob struct {
 }
 
 type Service struct {
-	repo           Repository
-	defaultRuntime *pb.Runtime
-	runtimes       map[string]*pb.Runtime
+	repo                    Repository
+	defaultRuntime          *pb.Runtime
+	runtimes                map[string]*pb.Runtime
+	limits                  SubmissionLimits
+	defaultResources        ResourceDefaults
+	runtimeLimits           map[string]SubmissionLimits
+	runtimeResourceDefaults map[string]ResourceDefaults
 }
 
 func NewService(repo Repository, defaultRuntime *pb.Runtime) *Service {
@@ -47,6 +53,61 @@ func NewService(repo Repository, defaultRuntime *pb.Runtime) *Service {
 }
 
 func NewServiceWithRuntimes(repo Repository, defaultRuntime *pb.Runtime, runtimes []*pb.Runtime) *Service {
+	return NewServiceWithOptions(repo, defaultRuntime, runtimes, ServiceOptions{})
+}
+
+type ServiceOptions struct {
+	Limits                  SubmissionLimits
+	DefaultResources        ResourceDefaults
+	RuntimeLimits           map[string]SubmissionLimits
+	RuntimeResourceDefaults map[string]ResourceDefaults
+}
+
+type SubmissionLimits struct {
+	MaxArchiveBytes     uint64
+	MaxStdinBytes       uint64
+	MaxArgs             int
+	MaxArgBytes         uint64
+	MaxCompileTimeoutMS uint32
+	MaxRunTimeoutMS     uint32
+	MaxMemoryLimitBytes uint64
+	MaxCPUMillis        uint32
+	MaxOutputBytes      uint64
+}
+
+type ResourceDefaults struct {
+	CompileTimeoutMS uint32
+	RunTimeoutMS     uint32
+	MemoryLimitBytes uint64
+	CPUMillis        uint32
+	MaxOutputBytes   uint64
+}
+
+func DefaultSubmissionLimits() SubmissionLimits {
+	return SubmissionLimits{
+		MaxArchiveBytes:     64 * 1024 * 1024,
+		MaxStdinBytes:       1024 * 1024,
+		MaxArgs:             64,
+		MaxArgBytes:         8 * 1024,
+		MaxCompileTimeoutMS: uint32((120 * time.Second).Milliseconds()),
+		MaxRunTimeoutMS:     uint32((30 * time.Second).Milliseconds()),
+		MaxMemoryLimitBytes: 1024 * 1024 * 1024,
+		MaxCPUMillis:        4000,
+		MaxOutputBytes:      4 * 1024 * 1024,
+	}
+}
+
+func DefaultResourceDefaults() ResourceDefaults {
+	return ResourceDefaults{
+		CompileTimeoutMS: uint32((30 * time.Second).Milliseconds()),
+		RunTimeoutMS:     uint32((5 * time.Second).Milliseconds()),
+		MemoryLimitBytes: 256 * 1024 * 1024,
+		CPUMillis:        1000,
+		MaxOutputBytes:   1024 * 1024,
+	}
+}
+
+func NewServiceWithOptions(repo Repository, defaultRuntime *pb.Runtime, runtimes []*pb.Runtime, options ServiceOptions) *Service {
 	byLanguage := make(map[string]*pb.Runtime, len(runtimes))
 	for _, runtime := range runtimes {
 		if runtime == nil || strings.TrimSpace(runtime.Language) == "" {
@@ -57,7 +118,17 @@ func NewServiceWithRuntimes(repo Repository, defaultRuntime *pb.Runtime, runtime
 	if defaultRuntime != nil && defaultRuntime.Language != "" {
 		byLanguage[normalizeLanguage(defaultRuntime.Language)] = cloneRuntime(defaultRuntime)
 	}
-	return &Service{repo: repo, defaultRuntime: cloneRuntime(defaultRuntime), runtimes: byLanguage}
+	limits := options.Limits.withDefaults()
+	defaultResources := options.DefaultResources.withDefaults()
+	return &Service{
+		repo:                    repo,
+		defaultRuntime:          cloneRuntime(defaultRuntime),
+		runtimes:                byLanguage,
+		limits:                  limits,
+		defaultResources:        defaultResources,
+		runtimeLimits:           normalizeRuntimeLimits(options.RuntimeLimits, limits),
+		runtimeResourceDefaults: normalizeRuntimeResourceDefaults(options.RuntimeResourceDefaults, defaultResources),
+	}
 }
 
 func (s *Service) SubmitGoProject(ctx context.Context, req *pb.SubmitGoProjectRequest) (*pb.SubmitGoProjectResponse, error) {
@@ -72,7 +143,12 @@ func (s *Service) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.Job, e
 	if req == nil || req.JobId == "" {
 		return nil, ErrInvalidArgument
 	}
-	return s.repo.GetJob(ctx, req.JobId)
+	job, err := s.repo.GetJob(ctx, req.JobId)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichJobRuntime(job)
+	return job, nil
 }
 
 func (s *Service) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.CancelJobResponse, error) {
@@ -84,9 +160,13 @@ func (s *Service) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.
 
 func (s *Service) ListRuntimes(ctx context.Context, req *pb.ListRuntimesRequest) (*pb.ListRuntimesResponse, error) {
 	if len(s.runtimes) == 0 {
-		runtimes, err := s.repo.ListRuntimes(ctx)
+		storedRuntimes, err := s.repo.ListRuntimes(ctx)
 		if err != nil {
 			return nil, err
+		}
+		runtimes := make([]*pb.Runtime, 0, len(storedRuntimes))
+		for _, runtime := range storedRuntimes {
+			runtimes = append(runtimes, s.runtimeManifest(runtime))
 		}
 		return &pb.ListRuntimesResponse{Runtimes: runtimes}, nil
 	}
@@ -97,7 +177,7 @@ func (s *Service) ListRuntimes(ctx context.Context, req *pb.ListRuntimesRequest)
 	sort.Strings(languages)
 	runtimes := make([]*pb.Runtime, 0, len(languages))
 	for _, language := range languages {
-		runtimes = append(runtimes, cloneRuntime(s.runtimes[language]))
+		runtimes = append(runtimes, s.runtimeManifest(s.runtimes[language]))
 	}
 	return &pb.ListRuntimesResponse{Runtimes: runtimes}, nil
 }
@@ -122,31 +202,32 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 	if runtime == nil {
 		return CreateJob{}, ErrInvalidArgument
 	}
+	resourceDefaults := s.resourceDefaultsFor(language)
 	entrypoint := req.Entrypoint
 	if entrypoint == "" {
 		entrypoint = defaultEntrypoint(language)
 	}
 	compileTimeout := req.CompileTimeoutMs
 	if compileTimeout == 0 {
-		compileTimeout = uint32((30 * time.Second).Milliseconds())
+		compileTimeout = resourceDefaults.CompileTimeoutMS
 	}
 	runTimeout := req.RunTimeoutMs
 	if runTimeout == 0 {
-		runTimeout = uint32((5 * time.Second).Milliseconds())
+		runTimeout = resourceDefaults.RunTimeoutMS
 	}
 	memoryLimit := req.MemoryLimitBytes
 	if memoryLimit == 0 {
-		memoryLimit = 256 * 1024 * 1024
+		memoryLimit = resourceDefaults.MemoryLimitBytes
 	}
 	cpuMillis := req.CpuMillis
 	if cpuMillis == 0 {
-		cpuMillis = 1000
+		cpuMillis = resourceDefaults.CPUMillis
 	}
 	maxOutput := req.MaxOutputBytes
 	if maxOutput == 0 {
-		maxOutput = 1024 * 1024
+		maxOutput = resourceDefaults.MaxOutputBytes
 	}
-	return CreateJob{
+	job := CreateJob{
 		ArchiveTargz:     append([]byte(nil), req.ArchiveTargz...),
 		Entrypoint:       entrypoint,
 		Stdin:            append([]byte{}, req.Stdin...),
@@ -157,21 +238,190 @@ func (s *Service) normalize(req *pb.SubmitGoProjectRequest) (CreateJob, error) {
 		CPUMillis:        cpuMillis,
 		MaxOutputBytes:   maxOutput,
 		Runtime:          runtime,
-	}, nil
+	}
+	if err := s.validate(job); err != nil {
+		return CreateJob{}, err
+	}
+	return job, nil
+}
+
+func (l SubmissionLimits) withDefaults() SubmissionLimits {
+	return l.withFallback(DefaultSubmissionLimits())
+}
+
+func (l SubmissionLimits) withFallback(fallback SubmissionLimits) SubmissionLimits {
+	if l.MaxArchiveBytes == 0 {
+		l.MaxArchiveBytes = fallback.MaxArchiveBytes
+	}
+	if l.MaxStdinBytes == 0 {
+		l.MaxStdinBytes = fallback.MaxStdinBytes
+	}
+	if l.MaxArgs == 0 {
+		l.MaxArgs = fallback.MaxArgs
+	}
+	if l.MaxArgBytes == 0 {
+		l.MaxArgBytes = fallback.MaxArgBytes
+	}
+	if l.MaxCompileTimeoutMS == 0 {
+		l.MaxCompileTimeoutMS = fallback.MaxCompileTimeoutMS
+	}
+	if l.MaxRunTimeoutMS == 0 {
+		l.MaxRunTimeoutMS = fallback.MaxRunTimeoutMS
+	}
+	if l.MaxMemoryLimitBytes == 0 {
+		l.MaxMemoryLimitBytes = fallback.MaxMemoryLimitBytes
+	}
+	if l.MaxCPUMillis == 0 {
+		l.MaxCPUMillis = fallback.MaxCPUMillis
+	}
+	if l.MaxOutputBytes == 0 {
+		l.MaxOutputBytes = fallback.MaxOutputBytes
+	}
+	return l
+}
+
+func (d ResourceDefaults) withDefaults() ResourceDefaults {
+	return d.withFallback(DefaultResourceDefaults())
+}
+
+func (d ResourceDefaults) withFallback(fallback ResourceDefaults) ResourceDefaults {
+	if d.CompileTimeoutMS == 0 {
+		d.CompileTimeoutMS = fallback.CompileTimeoutMS
+	}
+	if d.RunTimeoutMS == 0 {
+		d.RunTimeoutMS = fallback.RunTimeoutMS
+	}
+	if d.MemoryLimitBytes == 0 {
+		d.MemoryLimitBytes = fallback.MemoryLimitBytes
+	}
+	if d.CPUMillis == 0 {
+		d.CPUMillis = fallback.CPUMillis
+	}
+	if d.MaxOutputBytes == 0 {
+		d.MaxOutputBytes = fallback.MaxOutputBytes
+	}
+	return d
+}
+
+func (s *Service) validate(job CreateJob) error {
+	limits := s.limitsFor(job.Runtime.GetLanguage())
+	if uint64(len(job.ArchiveTargz)) > limits.MaxArchiveBytes {
+		return fmt.Errorf("%w: archive_targz exceeds %d bytes", ErrInvalidArgument, limits.MaxArchiveBytes)
+	}
+	if uint64(len(job.Stdin)) > limits.MaxStdinBytes {
+		return fmt.Errorf("%w: stdin exceeds %d bytes", ErrInvalidArgument, limits.MaxStdinBytes)
+	}
+	if len(job.Args) > limits.MaxArgs {
+		return fmt.Errorf("%w: args exceeds %d entries", ErrInvalidArgument, limits.MaxArgs)
+	}
+	var argBytes uint64
+	for _, arg := range job.Args {
+		argBytes += uint64(len(arg))
+		if argBytes > limits.MaxArgBytes {
+			return fmt.Errorf("%w: args exceed %d bytes", ErrInvalidArgument, limits.MaxArgBytes)
+		}
+	}
+	if job.CompileTimeoutMS > limits.MaxCompileTimeoutMS {
+		return fmt.Errorf("%w: compile_timeout_ms exceeds %d", ErrInvalidArgument, limits.MaxCompileTimeoutMS)
+	}
+	if job.RunTimeoutMS > limits.MaxRunTimeoutMS {
+		return fmt.Errorf("%w: run_timeout_ms exceeds %d", ErrInvalidArgument, limits.MaxRunTimeoutMS)
+	}
+	if job.MemoryLimitBytes > limits.MaxMemoryLimitBytes {
+		return fmt.Errorf("%w: memory_limit_bytes exceeds %d", ErrInvalidArgument, limits.MaxMemoryLimitBytes)
+	}
+	if job.CPUMillis > limits.MaxCPUMillis {
+		return fmt.Errorf("%w: cpu_millis exceeds %d", ErrInvalidArgument, limits.MaxCPUMillis)
+	}
+	if job.MaxOutputBytes > limits.MaxOutputBytes {
+		return fmt.Errorf("%w: max_output_bytes exceeds %d", ErrInvalidArgument, limits.MaxOutputBytes)
+	}
+	return nil
+}
+
+func (s *Service) limitsFor(language string) SubmissionLimits {
+	if limits, ok := s.runtimeLimits[normalizeLanguage(language)]; ok {
+		return limits
+	}
+	return s.limits
+}
+
+func (s *Service) resourceDefaultsFor(language string) ResourceDefaults {
+	if defaults, ok := s.runtimeResourceDefaults[normalizeLanguage(language)]; ok {
+		return defaults
+	}
+	return s.defaultResources
 }
 
 func (s *Service) runtimeFor(language string) *pb.Runtime {
+	language = normalizeLanguage(language)
 	if language == "" {
-		return cloneRuntime(s.defaultRuntime)
+		return s.runtimeManifest(s.defaultRuntime)
 	}
 	runtime := s.runtimes[language]
 	if runtime == nil {
 		return nil
 	}
-	return cloneRuntime(runtime)
+	return s.runtimeManifest(runtime)
+}
+
+func (s *Service) enrichJobRuntime(job *pb.Job) {
+	if job == nil {
+		return
+	}
+	language := normalizeLanguage(job.Language)
+	if language == "" && job.Runtime != nil {
+		language = normalizeLanguage(job.Runtime.Language)
+	}
+	runtime := s.runtimeFor(language)
+	if runtime == nil {
+		return
+	}
+	if job.Runtime != nil && job.Runtime.Version != "" {
+		runtime.Version = job.Runtime.Version
+	}
+	job.Runtime = runtime
+}
+
+func (s *Service) runtimeManifest(runtime *pb.Runtime) *pb.Runtime {
+	runtime = cloneRuntime(runtime)
+	if runtime == nil {
+		return nil
+	}
+	language := normalizeLanguage(runtime.Language)
+	if language == "" {
+		return runtime
+	}
+	runtime.Language = language
+	if len(runtime.Aliases) == 0 {
+		runtime.Aliases = runtimeAliases(language)
+	}
+	if runtime.Status == "" {
+		runtime.Status = "active"
+	}
+	if runtime.DefaultEntrypoint == "" {
+		runtime.DefaultEntrypoint = defaultEntrypoint(language)
+	}
+	if runtime.CompilePhase == nil {
+		runtime.CompilePhase = runtimeCompilePhase(language)
+	}
+	if runtime.RunPhase == nil {
+		runtime.RunPhase = runtimeRunPhase(language)
+	}
+	if runtime.DefaultLimits == nil {
+		runtime.DefaultLimits = runtimeDefaultLimits(s.resourceDefaultsFor(language))
+	}
+	if runtime.MaxLimits == nil {
+		runtime.MaxLimits = runtimeMaxLimits(s.limitsFor(language))
+	}
+	return runtime
 }
 
 func normalizeLanguage(language string) string {
+	return NormalizeLanguage(language)
+}
+
+func NormalizeLanguage(language string) string {
 	language = strings.ToLower(strings.TrimSpace(language))
 	switch language {
 	case "golang":
@@ -191,6 +441,30 @@ func normalizeLanguage(language string) string {
 	default:
 		return language
 	}
+}
+
+func normalizeRuntimeLimits(runtimeLimits map[string]SubmissionLimits, fallback SubmissionLimits) map[string]SubmissionLimits {
+	normalized := make(map[string]SubmissionLimits, len(runtimeLimits))
+	for language, limits := range runtimeLimits {
+		language = normalizeLanguage(language)
+		if language == "" {
+			continue
+		}
+		normalized[language] = limits.withFallback(fallback)
+	}
+	return normalized
+}
+
+func normalizeRuntimeResourceDefaults(runtimeDefaults map[string]ResourceDefaults, fallback ResourceDefaults) map[string]ResourceDefaults {
+	normalized := make(map[string]ResourceDefaults, len(runtimeDefaults))
+	for language, defaults := range runtimeDefaults {
+		language = normalizeLanguage(language)
+		if language == "" {
+			continue
+		}
+		normalized[language] = defaults.withFallback(fallback)
+	}
+	return normalized
 }
 
 func defaultEntrypoint(language string) string {
@@ -216,14 +490,145 @@ func defaultEntrypoint(language string) string {
 	}
 }
 
+func runtimeAliases(language string) []string {
+	switch normalizeLanguage(language) {
+	case "go":
+		return []string{"golang"}
+	case "cpp":
+		return []string{"c++"}
+	case "csharp":
+		return []string{"cs", "c#"}
+	case "javascript":
+		return []string{"js", "node"}
+	case "python":
+		return []string{"py", "python3"}
+	case "rust":
+		return []string{"rs"}
+	case "typescript":
+		return []string{"ts"}
+	default:
+		return nil
+	}
+}
+
+func runtimeCompilePhase(language string) *pb.RuntimePhase {
+	switch normalizeLanguage(language) {
+	case "go":
+		return phase("go", "build", "-mod=vendor", "-trimpath", "-o", ".laeufer-bin/main", ".")
+	case "c":
+		return phase("gcc", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.c")
+	case "cpp":
+		return phase("g++", "-std=c++20", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.cpp")
+	case "csharp":
+		return phase("mcs", "-nologo", "-out:.laeufer-bin/main.exe", "Program.cs")
+	case "java":
+		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
+	case "javascript":
+		return phase("node", "--check", "main.js")
+	case "python":
+		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
+	case "rust":
+		return phase("rustc", "--edition=2021", "-O", "-o", ".laeufer-bin/main", "main.rs")
+	case "typescript":
+		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
+	default:
+		return &pb.RuntimePhase{}
+	}
+}
+
+func runtimeRunPhase(language string) *pb.RuntimePhase {
+	switch normalizeLanguage(language) {
+	case "go", "c", "cpp", "rust":
+		return phase(".laeufer-bin/main")
+	case "csharp":
+		return phase("mono", ".laeufer-bin/main.exe")
+	case "java":
+		return phase("java", "-cp", ".laeufer-bin", "Main")
+	case "javascript":
+		return phase("node", "main.js")
+	case "python":
+		return phase("python3", "-B", "main.py")
+	case "typescript":
+		return phase("node", ".laeufer-bin/main.js")
+	default:
+		return &pb.RuntimePhase{}
+	}
+}
+
+func phase(command ...string) *pb.RuntimePhase {
+	return &pb.RuntimePhase{Command: command, Enabled: len(command) > 0}
+}
+
+func runtimeDefaultLimits(defaults ResourceDefaults) *pb.RuntimeLimits {
+	return &pb.RuntimeLimits{
+		CompileTimeoutMs: defaults.CompileTimeoutMS,
+		RunTimeoutMs:     defaults.RunTimeoutMS,
+		MemoryLimitBytes: defaults.MemoryLimitBytes,
+		CpuMillis:        defaults.CPUMillis,
+		OutputBytes:      defaults.MaxOutputBytes,
+	}
+}
+
+func runtimeMaxLimits(limits SubmissionLimits) *pb.RuntimeLimits {
+	maxArgs := limits.MaxArgs
+	if maxArgs < 0 {
+		maxArgs = 0
+	}
+	return &pb.RuntimeLimits{
+		CompileTimeoutMs: limits.MaxCompileTimeoutMS,
+		RunTimeoutMs:     limits.MaxRunTimeoutMS,
+		MemoryLimitBytes: limits.MaxMemoryLimitBytes,
+		CpuMillis:        limits.MaxCPUMillis,
+		OutputBytes:      limits.MaxOutputBytes,
+		ArchiveBytes:     limits.MaxArchiveBytes,
+		StdinBytes:       limits.MaxStdinBytes,
+		Args:             uint32(maxArgs),
+		ArgBytes:         limits.MaxArgBytes,
+	}
+}
+
 func cloneRuntime(runtime *pb.Runtime) *pb.Runtime {
 	if runtime == nil {
 		return nil
 	}
 	return &pb.Runtime{
-		Language:       runtime.Language,
-		Version:        runtime.Version,
-		Image:          runtime.Image,
-		RequiresVendor: runtime.RequiresVendor,
+		Language:          runtime.Language,
+		Version:           runtime.Version,
+		Image:             runtime.Image,
+		RequiresVendor:    runtime.RequiresVendor,
+		Aliases:           append([]string(nil), runtime.Aliases...),
+		Status:            runtime.Status,
+		DefaultEntrypoint: runtime.DefaultEntrypoint,
+		CompilePhase:      cloneRuntimePhase(runtime.CompilePhase),
+		RunPhase:          cloneRuntimePhase(runtime.RunPhase),
+		DefaultLimits:     cloneRuntimeLimits(runtime.DefaultLimits),
+		MaxLimits:         cloneRuntimeLimits(runtime.MaxLimits),
+	}
+}
+
+func cloneRuntimePhase(phase *pb.RuntimePhase) *pb.RuntimePhase {
+	if phase == nil {
+		return nil
+	}
+	return &pb.RuntimePhase{
+		Command: append([]string(nil), phase.Command...),
+		Enabled: phase.Enabled,
+	}
+}
+
+func cloneRuntimeLimits(limits *pb.RuntimeLimits) *pb.RuntimeLimits {
+	if limits == nil {
+		return nil
+	}
+	return &pb.RuntimeLimits{
+		CompileTimeoutMs: limits.CompileTimeoutMs,
+		RunTimeoutMs:     limits.RunTimeoutMs,
+		MemoryLimitBytes: limits.MemoryLimitBytes,
+		CpuMillis:        limits.CpuMillis,
+		OutputBytes:      limits.OutputBytes,
+		ArchiveBytes:     limits.ArchiveBytes,
+		StdinBytes:       limits.StdinBytes,
+		Args:             limits.Args,
+		ArgBytes:         limits.ArgBytes,
 	}
 }

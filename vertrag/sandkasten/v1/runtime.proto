@@ -19,4 +19,28 @@ message Runtime {
   string version = 2;
   string image = 3;
   bool requires_vendor = 4;
+  repeated string aliases = 5;
+  string status = 6;
+  string default_entrypoint = 7;
+  RuntimePhase compile_phase = 8;
+  RuntimePhase run_phase = 9;
+  RuntimeLimits default_limits = 10;
+  RuntimeLimits max_limits = 11;
+}
+
+message RuntimePhase {
+  repeated string command = 1;
+  bool enabled = 2;
+}
+
+message RuntimeLimits {
+  uint32 compile_timeout_ms = 1;
+  uint32 run_timeout_ms = 2;
+  uint64 memory_limit_bytes = 3;
+  uint32 cpu_millis = 4;
+  uint64 output_bytes = 5;
+  uint64 archive_bytes = 6;
+  uint64 stdin_bytes = 7;
+  uint32 args = 8;
+  uint64 arg_bytes = 9;
 }

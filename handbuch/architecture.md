@@ -24,7 +24,7 @@ The repository uses German directory names for component ownership:
 
 ## Storage
 
-Postgres is the v1 coordination point. The API writes jobs and serves reads. Runner processes lease jobs asynchronously and update status, artifacts, and terminal errors. There is no queue service in v1; queue semantics are encoded in the `jobs` table.
+Postgres is the v1 coordination point. The API writes jobs and serves reads. Runner processes lease jobs asynchronously, renew leases while executing, and update status, artifacts, terminal errors, and attempt diagnostics only while they still hold the recorded runner id, exact `attempt_id`, and current attempt number. Each lease increments `attempt_count`; expired active jobs that reach `LAEUFER_MAX_ATTEMPTS` are moved to `SYSTEM_ERROR` instead of being retried indefinitely. `LISTEN/NOTIFY` wakes runners for queued jobs and wakes job event streams/cancel watchers for status changes; timed polling remains the fallback and database state remains authoritative. There is no queue service in v1; queue semantics are encoded in the `jobs` table.
 
 ## Runtime Contract
 
@@ -36,8 +36,8 @@ Go jobs must provide:
 
 The first non-Go runtime contract is single-file source with language-specific default entrypoints: `main.c`, `main.cpp`, `Program.cs`, `Main.java`, `main.js`, `main.py`, `main.rs`, and `main.ts`.
 
-The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking.
+The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking. When `LAEUFER_ROOTFS` is configured, child commands execute after a `pivot_root` into that rootfs with the job directory mounted at `/workspace`, private `/tmp`, read-only `/proc` with expanded sensitive proc-file masks and empty read-only proc-directory masks, and a minimal `/dev`.
 
 ## Security Boundary
 
-The API is an ordinary network service. The runner is the high-risk component and must run only on dedicated, tainted nodes. It needs privileged Linux access for namespaces, cgroups, mounts, and future rootfs/seccomp setup. Sandkasten v1 deliberately avoids fallback execution on Docker or unsandboxed host execution when sandbox preflight fails.
+The API is an ordinary network service. The runner is the high-risk component and must run only on dedicated, tainted nodes. It needs privileged Linux access for namespaces, cgroups, mounts, rootfs setup, and child seccomp installation. Sandkasten v1 deliberately avoids fallback execution on Docker or unsandboxed host execution when sandbox preflight fails.

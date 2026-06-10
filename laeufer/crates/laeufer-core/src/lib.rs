@@ -7,9 +7,12 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
+use tokio::sync::watch;
 use uuid::Uuid;
 
 pub type JobId = Uuid;
+pub type AttemptId = Uuid;
+pub type CancellationReceiver = watch::Receiver<bool>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RunnerConfig {
@@ -21,6 +24,7 @@ pub struct RunnerConfig {
     pub max_archive_bytes: u64,
     pub max_archive_files: usize,
     pub compile_memory_limit_bytes: u64,
+    pub max_attempts: u32,
 }
 
 impl RunnerConfig {
@@ -39,6 +43,7 @@ impl RunnerConfig {
         let max_archive_files = usize_env("LAEUFER_MAX_ARCHIVE_FILES", 20_000)?;
         let compile_memory_limit_bytes =
             u64_env("LAEUFER_COMPILE_MEMORY_LIMIT_BYTES", 1024 * 1024 * 1024)?;
+        let max_attempts = positive_u32_env("LAEUFER_MAX_ATTEMPTS", 3)?;
 
         Ok(Self {
             runner_id,
@@ -49,6 +54,7 @@ impl RunnerConfig {
             max_archive_bytes,
             max_archive_files,
             compile_memory_limit_bytes,
+            max_attempts,
         })
     }
 }
@@ -83,6 +89,25 @@ fn usize_env(name: &'static str, default: usize) -> Result<usize, ConfigError> {
     }
 }
 
+fn positive_u32_env(name: &'static str, default: u32) -> Result<u32, ConfigError> {
+    match std::env::var(name) {
+        Ok(value) => positive_u32_value(name, value),
+        Err(_) => Ok(default),
+    }
+}
+
+fn positive_u32_value(name: &'static str, value: String) -> Result<u32, ConfigError> {
+    let parsed = match value.parse::<u32>() {
+        Ok(parsed) => parsed,
+        Err(_) => return Err(ConfigError::InvalidInteger { name, value }),
+    };
+    if parsed == 0 {
+        Err(ConfigError::InvalidPositiveInteger { name, value })
+    } else {
+        Ok(parsed)
+    }
+}
+
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum ConfigError {
     #[error("DATABASE_URL is required")]
@@ -91,6 +116,8 @@ pub enum ConfigError {
     InvalidDuration { name: &'static str, value: String },
     #[error("{name} must be an unsigned integer, got {value:?}")]
     InvalidInteger { name: &'static str, value: String },
+    #[error("{name} must be a positive integer, got {value:?}")]
+    InvalidPositiveInteger { name: &'static str, value: String },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -221,6 +248,7 @@ pub struct StatusParseError(pub String);
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Job {
     pub job_id: JobId,
+    pub attempt_id: AttemptId,
     pub status: JobStatus,
     pub language: String,
     pub runtime_version: String,
@@ -255,6 +283,12 @@ pub struct JobResult {
     pub memory_peak_bytes: u64,
     pub stdout_truncated: bool,
     pub stderr_truncated: bool,
+    pub cpu_usage_usec: u64,
+    pub cpu_throttled_usec: u64,
+    pub pids_peak: u64,
+    pub memory_oom_kill_count: u64,
+    pub cgroup_path: Option<String>,
+    pub child_pid: Option<u32>,
 }
 
 impl JobResult {
@@ -273,6 +307,16 @@ impl JobResult {
         self.memory_peak_bytes = cmp::max(self.memory_peak_bytes, compile.memory_peak_bytes);
         self.stdout_truncated |= compile.stdout_truncated;
         self.stderr_truncated |= compile.stderr_truncated;
+        self.cpu_usage_usec = self.cpu_usage_usec.saturating_add(compile.cpu_usage_usec);
+        self.cpu_throttled_usec = self
+            .cpu_throttled_usec
+            .saturating_add(compile.cpu_throttled_usec);
+        self.pids_peak = cmp::max(self.pids_peak, compile.pids_peak);
+        self.memory_oom_kill_count = self
+            .memory_oom_kill_count
+            .saturating_add(compile.memory_oom_kill_count);
+        self.cgroup_path = compile.cgroup_path;
+        self.child_pid = compile.child_pid;
     }
 
     pub fn absorb_run_output(&mut self, run: JobResult) {
@@ -284,6 +328,16 @@ impl JobResult {
         self.memory_peak_bytes = cmp::max(self.memory_peak_bytes, run.memory_peak_bytes);
         self.stdout_truncated |= run.stdout_truncated;
         self.stderr_truncated |= run.stderr_truncated;
+        self.cpu_usage_usec = self.cpu_usage_usec.saturating_add(run.cpu_usage_usec);
+        self.cpu_throttled_usec = self
+            .cpu_throttled_usec
+            .saturating_add(run.cpu_throttled_usec);
+        self.pids_peak = cmp::max(self.pids_peak, run.pids_peak);
+        self.memory_oom_kill_count = self
+            .memory_oom_kill_count
+            .saturating_add(run.memory_oom_kill_count);
+        self.cgroup_path = run.cgroup_path;
+        self.child_pid = run.child_pid;
     }
 }
 
@@ -331,6 +385,8 @@ pub enum RunnerError {
     MemoryLimitExceeded(String),
     #[error("output limit exceeded: {0}")]
     OutputLimitExceeded(String),
+    #[error("canceled: {0}")]
+    Canceled(String),
     #[error("storage failed: {0}")]
     Store(String),
     #[error("system error: {0}")]
@@ -343,17 +399,32 @@ pub trait JobStore: Send + Sync {
         &self,
         runner_id: &str,
         lease_ttl: Duration,
+        max_attempts: u32,
     ) -> Result<Option<Job>, RunnerError>;
 
     async fn update_status(
         &self,
+        runner_id: &str,
+        attempt_id: AttemptId,
         job_id: JobId,
         status: JobStatus,
         message: &str,
     ) -> Result<(), RunnerError>;
 
+    async fn renew_lease(
+        &self,
+        runner_id: &str,
+        attempt_id: AttemptId,
+        job_id: JobId,
+        lease_ttl: Duration,
+    ) -> Result<(), RunnerError>;
+
+    async fn current_status(&self, job_id: JobId) -> Result<Option<JobStatus>, RunnerError>;
+
     async fn finish(
         &self,
+        runner_id: &str,
+        attempt_id: AttemptId,
         job_id: JobId,
         status: JobStatus,
         result: JobResult,
@@ -369,7 +440,11 @@ pub trait LanguageRuntime: Send + Sync {
 #[async_trait]
 pub trait Sandbox: Send + Sync {
     async fn preflight(&self) -> Result<(), RunnerError>;
-    async fn execute(&self, plan: &CommandPlan) -> Result<JobResult, RunnerError>;
+    async fn execute(
+        &self,
+        plan: &CommandPlan,
+        cancel: &mut CancellationReceiver,
+    ) -> Result<JobResult, RunnerError>;
 }
 
 pub fn terminal_status_from_error(error: &RunnerError) -> JobStatus {
@@ -379,6 +454,7 @@ pub fn terminal_status_from_error(error: &RunnerError) -> JobStatus {
         RunnerError::TimeLimitExceeded(_) => JobStatus::TimeLimitExceeded,
         RunnerError::MemoryLimitExceeded(_) => JobStatus::MemoryLimitExceeded,
         RunnerError::OutputLimitExceeded(_) => JobStatus::OutputLimitExceeded,
+        RunnerError::Canceled(_) => JobStatus::Canceled,
         RunnerError::Preflight(_) | RunnerError::Store(_) | RunnerError::System(_) => {
             JobStatus::SystemError
         }
@@ -388,6 +464,8 @@ pub fn terminal_status_from_error(error: &RunnerError) -> JobStatus {
 pub fn terminal_status_from_compile_result(result: &JobResult) -> Option<JobStatus> {
     if result.output_truncated() {
         Some(JobStatus::OutputLimitExceeded)
+    } else if let Some(signal) = result.signal {
+        Some(terminal_status_from_signal(signal, true))
     } else if result.command_succeeded() {
         None
     } else {
@@ -398,6 +476,8 @@ pub fn terminal_status_from_compile_result(result: &JobResult) -> Option<JobStat
 pub fn terminal_status_from_run_result(result: &JobResult) -> JobStatus {
     if result.output_truncated() {
         JobStatus::OutputLimitExceeded
+    } else if let Some(signal) = result.signal {
+        terminal_status_from_signal(signal, false)
     } else if result.command_succeeded() {
         JobStatus::Succeeded
     } else {
@@ -405,11 +485,110 @@ pub fn terminal_status_from_run_result(result: &JobResult) -> JobStatus {
     }
 }
 
+fn terminal_status_from_signal(signal: i32, compile_phase: bool) -> JobStatus {
+    match signal {
+        libc::SIGXCPU => JobStatus::TimeLimitExceeded,
+        libc::SIGXFSZ => JobStatus::OutputLimitExceeded,
+        _ if compile_phase => JobStatus::CompileFailed,
+        _ => JobStatus::RuntimeFailed,
+    }
+}
+
+pub fn terminal_message_from_compile_result(result: &JobResult, status: JobStatus) -> String {
+    terminal_message_from_result(result, status, "compile")
+}
+
+pub fn terminal_message_from_run_result(result: &JobResult, status: JobStatus) -> String {
+    terminal_message_from_result(result, status, "run")
+}
+
+fn terminal_message_from_result(result: &JobResult, status: JobStatus, phase: &str) -> String {
+    if result.output_truncated() {
+        return format!("{phase} output exceeded configured limit");
+    }
+    if let Some(signal) = result.signal {
+        return signal_message(signal, phase);
+    }
+    match status {
+        JobStatus::Succeeded => String::new(),
+        JobStatus::CompileFailed => "compile did not complete successfully".to_owned(),
+        JobStatus::RuntimeFailed => "job process exited unsuccessfully".to_owned(),
+        JobStatus::TimeLimitExceeded => format!("{phase} exceeded CPU time rlimit"),
+        JobStatus::OutputLimitExceeded => {
+            format!("{phase} exceeded output or file-size limit")
+        }
+        _ => "job finished with terminal status".to_owned(),
+    }
+}
+
+pub fn terminal_reason_from_result(status: JobStatus, result: &JobResult) -> String {
+    if status == JobStatus::MemoryLimitExceeded && result.memory_oom_kill_count > 0 {
+        return "memory_cgroup_oom".to_owned();
+    }
+    if result.output_truncated() {
+        return "output_truncated".to_owned();
+    }
+    if let Some(signal) = result.signal {
+        return signal_terminal_reason(signal);
+    }
+    if let Some(exit_code) = result.exit_code {
+        if status == JobStatus::Succeeded {
+            return "exit_code_0".to_owned();
+        }
+        return format!("exit_code_{exit_code}");
+    }
+    match status {
+        JobStatus::TimeLimitExceeded => "timeout".to_owned(),
+        JobStatus::MemoryLimitExceeded => "memory_limit".to_owned(),
+        JobStatus::OutputLimitExceeded => "output_limit".to_owned(),
+        JobStatus::Canceled => "canceled".to_owned(),
+        JobStatus::SystemError => "system_error".to_owned(),
+        JobStatus::CompileFailed => "compile_failed".to_owned(),
+        JobStatus::RuntimeFailed => "runtime_failed".to_owned(),
+        JobStatus::Succeeded => "succeeded".to_owned(),
+        JobStatus::Queued | JobStatus::Validating | JobStatus::Compiling | JobStatus::Running => {
+            "non_terminal".to_owned()
+        }
+    }
+}
+
+fn signal_terminal_reason(signal: i32) -> String {
+    match signal {
+        libc::SIGSYS => "seccomp_sigsys".to_owned(),
+        libc::SIGXCPU => "cpu_rlimit_sigxcpu".to_owned(),
+        libc::SIGXFSZ => "file_size_rlimit_sigxfsz".to_owned(),
+        libc::SIGKILL => "signal_sigkill".to_owned(),
+        libc::SIGTERM => "signal_sigterm".to_owned(),
+        libc::SIGSEGV => "signal_sigsegv".to_owned(),
+        libc::SIGBUS => "signal_sigbus".to_owned(),
+        libc::SIGILL => "signal_sigill".to_owned(),
+        libc::SIGABRT => "signal_sigabrt".to_owned(),
+        _ => format!("signal_{signal}"),
+    }
+}
+
+fn signal_message(signal: i32, phase: &str) -> String {
+    match signal {
+        libc::SIGSYS => format!("{phase} blocked by seccomp"),
+        libc::SIGXCPU => format!("{phase} exceeded CPU time rlimit"),
+        libc::SIGXFSZ => format!("{phase} exceeded file-size rlimit"),
+        libc::SIGKILL => format!("{phase} killed by SIGKILL"),
+        libc::SIGTERM => format!("{phase} terminated by SIGTERM"),
+        libc::SIGSEGV => format!("{phase} segmentation fault"),
+        libc::SIGBUS => format!("{phase} bus error"),
+        libc::SIGILL => format!("{phase} illegal instruction"),
+        libc::SIGABRT => format!("{phase} aborted"),
+        _ => format!("{phase} terminated by signal {signal}"),
+    }
+}
+
 pub async fn execute_job<S, L, X>(
     store: &S,
+    runner_id: &str,
     runtime: &L,
     sandbox: &X,
     job: Job,
+    cancel: &mut CancellationReceiver,
 ) -> Result<JobStatus, RunnerError>
 where
     S: JobStore + ?Sized,
@@ -417,73 +596,178 @@ where
     X: Sandbox + ?Sized,
 {
     let mut result = JobResult::default();
+    let attempt_id = job.attempt_id;
 
     store
-        .update_status(job.job_id, JobStatus::Validating, "validating job archive")
+        .update_status(
+            runner_id,
+            attempt_id,
+            job.job_id,
+            JobStatus::Validating,
+            "validating job archive",
+        )
         .await?;
+    if cancellation_requested(cancel) {
+        finish_canceled(
+            store,
+            runner_id,
+            attempt_id,
+            job.job_id,
+            result,
+            "job canceled while validating",
+        )
+        .await?;
+        return Ok(JobStatus::Canceled);
+    }
 
     let plan = match runtime.prepare(&job).await {
         Ok(plan) => plan,
         Err(error) => {
             let status = terminal_status_from_error(&error);
-            finish_error(store, job.job_id, result, error).await?;
+            finish_error(store, runner_id, attempt_id, job.job_id, result, error).await?;
             return Ok(status);
         }
     };
+    if cancellation_requested(cancel) {
+        finish_canceled(
+            store,
+            runner_id,
+            attempt_id,
+            job.job_id,
+            result,
+            "job canceled before compile",
+        )
+        .await?;
+        return Ok(JobStatus::Canceled);
+    }
 
     store
-        .update_status(job.job_id, JobStatus::Compiling, "compiling job")
+        .update_status(
+            runner_id,
+            attempt_id,
+            job.job_id,
+            JobStatus::Compiling,
+            "compiling job",
+        )
         .await?;
 
-    let compile_output = match sandbox.execute(&plan.compile).await {
+    let compile_output = match sandbox.execute(&plan.compile, cancel).await {
         Ok(output) => output,
+        Err(RunnerError::Canceled(message)) => {
+            let message = format!("job canceled during compile: {message}");
+            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
+            return Ok(JobStatus::Canceled);
+        }
         Err(error) => {
-            finish_error(store, job.job_id, result, error.clone()).await?;
+            finish_error(
+                store,
+                runner_id,
+                attempt_id,
+                job.job_id,
+                result,
+                error.clone(),
+            )
+            .await?;
             return Ok(terminal_status_from_error(&error));
         }
     };
 
     let compile_status = terminal_status_from_compile_result(&compile_output);
+    let compile_message =
+        compile_status.map(|status| terminal_message_from_compile_result(&compile_output, status));
     result.absorb_compile_output(compile_output);
     if let Some(status) = compile_status {
+        let message = compile_message.unwrap_or_else(|| "compile failed".to_owned());
         store
-            .finish(
-                job.job_id,
-                status,
-                result,
-                "compile did not complete successfully",
-            )
+            .finish(runner_id, attempt_id, job.job_id, status, result, &message)
             .await?;
         return Ok(status);
     }
+    if cancellation_requested(cancel) {
+        finish_canceled(
+            store,
+            runner_id,
+            attempt_id,
+            job.job_id,
+            result,
+            "job canceled before run",
+        )
+        .await?;
+        return Ok(JobStatus::Canceled);
+    }
 
     store
-        .update_status(job.job_id, JobStatus::Running, "running job")
+        .update_status(
+            runner_id,
+            attempt_id,
+            job.job_id,
+            JobStatus::Running,
+            "running job",
+        )
         .await?;
 
-    let run_output = match sandbox.execute(&plan.run).await {
+    let run_output = match sandbox.execute(&plan.run, cancel).await {
         Ok(output) => output,
+        Err(RunnerError::Canceled(message)) => {
+            let message = format!("job canceled during run: {message}");
+            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
+            return Ok(JobStatus::Canceled);
+        }
         Err(error) => {
-            finish_error(store, job.job_id, result, error.clone()).await?;
+            finish_error(
+                store,
+                runner_id,
+                attempt_id,
+                job.job_id,
+                result,
+                error.clone(),
+            )
+            .await?;
             return Ok(terminal_status_from_error(&error));
         }
     };
 
     result.absorb_run_output(run_output);
     let status = terminal_status_from_run_result(&result);
-    let message = match status {
-        JobStatus::Succeeded => "",
-        JobStatus::OutputLimitExceeded => "job output exceeded configured limit",
-        JobStatus::RuntimeFailed => "job process exited unsuccessfully",
-        _ => "job finished with terminal status",
-    };
-    store.finish(job.job_id, status, result, message).await?;
+    let message = terminal_message_from_run_result(&result, status);
+    store
+        .finish(runner_id, attempt_id, job.job_id, status, result, &message)
+        .await?;
 
     Ok(status)
 }
 
+fn cancellation_requested(cancel: &CancellationReceiver) -> bool {
+    *cancel.borrow()
+}
+
+async fn finish_canceled<S>(
+    store: &S,
+    runner_id: &str,
+    attempt_id: AttemptId,
+    job_id: JobId,
+    result: JobResult,
+    message: &str,
+) -> Result<(), RunnerError>
+where
+    S: JobStore + ?Sized,
+{
+    store
+        .finish(
+            runner_id,
+            attempt_id,
+            job_id,
+            JobStatus::Canceled,
+            result,
+            message,
+        )
+        .await
+}
+
 async fn finish_error<S>(
     store: &S,
+    runner_id: &str,
+    attempt_id: AttemptId,
     job_id: JobId,
     result: JobResult,
     error: RunnerError,
@@ -493,12 +777,15 @@ where
 {
     let status = terminal_status_from_error(&error);
     let message = error.to_string();
-    store.finish(job_id, status, result, &message).await
+    store
+        .finish(runner_id, attempt_id, job_id, status, result, &message)
+        .await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
 
     #[test]
     fn status_maps_db_and_proto_names() {
@@ -558,6 +845,10 @@ mod tests {
             terminal_status_from_error(&RunnerError::Preflight("missing cgroup".to_owned())),
             JobStatus::SystemError
         );
+        assert_eq!(
+            terminal_status_from_error(&RunnerError::Canceled("client".to_owned())),
+            JobStatus::Canceled
+        );
     }
 
     #[test]
@@ -585,6 +876,36 @@ mod tests {
             terminal_status_from_compile_result(&truncated),
             Some(JobStatus::OutputLimitExceeded)
         );
+
+        let cpu_signal = JobResult {
+            signal: Some(libc::SIGXCPU),
+            ..JobResult::default()
+        };
+        let file_signal = JobResult {
+            signal: Some(libc::SIGXFSZ),
+            ..JobResult::default()
+        };
+        let seccomp_signal = JobResult {
+            signal: Some(libc::SIGSYS),
+            ..JobResult::default()
+        };
+
+        assert_eq!(
+            terminal_status_from_compile_result(&cpu_signal),
+            Some(JobStatus::TimeLimitExceeded)
+        );
+        assert_eq!(
+            terminal_status_from_compile_result(&file_signal),
+            Some(JobStatus::OutputLimitExceeded)
+        );
+        assert_eq!(
+            terminal_status_from_compile_result(&seccomp_signal),
+            Some(JobStatus::CompileFailed)
+        );
+        assert_eq!(
+            terminal_message_from_compile_result(&seccomp_signal, JobStatus::CompileFailed),
+            "compile blocked by seccomp"
+        );
     }
 
     #[test]
@@ -599,6 +920,18 @@ mod tests {
         };
         let signaled = JobResult {
             signal: Some(9),
+            ..JobResult::default()
+        };
+        let cpu_signal = JobResult {
+            signal: Some(libc::SIGXCPU),
+            ..JobResult::default()
+        };
+        let file_signal = JobResult {
+            signal: Some(libc::SIGXFSZ),
+            ..JobResult::default()
+        };
+        let seccomp_signal = JobResult {
+            signal: Some(libc::SIGSYS),
             ..JobResult::default()
         };
         let truncated = JobResult {
@@ -617,8 +950,219 @@ mod tests {
             JobStatus::RuntimeFailed
         );
         assert_eq!(
+            terminal_status_from_run_result(&cpu_signal),
+            JobStatus::TimeLimitExceeded
+        );
+        assert_eq!(
+            terminal_status_from_run_result(&file_signal),
+            JobStatus::OutputLimitExceeded
+        );
+        assert_eq!(
+            terminal_status_from_run_result(&seccomp_signal),
+            JobStatus::RuntimeFailed
+        );
+        assert_eq!(
+            terminal_message_from_run_result(&seccomp_signal, JobStatus::RuntimeFailed),
+            "run blocked by seccomp"
+        );
+        assert_eq!(
             terminal_status_from_run_result(&truncated),
             JobStatus::OutputLimitExceeded
         );
+    }
+
+    #[test]
+    fn terminal_reasons_are_stable() {
+        let seccomp = JobResult {
+            signal: Some(libc::SIGSYS),
+            ..JobResult::default()
+        };
+        let truncated = JobResult {
+            stdout_truncated: true,
+            ..JobResult::default()
+        };
+        let oom = JobResult {
+            memory_oom_kill_count: 1,
+            ..JobResult::default()
+        };
+        let failed = JobResult {
+            exit_code: Some(2),
+            ..JobResult::default()
+        };
+
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::RuntimeFailed, &seccomp),
+            "seccomp_sigsys"
+        );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::OutputLimitExceeded, &truncated),
+            "output_truncated"
+        );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::MemoryLimitExceeded, &oom),
+            "memory_cgroup_oom"
+        );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::CompileFailed, &failed),
+            "exit_code_2"
+        );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::TimeLimitExceeded, &JobResult::default()),
+            "timeout"
+        );
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_validation_finishes_attempt() {
+        let store = RecordingStore::default();
+        let runtime = NeverRuntime;
+        let sandbox = NeverSandbox;
+        let job = test_job();
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(true);
+
+        let status = execute_job(
+            &store,
+            "runner-a",
+            &runtime,
+            &sandbox,
+            job.clone(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect("canceled job should finish cleanly");
+
+        assert_eq!(status, JobStatus::Canceled);
+        let finishes = store.finishes.lock().expect("finishes");
+        assert_eq!(finishes.len(), 1);
+        assert_eq!(finishes[0].0, job.attempt_id);
+        assert_eq!(finishes[0].1, JobStatus::Canceled);
+        assert_eq!(finishes[0].2, "job canceled while validating");
+        assert_eq!(finishes[0].3, "runner-a");
+    }
+
+    #[test]
+    fn max_attempts_must_be_positive() {
+        assert_eq!(
+            positive_u32_value("LAEUFER_MAX_ATTEMPTS", "3".to_owned()),
+            Ok(3)
+        );
+        assert!(matches!(
+            positive_u32_value("LAEUFER_MAX_ATTEMPTS", "0".to_owned()),
+            Err(ConfigError::InvalidPositiveInteger { .. })
+        ));
+        assert!(matches!(
+            positive_u32_value("LAEUFER_MAX_ATTEMPTS", "abc".to_owned()),
+            Err(ConfigError::InvalidInteger { .. })
+        ));
+    }
+
+    #[derive(Default)]
+    struct RecordingStore {
+        finishes: Mutex<Vec<(AttemptId, JobStatus, String, String)>>,
+    }
+
+    #[async_trait::async_trait]
+    impl JobStore for RecordingStore {
+        async fn lease_next(
+            &self,
+            _runner_id: &str,
+            _lease_ttl: Duration,
+            _max_attempts: u32,
+        ) -> Result<Option<Job>, RunnerError> {
+            Ok(None)
+        }
+
+        async fn update_status(
+            &self,
+            _runner_id: &str,
+            _attempt_id: AttemptId,
+            _job_id: JobId,
+            _status: JobStatus,
+            _message: &str,
+        ) -> Result<(), RunnerError> {
+            Ok(())
+        }
+
+        async fn renew_lease(
+            &self,
+            _runner_id: &str,
+            _attempt_id: AttemptId,
+            _job_id: JobId,
+            _lease_ttl: Duration,
+        ) -> Result<(), RunnerError> {
+            Ok(())
+        }
+
+        async fn current_status(&self, _job_id: JobId) -> Result<Option<JobStatus>, RunnerError> {
+            Ok(None)
+        }
+
+        async fn finish(
+            &self,
+            runner_id: &str,
+            attempt_id: AttemptId,
+            _job_id: JobId,
+            status: JobStatus,
+            _result: JobResult,
+            error_message: &str,
+        ) -> Result<(), RunnerError> {
+            self.finishes.lock().expect("finishes").push((
+                attempt_id,
+                status,
+                error_message.to_owned(),
+                runner_id.to_owned(),
+            ));
+            Ok(())
+        }
+    }
+
+    struct NeverRuntime;
+
+    #[async_trait::async_trait]
+    impl LanguageRuntime for NeverRuntime {
+        async fn prepare(&self, _job: &Job) -> Result<BuildPlan, RunnerError> {
+            panic!("runtime should not be called after cancellation")
+        }
+    }
+
+    struct NeverSandbox;
+
+    #[async_trait::async_trait]
+    impl Sandbox for NeverSandbox {
+        async fn preflight(&self) -> Result<(), RunnerError> {
+            Ok(())
+        }
+
+        async fn execute(
+            &self,
+            _plan: &CommandPlan,
+            _cancel: &mut CancellationReceiver,
+        ) -> Result<JobResult, RunnerError> {
+            panic!("sandbox should not be called after cancellation")
+        }
+    }
+
+    fn test_job() -> Job {
+        Job {
+            job_id: Uuid::new_v4(),
+            attempt_id: Uuid::new_v4(),
+            status: JobStatus::Validating,
+            language: "python".to_owned(),
+            runtime_version: "3.11".to_owned(),
+            entrypoint: "main.py".to_owned(),
+            args: Vec::new(),
+            stdin: Bytes::new(),
+            archive_targz: Bytes::from_static(b"archive"),
+            limits: JobLimits {
+                compile_timeout: Duration::from_secs(1),
+                run_timeout: Duration::from_secs(1),
+                memory_limit_bytes: 128 * 1024 * 1024,
+                cpu_millis: 1000,
+                max_output_bytes: 1024,
+            },
+            created_at: Utc::now(),
+            started_at: None,
+            finished_at: None,
+        }
     }
 }

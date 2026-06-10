@@ -50,8 +50,26 @@ func run() error {
 		return err
 	}
 
-	repo := postgres.NewRepository(db, cfg.EventPollInterval, cfg.DefaultRuntime)
-	service := jobs.NewServiceWithRuntimes(repo, cfg.DefaultRuntime, cfg.SupportedRuntimes)
+	repo := postgres.NewRepositoryWithOptions(
+		db,
+		cfg.EventPollInterval,
+		cfg.DefaultRuntime,
+		postgres.RepositoryOptions{
+			MaxQueuedJobs: cfg.MaxQueuedJobs,
+			MaxActiveJobs: cfg.MaxActiveJobs,
+		},
+	)
+	service := jobs.NewServiceWithOptions(
+		repo,
+		cfg.DefaultRuntime,
+		cfg.SupportedRuntimes,
+		jobs.ServiceOptions{
+			Limits:                  cfg.SubmissionLimits,
+			DefaultResources:        cfg.ResourceDefaults,
+			RuntimeLimits:           cfg.RuntimeSubmissionLimits,
+			RuntimeResourceDefaults: cfg.RuntimeResourceDefaults,
+		},
+	)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(auth.UnaryInterceptor(cfg.AuthToken)),
