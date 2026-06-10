@@ -321,6 +321,8 @@ func normalizeLanguage(language string) string {
 		return "javascript"
 	case "py", "python3":
 		return "python"
+	case "rscript":
+		return "r"
 	case "rs":
 		return "rust"
 	case "ts":
@@ -346,6 +348,8 @@ func defaultEntrypoint(language string) string {
 		return "main.js"
 	case "python":
 		return "main.py"
+	case "r":
+		return "main.R"
 	case "rust":
 		return "main.rs"
 	case "typescript":
@@ -359,7 +363,7 @@ func sourceArchive(language, source string) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source)
-	case "c", "cpp", "csharp", "java", "javascript", "python", "rust", "typescript":
+	case "c", "cpp", "csharp", "java", "javascript", "python", "r", "rust", "typescript":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source))
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

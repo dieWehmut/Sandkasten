@@ -193,3 +193,43 @@ if [[ "$http_status" != "JOB_STATUS_SUCCEEDED" || "$http_stdout" != "hello, Sand
 fi
 
 printf 'HTTP smoke passed: %s -> hello, Sandkasten\n' "$(jq -r '.jobId' <<<"$http_json")"
+
+printf 'Submitting Sandkasten API Go smoke with timing...\n'
+api_source="$(cat <<'GO'
+package main
+
+import (
+  "encoding/json"
+  "fmt"
+)
+
+func main() {
+  data, err := json.Marshal(map[string]string{"runner": "sandkasten"})
+  if err != nil {
+    panic(err)
+  }
+  fmt.Printf("sandkasten-smoke %s\n", data)
+}
+GO
+)"
+api_payload="$(jq -nc --arg source "$api_source" '{source:$source,wait:true,waitTimeoutMs:30000}')"
+api_start_ms="$(date +%s%3N)"
+api_json="$(
+  curl -fsS \
+    -H "authorization: Bearer ${API_TOKEN}" \
+    -H 'content-type: application/json' \
+    -H 'origin: http://localhost:5173' \
+    -d "$api_payload" \
+    "http://${HTTP_ADDR}/v1/go/run"
+)"
+api_elapsed_ms="$(( $(date +%s%3N) - api_start_ms ))"
+api_status="$(jq -r '.status' <<<"$api_json")"
+api_stdout="$(jq -r '.stdout' <<<"$api_json")"
+if [[ "$api_status" != "JOB_STATUS_SUCCEEDED" || "$api_stdout" != 'sandkasten-smoke {"runner":"sandkasten"}' ]]; then
+  printf 'Sandkasten API go smoke failed\nstatus: %s\nstdout: %q\njob: %s\n' "$api_status" "$api_stdout" "$api_json" >&2
+  printf 'runner log:\n' >&2
+  cat /tmp/sandkasten-runner-smoke.log >&2
+  exit 1
+fi
+
+printf 'Sandkasten API Go smoke passed in %s ms: %s\n' "$api_elapsed_ms" "$(jq -r '.jobId' <<<"$api_json")"

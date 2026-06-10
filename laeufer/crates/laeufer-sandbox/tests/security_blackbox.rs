@@ -1,4 +1,4 @@
-use laeufer_core::{CommandPlan, RunnerError, Sandbox};
+use laeufer_core::{CommandPlan, RunnerError, Sandbox, SeccompProfile};
 use laeufer_sandbox::{LinuxSandbox, SandboxConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ async fn enforces_output_limit_and_truncates_stdout() {
     let harness = SecurityHarness::new();
     harness.preflight().await;
 
-    let err = harness
+    let result = harness
         .run_shell(
             "yes x | head -c 1048576",
             1024,
@@ -48,12 +48,10 @@ async fn enforces_output_limit_and_truncates_stdout() {
             128 * 1024 * 1024,
         )
         .await
-        .expect_err("output flood should trip output limit");
+        .expect("output flood should return a truncated result");
 
-    assert!(
-        matches!(err, RunnerError::OutputLimitExceeded(_)),
-        "{err:?}"
-    );
+    assert!(result.stdout_truncated, "{result:?}");
+    assert_eq!(result.stdout.len(), 1024);
 }
 
 #[tokio::test]
@@ -303,10 +301,11 @@ PY"#,
         .await
         .expect("seccomp probe should execute");
 
-    assert_eq!(
-        result.signal,
-        Some(libc::SIGSYS),
-        "socket() was not killed by seccomp: {result:?}"
+    assert_ne!(result.exit_code, Some(0), "{result:?}");
+    assert_eq!(result.signal, None, "{result:?}");
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("PermissionError"),
+        "socket() was not denied with EPERM: {result:?}"
     );
 }
 
@@ -372,6 +371,7 @@ impl SecurityHarness {
             memory_limit_bytes,
             cpu_millis: 1000,
             max_output_bytes,
+            seccomp_profile: SeccompProfile::Run,
         };
         let (_cancel_tx, mut cancel_rx) = watch::channel(false);
 

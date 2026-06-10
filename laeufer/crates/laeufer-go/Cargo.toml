@@ -14,4 +14,5 @@ thiserror.workspace = true
 [dev-dependencies]
 bytes.workspace = true
 chrono.workspace = true
+tempfile.workspace = true
 uuid.workspace = true

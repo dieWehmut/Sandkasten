@@ -34,7 +34,7 @@ Go jobs must provide:
 - `vendor/` directory.
 - An entrypoint path, defaulting to `.`.
 
-The first non-Go runtime contract is single-file source with language-specific default entrypoints: `main.c`, `main.cpp`, `Program.cs`, `Main.java`, `main.js`, `main.py`, `main.rs`, and `main.ts`.
+The first non-Go runtime contract is single-file source with language-specific default entrypoints: `main.c`, `main.cpp`, `Program.cs`, `Main.java`, `main.js`, `main.py`, `main.R`, `main.rs`, and `main.ts`.
 
 The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking. When `LAEUFER_ROOTFS` is configured, child commands execute after a `pivot_root` into that rootfs with the job directory mounted at `/workspace`, private `/tmp`, read-only `/proc` with expanded sensitive proc-file masks and empty read-only proc-directory masks, and a minimal `/dev`.
 

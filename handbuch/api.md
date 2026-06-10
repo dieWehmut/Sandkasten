@@ -52,7 +52,7 @@ These defaults can be overridden globally:
 
 Each supported runtime can also override these defaults with `SANDKASTEN_<LANG>_DEFAULT_*`, for example `SANDKASTEN_PYTHON_DEFAULT_RUN_TIMEOUT_MS`. Language aliases are normalized first, so `py` uses the `PYTHON` prefix and `c++` uses the `CPP` prefix.
 
-Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `python`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `py`, `rs`, and `ts` are normalized.
+Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `python`, `r`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `py`, `rscript`, `rs`, and `ts` are normalized.
 
 Default entrypoints:
 
@@ -63,6 +63,7 @@ Default entrypoints:
 - Java: `Main.java`
 - JavaScript: `main.js`
 - Python: `main.py`
+- R: `main.R`
 - Rust: `main.rs`
 - TypeScript: `main.ts`
 
@@ -111,7 +112,7 @@ Backpressure returns gRPC `ResourceExhausted` and HTTP `503 resource_exhausted`.
 
 ## Runner Rlimits
 
-The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=128`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. Optional `LAEUFER_RLIMIT_CPU_SECONDS` is disabled when unset or `0`; when set, it installs an `RLIMIT_CPU` soft limit with a one-second higher hard limit.
+The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=1024`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. Optional `LAEUFER_RLIMIT_CPU_SECONDS` is disabled when unset or `0`; when set, it installs an `RLIMIT_CPU` soft limit with a one-second higher hard limit.
 
 Per-command cgroups also set `memory.oom.group=1`, `pids.max`, `memory.max`, and `cpu.max`. `LAEUFER_PIDS_MAX` defaults to `64`; set it to `0` to write `pids.max=max`. `LAEUFER_MEMORY_SWAP_MAX_BYTES` is optional; when set, its value is written to `memory.swap.max`, so `0` disables swap for the command cgroup.
 

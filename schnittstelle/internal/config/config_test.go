@@ -45,6 +45,19 @@ func TestLoadIgnoresRuntimeLimitEnvForDisabledLanguage(t *testing.T) {
 	}
 }
 
+func TestLoadIncludesRRuntimeByDefault(t *testing.T) {
+	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "")
+
+	cfg := Load()
+
+	for _, runtime := range cfg.SupportedRuntimes {
+		if runtime.GetLanguage() == "r" {
+			return
+		}
+	}
+	t.Fatalf("SupportedRuntimes = %v, want r", cfg.SupportedRuntimes)
+}
+
 func TestCloneRuntimeCopiesManifestFields(t *testing.T) {
 	source := &pb.Runtime{
 		Language:          "python",

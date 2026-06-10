@@ -90,6 +90,39 @@ func TestSubmitProjectAppliesLanguageRuntimeAndEntrypoint(t *testing.T) {
 	}
 }
 
+func TestSubmitProjectAppliesRRuntimeManifest(t *testing.T) {
+	repo := &fakeRepo{}
+	service := NewServiceWithRuntimes(
+		repo,
+		&pb.Runtime{Language: "go", Version: "1.26"},
+		[]*pb.Runtime{
+			{Language: "go", Version: "1.26"},
+			{Language: "r", Version: "system"},
+		},
+	)
+
+	_, err := service.SubmitGoProject(context.Background(), &pb.SubmitGoProjectRequest{
+		Language:     "rscript",
+		ArchiveTargz: []byte("tgz"),
+	})
+	if err != nil {
+		t.Fatalf("SubmitGoProject() error = %v", err)
+	}
+
+	if repo.created.Runtime.GetLanguage() != "r" {
+		t.Fatalf("Runtime.Language = %q", repo.created.Runtime.GetLanguage())
+	}
+	if repo.created.Entrypoint != "main.R" {
+		t.Fatalf("Entrypoint = %q", repo.created.Entrypoint)
+	}
+	if !containsString(repo.created.Runtime.GetAliases(), "rscript") {
+		t.Fatalf("Runtime.Aliases = %v, want rscript", repo.created.Runtime.GetAliases())
+	}
+	if got := repo.created.Runtime.GetRunPhase().GetCommand(); len(got) != 3 || got[0] != "Rscript" || got[1] != "--vanilla" || got[2] != "main.R" {
+		t.Fatalf("Runtime.RunPhase.Command = %v", got)
+	}
+}
+
 func TestListRuntimesIncludesManifest(t *testing.T) {
 	service := NewServiceWithOptions(
 		&fakeRepo{},

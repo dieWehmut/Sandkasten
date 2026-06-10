@@ -341,6 +341,21 @@ impl JobResult {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum SeccompProfile {
+    Compile,
+    Run,
+}
+
+impl SeccompProfile {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Compile => "compile",
+            Self::Run => "run",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommandPlan {
     pub program: String,
@@ -352,6 +367,7 @@ pub struct CommandPlan {
     pub memory_limit_bytes: u64,
     pub cpu_millis: u32,
     pub max_output_bytes: u64,
+    pub seccomp_profile: SeccompProfile,
 }
 
 impl CommandPlan {

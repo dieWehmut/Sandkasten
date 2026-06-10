@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use laeufer_core::{CancellationReceiver, CommandPlan, JobResult, RunnerError, Sandbox};
+use laeufer_core::{
+    CancellationReceiver, CommandPlan, JobResult, RunnerError, Sandbox, SeccompProfile,
+};
 use std::ffi::{CStr, CString, OsString};
 use std::fs;
 use std::io;
@@ -129,7 +131,7 @@ impl ChildRlimits {
             cpu_seconds: optional_nonzero_env_u64("LAEUFER_RLIMIT_CPU_SECONDS")?,
             core_bytes: env_u64("LAEUFER_RLIMIT_CORE_BYTES", 0)?,
             file_size_bytes: env_u64("LAEUFER_RLIMIT_FSIZE_BYTES", 64 * 1024 * 1024)?,
-            nofile: env_u64("LAEUFER_RLIMIT_NOFILE", 128)?,
+            nofile: env_u64("LAEUFER_RLIMIT_NOFILE", 1024)?,
             nproc: env_u64("LAEUFER_RLIMIT_NPROC", DEFAULT_PIDS_MAX)?,
             stack_bytes: env_u64("LAEUFER_RLIMIT_STACK_BYTES", 64 * 1024 * 1024)?,
             memlock_bytes: env_u64("LAEUFER_RLIMIT_MEMLOCK_BYTES", 0)?,
@@ -143,7 +145,7 @@ impl Default for ChildRlimits {
             cpu_seconds: None,
             core_bytes: 0,
             file_size_bytes: 64 * 1024 * 1024,
-            nofile: 128,
+            nofile: 1024,
             nproc: DEFAULT_PIDS_MAX,
             stack_bytes: 64 * 1024 * 1024,
             memlock_bytes: 0,
@@ -255,6 +257,7 @@ async fn execute_command(
                 require_private_namespaces: config.require_private_namespaces,
                 enable_seccomp: config.enable_seccomp,
                 child_rlimits: config.child_rlimits,
+                seccomp_profile: execution_plan.plan.seccomp_profile,
             },
             cgroup_procs_path: cgroup.procs_path(),
             rootfs: config.rootfs.as_deref(),
@@ -759,6 +762,7 @@ struct ChildSetupOptions {
     require_private_namespaces: bool,
     enable_seccomp: bool,
     child_rlimits: ChildRlimits,
+    seccomp_profile: SeccompProfile,
 }
 
 struct ChildSetupPaths {
@@ -827,7 +831,7 @@ fn configure_child_process(options: ChildSetupOptions, paths: &ChildSetupPaths) 
             }
         }
         if options.enable_seccomp {
-            install_seccomp_denylist()?;
+            install_seccomp_denylist(options.seccomp_profile)?;
         }
         close_inherited_fds()?;
     }
@@ -1127,8 +1131,8 @@ fn close_inherited_fds_via_proc() -> io::Result<()> {
     Ok(())
 }
 
-fn install_seccomp_denylist() -> io::Result<()> {
-    let mut instructions = seccomp_filter_instructions();
+fn install_seccomp_denylist(profile: SeccompProfile) -> io::Result<()> {
+    let mut instructions = seccomp_filter_instructions(profile);
     let mut program = libc::sock_fprog {
         len: instructions
             .len()
@@ -1153,8 +1157,9 @@ fn install_seccomp_denylist() -> io::Result<()> {
     }
 }
 
-fn seccomp_filter_instructions() -> Vec<libc::sock_filter> {
-    let mut instructions = Vec::with_capacity(seccomp_denied_syscalls().len() * 2 + 5);
+fn seccomp_filter_instructions(profile: SeccompProfile) -> Vec<libc::sock_filter> {
+    let denied_syscalls = seccomp_denied_syscalls(profile);
+    let mut instructions = Vec::with_capacity(denied_syscalls.len() * 2 + 5);
     instructions.push(bpf_stmt(
         (libc::BPF_LD | libc::BPF_W | libc::BPF_ABS) as u16,
         SECCOMP_DATA_ARCH_OFFSET,
@@ -1170,14 +1175,14 @@ fn seccomp_filter_instructions() -> Vec<libc::sock_filter> {
         (libc::BPF_LD | libc::BPF_W | libc::BPF_ABS) as u16,
         SECCOMP_DATA_NR_OFFSET,
     ));
-    for syscall in seccomp_denied_syscalls() {
+    for syscall in denied_syscalls {
         instructions.push(bpf_jump(
             (libc::BPF_JMP | libc::BPF_JEQ | libc::BPF_K) as u16,
-            *syscall as u32,
+            syscall as u32,
             0,
             1,
         ));
-        instructions.push(seccomp_ret(seccomp_syscall_action(*syscall)));
+        instructions.push(seccomp_ret(seccomp_syscall_action(syscall)));
     }
     instructions.push(seccomp_ret(libc::SECCOMP_RET_ALLOW));
     instructions
@@ -1206,8 +1211,14 @@ fn bpf_jump(code: u16, k: u32, jt: u8, jf: u8) -> libc::sock_filter {
     unsafe { libc::BPF_JUMP(code, k, jt, jf) }
 }
 
-fn seccomp_denied_syscalls() -> &'static [libc::c_long] {
-    SECCOMP_DENIED_SYSCALLS
+fn seccomp_denied_syscalls(profile: SeccompProfile) -> Vec<libc::c_long> {
+    let mut denied = BASE_SECCOMP_DENIED_SYSCALLS.to_vec();
+    if profile == SeccompProfile::Run {
+        denied.extend_from_slice(RUN_SECCOMP_EXTRA_DENIED_SYSCALLS);
+    }
+    denied.sort_unstable();
+    denied.dedup();
+    denied
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -1234,7 +1245,7 @@ const AUDIT_ARCH_X86_64: u32 = 0xc000003e;
 const AUDIT_ARCH_AARCH64: u32 = 0xc00000b7;
 
 #[rustfmt::skip]
-const SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
+const BASE_SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
     libc::SYS_socket,
     libc::SYS_bind,
     libc::SYS_listen,
@@ -1273,6 +1284,7 @@ const SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
     libc::SYS_perf_event_open,
     libc::SYS_fanotify_init,
     libc::SYS_fanotify_mark,
+    libc::SYS_name_to_handle_at,
     libc::SYS_open_by_handle_at,
     libc::SYS_keyctl,
     libc::SYS_add_key,
@@ -1280,6 +1292,10 @@ const SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
     libc::SYS_reboot,
     libc::SYS_kexec_load,
     libc::SYS_kexec_file_load,
+    libc::SYS_sethostname,
+    libc::SYS_setdomainname,
+    libc::SYS_swapon,
+    libc::SYS_swapoff,
     libc::SYS_init_module,
     libc::SYS_finit_module,
     libc::SYS_delete_module,
@@ -1290,6 +1306,26 @@ const SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
     libc::SYS_quotactl,
     libc::SYS_quotactl_fd,
     libc::SYS_acct,
+];
+
+#[rustfmt::skip]
+const RUN_SECCOMP_EXTRA_DENIED_SYSCALLS: &[libc::c_long] = &[
+    libc::SYS_chmod,
+    libc::SYS_fchmod,
+    libc::SYS_fchmodat,
+    libc::SYS_chown,
+    libc::SYS_fchown,
+    libc::SYS_lchown,
+    libc::SYS_fchownat,
+    libc::SYS_setxattr,
+    libc::SYS_lsetxattr,
+    libc::SYS_fsetxattr,
+    libc::SYS_removexattr,
+    libc::SYS_lremovexattr,
+    libc::SYS_fremovexattr,
+    libc::SYS_clock_settime,
+    libc::SYS_settimeofday,
+    libc::SYS_adjtimex,
 ];
 
 fn set_rlimit(resource: libc::__rlimit_resource_t, value: u64) -> io::Result<()> {
@@ -1431,6 +1467,7 @@ fn optional_nonzero_env_u64(name: &str) -> Result<Option<u64>, RunnerError> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IsolationIntent {
     pub command: String,
+    pub seccomp_profile: SeccompProfile,
     pub requires_private_mount_namespace: bool,
     pub requires_private_ipc_namespace: bool,
     pub requires_private_uts_namespace: bool,
@@ -1445,6 +1482,7 @@ impl IsolationIntent {
     pub fn for_plan(plan: &CommandPlan) -> Self {
         Self {
             command: plan.display_command(),
+            seccomp_profile: plan.seccomp_profile,
             requires_private_mount_namespace: true,
             requires_private_ipc_namespace: true,
             requires_private_uts_namespace: true,
@@ -1671,7 +1709,7 @@ mod tests {
             .await
             .expect("command runs");
 
-        assert_eq!(&result.stdout[..], b"128\n");
+        assert_eq!(&result.stdout[..], b"1024\n");
     }
 
     #[tokio::test]
@@ -1765,11 +1803,12 @@ mod tests {
         assert!(intent.drops_to_unprivileged_uid_gid);
         assert!(intent.enforces_cgroup_limits);
         assert!(intent.enforces_rlimits);
+        assert_eq!(intent.seccomp_profile, SeccompProfile::Run);
     }
 
     #[test]
     fn seccomp_denylist_blocks_network_and_kernel_escape_syscalls() {
-        let denied = seccomp_denied_syscalls();
+        let denied = seccomp_denied_syscalls(SeccompProfile::Compile);
 
         assert!(denied.contains(&libc::SYS_socket));
         assert!(!denied.contains(&libc::SYS_socketpair));
@@ -1782,8 +1821,9 @@ mod tests {
         assert!(denied.contains(&libc::SYS_process_vm_readv));
         assert!(denied.contains(&libc::SYS_io_uring_setup));
         assert!(denied.contains(&libc::SYS_io_uring_enter));
+        assert!(denied.contains(&libc::SYS_name_to_handle_at));
         assert!(denied.contains(&libc::SYS_open_by_handle_at));
-        let instructions = seccomp_filter_instructions();
+        let instructions = seccomp_filter_instructions(SeccompProfile::Compile);
         assert_eq!(instructions[0].k, SECCOMP_DATA_ARCH_OFFSET);
         assert_eq!(instructions[1].k, audit_arch());
         assert_eq!(
@@ -1804,6 +1844,18 @@ mod tests {
             seccomp_syscall_action(libc::SYS_clone3),
             seccomp_errno(libc::ENOSYS)
         );
+    }
+
+    #[test]
+    fn run_seccomp_profile_adds_metadata_mutation_denies() {
+        let compile = seccomp_denied_syscalls(SeccompProfile::Compile);
+        let run = seccomp_denied_syscalls(SeccompProfile::Run);
+
+        assert!(!compile.contains(&libc::SYS_chmod));
+        assert!(run.contains(&libc::SYS_chmod));
+        assert!(run.contains(&libc::SYS_fchownat));
+        assert!(run.contains(&libc::SYS_setxattr));
+        assert!(run.contains(&libc::SYS_clock_settime));
     }
 
     #[test]
@@ -1996,6 +2048,7 @@ mod tests {
             memory_limit_bytes: 128 * 1024 * 1024,
             cpu_millis: 1000,
             max_output_bytes: 1024,
+            seccomp_profile: SeccompProfile::Compile,
         };
 
         let execution = execution_plan_for_rootfs(&plan, true);
@@ -2116,7 +2169,7 @@ mod tests {
         assert_eq!(limits.cpu_seconds, None);
         assert_eq!(limits.core_bytes, 0);
         assert_eq!(limits.file_size_bytes, 64 * 1024 * 1024);
-        assert_eq!(limits.nofile, 128);
+        assert_eq!(limits.nofile, 1024);
         assert_eq!(limits.nproc, DEFAULT_PIDS_MAX);
         assert_eq!(limits.memlock_bytes, 0);
     }
@@ -2132,6 +2185,7 @@ mod tests {
             memory_limit_bytes: 128 * 1024 * 1024,
             cpu_millis: 1000,
             max_output_bytes,
+            seccomp_profile: SeccompProfile::Run,
         }
     }
 

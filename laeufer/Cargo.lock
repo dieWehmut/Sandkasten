@@ -728,6 +728,7 @@ dependencies = [
  "flate2",
  "laeufer-core",
  "tar",
+ "tempfile",
  "thiserror",
  "uuid",
 ]

@@ -43,6 +43,7 @@ RUN apt-get update && \
       nodejs \
       openjdk-17-jdk-headless \
       python3 \
+      r-base-core \
       rustc \
       tini && \
     rm -rf /var/lib/apt/lists/* && \

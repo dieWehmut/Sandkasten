@@ -1,5 +1,5 @@
 use flate2::read::GzDecoder;
-use laeufer_core::{BuildPlan, CommandPlan, Job, LanguageRuntime, RunnerError};
+use laeufer_core::{BuildPlan, CommandPlan, Job, LanguageRuntime, RunnerError, SeccompProfile};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Component, Path, PathBuf};
@@ -8,7 +8,10 @@ use thiserror::Error;
 
 const RUNNER_BIN_DIR: &str = ".laeufer-bin";
 const RUNNER_CACHE_DIR: &str = ".laeufer-cache";
+const RUNNER_SHARED_DIR: &str = ".laeufer-shared";
 const RUNNER_TMP_DIR: &str = ".laeufer-tmp";
+const GO_BUILD_CACHE_DIR: &str = "go-build";
+const GO_BUILD_CACHE_ENV: &str = "LAEUFER_GO_BUILD_CACHE_DIR";
 const DEFAULT_MAX_ARCHIVE_BYTES: u64 = 64 * 1024 * 1024;
 const DEFAULT_MAX_ARCHIVE_FILES: usize = 20_000;
 const DEFAULT_COMPILE_MEMORY_LIMIT_BYTES: u64 = 1024 * 1024 * 1024;
@@ -78,6 +81,7 @@ impl GoRuntime {
     pub fn plan(job: &Job, source_dir: PathBuf, compile_memory_limit_bytes: u64) -> BuildPlan {
         let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
         let env = runner_env(&source_dir);
+        let compile_env = go_compile_env(&source_dir);
         let compile = CommandPlan {
             program: "go".to_owned(),
             args: vec![
@@ -88,13 +92,14 @@ impl GoRuntime {
                 binary_path.to_string_lossy().into_owned(),
                 job.entrypoint.clone(),
             ],
-            env: env.clone(),
+            env: compile_env,
             cwd: source_dir.clone(),
             stdin: Default::default(),
             timeout: job.limits.compile_timeout,
             memory_limit_bytes: compile_memory_limit_bytes,
             cpu_millis: job.limits.cpu_millis,
             max_output_bytes: job.limits.max_output_bytes,
+            seccomp_profile: SeccompProfile::Compile,
         };
         let run = CommandPlan {
             program: binary_path.to_string_lossy().into_owned(),
@@ -106,6 +111,7 @@ impl GoRuntime {
             memory_limit_bytes: job.limits.memory_limit_bytes,
             cpu_millis: job.limits.cpu_millis,
             max_output_bytes: job.limits.max_output_bytes,
+            seccomp_profile: SeccompProfile::Run,
         };
 
         BuildPlan { compile, run }
@@ -126,6 +132,8 @@ impl LanguageRuntime for GoRuntime {
         Self::extract_archive(&job.archive_targz, &job_dir, self.limits)
             .map_err(|error| RunnerError::Validation(error.to_string()))?;
         prepare_runner_dirs(&job_dir).map_err(|error| RunnerError::System(error.to_string()))?;
+        prepare_go_compile_cache_dir(&go_compile_cache_dir(&job_dir))
+            .map_err(|error| RunnerError::System(error.to_string()))?;
 
         Ok(Self::plan(job, job_dir, self.compile_memory_limit_bytes))
     }
@@ -138,7 +146,8 @@ pub struct GoRuntimeOptions {
 }
 
 fn prepare_runner_dirs(job_dir: &Path) -> std::io::Result<()> {
-    for dirname in [RUNNER_BIN_DIR, RUNNER_CACHE_DIR, RUNNER_TMP_DIR] {
+    allow_unprivileged_write(job_dir)?;
+    for dirname in [RUNNER_BIN_DIR, RUNNER_TMP_DIR] {
         let path = job_dir.join(dirname);
         fs::create_dir_all(&path)?;
         allow_unprivileged_write(&path)?;
@@ -146,32 +155,63 @@ fn prepare_runner_dirs(job_dir: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+fn prepare_go_compile_cache_dir(cache_dir: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(cache_dir)?;
+    allow_unprivileged_write(cache_dir)
+}
+
 fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
+    let tmp_dir = job_dir.join(RUNNER_TMP_DIR).to_string_lossy().into_owned();
     vec![
         (
             "PATH".to_owned(),
             std::env::var("PATH")
                 .unwrap_or_else(|_| "/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin".to_owned()),
         ),
-        (
-            "GOCACHE".to_owned(),
-            job_dir
-                .join(RUNNER_CACHE_DIR)
-                .to_string_lossy()
-                .into_owned(),
-        ),
-        (
-            "GOTMPDIR".to_owned(),
-            job_dir.join(RUNNER_TMP_DIR).to_string_lossy().into_owned(),
-        ),
-        (
-            "TMPDIR".to_owned(),
-            job_dir.join(RUNNER_TMP_DIR).to_string_lossy().into_owned(),
-        ),
-        ("HOME".to_owned(), job_dir.to_string_lossy().into_owned()),
+        ("GOTMPDIR".to_owned(), tmp_dir.clone()),
+        ("TMPDIR".to_owned(), tmp_dir.clone()),
+        ("HOME".to_owned(), tmp_dir),
         ("GONOSUMDB".to_owned(), "*".to_owned()),
         ("GONOPROXY".to_owned(), "*".to_owned()),
+        ("CGO_ENABLED".to_owned(), "0".to_owned()),
+        ("GOTOOLCHAIN".to_owned(), "local".to_owned()),
+        ("GOFLAGS".to_owned(), "-buildvcs=false".to_owned()),
     ]
+}
+
+fn go_compile_env(job_dir: &Path) -> Vec<(String, String)> {
+    let mut env = runner_env(job_dir);
+    env.push((
+        "GOCACHE".to_owned(),
+        go_compile_cache_dir(job_dir).to_string_lossy().into_owned(),
+    ));
+    env
+}
+
+fn go_compile_cache_dir(job_dir: &Path) -> PathBuf {
+    if let Some(path) = non_empty_env_path(GO_BUILD_CACHE_ENV) {
+        return path;
+    }
+    if non_empty_env_path("LAEUFER_ROOTFS").is_some() {
+        return job_dir.join(RUNNER_CACHE_DIR);
+    }
+    runner_work_dir(job_dir)
+        .join(RUNNER_SHARED_DIR)
+        .join(GO_BUILD_CACHE_DIR)
+}
+
+fn runner_work_dir(job_dir: &Path) -> PathBuf {
+    job_dir
+        .parent()
+        .and_then(Path::parent)
+        .unwrap_or(job_dir)
+        .to_path_buf()
+}
+
+fn non_empty_env_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
 }
 
 #[cfg(unix)]
@@ -300,7 +340,7 @@ fn checked_entry_path<R: Read>(entry: &tar::Entry<'_, R>) -> Result<PathBuf, GoA
     let raw_path = entry.path()?.into_owned();
     let normalized = normalize_archive_path(&raw_path)?;
 
-    if normalized.starts_with(Path::new(RUNNER_BIN_DIR)) {
+    if is_reserved_runner_path(&normalized) {
         return Err(GoArchiveError::ReservedPath(normalized));
     }
 
@@ -312,6 +352,13 @@ fn checked_entry_path<R: Read>(entry: &tar::Entry<'_, R>) -> Result<PathBuf, GoA
             entry_type: entry_type.as_byte(),
         })
     }
+}
+
+fn is_reserved_runner_path(path: &Path) -> bool {
+    path.starts_with(Path::new(RUNNER_BIN_DIR))
+        || path.starts_with(Path::new(RUNNER_CACHE_DIR))
+        || path.starts_with(Path::new(RUNNER_SHARED_DIR))
+        || path.starts_with(Path::new(RUNNER_TMP_DIR))
 }
 
 fn normalize_archive_path(path: &Path) -> Result<PathBuf, GoArchiveError> {
@@ -335,7 +382,7 @@ mod tests {
     use chrono::Utc;
     use flate2::write::GzEncoder;
     use flate2::Compression;
-    use laeufer_core::{JobLimits, JobStatus};
+    use laeufer_core::{JobLimits, JobStatus, SeccompProfile};
     use std::io::Write;
     use std::time::Duration;
     use tar::{Builder, EntryType, Header};
@@ -400,6 +447,44 @@ mod tests {
         let err = GoRuntime::validate_archive(&archive).expect_err("invalid archive");
 
         assert!(matches!(err, GoArchiveError::ReservedPath(_)));
+    }
+
+    #[test]
+    fn rejects_reserved_runner_cache_and_temp_paths() {
+        for path in [
+            ".laeufer-cache/item",
+            ".laeufer-shared/go-build/item",
+            ".laeufer-tmp/item",
+        ] {
+            let archive = archive_with(&[
+                ("go.mod", b"module example.com/demo\n".as_slice()),
+                (path, b"nope".as_slice()),
+                ("vendor/modules.txt", b"# vendor\n".as_slice()),
+            ]);
+
+            let err = GoRuntime::validate_archive(&archive).expect_err("invalid archive");
+
+            assert!(matches!(err, GoArchiveError::ReservedPath(_)));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn prepared_runner_dirs_allow_unprivileged_job_writes() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        prepare_runner_dirs(dir.path()).expect("prepare runner dirs");
+
+        for path in [
+            dir.path().to_path_buf(),
+            dir.path().join(RUNNER_BIN_DIR),
+            dir.path().join(RUNNER_TMP_DIR),
+        ] {
+            let mode = fs::metadata(&path).expect("metadata").permissions().mode();
+            assert_eq!(mode & 0o777, 0o777, "{path:?}");
+        }
     }
 
     #[test]
@@ -474,7 +559,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_plan_uses_separate_memory_limit() {
+    fn compile_plan_uses_separate_memory_limit_and_shared_compile_cache() {
         let job = test_job();
         let compile_memory_limit = 1024 * 1024 * 1024;
 
@@ -482,6 +567,29 @@ mod tests {
 
         assert_eq!(plan.compile.memory_limit_bytes, compile_memory_limit);
         assert_eq!(plan.run.memory_limit_bytes, job.limits.memory_limit_bytes);
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "CGO_ENABLED" && value == "0"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOFLAGS" && value == "-buildvcs=false"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOTOOLCHAIN" && value == "local"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOCACHE" && value == "/work/.laeufer-shared/go-build"));
+        assert!(!plan.run.env.iter().any(|(key, _)| key == "GOCACHE"));
     }
 
     fn archive_with(files: &[(&str, &[u8])]) -> Vec<u8> {

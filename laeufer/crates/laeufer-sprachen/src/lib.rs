@@ -1,5 +1,5 @@
 use flate2::read::GzDecoder;
-use laeufer_core::{BuildPlan, CommandPlan, Job, LanguageRuntime, RunnerError};
+use laeufer_core::{BuildPlan, CommandPlan, Job, LanguageRuntime, RunnerError, SeccompProfile};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Component, Path, PathBuf};
@@ -8,7 +8,10 @@ use thiserror::Error;
 
 const RUNNER_BIN_DIR: &str = ".laeufer-bin";
 const RUNNER_CACHE_DIR: &str = ".laeufer-cache";
+const RUNNER_SHARED_DIR: &str = ".laeufer-shared";
 const RUNNER_TMP_DIR: &str = ".laeufer-tmp";
+const GO_BUILD_CACHE_DIR: &str = "go-build";
+const GO_BUILD_CACHE_ENV: &str = "LAEUFER_GO_BUILD_CACHE_DIR";
 const DEFAULT_RUNTIME_PATH: &str = "/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin";
 const DEFAULT_MAX_ARCHIVE_BYTES: u64 = 64 * 1024 * 1024;
 const DEFAULT_MAX_ARCHIVE_FILES: usize = 20_000;
@@ -140,6 +143,7 @@ impl SprachenRuntime {
             )),
             "javascript" => Ok(plan_javascript(job, source_dir, env, entrypoint)),
             "python" => Ok(plan_python(job, source_dir, env, entrypoint)),
+            "r" => Ok(plan_r(job, source_dir, env, entrypoint)),
             "typescript" => Ok(plan_typescript(job, source_dir, env, entrypoint)),
             _ => Err(RunnerError::Validation(format!(
                 "unsupported language {:?}",
@@ -159,6 +163,10 @@ impl LanguageRuntime for SprachenRuntime {
         Self::extract_archive(&language, &job.archive_targz, &job_dir, self.limits)
             .map_err(|error| RunnerError::Validation(error.to_string()))?;
         prepare_runner_dirs(&job_dir).map_err(|error| RunnerError::System(error.to_string()))?;
+        if language == "go" {
+            prepare_go_compile_cache_dir(&go_compile_cache_dir(&job_dir))
+                .map_err(|error| RunnerError::System(error.to_string()))?;
+        }
 
         Self::plan(job, job_dir, self.compile_memory_limit_bytes)
     }
@@ -350,16 +358,23 @@ fn normalize_archive_path(path: &Path) -> Result<PathBuf, ArchiveError> {
 fn is_reserved_runner_path(path: &Path) -> bool {
     path.starts_with(Path::new(RUNNER_BIN_DIR))
         || path.starts_with(Path::new(RUNNER_CACHE_DIR))
+        || path.starts_with(Path::new(RUNNER_SHARED_DIR))
         || path.starts_with(Path::new(RUNNER_TMP_DIR))
 }
 
 fn prepare_runner_dirs(job_dir: &Path) -> std::io::Result<()> {
-    for dirname in [RUNNER_BIN_DIR, RUNNER_CACHE_DIR, RUNNER_TMP_DIR] {
+    allow_unprivileged_write(job_dir)?;
+    for dirname in [RUNNER_BIN_DIR, RUNNER_TMP_DIR] {
         let path = job_dir.join(dirname);
         fs::create_dir_all(&path)?;
         allow_unprivileged_write(&path)?;
     }
     Ok(())
+}
+
+fn prepare_go_compile_cache_dir(cache_dir: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(cache_dir)?;
+    allow_unprivileged_write(cache_dir)
 }
 
 #[cfg(unix)]
@@ -378,22 +393,55 @@ fn allow_unprivileged_write(_: &Path) -> std::io::Result<()> {
 
 fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
     let tmp_dir = job_dir.join(RUNNER_TMP_DIR).to_string_lossy().into_owned();
-    let cache_dir = job_dir
-        .join(RUNNER_CACHE_DIR)
-        .to_string_lossy()
-        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
         ("TMPDIR".to_owned(), tmp_dir.clone()),
         ("LANG".to_owned(), "C.UTF-8".to_owned()),
         ("LC_ALL".to_owned(), "C.UTF-8".to_owned()),
-        ("GOCACHE".to_owned(), cache_dir),
         ("GOTMPDIR".to_owned(), tmp_dir),
         ("GONOSUMDB".to_owned(), "*".to_owned()),
         ("GONOPROXY".to_owned(), "*".to_owned()),
+        ("CGO_ENABLED".to_owned(), "0".to_owned()),
+        ("GOTOOLCHAIN".to_owned(), "local".to_owned()),
+        ("GOFLAGS".to_owned(), "-buildvcs=false".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
     ]
+}
+
+fn go_compile_env(job_dir: &Path) -> Vec<(String, String)> {
+    let mut env = runner_env(job_dir);
+    env.push((
+        "GOCACHE".to_owned(),
+        go_compile_cache_dir(job_dir).to_string_lossy().into_owned(),
+    ));
+    env
+}
+
+fn go_compile_cache_dir(job_dir: &Path) -> PathBuf {
+    if let Some(path) = non_empty_env_path(GO_BUILD_CACHE_ENV) {
+        return path;
+    }
+    if non_empty_env_path("LAEUFER_ROOTFS").is_some() {
+        return job_dir.join(RUNNER_CACHE_DIR);
+    }
+    runner_work_dir(job_dir)
+        .join(RUNNER_SHARED_DIR)
+        .join(GO_BUILD_CACHE_DIR)
+}
+
+fn runner_work_dir(job_dir: &Path) -> PathBuf {
+    job_dir
+        .parent()
+        .and_then(Path::parent)
+        .unwrap_or(job_dir)
+        .to_path_buf()
+}
+
+fn non_empty_env_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
 }
 
 fn runtime_path() -> String {
@@ -410,6 +458,7 @@ fn normalize_language(language: &str) -> Option<String> {
         "java" => "java",
         "javascript" | "js" | "node" => "javascript",
         "python" | "py" | "python3" => "python",
+        "r" | "rscript" => "r",
         "rust" | "rs" => "rust",
         "typescript" | "ts" => "typescript",
         _ => return None,
@@ -425,7 +474,8 @@ fn plan_go(
     compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
-    let compile = command_plan(
+    let compile_env = go_compile_env(&source_dir);
+    let compile = compile_command_plan(
         "go",
         vec![
             "build".to_owned(),
@@ -435,7 +485,7 @@ fn plan_go(
             binary_path.to_string_lossy().into_owned(),
             entrypoint.to_string_lossy().into_owned(),
         ],
-        env.clone(),
+        compile_env,
         source_dir.clone(),
         Default::default(),
         PhaseBudget {
@@ -444,7 +494,7 @@ fn plan_go(
         },
         job,
     );
-    let run = command_plan(
+    let run = run_command_plan(
         binary_path.to_string_lossy().into_owned(),
         job.args.clone(),
         env,
@@ -481,7 +531,7 @@ fn plan_native(
         binary_path.to_string_lossy().into_owned(),
         entrypoint.to_string_lossy().into_owned(),
     ]);
-    let compile = command_plan(
+    let compile = compile_command_plan(
         compiler.program,
         args,
         env.clone(),
@@ -493,7 +543,7 @@ fn plan_native(
         },
         job,
     );
-    let run = command_plan(
+    let run = run_command_plan(
         binary_path.to_string_lossy().into_owned(),
         job.args.clone(),
         env,
@@ -517,7 +567,7 @@ fn plan_rust(
     compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "rustc",
         vec![
             "--edition=2021".to_owned(),
@@ -535,7 +585,7 @@ fn plan_rust(
         },
         job,
     );
-    let run = command_plan(
+    let run = run_command_plan(
         binary_path.to_string_lossy().into_owned(),
         job.args.clone(),
         env,
@@ -564,7 +614,7 @@ fn plan_java(
         .and_then(|name| name.to_str())
         .unwrap_or("Main")
         .to_owned();
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "javac",
         vec![
             "-encoding".to_owned(),
@@ -588,7 +638,7 @@ fn plan_java(
         main_class,
     ];
     run_args.extend(job.args.clone());
-    let run = command_plan(
+    let run = run_command_plan(
         "java",
         run_args,
         env,
@@ -612,7 +662,7 @@ fn plan_csharp(
     compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main.exe");
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "mcs",
         vec![
             "-nologo".to_owned(),
@@ -630,7 +680,7 @@ fn plan_csharp(
     );
     let mut run_args = vec![binary_path.to_string_lossy().into_owned()];
     run_args.extend(job.args.clone());
-    let run = command_plan(
+    let run = run_command_plan(
         "mono",
         run_args,
         env,
@@ -653,7 +703,7 @@ fn plan_javascript(
     entrypoint: PathBuf,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "node",
         vec!["--check".to_owned(), entrypoint.clone()],
         env.clone(),
@@ -667,7 +717,7 @@ fn plan_javascript(
     );
     let mut run_args = vec![entrypoint];
     run_args.extend(job.args.clone());
-    let run = command_plan(
+    let run = run_command_plan(
         "node",
         run_args,
         env,
@@ -690,7 +740,7 @@ fn plan_python(
     entrypoint: PathBuf,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "python3",
         vec![
             "-c".to_owned(),
@@ -708,8 +758,50 @@ fn plan_python(
     );
     let mut run_args = vec!["-B".to_owned(), entrypoint];
     run_args.extend(job.args.clone());
-    let run = command_plan(
+    let run = run_command_plan(
         "python3",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+fn plan_r(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "Rscript",
+        vec![
+            "--vanilla".to_owned(),
+            "-e".to_owned(),
+            "args <- commandArgs(trailingOnly = TRUE); parse(file = args[[1]])".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec!["--vanilla".to_owned(), entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "Rscript",
         run_args,
         env,
         source_dir,
@@ -740,7 +832,7 @@ fn plan_typescript(
             + ".js",
     );
     let entrypoint = entrypoint.to_string_lossy().into_owned();
-    let compile = command_plan(
+    let compile = compile_command_plan(
         "tsc",
         vec![
             "--target".to_owned(),
@@ -762,7 +854,7 @@ fn plan_typescript(
     );
     let mut run_args = vec![output_path.to_string_lossy().into_owned()];
     run_args.extend(job.args.clone());
-    let run = command_plan(
+    let run = run_command_plan(
         "node",
         run_args,
         env,
@@ -783,13 +875,67 @@ struct PhaseBudget {
     memory_limit_bytes: u64,
 }
 
-fn command_plan(
+struct CommandBudget {
+    timeout: std::time::Duration,
+    memory_limit_bytes: u64,
+    seccomp_profile: SeccompProfile,
+}
+
+fn compile_command_plan(
     program: impl Into<String>,
     args: Vec<String>,
     env: Vec<(String, String)>,
     cwd: PathBuf,
     stdin: bytes::Bytes,
     phase_budget: PhaseBudget,
+    job: &Job,
+) -> CommandPlan {
+    command_plan(
+        program,
+        args,
+        env,
+        cwd,
+        stdin,
+        CommandBudget {
+            timeout: phase_budget.timeout,
+            memory_limit_bytes: phase_budget.memory_limit_bytes,
+            seccomp_profile: SeccompProfile::Compile,
+        },
+        job,
+    )
+}
+
+fn run_command_plan(
+    program: impl Into<String>,
+    args: Vec<String>,
+    env: Vec<(String, String)>,
+    cwd: PathBuf,
+    stdin: bytes::Bytes,
+    phase_budget: PhaseBudget,
+    job: &Job,
+) -> CommandPlan {
+    command_plan(
+        program,
+        args,
+        env,
+        cwd,
+        stdin,
+        CommandBudget {
+            timeout: phase_budget.timeout,
+            memory_limit_bytes: phase_budget.memory_limit_bytes,
+            seccomp_profile: SeccompProfile::Run,
+        },
+        job,
+    )
+}
+
+fn command_plan(
+    program: impl Into<String>,
+    args: Vec<String>,
+    env: Vec<(String, String)>,
+    cwd: PathBuf,
+    stdin: bytes::Bytes,
+    phase_budget: CommandBudget,
     job: &Job,
 ) -> CommandPlan {
     CommandPlan {
@@ -802,6 +948,7 @@ fn command_plan(
         memory_limit_bytes: phase_budget.memory_limit_bytes,
         cpu_millis: job.limits.cpu_millis,
         max_output_bytes: job.limits.max_output_bytes,
+        seccomp_profile: phase_budget.seccomp_profile,
     }
 }
 
@@ -842,12 +989,19 @@ mod tests {
 
     #[test]
     fn archive_rejects_reserved_runtime_paths() {
-        let archive = archive_with(&[(".laeufer-bin/main", b"owned\n".as_slice())]);
+        for path in [
+            ".laeufer-bin/main",
+            ".laeufer-cache/item",
+            ".laeufer-shared/go-build/item",
+            ".laeufer-tmp/item",
+        ] {
+            let archive = archive_with(&[(path, b"owned\n".as_slice())]);
 
-        let err =
-            SprachenRuntime::validate_archive("python", &archive).expect_err("invalid archive");
+            let err =
+                SprachenRuntime::validate_archive("python", &archive).expect_err("invalid archive");
 
-        assert!(matches!(err, ArchiveError::ReservedPath(_)));
+            assert!(matches!(err, ArchiveError::ReservedPath(_)));
+        }
     }
 
     #[test]
@@ -860,6 +1014,25 @@ mod tests {
         assert!(matches!(err, ArchiveError::UnsafePath(_)));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn prepared_runner_dirs_allow_unprivileged_job_writes() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        prepare_runner_dirs(dir.path()).expect("prepare runner dirs");
+
+        for path in [
+            dir.path().to_path_buf(),
+            dir.path().join(RUNNER_BIN_DIR),
+            dir.path().join(RUNNER_TMP_DIR),
+        ] {
+            let mode = fs::metadata(&path).expect("metadata").permissions().mode();
+            assert_eq!(mode & 0o777, 0o777, "{path:?}");
+        }
+    }
+
     #[test]
     fn python_plan_checks_syntax_without_bytecode_write() {
         let job = job("python", "main.py");
@@ -868,13 +1041,44 @@ mod tests {
 
         assert_eq!(plan.compile.program, "python3");
         assert_eq!(plan.compile.args[0], "-c");
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
         assert_eq!(plan.run.program, "python3");
         assert_eq!(plan.run.args[0], "-B");
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
         assert!(plan
             .run
             .env
             .iter()
             .any(|(key, value)| key == "PYTHONDONTWRITEBYTECODE" && value == "1"));
+    }
+
+    #[test]
+    fn go_plan_uses_shared_compile_cache_only_for_compile_phase() {
+        let job = job("go", ".");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/work/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "CGO_ENABLED" && value == "0"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOFLAGS" && value == "-buildvcs=false"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOTOOLCHAIN" && value == "local"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "GOCACHE" && value == "/work/.laeufer-shared/go-build"));
+        assert!(!plan.run.env.iter().any(|(key, _)| key == "GOCACHE"));
     }
 
     #[test]
@@ -891,6 +1095,21 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.ends_with(".laeufer-bin/main.js")));
+    }
+
+    #[test]
+    fn r_plan_parses_then_runs_with_rscript_vanilla() {
+        let job = job("r", "main.R");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "Rscript");
+        assert_eq!(plan.compile.args[0], "--vanilla");
+        assert_eq!(plan.compile.args[1], "-e");
+        assert_eq!(plan.compile.args.last().map(String::as_str), Some("main.R"));
+        assert_eq!(plan.run.program, "Rscript");
+        assert_eq!(plan.run.args[0], "--vanilla");
+        assert_eq!(plan.run.args[1], "main.R");
     }
 
     #[test]

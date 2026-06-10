@@ -1,8 +1,12 @@
 package httpapi
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,6 +70,31 @@ func TestRunGoFromSourceSubmitsArchive(t *testing.T) {
 	}
 }
 
+func TestRunGoFromSourcePreservesSourceBytes(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	source := "package main\n\nimport \"fmt\"\n\nfunc main(){\n\tfmt.Println(\"# kept\") // keep trailing comment\n}\n"
+	body, err := json.Marshal(map[string]any{
+		"source": source,
+		"wait":   false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/go/run", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	files := readArchiveFiles(t, service.submitted.GetArchiveTargz())
+	if got := string(files["main.go"]); got != source {
+		t.Fatalf("main.go = %q, want exact source %q", got, source)
+	}
+}
+
 func TestRunLanguageFromSourceSubmitsLanguage(t *testing.T) {
 	service := &fakeService{}
 	server := New(service, "", nil).Handler()
@@ -83,6 +112,51 @@ func TestRunLanguageFromSourceSubmitsLanguage(t *testing.T) {
 	if service.submitted.Language != "python" || service.submitted.Entrypoint != "main.py" {
 		t.Fatalf("submitted = %+v", service.submitted)
 	}
+}
+
+func TestRunRFromSourceSubmitsMainR(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/r/run", strings.NewReader(`{"source":"cat('ok\n')","wait":false}`))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.submitted == nil {
+		t.Fatal("request was not submitted")
+	}
+	if service.submitted.Language != "r" || service.submitted.Entrypoint != "main.R" {
+		t.Fatalf("submitted = %+v", service.submitted)
+	}
+}
+
+func readArchiveFiles(t *testing.T, archive []byte) map[string][]byte {
+	t.Helper()
+	gzipReader, err := gzip.NewReader(bytes.NewReader(archive))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gzipReader.Close()
+	tarReader := tar.NewReader(gzipReader)
+	files := map[string][]byte{}
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(tarReader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[header.Name] = body
+	}
+	return files
 }
 
 func TestRunReturnsServiceUnavailableOnResourceExhaustion(t *testing.T) {

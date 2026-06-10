@@ -16,10 +16,10 @@ The current runner implementation applies these controls for each child command:
 - Private mount propagation for the child mount namespace.
 - Optional `LAEUFER_ROOTFS` setup: bind the configured rootfs as the new root, bind the job directory to `/workspace`, mount private `/tmp`, read-only `/proc`, and a minimal `/dev` with only `null`, `zero`, `random`, and `urandom`, then mask sensitive proc files such as kernel symbols/messages, memory maps, module lists, scheduler/timer debug, IRQ/IO metadata, and VM/page stats with `/dev/null`, and bind empty read-only directories over `/proc/sys`, `/proc/irq`, `/proc/bus`, and related proc host-metadata directories before `pivot_root`.
 - `PR_SET_NO_NEW_PRIVS` and uid/gid drop to `65534`.
-- A built-in child seccomp BPF denylist installed after setup and privilege drop, with an audit-architecture guard and errno returns for network syscalls and high-risk kernel interfaces such as `mount`, new mount API syscalls, `ptrace`, `process_vm_*`, `bpf`, `perf_event_open`, `keyctl`, module loading, `kexec`, `open_by_handle_at`, `userfaultfd`, `clone3`, and `io_uring_*`. `clone3` returns `ENOSYS` so language runtimes can fall back to older `clone`; other denied syscalls return `EPERM`.
+- Built-in child seccomp BPF profiles installed after setup and privilege drop. Both compile and run profiles include an audit-architecture guard and errno returns for network syscalls and high-risk kernel interfaces such as `mount`, new mount API syscalls, `ptrace`, `process_vm_*`, `bpf`, `perf_event_open`, `keyctl`, module loading, `kexec`, handle-based file opens, `userfaultfd`, `clone3`, and `io_uring_*`. `clone3` returns `ENOSYS` so language runtimes can fall back to older `clone`; other denied syscalls return `EPERM`. The run profile additionally denies metadata mutation and clock-setting syscalls such as `chmod`, `chown`, xattr mutation, `clock_settime`, and `settimeofday`.
 - `close_range(3, UINT_MAX, CLOSE_RANGE_UNSHARE)` before exec, with a `/proc/self/fd` fallback, so inherited runner descriptors are not exposed to user code.
-- Go builds forced through `-mod=vendor` with per-job `GOCACHE` and temp directories.
-- Language-specific compile/run plans for C, C++, C#, Java, JavaScript, Python, Rust, and TypeScript.
+- Go builds forced through `-mod=vendor` with `CGO_ENABLED=0`, `GOTOOLCHAIN=local`, `GOFLAGS=-buildvcs=false`, a shared runner Go build cache for compile-phase reuse, and per-job temp directories. The run phase does not inherit the shared `GOCACHE`.
+- Language-specific compile/run plans for C, C++, C#, Java, JavaScript, Python, R, Rust, and TypeScript.
 - A separate `LAEUFER_COMPILE_MEMORY_LIMIT_BYTES` setting for compilation, while job memory limits still apply to the executed program.
 - Lease heartbeat during job execution, with status, renew, and final artifact writes guarded by runner id, exact `attempt_id`, and the current attempt number to prevent stale runners from overwriting results.
 - A retry budget via `LAEUFER_MAX_ATTEMPTS`; each lease creates a `job_attempts` record, terminal writes copy exit/signal/cgroup counters plus `terminal_reason`, `cgroup_path`, and host `child_pid` onto the exact attempt, and expired active jobs that exhaust the budget are marked `SYSTEM_ERROR` with the latest attempt marked `DEAD_LETTER`.
@@ -35,7 +35,7 @@ These are intentionally represented in the repository but are not complete enfor
 
 - PID namespace supervision with a reaper process.
 - User namespace uid/gid mapping.
-- Per-language and per-phase seccomp profiles or OCI seccomp JSON loading, tightened against representative compile/run traces.
+- Per-language seccomp refinements or OCI seccomp JSON loading, tightened against representative compile/run traces.
 - Privileged CI execution for the ignored black-box matrix, plus PID namespace cleanup coverage.
 
 ## Node Scheduling
@@ -59,7 +59,7 @@ The runner image includes system toolchains for the supported languages. Go jobs
 
 ## Seccomp
 
-The Rust runner installs a conservative built-in seccomp denylist for every child command by default. The current profile denies most blocked syscalls with `EPERM` and uses `ENOSYS` for `clone3` compatibility. Set `LAEUFER_DISABLE_SECCOMP=1` only for diagnostics on non-production runner nodes. `wurzelwerk/go/seccomp/go-conservative-placeholder.json` remains a starting point for a future OCI-style or per-language profile format; tighten those profiles against real syscall traces from representative compile and run workloads.
+The Rust runner installs conservative built-in compile/run seccomp profiles for every child command by default. The compile profile is intentionally broad enough for toolchains; the run profile adds extra denials for file metadata mutation and clock changes. Set `LAEUFER_DISABLE_SECCOMP=1` only for diagnostics on non-production runner nodes. `wurzelwerk/go/seccomp/go-conservative-placeholder.json` remains a starting point for a future OCI-style or per-language profile format; tighten those profiles against real syscall traces from representative compile and run workloads.
 
 ## Operational Rules
 
