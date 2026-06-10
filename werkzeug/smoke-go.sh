@@ -201,10 +201,27 @@ package main
 import (
   "encoding/json"
   "fmt"
+  "os"
+  "strings"
 )
 
 func main() {
-  data, err := json.Marshal(map[string]string{"runner": "sandkasten"})
+  seed, err := os.ReadFile("test.txt")
+  if err != nil {
+    panic(err)
+  }
+  if err := os.WriteFile("user_info.txt", []byte("name=Alice\n"), 0644); err != nil {
+    panic(err)
+  }
+  written, err := os.ReadFile("user_info.txt")
+  if err != nil {
+    panic(err)
+  }
+  data, err := json.Marshal(map[string]string{
+    "runner": "sandkasten",
+    "seed": strings.TrimSpace(string(seed)),
+    "written": strings.TrimSpace(string(written)),
+  })
   if err != nil {
     panic(err)
   }
@@ -212,7 +229,7 @@ func main() {
 }
 GO
 )"
-api_payload="$(jq -nc --arg source "$api_source" '{source:$source,wait:true,waitTimeoutMs:30000}')"
+api_payload="$(jq -nc --arg source "$api_source" --arg test_file $'file-smoke\n' '{source:$source,files:[{name:"test.txt",content:$test_file}],wait:true,waitTimeoutMs:30000}')"
 api_start_ms="$(date +%s%3N)"
 api_json="$(
   curl -fsS \
@@ -225,7 +242,7 @@ api_json="$(
 api_elapsed_ms="$(( $(date +%s%3N) - api_start_ms ))"
 api_status="$(jq -r '.status' <<<"$api_json")"
 api_stdout="$(jq -r '.stdout' <<<"$api_json")"
-if [[ "$api_status" != "JOB_STATUS_SUCCEEDED" || "$api_stdout" != 'sandkasten-smoke {"runner":"sandkasten"}' ]]; then
+if [[ "$api_status" != "JOB_STATUS_SUCCEEDED" || "$api_stdout" != 'sandkasten-smoke {"runner":"sandkasten","seed":"file-smoke","written":"name=Alice"}' ]]; then
   printf 'Sandkasten API go smoke failed\nstatus: %s\nstdout: %q\njob: %s\n' "$api_status" "$api_stdout" "$api_json" >&2
   printf 'runner log:\n' >&2
   cat /tmp/sandkasten-runner-smoke.log >&2

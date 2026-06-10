@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -24,6 +25,8 @@ const (
 	outputEncodingAuto      = "auto"
 	outputEncodingUTF8      = "utf8"
 	outputEncodingBase64    = "base64"
+	maxRunFiles             = 32
+	maxRunFileBytes         = 128 * 1024
 )
 
 type jobService interface {
@@ -254,20 +257,27 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 }
 
 type runRequest struct {
-	Language         string   `json:"language"`
-	Source           string   `json:"source"`
-	ArchiveTargz     string   `json:"archiveTargz"`
-	Entrypoint       string   `json:"entrypoint"`
-	Stdin            string   `json:"stdin"`
-	Args             []string `json:"args"`
-	CompileTimeoutMs uint32   `json:"compileTimeoutMs"`
-	RunTimeoutMs     uint32   `json:"runTimeoutMs"`
-	MemoryLimitBytes uint64   `json:"memoryLimitBytes"`
-	CPUMillis        uint32   `json:"cpuMillis"`
-	MaxOutputBytes   uint64   `json:"maxOutputBytes"`
-	OutputEncoding   string   `json:"outputEncoding"`
-	Wait             bool     `json:"wait"`
-	WaitTimeoutMs    uint32   `json:"waitTimeoutMs"`
+	Language         string    `json:"language"`
+	Source           string    `json:"source"`
+	ArchiveTargz     string    `json:"archiveTargz"`
+	Files            []runFile `json:"files"`
+	Entrypoint       string    `json:"entrypoint"`
+	Stdin            string    `json:"stdin"`
+	Args             []string  `json:"args"`
+	CompileTimeoutMs uint32    `json:"compileTimeoutMs"`
+	RunTimeoutMs     uint32    `json:"runTimeoutMs"`
+	MemoryLimitBytes uint64    `json:"memoryLimitBytes"`
+	CPUMillis        uint32    `json:"cpuMillis"`
+	MaxOutputBytes   uint64    `json:"maxOutputBytes"`
+	OutputEncoding   string    `json:"outputEncoding"`
+	Wait             bool      `json:"wait"`
+	WaitTimeoutMs    uint32    `json:"waitTimeoutMs"`
+}
+
+type runFile struct {
+	Name     string `json:"name"`
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
 }
 
 func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
@@ -276,13 +286,16 @@ func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 	language := normalizeLanguage(r.Language)
 	switch {
 	case r.ArchiveTargz != "":
+		if len(r.Files) > 0 {
+			return nil, errors.New("files can only be used with source")
+		}
 		decoded, err := base64.StdEncoding.DecodeString(r.ArchiveTargz)
 		if err != nil {
 			return nil, fmt.Errorf("archiveTargz must be base64: %w", err)
 		}
 		archive = decoded
 	case strings.TrimSpace(r.Source) != "":
-		generated, err := sourceArchive(language, r.Source)
+		generated, err := sourceArchive(language, r.Source, r.Files)
 		if err != nil {
 			return nil, err
 		}
@@ -359,32 +372,125 @@ func defaultEntrypoint(language string) string {
 	}
 }
 
-func sourceArchive(language, source string) ([]byte, error) {
+func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
-		return goSourceArchive(source)
+		return goSourceArchive(source, files)
 	case "c", "cpp", "csharp", "java", "javascript", "python", "r", "rust", "typescript":
-		return singleFileArchive(defaultEntrypoint(language), []byte(source))
+		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
 	}
 }
 
-func goSourceArchive(source string) ([]byte, error) {
-	return archiveWithFiles([]archiveFile{
+func goSourceArchive(source string, files []runFile) ([]byte, error) {
+	return archiveWithRequestFiles([]archiveFile{
 		{name: "go.mod", body: []byte("module example.com/sandkasten/http-run\n\ngo 1.22\n")},
 		{name: "main.go", body: []byte(source)},
 		{name: "vendor/modules.txt", body: []byte("# no external module dependencies\n")},
-	})
+	}, files)
 }
 
-func singleFileArchive(name string, body []byte) ([]byte, error) {
-	return archiveWithFiles([]archiveFile{{name: name, body: body}})
+func singleFileArchive(name string, body []byte, files []runFile) ([]byte, error) {
+	return archiveWithRequestFiles([]archiveFile{{name: name, body: body}}, files)
 }
 
 type archiveFile struct {
 	name string
 	body []byte
+}
+
+func archiveWithRequestFiles(generated []archiveFile, requestFiles []runFile) ([]byte, error) {
+	files, err := mergeRequestFiles(generated, requestFiles)
+	if err != nil {
+		return nil, err
+	}
+	return archiveWithFiles(files)
+}
+
+func mergeRequestFiles(generated []archiveFile, requestFiles []runFile) ([]archiveFile, error) {
+	if len(requestFiles) > maxRunFiles {
+		return nil, fmt.Errorf("files contains too many entries; limit is %d", maxRunFiles)
+	}
+
+	used := make(map[string]struct{}, len(generated)+len(requestFiles))
+	files := make([]archiveFile, 0, len(generated)+len(requestFiles))
+	for _, file := range generated {
+		name, err := normalizeRunFileName(file.name)
+		if err != nil {
+			return nil, err
+		}
+		used[name] = struct{}{}
+		files = append(files, archiveFile{name: name, body: file.body})
+	}
+
+	for _, requestFile := range requestFiles {
+		file, err := requestFile.archiveFile()
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := used[file.name]; exists {
+			return nil, fmt.Errorf("file %q conflicts with a generated source file", file.name)
+		}
+		used[file.name] = struct{}{}
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+func (f runFile) archiveFile() (archiveFile, error) {
+	name, err := normalizeRunFileName(f.Name)
+	if err != nil {
+		return archiveFile{}, err
+	}
+	body, err := decodeRunFileContent(f)
+	if err != nil {
+		return archiveFile{}, err
+	}
+	if len(body) > maxRunFileBytes {
+		return archiveFile{}, fmt.Errorf("file %q is too large; limit is %d bytes", name, maxRunFileBytes)
+	}
+	return archiveFile{name: name, body: body}, nil
+}
+
+func normalizeRunFileName(name string) (string, error) {
+	normalized := strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
+	if normalized == "" {
+		return "", errors.New("file name is required")
+	}
+	if strings.ContainsRune(normalized, 0) {
+		return "", fmt.Errorf("file name %q contains a null byte", name)
+	}
+
+	clean := path.Clean(normalized)
+	if clean == "." || clean == ".." || path.IsAbs(clean) || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("file name %q must be a relative path inside the source directory", name)
+	}
+	for _, part := range strings.Split(clean, "/") {
+		if part == "" || part == "." || part == ".." {
+			return "", fmt.Errorf("file name %q must be a relative path inside the source directory", name)
+		}
+		if strings.HasPrefix(part, ".laeufer-") {
+			return "", fmt.Errorf("file name %q is reserved for runner output", name)
+		}
+	}
+	return clean, nil
+}
+
+func decodeRunFileContent(file runFile) ([]byte, error) {
+	switch strings.ToLower(strings.TrimSpace(file.Encoding)) {
+	case "", outputEncodingUTF8, "text":
+		return []byte(file.Content), nil
+	case outputEncodingBase64:
+		body, err := base64.StdEncoding.DecodeString(file.Content)
+		if err != nil {
+			return nil, fmt.Errorf("file %q content must be base64: %w", file.Name, err)
+		}
+		return body, nil
+	default:
+		return nil, fmt.Errorf("file %q encoding must be one of %q or %q", file.Name, outputEncodingUTF8, outputEncodingBase64)
+	}
 }
 
 func archiveWithFiles(files []archiveFile) ([]byte, error) {

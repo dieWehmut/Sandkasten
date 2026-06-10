@@ -95,6 +95,61 @@ func TestRunGoFromSourcePreservesSourceBytes(t *testing.T) {
 	}
 }
 
+func TestRunGoFromSourceIncludesFiles(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	source := "package main\n\nimport \"os\"\n\nfunc main(){\n\t_, _ = os.ReadFile(\"test.txt\")\n}\n"
+	body, err := json.Marshal(map[string]any{
+		"source": source,
+		"files": []map[string]string{
+			{"name": "test.txt", "content": "a,b,cc\n"},
+		},
+		"wait": false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/go/run", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	files := readArchiveFiles(t, service.submitted.GetArchiveTargz())
+	if got := string(files["main.go"]); got != source {
+		t.Fatalf("main.go = %q, want exact source %q", got, source)
+	}
+	if got := string(files["test.txt"]); got != "a,b,cc\n" {
+		t.Fatalf("test.txt = %q", got)
+	}
+}
+
+func TestRunRejectsUnsafeFileName(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	body := strings.NewReader(`{"source":"package main\nfunc main(){}","files":[{"name":"../test.txt","content":"bad"}],"wait":false}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/go/run", body)
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.submitted != nil {
+		t.Fatal("unsafe request was submitted")
+	}
+	var response errorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != "invalid_request" || !strings.Contains(response.Message, "relative path") {
+		t.Fatalf("response = %+v", response)
+	}
+}
+
 func TestRunLanguageFromSourceSubmitsLanguage(t *testing.T) {
 	service := &fakeService{}
 	server := New(service, "", nil).Handler()
