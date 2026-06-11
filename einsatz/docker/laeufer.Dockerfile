@@ -94,7 +94,17 @@ RUN apt-get update && \
     curl -fL "https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-${CANGJIE_VERSION}.tar.gz&objectKey=6a19349d21f5a8178d6fd22b" -o /tmp/cangjie.tar.gz && \
     echo "${CANGJIE_SHA256}  /tmp/cangjie.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/cangjie.tar.gz -C /opt && \
-    ln -s /opt/cangjie/bin/cjc /usr/local/bin/cjc && \
+    { \
+      printf '%s\n' '#!/bin/sh'; \
+      printf '%s\n' 'export CANGJIE_HOME="${CANGJIE_HOME:-/opt/cangjie}"'; \
+      printf '%s\n' 'if [ -n "${LD_LIBRARY_PATH:-}" ]; then'; \
+      printf '%s\n' '  export LD_LIBRARY_PATH="/opt/cangjie/runtime/lib/linux_x86_64_cjnative:/opt/cangjie/tools/lib:${LD_LIBRARY_PATH}"'; \
+      printf '%s\n' 'else'; \
+      printf '%s\n' '  export LD_LIBRARY_PATH="/opt/cangjie/runtime/lib/linux_x86_64_cjnative:/opt/cangjie/tools/lib"'; \
+      printf '%s\n' 'fi'; \
+      printf '%s\n' 'exec /opt/cangjie/bin/cjc "$@"'; \
+    } > /usr/local/bin/cjc && \
+    chmod 0755 /usr/local/bin/cjc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
     rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
@@ -105,7 +115,6 @@ COPY --from=build /out-laeufer /usr/local/bin/laeufer
 COPY wurzelwerk /opt/sandkasten/wurzelwerk
 
 ENV CANGJIE_HOME=/opt/cangjie
-ENV LD_LIBRARY_PATH=/opt/cangjie/runtime/lib/linux_x86_64_cjnative:/opt/cangjie/tools/lib
 ENV LAEUFER_WORK_DIR=/var/lib/sandkasten/laeufer
 ENV PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
 ENV LAEUFER_RUNTIME_PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
