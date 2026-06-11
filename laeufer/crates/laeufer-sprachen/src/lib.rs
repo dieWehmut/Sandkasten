@@ -313,7 +313,12 @@ mod tests {
             .compile
             .args
             .iter()
-            .any(|arg| arg.contains("Meta.parse")));
+            .any(|arg| arg.contains("Meta.parseall")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains(":incomplete")));
         assert_eq!(plan.run.program, "julia");
         assert!(plan.run.args.iter().any(|arg| arg == "--optimize=0"));
         assert!(plan

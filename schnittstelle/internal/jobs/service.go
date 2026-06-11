@@ -556,7 +556,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "javascript":
 		return phase("node", "--check", "main.js")
 	case "julia":
-		return phase("julia", "--startup-file=no", "--history-file=no", "--compile=min", "--optimize=0", "-e", "Meta.parse(read(ARGS[1], String))", "main.jl")
+		return phase("julia", "--startup-file=no", "--history-file=no", "--compile=min", "--optimize=0", "-e", "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))", "main.jl")
 	case "kotlin":
 		return phase("kotlinc", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "Main.kt", "-include-runtime", "-d", ".laeufer-bin/main.jar")
 	case "lean4":

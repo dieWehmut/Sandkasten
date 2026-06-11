@@ -5,6 +5,8 @@ use crate::constants::{RUNNER_BIN_DIR, RUNNER_TMP_DIR};
 use crate::environment::go_compile_env;
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
+const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
+
 pub(super) fn plan_go(
     job: &Job,
     source_dir: PathBuf,
@@ -386,7 +388,7 @@ pub(super) fn plan_julia(
             "--compile=min".to_owned(),
             "--optimize=0".to_owned(),
             "-e".to_owned(),
-            "Meta.parse(read(ARGS[1], String))".to_owned(),
+            JULIA_SYNTAX_CHECK.to_owned(),
             entrypoint.clone(),
         ],
         env.clone(),
