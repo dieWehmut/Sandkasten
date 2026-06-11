@@ -102,6 +102,13 @@ pub(crate) fn plan(
         )),
         "sql" => Ok(languages::plan_sql(job, source_dir, env, entrypoint)),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
+        "zig" => Ok(languages::plan_zig(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         _ => Err(RunnerError::Validation(format!(
             "unsupported language {:?}",
             job.language

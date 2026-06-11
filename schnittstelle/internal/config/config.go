@@ -201,6 +201,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"scala",
 		"sql",
 		"typescript",
+		"zig",
 	})
 	runtimes := make([]*pb.Runtime, 0, len(languages))
 	for _, language := range languages {

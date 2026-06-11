@@ -19,6 +19,16 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("racket-compiled")
         .to_string_lossy()
         .into_owned();
+    let zig_local_cache = job_dir
+        .join(crate::constants::RUNNER_CACHE_DIR)
+        .join("zig-cache")
+        .to_string_lossy()
+        .into_owned();
+    let zig_global_cache = job_dir
+        .join(crate::constants::RUNNER_CACHE_DIR)
+        .join("zig-global-cache")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -38,6 +48,8 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),
         ("RUBYOPT".to_owned(), "--disable=gems".to_owned()),
+        ("ZIG_LOCAL_CACHE_DIR".to_owned(), zig_local_cache),
+        ("ZIG_GLOBAL_CACHE_DIR".to_owned(), zig_global_cache),
     ]
 }
 

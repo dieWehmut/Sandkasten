@@ -464,6 +464,8 @@ func NormalizeLanguage(language string) string {
 		return "sql"
 	case "ts":
 		return "typescript"
+	case "zig":
+		return "zig"
 	default:
 		return language
 	}
@@ -537,6 +539,8 @@ func defaultEntrypoint(language string) string {
 		return "main.sql"
 	case "typescript":
 		return "main.ts"
+	case "zig":
+		return "main.zig"
 	default:
 		return "."
 	}
@@ -584,6 +588,8 @@ func runtimeAliases(language string) []string {
 		return []string{"sqlite", "sqlite3"}
 	case "typescript":
 		return []string{"ts"}
+	case "zig":
+		return nil
 	default:
 		return nil
 	}
@@ -635,6 +641,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("bash", "--noprofile", "--norc", "-c", "test -r \"$1\"", "_", "main.sql")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
+	case "zig":
+		return phase("zig", "build-exe", "-O", "ReleaseSafe", "-lc", "--cache-dir", ".laeufer-cache/zig-cache", "--global-cache-dir", ".laeufer-cache/zig-global-cache", "-femit-bin=.laeufer-bin/main", "main.zig")
 	default:
 		return &pb.RuntimePhase{}
 	}
@@ -680,6 +688,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("bash", "--noprofile", "--norc", "-c", "exec sqlite3 -batch -bail -safe :memory: < \"$1\"", "_", "main.sql")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
+	case "zig":
+		return phase(".laeufer-bin/main")
 	default:
 		return &pb.RuntimePhase{}
 	}

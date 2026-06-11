@@ -35,6 +35,7 @@ FROM golang:1.26-bookworm
 ARG JULIA_VERSION=1.10.10
 ARG JULIA_MINOR_VERSION=1.10
 ARG LEAN_VERSION=4.23.0
+ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -62,6 +63,9 @@ RUN apt-get update && \
       swi-prolog \
       tini \
       zstd && \
+    curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
+    tar -xJf /tmp/zig.tar.xz -C /opt && \
+    ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
     curl -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \
     tar -xzf /tmp/julia.tar.gz -C /opt && \
     ln -s "/opt/julia-${JULIA_VERSION}/bin/julia" /usr/local/bin/julia && \
@@ -71,7 +75,7 @@ RUN apt-get update && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lake" /usr/local/bin/lake && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/julia.tar.gz /tmp/lean.tar.zst && \
+    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/lean.tar.zst && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 

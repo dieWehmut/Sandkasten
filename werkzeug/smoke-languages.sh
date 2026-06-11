@@ -117,6 +117,7 @@ need_runtime_tool scala "Install Scala for Scala jobs."
 need_runtime_tool scalac "Install Scalac for Scala jobs."
 need_runtime_tool sqlite3 "Install SQLite CLI for SQL jobs."
 need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
+need_runtime_tool zig "Install Zig for Zig jobs."
 
 printf 'Checking database connectivity...\n'
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'select 1' >/dev/null
@@ -247,5 +248,11 @@ run_language sql "hello, sql" "select 'hello, sql';"
 
 run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
 console.log(msg);'
+
+run_language zig "hello, zig" 'extern fn write(fd: i32, buf: [*]const u8, count: usize) isize;
+pub fn main() void {
+    const msg = "hello, zig\n";
+    _ = write(1, msg.ptr, msg.len);
+}' 1073741824
 
 printf 'multi-language smoke passed\n'

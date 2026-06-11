@@ -23,6 +23,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "scala" | "sc" => "scala",
         "sql" | "sqlite" | "sqlite3" => "sql",
         "typescript" | "ts" => "typescript",
+        "zig" => "zig",
         _ => return None,
     };
     Some(canonical.to_owned())

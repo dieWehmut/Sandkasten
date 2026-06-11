@@ -255,6 +255,31 @@ mod tests {
     }
 
     #[test]
+    fn zig_plan_builds_release_safe_binary_with_private_cache() {
+        let job = job("zig", "main.zig");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "zig");
+        assert_eq!(plan.compile.args[0], "build-exe");
+        assert!(plan.compile.args.iter().any(|arg| arg == "ReleaseSafe"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-lc"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "--cache-dir"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-cache/zig-global-cache")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "ZIG_LOCAL_CACHE_DIR" && value.ends_with("zig-cache")));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

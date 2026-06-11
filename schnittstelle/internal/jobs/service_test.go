@@ -140,6 +140,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
 			{Language: "sql", Version: "system"},
+			{Language: "zig", Version: "system"},
 		},
 	)
 
@@ -234,6 +235,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			compilePrefix: []string{"bash", "--noprofile", "--norc"},
 			runPrefix:     []string{"bash", "--noprofile", "--norc"},
 		},
+		{
+			language:      "zig",
+			alias:         "",
+			entrypoint:    "main.zig",
+			compilePrefix: []string{"zig", "build-exe"},
+			runPrefix:     []string{".laeufer-bin/main"},
+		},
 	}
 
 	resp, err := service.ListRuntimes(context.Background(), &pb.ListRuntimesRequest{})
@@ -249,7 +257,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			if runtime.GetDefaultEntrypoint() != tt.entrypoint {
 				t.Fatalf("DefaultEntrypoint = %q", runtime.GetDefaultEntrypoint())
 			}
-			if !containsString(runtime.GetAliases(), tt.alias) {
+			if tt.alias != "" && !containsString(runtime.GetAliases(), tt.alias) {
 				t.Fatalf("Aliases = %v, want %s", runtime.GetAliases(), tt.alias)
 			}
 			if !hasPrefix(runtime.GetCompilePhase().GetCommand(), tt.compilePrefix) {
