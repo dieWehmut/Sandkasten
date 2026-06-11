@@ -94,6 +94,9 @@ RUN apt-get update && \
     curl -fL "https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-${CANGJIE_VERSION}.tar.gz&objectKey=6a19349d21f5a8178d6fd22b" -o /tmp/cangjie.tar.gz && \
     echo "${CANGJIE_SHA256}  /tmp/cangjie.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/cangjie.tar.gz -C /opt && \
+    find /opt/cangjie -type d -exec chmod 0755 {} + && \
+    find /opt/cangjie -type f -exec chmod 0644 {} + && \
+    find /opt/cangjie/bin /opt/cangjie/tools/bin /opt/cangjie/third_party/llvm/bin -type f -exec chmod 0755 {} + && \
     { \
       printf '%s\n' '#!/bin/sh'; \
       printf '%s\n' 'export CANGJIE_HOME="${CANGJIE_HOME:-/opt/cangjie}"'; \
