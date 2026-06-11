@@ -52,7 +52,7 @@ These defaults can be overridden globally:
 
 Each supported runtime can also override these defaults with `SANDKASTEN_<LANG>_DEFAULT_*`, for example `SANDKASTEN_PYTHON_DEFAULT_RUN_TIMEOUT_MS`. Language aliases are normalized first, so `py` uses the `PYTHON` prefix and `c++` uses the `CPP` prefix.
 
-Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `python`, `r`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `py`, `rscript`, `rs`, and `ts` are normalized.
+Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `python`, `r`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `jl`, `kt`, `lean`, `lua5.4`, `py`, `rscript`, `rs`, and `ts` are normalized.
 
 Default entrypoints:
 
@@ -62,6 +62,10 @@ Default entrypoints:
 - C#: `Program.cs`
 - Java: `Main.java`
 - JavaScript: `main.js`
+- Julia: `main.jl`
+- Kotlin: `Main.kt`
+- Lean4: `Main.lean`
+- Lua: `main.lua`
 - Python: `main.py`
 - R: `main.R`
 - Rust: `main.rs`
