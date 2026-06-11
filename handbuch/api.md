@@ -52,26 +52,37 @@ These defaults can be overridden globally:
 
 Each supported runtime can also override these defaults with `SANDKASTEN_<LANG>_DEFAULT_*`, for example `SANDKASTEN_PYTHON_DEFAULT_RUN_TIMEOUT_MS`. Language aliases are normalized first, so `py` uses the `PYTHON` prefix and `c++` uses the `CPP` prefix.
 
-Supported language values are `go`, `c`, `cpp`, `csharp`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `python`, `r`, `rust`, and `typescript`. Aliases such as `golang`, `c++`, `c#`, `js`, `jl`, `kt`, `lean`, `lua5.4`, `py`, `rscript`, `rs`, and `ts` are normalized.
+Supported runtimes and default entrypoints:
 
-Default entrypoints:
+| Language | Aliases | Default entrypoint |
+| --- | --- | --- |
+| `go` | `golang` | `.` |
+| `bash` | `shell`, `sh` | `main.sh` |
+| `c` | - | `main.c` |
+| `cangjie` | `cj`, `cjc`, `仓颉` | `main.cj` |
+| `cpp` | `c++` | `main.cpp` |
+| `csharp` | `cs`, `c#` | `Program.cs` |
+| `coq` | `coqtop`, `coqc` | `main.v` |
+| `java` | - | `Main.java` |
+| `javascript` | `js`, `node` | `main.js` |
+| `julia` | `jl` | `main.jl` |
+| `kotlin` | `kt` | `Main.kt` |
+| `lean4` | `lean` | `Main.lean` |
+| `lua` | `lua5.4` | `main.lua` |
+| `php` | `php8`, `php8.2` | `main.php` |
+| `prolog` | `pl`, `swi-prolog`, `swipl` | `main.pl` |
+| `python` | `py`, `python3` | `main.py` |
+| `r` | `rscript` | `main.R` |
+| `racket` | `rkt` | `main.rkt` |
+| `ruby` | `rb` | `main.rb` |
+| `rust` | `rs` | `main.rs` |
+| `scala` | `sc` | `Main.scala` |
+| `sql` | `sqlite`, `sqlite3` | `main.sql` |
+| `swift` | - | `main.swift` |
+| `typescript` | `ts` | `main.ts` |
+| `zig` | - | `main.zig` |
 
-- Go: `.`
-- C: `main.c`
-- C++: `main.cpp`
-- C#: `Program.cs`
-- Java: `Main.java`
-- JavaScript: `main.js`
-- Julia: `main.jl`
-- Kotlin: `Main.kt`
-- Lean4: `Main.lean`
-- Lua: `main.lua`
-- Python: `main.py`
-- R: `main.R`
-- Rust: `main.rs`
-- TypeScript: `main.ts`
-
-The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; other first-pass language archives may contain a single entrypoint source file.
+The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file.
 
 ## Submit Limits
 

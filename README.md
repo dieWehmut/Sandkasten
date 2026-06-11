@@ -1,6 +1,6 @@
 # Sandkasten
 
-Sandkasten is a self-hosted code execution system. The v1 implementation runs Go, C, C++, C#, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Python, R, Rust, and TypeScript jobs:
+Sandkasten is a self-hosted code execution system. The v1 implementation runs Go, Bash/Shell, C, Cangjie, C++, C#, Coq, Java, JavaScript, Julia, Kotlin, Lean4, Lua, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL, Swift, TypeScript, and Zig jobs:
 
 - `schnittstelle/`: Go gRPC API service.
 - `laeufer/`: Rust runner and Linux sandbox controller.
@@ -15,7 +15,7 @@ Sandkasten is a self-hosted code execution system. The v1 implementation runs Go
 
 ## v1 Contract
 
-Clients upload a `tar.gz` archive or submit single-file source through the HTTP API. Go archives must include `go.mod` and a `vendor/` directory; the first non-Go runtime contract is single-file source with a language-specific entrypoint such as `main.py`, `main.R`, `Main.kt`, `Main.lean`, `main.lua`, or `main.rs`. Sandkasten stores the job in Postgres, a Rust runner leases it asynchronously, then compiles and runs it inside a Linux sandbox with cgroup, namespace, filesystem, and network restrictions.
+Clients upload a `tar.gz` archive or submit single-file source through the HTTP API. Go archives must include `go.mod` and a `vendor/` directory; non-Go runtimes use language-specific single-file entrypoints such as `main.sh`, `main.cj`, `main.py`, `main.rkt`, `main.swift`, or `main.zig`. Sandkasten stores the job in Postgres, a Rust runner leases it asynchronously, then compiles and runs it inside a Linux sandbox with cgroup, namespace, filesystem, and network restrictions.
 
 The runner does not silently fall back to Docker or ordinary host execution. If required kernel or permission features are missing, it fails preflight and refuses to execute jobs.
 

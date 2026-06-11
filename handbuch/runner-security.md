@@ -19,7 +19,7 @@ The current runner implementation applies these controls for each child command:
 - Built-in child seccomp BPF profiles installed after setup and privilege drop. Both compile and run profiles include an audit-architecture guard and errno returns for network syscalls and high-risk kernel interfaces such as `mount`, new mount API syscalls, `ptrace`, `process_vm_*`, `bpf`, `perf_event_open`, `keyctl`, module loading, `kexec`, handle-based file opens, `userfaultfd`, `clone3`, and `io_uring_*`. `clone3` returns `ENOSYS` so language runtimes can fall back to older `clone`; other denied syscalls return `EPERM`. The run profile additionally denies metadata mutation and clock-setting syscalls such as `chmod`, `chown`, xattr mutation, `clock_settime`, and `settimeofday`.
 - `close_range(3, UINT_MAX, CLOSE_RANGE_UNSHARE)` before exec, with a `/proc/self/fd` fallback, so inherited runner descriptors are not exposed to user code.
 - Go builds forced through `-mod=vendor` with `CGO_ENABLED=0`, `GOTOOLCHAIN=local`, `GOFLAGS=-buildvcs=false`, a shared runner Go build cache for compile-phase reuse, and per-job temp directories. The run phase does not inherit the shared `GOCACHE`.
-- Language-specific compile/run plans for C, C++, C#, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Python, R, Rust, and TypeScript.
+- Language-specific compile/run plans for Bash/Shell, C, Cangjie, C++, C#, Coq, Java, JavaScript, Julia, Kotlin, Lean4, Lua, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL/SQLite, Swift, TypeScript, and Zig.
 - A separate `LAEUFER_COMPILE_MEMORY_LIMIT_BYTES` setting for compilation, while job memory limits still apply to the executed program.
 - Lease heartbeat during job execution, with status, renew, and final artifact writes guarded by runner id, exact `attempt_id`, and the current attempt number to prevent stale runners from overwriting results.
 - A retry budget via `LAEUFER_MAX_ATTEMPTS`; each lease creates a `job_attempts` record, terminal writes copy exit/signal/cgroup counters plus `terminal_reason`, `cgroup_path`, and host `child_pid` onto the exact attempt, and expired active jobs that exhaust the budget are marked `SYSTEM_ERROR` with the latest attempt marked `DEAD_LETTER`.
@@ -55,7 +55,7 @@ The runner pod is privileged because the runner must configure kernel isolation 
 
 ## Rootfs and Network
 
-The runner image includes system toolchains for the supported languages. Go jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`; first-pass non-Go jobs are single-file source programs. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes.
+The runner image includes system toolchains and language SDKs for the supported languages. Go jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`; non-Go jobs are single-file source programs by default. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes.
 
 ## Seccomp
 
