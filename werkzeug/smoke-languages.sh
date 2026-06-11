@@ -94,6 +94,7 @@ need_runtime_tool go "Install Go 1.25+ where the runner child PATH can execute i
 need_runtime_tool bash "Install bash for bash/shell jobs."
 need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
+need_runtime_tool coqc "Install Coq for Coq jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
 need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
@@ -204,6 +205,8 @@ int main(){std::cout << "hello, cpp\n"; return 0;}'
 
 run_language csharp "hello, csharp" 'using System;
 class Program { static void Main() { Console.WriteLine("hello, csharp"); } }'
+
+run_language coq "" 'Goal True. Proof. exact I. Qed.'
 
 run_language java "hello, java" 'public class Main {
   public static void main(String[] args) { System.out.println("hello, java"); }

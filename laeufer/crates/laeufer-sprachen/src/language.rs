@@ -6,6 +6,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "c" => "c",
         "cpp" | "c++" => "cpp",
         "csharp" | "cs" | "c#" => "csharp",
+        "coq" | "coqtop" | "coqc" => "coq",
         "java" => "java",
         "javascript" | "js" | "node" => "javascript",
         "julia" | "jl" => "julia",

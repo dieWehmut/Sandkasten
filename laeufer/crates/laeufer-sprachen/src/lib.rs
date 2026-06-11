@@ -321,6 +321,21 @@ mod tests {
     }
 
     #[test]
+    fn coq_plan_checks_file_with_coqc_and_confirms_vo_output() {
+        let job = job("coqc", "main.v");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "coqc");
+        assert_eq!(plan.compile.args[0], "-q");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-R"));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.program, "test");
+        assert_eq!(plan.run.args[0], "-f");
+        assert!(plan.run.args[1].ends_with("main.vo"));
+    }
+
+    #[test]
     fn scala_plan_compiles_classes_and_limits_jvm_cpu() {
         let job = job("sc", "Main.scala");
         let plan =

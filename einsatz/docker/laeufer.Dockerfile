@@ -41,6 +41,7 @@ RUN apt-get update && \
       ca-certificates \
       bash \
       curl \
+      coq \
       g++ \
       gcc \
       kotlin \

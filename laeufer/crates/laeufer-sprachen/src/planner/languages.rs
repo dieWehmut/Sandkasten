@@ -319,6 +319,55 @@ pub(super) fn plan_csharp(
     BuildPlan { compile, run }
 }
 
+pub(super) fn plan_coq(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let vo_path = source_dir
+        .join(
+            entrypoint
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .unwrap_or("main"),
+        )
+        .with_extension("vo");
+    let compile = compile_command_plan(
+        "coqc",
+        vec![
+            "-q".to_owned(),
+            "-R".to_owned(),
+            ".".to_owned(),
+            "Sandbox".to_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "test",
+        vec!["-f".to_owned(), vo_path.to_string_lossy().into_owned()],
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(super) fn plan_kotlin(
     job: &Job,
     source_dir: PathBuf,

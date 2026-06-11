@@ -184,6 +184,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"c",
 		"cpp",
 		"csharp",
+		"coq",
 		"java",
 		"javascript",
 		"julia",
