@@ -711,6 +711,65 @@ pub(super) fn plan_ruby(
     BuildPlan { compile, run }
 }
 
+pub(super) fn plan_scala(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let class_dir = source_dir.join(RUNNER_BIN_DIR);
+    let main_class = entrypoint
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or("Main")
+        .to_owned();
+    let tmp_arg = format!(
+        "-J-Djava.io.tmpdir={}",
+        source_dir.join(RUNNER_TMP_DIR).to_string_lossy()
+    );
+    let compile = compile_command_plan(
+        "scalac",
+        vec![
+            "-J-XX:ActiveProcessorCount=1".to_owned(),
+            tmp_arg,
+            "-d".to_owned(),
+            class_dir.to_string_lossy().into_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "-J-XX:ActiveProcessorCount=1".to_owned(),
+        "-Dscala.usejavacp=true".to_owned(),
+        "-cp".to_owned(),
+        class_dir.to_string_lossy().into_owned(),
+        main_class,
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "scala",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(super) fn plan_typescript(
     job: &Job,
     source_dir: PathBuf,

@@ -17,6 +17,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "r" | "rscript" => "r",
         "ruby" | "rb" => "ruby",
         "rust" | "rs" => "rust",
+        "scala" | "sc" => "scala",
         "typescript" | "ts" => "typescript",
         _ => return None,
     };

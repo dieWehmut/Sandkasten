@@ -135,6 +135,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "lua", Version: "system"},
 			{Language: "php", Version: "system"},
 			{Language: "ruby", Version: "system"},
+			{Language: "scala", Version: "system"},
 		},
 	)
 
@@ -193,6 +194,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.php",
 			compilePrefix: []string{"php", "-d", "variables_order=EGPCS"},
 			runPrefix:     []string{"php", "-d", "variables_order=EGPCS"},
+		},
+		{
+			language:      "scala",
+			alias:         "sc",
+			entrypoint:    "Main.scala",
+			compilePrefix: []string{"scalac", "-J-XX:ActiveProcessorCount=1"},
+			runPrefix:     []string{"scala", "-J-XX:ActiveProcessorCount=1"},
 		},
 	}
 

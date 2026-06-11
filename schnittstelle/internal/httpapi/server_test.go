@@ -211,6 +211,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/lua5.4/run", language: "lua", entrypoint: "main.lua", source: `print("ok")`},
 		{path: "/v1/php8.2/run", language: "php", entrypoint: "main.php", source: `<?php echo "ok\n";`},
 		{path: "/v1/rb/run", language: "ruby", entrypoint: "main.rb", source: `puts "ok"`},
+		{path: "/v1/sc/run", language: "scala", entrypoint: "Main.scala", source: `object Main extends App { println("ok") }`},
 	}
 
 	for _, tt := range tests {

@@ -84,6 +84,13 @@ pub(crate) fn plan(
         "python" => Ok(languages::plan_python(job, source_dir, env, entrypoint)),
         "r" => Ok(languages::plan_r(job, source_dir, env, entrypoint)),
         "ruby" => Ok(languages::plan_ruby(job, source_dir, env, entrypoint)),
+        "scala" => Ok(languages::plan_scala(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
         _ => Err(RunnerError::Validation(format!(
             "unsupported language {:?}",

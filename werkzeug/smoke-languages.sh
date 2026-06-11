@@ -109,6 +109,8 @@ need_runtime_tool python3 "Install Python 3 for Python jobs."
 need_runtime_tool Rscript "Install Rscript for R jobs."
 need_runtime_tool ruby "Install Ruby for Ruby jobs."
 need_runtime_tool rustc "Install rustc for Rust jobs."
+need_runtime_tool scala "Install Scala for Scala jobs."
+need_runtime_tool scalac "Install Scalac for Scala jobs."
 need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
 
 printf 'Checking database connectivity...\n'
@@ -224,6 +226,10 @@ run_language r "hello, r" 'cat("hello, r\n")'
 run_language ruby "hello, ruby" 'puts "hello, ruby"'
 
 run_language rust "hello, rust" 'fn main() { println!("hello, rust"); }'
+
+run_language scala "hello, scala" 'object Main extends App {
+  println("hello, scala")
+}' 1073741824
 
 run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
 console.log(msg);'

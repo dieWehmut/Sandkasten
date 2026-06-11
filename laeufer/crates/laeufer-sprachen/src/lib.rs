@@ -299,6 +299,29 @@ mod tests {
     }
 
     #[test]
+    fn scala_plan_compiles_classes_and_limits_jvm_cpu() {
+        let job = job("sc", "Main.scala");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "scalac");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "-J-XX:ActiveProcessorCount=1"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-d"));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.program, "scala");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg == "-Dscala.usejavacp=true"));
+        assert!(plan.run.args.iter().any(|arg| arg == "Main"));
+    }
+
+    #[test]
     fn kotlin_plan_builds_jar_and_runs_with_java() {
         let job = job("kt", "Main.kt");
         let plan =

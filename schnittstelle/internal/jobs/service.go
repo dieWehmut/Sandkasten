@@ -452,6 +452,8 @@ func NormalizeLanguage(language string) string {
 		return "ruby"
 	case "rs":
 		return "rust"
+	case "sc":
+		return "scala"
 	case "ts":
 		return "typescript"
 	default:
@@ -515,6 +517,8 @@ func defaultEntrypoint(language string) string {
 		return "main.rb"
 	case "rust":
 		return "main.rs"
+	case "scala":
+		return "Main.scala"
 	case "typescript":
 		return "main.ts"
 	default:
@@ -552,6 +556,8 @@ func runtimeAliases(language string) []string {
 		return []string{"rb"}
 	case "rust":
 		return []string{"rs"}
+	case "scala":
+		return []string{"sc"}
 	case "typescript":
 		return []string{"ts"}
 	default:
@@ -593,6 +599,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("ruby", "-c", "main.rb")
 	case "rust":
 		return phase("rustc", "--edition=2021", "-O", "-o", ".laeufer-bin/main", "main.rs")
+	case "scala":
+		return phase("scalac", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "-d", ".laeufer-bin", "Main.scala")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
 	default:
@@ -628,6 +636,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("Rscript", "--vanilla", "main.R")
 	case "ruby":
 		return phase("ruby", "--disable=gems", "main.rb")
+	case "scala":
+		return phase("scala", "-J-XX:ActiveProcessorCount=1", "-Dscala.usejavacp=true", "-cp", ".laeufer-bin", "Main")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
 	default:
