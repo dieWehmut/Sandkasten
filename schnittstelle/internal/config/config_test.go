@@ -51,21 +51,22 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 	cfg := Load()
 
 	want := map[string]bool{
-		"bash":   false,
-		"coq":    false,
-		"julia":  false,
-		"kotlin": false,
-		"lean4":  false,
-		"lua":    false,
-		"php":    false,
-		"prolog": false,
-		"r":      false,
-		"racket": false,
-		"ruby":   false,
-		"scala":  false,
-		"sql":    false,
-		"swift":  false,
-		"zig":    false,
+		"bash":    false,
+		"cangjie": false,
+		"coq":     false,
+		"julia":   false,
+		"kotlin":  false,
+		"lean4":   false,
+		"lua":     false,
+		"php":     false,
+		"prolog":  false,
+		"r":       false,
+		"racket":  false,
+		"ruby":    false,
+		"scala":   false,
+		"sql":     false,
+		"swift":   false,
+		"zig":     false,
 	}
 	for _, runtime := range cfg.SupportedRuntimes {
 		if _, ok := want[runtime.GetLanguage()]; ok {

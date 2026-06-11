@@ -280,6 +280,26 @@ mod tests {
     }
 
     #[test]
+    fn cangjie_plan_compiles_optimized_binary_with_runtime_rpath() {
+        let job = job("cj", "main.cj");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "cjc");
+        assert_eq!(plan.compile.args[0], "-O");
+        assert!(plan.compile.args.iter().any(|arg| arg == "--jobs"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "1"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "--set-runtime-rpath"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

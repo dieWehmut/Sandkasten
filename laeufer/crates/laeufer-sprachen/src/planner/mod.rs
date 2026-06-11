@@ -35,6 +35,13 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "cangjie" => Ok(languages::plan_cangjie(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "cpp" => Ok(languages::plan_cpp(
             job,
             source_dir,

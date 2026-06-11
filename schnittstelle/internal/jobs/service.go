@@ -428,6 +428,8 @@ func NormalizeLanguage(language string) string {
 		return "go"
 	case "shell", "sh":
 		return "bash"
+	case "cj", "cjc", "仓颉":
+		return "cangjie"
 	case "c++":
 		return "cpp"
 	case "cs", "c#":
@@ -503,6 +505,8 @@ func defaultEntrypoint(language string) string {
 		return "main.sh"
 	case "c":
 		return "main.c"
+	case "cangjie":
+		return "main.cj"
 	case "cpp":
 		return "main.cpp"
 	case "csharp":
@@ -554,6 +558,8 @@ func runtimeAliases(language string) []string {
 	switch normalizeLanguage(language) {
 	case "bash":
 		return []string{"shell", "sh"}
+	case "cangjie":
+		return []string{"cj", "cjc", "仓颉"}
 	case "go":
 		return []string{"golang"}
 	case "cpp":
@@ -609,6 +615,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("bash", "-n", "main.sh")
 	case "c":
 		return phase("gcc", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.c")
+	case "cangjie":
+		return phase("cjc", "-O", "--jobs", "1", "--set-runtime-rpath", "-o", ".laeufer-bin/main", "main.cj")
 	case "cpp":
 		return phase("g++", "-std=c++20", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.cpp")
 	case "csharp":
@@ -658,7 +666,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cpp", "rust":
+	case "go", "c", "cangjie", "cpp", "rust":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")

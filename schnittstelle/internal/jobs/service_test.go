@@ -129,6 +129,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 		&pb.Runtime{Language: "go", Version: "1.26"},
 		[]*pb.Runtime{
 			{Language: "bash", Version: "system"},
+			{Language: "cangjie", Version: "system"},
 			{Language: "coq", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
@@ -158,6 +159,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.sh",
 			compilePrefix: []string{"bash", "-n"},
 			runPrefix:     []string{"bash", "--noprofile", "--norc"},
+		},
+		{
+			language:      "cangjie",
+			alias:         "cj",
+			entrypoint:    "main.cj",
+			compilePrefix: []string{"cjc", "-O", "--jobs", "1"},
+			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
 			language:      "coq",
