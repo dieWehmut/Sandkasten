@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -27,6 +28,11 @@ const (
 	outputEncodingBase64    = "base64"
 	maxRunFiles             = 32
 	maxRunFileBytes         = 128 * 1024
+)
+
+var (
+	runnerExecutablePathPattern = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src/\.laeufer-bin/main(?:\.exe)?`)
+	runnerSourcePathPattern     = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src`)
 )
 
 type jobService interface {
@@ -495,7 +501,10 @@ func decodeRunFileContent(file runFile) ([]byte, error) {
 
 func archiveWithFiles(files []archiveFile) ([]byte, error) {
 	var buffer bytes.Buffer
-	gzipWriter := gzip.NewWriter(&buffer)
+	gzipWriter, err := gzip.NewWriterLevel(&buffer, gzip.BestSpeed)
+	if err != nil {
+		return nil, err
+	}
 	tarWriter := tar.NewWriter(gzipWriter)
 
 	for _, file := range files {
@@ -570,10 +579,10 @@ func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, e
 	if job.GetRuntime() != nil {
 		runtimeVersion = job.GetRuntime().GetVersion()
 	}
-	stdout, stdoutEncoding := encodeArtifact(result.GetStdout(), encoding)
-	stderr, stderrEncoding := encodeArtifact(result.GetStderr(), encoding)
-	compileOut, compileOutEncoding := encodeArtifact(result.GetCompileStdout(), encoding)
-	compileErr, compileErrEncoding := encodeArtifact(result.GetCompileStderr(), encoding)
+	stdout, stdoutEncoding := encodeArtifact(redactArtifact(result.GetStdout()), encoding)
+	stderr, stderrEncoding := encodeArtifact(redactArtifact(result.GetStderr()), encoding)
+	compileOut, compileOutEncoding := encodeArtifact(redactArtifact(result.GetCompileStdout()), encoding)
+	compileErr, compileErrEncoding := encodeArtifact(redactArtifact(result.GetCompileStderr()), encoding)
 
 	return jobResponse{
 		JobID:         job.GetJobId(),
@@ -591,7 +600,7 @@ func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, e
 		ExitCode:      result.GetExitCode(),
 		Signal:        result.GetSignal(),
 		DurationMs:    result.GetWallTimeMs(),
-		ErrorMessage:  job.GetErrorMessage(),
+		ErrorMessage:  redactRunnerPaths(job.GetErrorMessage()),
 		Truncated: truncation{
 			Stdout: result.GetStdoutTruncated(),
 			Stderr: result.GetStderrTruncated(),
@@ -604,6 +613,25 @@ func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, e
 			PidsPeak:           result.GetPidsPeak(),
 		},
 	}, nil
+}
+
+func redactArtifact(body []byte) []byte {
+	if len(body) == 0 || !utf8.Valid(body) {
+		return body
+	}
+	redacted := redactRunnerPaths(string(body))
+	if redacted == string(body) {
+		return body
+	}
+	return []byte(redacted)
+}
+
+func redactRunnerPaths(value string) string {
+	if value == "" {
+		return value
+	}
+	value = runnerExecutablePathPattern.ReplaceAllString(value, "./main")
+	return runnerSourcePathPattern.ReplaceAllString(value, "/workspace")
 }
 
 func normalizeOutputEncoding(value string) (string, error) {
@@ -667,6 +695,8 @@ func writeHTTPError(w http.ResponseWriter, status int, code, message string) {
 
 func writeJSON(w http.ResponseWriter, status int, value interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
 }

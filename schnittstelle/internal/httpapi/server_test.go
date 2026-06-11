@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -262,6 +263,9 @@ func TestGetJobReturnsAutoEncodedArtifacts(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
+	if rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("security headers = %v", rec.Header())
+	}
 	var response jobResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
@@ -303,6 +307,79 @@ func TestGetJobCanForceBase64Artifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	if response.Stdout != "aGVsbG8K" || response.StdoutEnc != "base64" {
+		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestGetJobRedactsRunnerPaths(t *testing.T) {
+	const backendPath = "/var/lib/sandkasten/laeufer/3c349dbd-ad6a-4d2b-9314-899f04fa4a9d/src/.laeufer-bin/main"
+	service := &fakeService{
+		job: &pb.Job{
+			JobId:        "job-1",
+			Status:       pb.JobStatus_JOB_STATUS_RUNTIME_FAILED,
+			Language:     "go",
+			ErrorMessage: "failed in " + backendPath,
+			Result: &pb.JobResult{
+				Stdout:        []byte(backendPath + "\n"),
+				Stderr:        []byte("open /var/lib/sandkasten/laeufer/3c349dbd-ad6a-4d2b-9314-899f04fa4a9d/src/user_info.txt: permission denied\n"),
+				CompileStderr: []byte("# example.com/demo\n" + backendPath + ": error\n"),
+			},
+		},
+	}
+	server := New(service, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var response jobResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "/var/lib/sandkasten/laeufer") || strings.Contains(body, "3c349dbd-ad6a-4d2b-9314-899f04fa4a9d") {
+		t.Fatalf("response leaked runner path: %s", body)
+	}
+	if response.Stdout != "./main\n" {
+		t.Fatalf("stdout = %q", response.Stdout)
+	}
+	if !strings.Contains(response.Stderr, "/workspace/user_info.txt") {
+		t.Fatalf("stderr = %q", response.Stderr)
+	}
+	if !strings.Contains(response.CompileErr, "./main: error") {
+		t.Fatalf("compile stderr = %q", response.CompileErr)
+	}
+	if !strings.Contains(response.ErrorMessage, "failed in ./main") {
+		t.Fatalf("error message = %q", response.ErrorMessage)
+	}
+}
+
+func TestGetJobRedactsTextBeforeBase64Encoding(t *testing.T) {
+	const backendPath = "/var/lib/sandkasten/laeufer/3c349dbd-ad6a-4d2b-9314-899f04fa4a9d/src/.laeufer-bin/main"
+	service := &fakeService{
+		job: &pb.Job{
+			JobId:  "job-1",
+			Status: pb.JobStatus_JOB_STATUS_SUCCEEDED,
+			Result: &pb.JobResult{
+				Stdout: []byte(backendPath + "\n"),
+			},
+		},
+	}
+	server := New(service, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1?outputEncoding=base64", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var response jobResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Stdout != base64.StdEncoding.EncodeToString([]byte("./main\n")) || response.StdoutEnc != "base64" {
 		t.Fatalf("response = %+v", response)
 	}
 }
