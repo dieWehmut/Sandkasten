@@ -462,6 +462,8 @@ func NormalizeLanguage(language string) string {
 		return "scala"
 	case "sqlite", "sqlite3":
 		return "sql"
+	case "swift":
+		return "swift"
 	case "ts":
 		return "typescript"
 	case "zig":
@@ -537,6 +539,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.scala"
 	case "sql":
 		return "main.sql"
+	case "swift":
+		return "main.swift"
 	case "typescript":
 		return "main.ts"
 	case "zig":
@@ -586,6 +590,8 @@ func runtimeAliases(language string) []string {
 		return []string{"sc"}
 	case "sql":
 		return []string{"sqlite", "sqlite3"}
+	case "swift":
+		return nil
 	case "typescript":
 		return []string{"ts"}
 	case "zig":
@@ -639,6 +645,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("scalac", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "-d", ".laeufer-bin", "Main.scala")
 	case "sql":
 		return phase("bash", "--noprofile", "--norc", "-c", "test -r \"$1\"", "_", "main.sql")
+	case "swift":
+		return phase("swiftc", "-O", "-o", ".laeufer-bin/main", "main.swift")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
 	case "zig":
@@ -686,6 +694,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("scala", "-J-XX:ActiveProcessorCount=1", "-Dscala.usejavacp=true", "-cp", ".laeufer-bin", "Main")
 	case "sql":
 		return phase("bash", "--noprofile", "--norc", "-c", "exec sqlite3 -batch -bail -safe :memory: < \"$1\"", "_", "main.sql")
+	case "swift":
+		return phase(".laeufer-bin/main")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
 	case "zig":

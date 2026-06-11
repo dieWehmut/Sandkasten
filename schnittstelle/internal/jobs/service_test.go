@@ -140,6 +140,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
 			{Language: "sql", Version: "system"},
+			{Language: "swift", Version: "system"},
 			{Language: "zig", Version: "system"},
 		},
 	)
@@ -234,6 +235,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.sql",
 			compilePrefix: []string{"bash", "--noprofile", "--norc"},
 			runPrefix:     []string{"bash", "--noprofile", "--norc"},
+		},
+		{
+			language:      "swift",
+			alias:         "",
+			entrypoint:    "main.swift",
+			compilePrefix: []string{"swiftc", "-O"},
+			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
 			language:      "zig",

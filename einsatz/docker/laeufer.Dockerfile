@@ -35,6 +35,7 @@ FROM golang:1.26-bookworm
 ARG JULIA_VERSION=1.10.10
 ARG JULIA_MINOR_VERSION=1.10
 ARG LEAN_VERSION=4.23.0
+ARG SWIFT_VERSION=6.3.2
 ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update && \
@@ -45,7 +46,16 @@ RUN apt-get update && \
       coq \
       g++ \
       gcc \
+      git \
       kotlin \
+      libcurl4-openssl-dev \
+      libedit2 \
+      libgcc-12-dev \
+      libpython3.11 \
+      libsqlite3-0 \
+      libstdc++-12-dev \
+      libxml2-dev \
+      libz3-dev \
       lua5.4 \
       mono-mcs \
       mono-runtime \
@@ -62,6 +72,7 @@ RUN apt-get update && \
       sqlite3 \
       swi-prolog \
       tini \
+      tzdata \
       zstd && \
     curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
@@ -73,9 +84,13 @@ RUN apt-get update && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lake" /usr/local/bin/lake && \
+    curl -fL "https://download.swift.org/swift-${SWIFT_VERSION}-release/debian12/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-debian12.tar.gz" -o /tmp/swift.tar.gz && \
+    tar -xzf /tmp/swift.tar.gz -C /opt && \
+    ln -s "/opt/swift-${SWIFT_VERSION}-RELEASE-debian12/usr/bin/swift" /usr/local/bin/swift && \
+    ln -s "/opt/swift-${SWIFT_VERSION}-RELEASE-debian12/usr/bin/swiftc" /usr/local/bin/swiftc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/lean.tar.zst && \
+    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/lean.tar.zst /tmp/swift.tar.gz && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 

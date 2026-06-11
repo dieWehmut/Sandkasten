@@ -22,6 +22,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "rust" | "rs" => "rust",
         "scala" | "sc" => "scala",
         "sql" | "sqlite" | "sqlite3" => "sql",
+        "swift" => "swift",
         "typescript" | "ts" => "typescript",
         "zig" => "zig",
         _ => return None,

@@ -200,6 +200,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"rust",
 		"scala",
 		"sql",
+		"swift",
 		"typescript",
 		"zig",
 	})

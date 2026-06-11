@@ -116,6 +116,7 @@ need_runtime_tool rustc "Install rustc for Rust jobs."
 need_runtime_tool scala "Install Scala for Scala jobs."
 need_runtime_tool scalac "Install Scalac for Scala jobs."
 need_runtime_tool sqlite3 "Install SQLite CLI for SQL jobs."
+need_runtime_tool swiftc "Install Swift for Swift jobs."
 need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
 need_runtime_tool zig "Install Zig for Zig jobs."
 
@@ -245,6 +246,8 @@ run_language scala "hello, scala" 'object Main extends App {
 }' 1073741824
 
 run_language sql "hello, sql" "select 'hello, sql';"
+
+run_language swift "hello, swift" 'print("hello, swift")' 1073741824
 
 run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
 console.log(msg);'

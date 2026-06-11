@@ -101,6 +101,13 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "sql" => Ok(languages::plan_sql(job, source_dir, env, entrypoint)),
+        "swift" => Ok(languages::plan_swift(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
         "zig" => Ok(languages::plan_zig(
             job,
