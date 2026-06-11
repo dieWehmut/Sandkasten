@@ -39,7 +39,15 @@ func (f *fakeService) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.Jo
 }
 
 func (f *fakeService) ListRuntimes(ctx context.Context, req *pb.ListRuntimesRequest) (*pb.ListRuntimesResponse, error) {
-	return &pb.ListRuntimesResponse{Runtimes: []*pb.Runtime{{Language: "go", Version: "1.26"}}}, nil
+	return &pb.ListRuntimesResponse{Runtimes: []*pb.Runtime{{
+		Language:          "go",
+		Version:           "1.26",
+		Status:            "active",
+		DefaultEntrypoint: ".",
+		CompilePhase:      &pb.RuntimePhase{Command: []string{"go", "build", "-o", ".laeufer-bin/main", "."}, Enabled: true},
+		RunPhase:          &pb.RuntimePhase{Command: []string{".laeufer-bin/main"}, Enabled: true},
+		DefaultLimits:     &pb.RuntimeLimits{CompileTimeoutMs: 10000, RunTimeoutMs: 3000, MemoryLimitBytes: 256 * 1024 * 1024, CpuMillis: 3000, OutputBytes: 1 * 1024 * 1024},
+	}}}, nil
 }
 
 func TestRunGoFromSourceSubmitsArchive(t *testing.T) {
@@ -232,6 +240,90 @@ func TestRunReturnsServiceUnavailableOnResourceExhaustion(t *testing.T) {
 	}
 	if response.Error != "resource_exhausted" {
 		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestRootRedirectsToRuntimes(t *testing.T) {
+	server := New(&fakeService{}, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/v1/runtimes" {
+		t.Fatalf("status = %d, location = %q", rec.Code, rec.Header().Get("Location"))
+	}
+	if rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("headers = %+v", rec.Header())
+	}
+}
+
+func TestUnknownGETDoesNotUseRootRedirect(t *testing.T) {
+	server := New(&fakeService{}, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/missing", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, location = %q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+func TestRuntimesReturnJSONByDefault(t *testing.T) {
+	server := New(&fakeService{}, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/runtimes", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "application/json") {
+		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
+	}
+	var response pb.ListRuntimesResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.GetRuntimes()) != 1 || response.GetRuntimes()[0].GetLanguage() != "go" {
+		t.Fatalf("response = %+v", response.GetRuntimes())
+	}
+}
+
+func TestRuntimesReturnJSONWhenJSONAcceptWins(t *testing.T) {
+	server := New(&fakeService{}, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodGet, "/v1/runtimes", nil)
+	req.Header.Set("Accept", "application/json, text/html")
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "application/json") {
+		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
+	}
+}
+
+func TestRuntimesReturnHTMLForBrowsers(t *testing.T) {
+	server := New(&fakeService{}, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodGet, "/v1/runtimes", nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
+	}
+	body := rec.Body.String()
+	for _, want := range []string{"Sandkasten Runtimes", "<h2>go</h2>", "1.26", "active"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("HTML body missing %q: %s", want, body)
+		}
 	}
 }
 

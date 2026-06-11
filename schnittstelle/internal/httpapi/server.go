@@ -9,9 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"path"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,6 +36,7 @@ const (
 var (
 	runnerExecutablePathPattern = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src/\.laeufer-bin/main(?:\.exe)?`)
 	runnerSourcePathPattern     = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src`)
+	runtimesPageTemplate        = template.Must(template.New("runtimes").Parse(runtimesPageHTML))
 )
 
 type jobService interface {
@@ -72,6 +76,7 @@ func New(service jobService, authToken string, allowedOrigins []string) *Server 
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /v1/runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /v1/go/run", s.handleRunGo)
@@ -79,6 +84,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/run", s.handleRun)
 	mux.HandleFunc("GET /v1/jobs/{job_id}", s.handleGetJob)
 	return s.withCORS(mux)
+}
+
+func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	http.Redirect(w, r, "/v1/runtimes", http.StatusFound)
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +103,10 @@ func (s *Server) handleRuntimes(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.service.ListRuntimes(r.Context(), &pb.ListRuntimesRequest{})
 	if err != nil {
 		s.writeError(w, err)
+		return
+	}
+	if acceptsHTML(r) {
+		writeRuntimesHTML(w, resp)
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -569,6 +584,175 @@ type diagnostics struct {
 	PidsPeak           uint64 `json:"pidsPeak"`
 }
 
+type runtimesPageData struct {
+	GeneratedAt string
+	ActiveCount int
+	TotalCount  int
+	Runtimes    []runtimePageRuntime
+}
+
+type runtimePageRuntime struct {
+	Language          string
+	Version           string
+	Status            string
+	DefaultEntrypoint string
+	Aliases           string
+	CompileCommand    string
+	RunCommand        string
+	CompileTimeout    string
+	RunTimeout        string
+	MemoryLimit       string
+	CPUMillis         string
+	OutputLimit       string
+	Active            bool
+}
+
+func acceptsHTML(r *http.Request) bool {
+	accept := r.Header.Get("Accept")
+	htmlQuality := acceptQuality(accept, "text/html")
+	jsonQuality := acceptQuality(accept, "application/json")
+	return htmlQuality > 0 && htmlQuality > jsonQuality
+}
+
+func acceptQuality(accept, target string) float64 {
+	var best float64
+	target = strings.ToLower(target)
+	for _, item := range strings.Split(accept, ",") {
+		mediaRange, quality := parseAcceptItem(item)
+		if quality <= best {
+			continue
+		}
+		if mediaRange == target || mediaRange == targetTypeWildcard(target) {
+			best = quality
+		}
+	}
+	return best
+}
+
+func parseAcceptItem(item string) (string, float64) {
+	parts := strings.Split(item, ";")
+	mediaRange := strings.ToLower(strings.TrimSpace(parts[0]))
+	if mediaRange == "" {
+		return "", 0
+	}
+	quality := 1.0
+	for _, param := range parts[1:] {
+		name, value, ok := strings.Cut(strings.TrimSpace(param), "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(name), "q") {
+			continue
+		}
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err != nil || parsed < 0 {
+			return mediaRange, 0
+		}
+		if parsed > 1 {
+			parsed = 1
+		}
+		quality = parsed
+	}
+	return mediaRange, quality
+}
+
+func targetTypeWildcard(target string) string {
+	mediaType, _, ok := strings.Cut(target, "/")
+	if !ok {
+		return ""
+	}
+	return mediaType + "/*"
+}
+
+func writeRuntimesHTML(w http.ResponseWriter, resp *pb.ListRuntimesResponse) {
+	var buffer bytes.Buffer
+	if err := runtimesPageTemplate.Execute(&buffer, runtimesPageDataFromProto(resp)); err != nil {
+		writeHTTPError(w, http.StatusInternalServerError, "render_error", err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(buffer.Bytes())
+}
+
+func runtimesPageDataFromProto(resp *pb.ListRuntimesResponse) runtimesPageData {
+	runtimes := append([]*pb.Runtime(nil), resp.GetRuntimes()...)
+	sort.Slice(runtimes, func(i, j int) bool {
+		return runtimes[i].GetLanguage() < runtimes[j].GetLanguage()
+	})
+
+	data := runtimesPageData{
+		GeneratedAt: time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
+		TotalCount:  len(runtimes),
+		Runtimes:    make([]runtimePageRuntime, 0, len(runtimes)),
+	}
+	for _, runtime := range runtimes {
+		status := runtime.GetStatus()
+		active := status == "active"
+		if active {
+			data.ActiveCount++
+		}
+		limits := runtime.GetDefaultLimits()
+		data.Runtimes = append(data.Runtimes, runtimePageRuntime{
+			Language:          runtime.GetLanguage(),
+			Version:           fallback(runtime.GetVersion(), "system"),
+			Status:            fallback(status, "unknown"),
+			DefaultEntrypoint: fallback(runtime.GetDefaultEntrypoint(), "-"),
+			Aliases:           joinOrDash(runtime.GetAliases()),
+			CompileCommand:    runtimeCommand(runtime.GetCompilePhase()),
+			RunCommand:        runtimeCommand(runtime.GetRunPhase()),
+			CompileTimeout:    formatRuntimeMillis(limits.GetCompileTimeoutMs()),
+			RunTimeout:        formatRuntimeMillis(limits.GetRunTimeoutMs()),
+			MemoryLimit:       formatRuntimeBytes(limits.GetMemoryLimitBytes()),
+			CPUMillis:         formatRuntimeMillis(limits.GetCpuMillis()),
+			OutputLimit:       formatRuntimeBytes(limits.GetOutputBytes()),
+			Active:            active,
+		})
+	}
+	return data
+}
+
+func runtimeCommand(phase *pb.RuntimePhase) string {
+	if phase == nil || !phase.GetEnabled() || len(phase.GetCommand()) == 0 {
+		return "-"
+	}
+	return strings.Join(phase.GetCommand(), " ")
+}
+
+func joinOrDash(values []string) string {
+	if len(values) == 0 {
+		return "-"
+	}
+	return strings.Join(values, ", ")
+}
+
+func fallback(value, fallbackValue string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallbackValue
+	}
+	return value
+}
+
+func formatRuntimeMillis(value uint32) string {
+	if value == 0 {
+		return "-"
+	}
+	if value >= 1000 && value%1000 == 0 {
+		return fmt.Sprintf("%ds", value/1000)
+	}
+	return fmt.Sprintf("%d ms", value)
+}
+
+func formatRuntimeBytes(value uint64) string {
+	if value == 0 {
+		return "-"
+	}
+	const mib = 1024 * 1024
+	if value >= mib && value%mib == 0 {
+		return fmt.Sprintf("%d MiB", value/mib)
+	}
+	return fmt.Sprintf("%d B", value)
+}
+
 func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, error) {
 	encoding, err := normalizeOutputEncoding(requestedEncoding)
 	if err != nil {
@@ -683,6 +867,222 @@ func isTerminal(status pb.JobStatus) bool {
 		return false
 	}
 }
+
+const runtimesPageHTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandkasten Runtimes</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c0f14;
+      --panel: #141922;
+      --panel-strong: #191f2b;
+      --border: #273040;
+      --text: #e8edf6;
+      --muted: #95a0b3;
+      --accent: #63d297;
+      --warn: #f2c36b;
+      --code: #0a0d12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        linear-gradient(rgba(99, 210, 151, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 210, 151, 0.04) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      color: var(--muted);
+      text-align: right;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+      font-weight: 760;
+      white-space: nowrap;
+    }
+    .pill strong { color: var(--text); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+      gap: 12px;
+    }
+    article {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--panel-strong), var(--panel));
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    }
+    article.is-active { border-color: rgba(99, 210, 151, 0.5); }
+    .runtime-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .version {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status {
+      flex: 0 0 auto;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--warn);
+      background: rgba(242, 195, 107, 0.1);
+      font-size: 12px;
+      font-weight: 820;
+    }
+    .is-active .status {
+      color: #bdf5d0;
+      background: rgba(99, 210, 151, 0.14);
+    }
+    dl {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+    .runtime-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .runtime-limits {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 14px;
+    }
+    dt, .command-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+    dd {
+      margin: 3px 0 0;
+      overflow: hidden;
+      color: var(--text);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .command {
+      display: grid;
+      gap: 5px;
+      margin-top: 12px;
+    }
+    code {
+      display: block;
+      overflow: auto;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--code);
+      color: var(--text);
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: nowrap;
+    }
+    footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    @media (max-width: 700px) {
+      main { width: min(100vw - 20px, 1180px); padding-top: 22px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .meta { justify-content: flex-start; text-align: left; }
+      .runtime-limits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sandkasten Runtimes</h1>
+      <div class="meta">
+        <span class="pill"><strong>{{.ActiveCount}}</strong> active</span>
+        <span class="pill"><strong>{{.TotalCount}}</strong> total</span>
+      </div>
+    </header>
+    <section class="grid" aria-label="Runtime languages">
+      {{range .Runtimes}}
+      <article class="{{if .Active}}is-active{{end}}">
+        <div class="runtime-head">
+          <div>
+            <h2>{{.Language}}</h2>
+            <div class="version">{{.Version}}</div>
+          </div>
+          <span class="status">{{.Status}}</span>
+        </div>
+        <dl class="runtime-meta">
+          <div><dt>entry</dt><dd>{{.DefaultEntrypoint}}</dd></div>
+          <div><dt>aliases</dt><dd>{{.Aliases}}</dd></div>
+        </dl>
+        <div class="command">
+          <span class="command-label">compile</span>
+          <code>{{.CompileCommand}}</code>
+        </div>
+        <div class="command">
+          <span class="command-label">run</span>
+          <code>{{.RunCommand}}</code>
+        </div>
+        <dl class="runtime-limits">
+          <div><dt>compile</dt><dd>{{.CompileTimeout}}</dd></div>
+          <div><dt>run</dt><dd>{{.RunTimeout}}</dd></div>
+          <div><dt>memory</dt><dd>{{.MemoryLimit}}</dd></div>
+          <div><dt>cpu</dt><dd>{{.CPUMillis}}</dd></div>
+          <div><dt>output</dt><dd>{{.OutputLimit}}</dd></div>
+        </dl>
+      </article>
+      {{end}}
+    </section>
+    <footer>{{.GeneratedAt}}</footer>
+  </main>
+</body>
+</html>`
 
 type errorResponse struct {
 	Error   string `json:"error"`
