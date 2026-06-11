@@ -61,6 +61,8 @@ RUN apt-get update && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lake" /usr/local/bin/lake && \
+    ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
+    ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
     rm -f /tmp/julia.tar.gz /tmp/lean.tar.zst && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
