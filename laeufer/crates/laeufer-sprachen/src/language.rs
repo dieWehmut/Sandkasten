@@ -18,6 +18,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "ruby" | "rb" => "ruby",
         "rust" | "rs" => "rust",
         "scala" | "sc" => "scala",
+        "sql" | "sqlite" | "sqlite3" => "sql",
         "typescript" | "ts" => "typescript",
         _ => return None,
     };

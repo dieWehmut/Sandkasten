@@ -454,6 +454,8 @@ func NormalizeLanguage(language string) string {
 		return "rust"
 	case "sc":
 		return "scala"
+	case "sqlite", "sqlite3":
+		return "sql"
 	case "ts":
 		return "typescript"
 	default:
@@ -519,6 +521,8 @@ func defaultEntrypoint(language string) string {
 		return "main.rs"
 	case "scala":
 		return "Main.scala"
+	case "sql":
+		return "main.sql"
 	case "typescript":
 		return "main.ts"
 	default:
@@ -558,6 +562,8 @@ func runtimeAliases(language string) []string {
 		return []string{"rs"}
 	case "scala":
 		return []string{"sc"}
+	case "sql":
+		return []string{"sqlite", "sqlite3"}
 	case "typescript":
 		return []string{"ts"}
 	default:
@@ -601,6 +607,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("rustc", "--edition=2021", "-O", "-o", ".laeufer-bin/main", "main.rs")
 	case "scala":
 		return phase("scalac", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "-d", ".laeufer-bin", "Main.scala")
+	case "sql":
+		return phase("bash", "--noprofile", "--norc", "-c", "test -r \"$1\"", "_", "main.sql")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
 	default:
@@ -638,6 +646,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("ruby", "--disable=gems", "main.rb")
 	case "scala":
 		return phase("scala", "-J-XX:ActiveProcessorCount=1", "-Dscala.usejavacp=true", "-cp", ".laeufer-bin", "Main")
+	case "sql":
+		return phase("bash", "--noprofile", "--norc", "-c", "exec sqlite3 -batch -bail -safe :memory: < \"$1\"", "_", "main.sql")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
 	default:

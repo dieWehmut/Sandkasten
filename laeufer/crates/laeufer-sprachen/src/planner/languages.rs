@@ -6,6 +6,8 @@ use crate::environment::go_compile_env;
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
+const CHECK_READABLE_SCRIPT: &str = "test -r \"$1\"";
+const SQLITE_RUN_SCRIPT: &str = "exec sqlite3 -batch -bail -safe :memory: < \"$1\"";
 
 pub(super) fn plan_go(
     job: &Job,
@@ -757,6 +759,55 @@ pub(super) fn plan_scala(
     let run = run_command_plan(
         "scala",
         run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(super) fn plan_sql(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            CHECK_READABLE_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            SQLITE_RUN_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
         env,
         source_dir,
         job.stdin.clone(),

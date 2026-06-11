@@ -60,6 +60,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"r":      false,
 		"ruby":   false,
 		"scala":  false,
+		"sql":    false,
 	}
 	for _, runtime := range cfg.SupportedRuntimes {
 		if _, ok := want[runtime.GetLanguage()]; ok {

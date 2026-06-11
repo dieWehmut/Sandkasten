@@ -196,6 +196,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"ruby",
 		"rust",
 		"scala",
+		"sql",
 		"typescript",
 	})
 	runtimes := make([]*pb.Runtime, 0, len(languages))

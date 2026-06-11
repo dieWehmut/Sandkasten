@@ -322,6 +322,23 @@ mod tests {
     }
 
     #[test]
+    fn sql_plan_runs_sqlite_in_safe_mode_from_entrypoint_stdin() {
+        let job = job("sqlite3", "main.sql");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan.compile.args.iter().any(|arg| arg == "test -r \"$1\""));
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("sqlite3 -batch -bail -safe :memory:")));
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.sql"));
+    }
+
+    #[test]
     fn kotlin_plan_builds_jar_and_runs_with_java() {
         let job = job("kt", "Main.kt");
         let plan =

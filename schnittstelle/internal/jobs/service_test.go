@@ -136,6 +136,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "php", Version: "system"},
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
+			{Language: "sql", Version: "system"},
 		},
 	)
 
@@ -201,6 +202,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "Main.scala",
 			compilePrefix: []string{"scalac", "-J-XX:ActiveProcessorCount=1"},
 			runPrefix:     []string{"scala", "-J-XX:ActiveProcessorCount=1"},
+		},
+		{
+			language:      "sql",
+			alias:         "sqlite3",
+			entrypoint:    "main.sql",
+			compilePrefix: []string{"bash", "--noprofile", "--norc"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc"},
 		},
 	}
 
