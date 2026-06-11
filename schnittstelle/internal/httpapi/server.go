@@ -593,6 +593,8 @@ type runtimesPageData struct {
 
 type runtimePageRuntime struct {
 	Language          string
+	LanguageClass     string
+	Badge             string
 	Version           string
 	Status            string
 	DefaultEntrypoint string
@@ -692,8 +694,11 @@ func runtimesPageDataFromProto(resp *pb.ListRuntimesResponse) runtimesPageData {
 			data.ActiveCount++
 		}
 		limits := runtime.GetDefaultLimits()
+		language := runtime.GetLanguage()
 		data.Runtimes = append(data.Runtimes, runtimePageRuntime{
-			Language:          runtime.GetLanguage(),
+			Language:          language,
+			LanguageClass:     runtimeLanguageClass(language),
+			Badge:             runtimeBadge(language),
 			Version:           fallback(runtime.GetVersion(), "system"),
 			Status:            fallback(status, "unknown"),
 			DefaultEntrypoint: fallback(runtime.GetDefaultEntrypoint(), "-"),
@@ -709,6 +714,56 @@ func runtimesPageDataFromProto(resp *pb.ListRuntimesResponse) runtimesPageData {
 		})
 	}
 	return data
+}
+
+func runtimeBadge(language string) string {
+	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "c":
+		return "C"
+	case "cpp":
+		return "C++"
+	case "csharp":
+		return "CS"
+	case "go":
+		return "GO"
+	case "java":
+		return "JV"
+	case "javascript":
+		return "JS"
+	case "python":
+		return "PY"
+	case "r":
+		return "R"
+	case "rust":
+		return "RS"
+	case "typescript":
+		return "TS"
+	default:
+		value := strings.ToUpper(strings.TrimSpace(language))
+		runes := []rune(value)
+		if len(runes) <= 3 {
+			return fallback(value, "?")
+		}
+		return string(runes[:3])
+	}
+}
+
+func runtimeLanguageClass(language string) string {
+	var builder strings.Builder
+	for _, char := range strings.ToLower(language) {
+		switch {
+		case char >= 'a' && char <= 'z':
+			builder.WriteRune(char)
+		case char >= '0' && char <= '9':
+			builder.WriteRune(char)
+		case char == '-' || char == '_':
+			builder.WriteByte('-')
+		}
+	}
+	if builder.Len() == 0 {
+		return "runtime"
+	}
+	return builder.String()
 }
 
 func runtimeCommand(phase *pb.RuntimePhase) string {
@@ -877,15 +932,19 @@ const runtimesPageHTML = `<!doctype html>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0c0f14;
-      --panel: #141922;
-      --panel-strong: #191f2b;
-      --border: #273040;
-      --text: #e8edf6;
-      --muted: #95a0b3;
-      --accent: #63d297;
-      --warn: #f2c36b;
-      --code: #0a0d12;
+      --bg: #0b0d10;
+      --surface: #15181e;
+      --surface-strong: #1b1f27;
+      --line: #313640;
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --text: #f2f0e8;
+      --muted: #a8afba;
+      --dim: #747d8b;
+      --green: #57d68d;
+      --cyan: #64c7e8;
+      --amber: #f0ba63;
+      --rose: #ee7390;
+      --code: #0f1116;
     }
     * { box-sizing: border-box; }
     body {
@@ -893,116 +952,224 @@ const runtimesPageHTML = `<!doctype html>
       min-height: 100vh;
       color: var(--text);
       background:
-        linear-gradient(rgba(99, 210, 151, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(99, 210, 151, 0.04) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
         var(--bg);
-      background-size: 28px 28px;
+      background-size: 36px 36px;
       font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     main {
-      width: min(1180px, calc(100vw - 32px));
+      width: min(1220px, calc(100vw - 36px));
       margin: 0 auto;
-      padding: 34px 0 48px;
+      padding: 36px 0 52px;
     }
-    header {
+    .page-head {
       display: flex;
-      align-items: end;
+      align-items: flex-end;
       justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 18px;
+      gap: 28px;
+      min-height: 178px;
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(87, 214, 141, 0.18), transparent 28%),
+        linear-gradient(90deg, rgba(100, 199, 232, 0.12), transparent 42%),
+        var(--surface-strong);
+      box-shadow: 0 22px 80px rgba(0, 0, 0, 0.28);
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
     h1 {
       margin: 0;
-      font-size: clamp(28px, 4vw, 44px);
-      line-height: 1;
+      max-width: 780px;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: 0.95;
       letter-spacing: 0;
     }
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      justify-content: flex-end;
+    .subtitle {
+      max-width: 650px;
+      margin: 14px 0 0;
       color: var(--muted);
+      font-size: 15px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(116px, 1fr));
+      gap: 10px;
+      width: min(100%, 330px);
+      flex: 0 0 auto;
+    }
+    .stat {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: rgba(11, 13, 16, 0.38);
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 830;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .stat strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--text);
+      font-size: 30px;
+      line-height: 1;
+    }
+    .stat-wide {
+      grid-column: 1 / -1;
+    }
+    .stat-wide strong {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 28px 0 14px;
+      color: var(--muted);
+    }
+    .toolbar-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.1;
+    }
+    .toolbar-note {
+      color: var(--dim);
+      font-size: 12px;
       text-align: right;
     }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 30px;
-      padding: 0 10px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.035);
-      color: var(--muted);
-      font-weight: 760;
-      white-space: nowrap;
-    }
-    .pill strong { color: var(--text); }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(305px, 1fr));
+      gap: 14px;
     }
     article {
       min-width: 0;
-      padding: 16px;
-      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: linear-gradient(180deg, var(--panel-strong), var(--panel));
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+      background: rgba(21, 24, 30, 0.94);
+      box-shadow: 0 14px 45px rgba(0, 0, 0, 0.22);
     }
-    article.is-active { border-color: rgba(99, 210, 151, 0.5); }
+    article::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: var(--accent, var(--green));
+    }
     .runtime-head {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .runtime-id {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 12px;
+    }
+    .runtime-id > div { min-width: 0; }
+    .runtime-mark {
+      display: inline-grid;
+      width: 46px;
+      height: 46px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--accent, var(--green)) 18%, #11141a);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
     }
     h2 {
       margin: 0;
-      font-size: 24px;
+      overflow: hidden;
+      font-size: 25px;
       line-height: 1.1;
       letter-spacing: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .version {
-      margin-top: 4px;
+      margin-top: 5px;
       color: var(--muted);
       font-size: 13px;
     }
     .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       flex: 0 0 auto;
-      padding: 3px 8px;
+      min-height: 28px;
+      padding: 0 9px;
       border-radius: 999px;
-      color: var(--warn);
-      background: rgba(242, 195, 107, 0.1);
+      color: var(--amber);
+      background: rgba(240, 186, 99, 0.11);
       font-size: 12px;
       font-weight: 820;
     }
     .is-active .status {
-      color: #bdf5d0;
-      background: rgba(99, 210, 151, 0.14);
+      color: #bff6d4;
+      background: rgba(87, 214, 141, 0.13);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 18px currentColor;
     }
     dl {
       display: grid;
-      gap: 8px;
+      gap: 10px;
       margin: 0;
     }
-    .runtime-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .runtime-meta {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.025);
+    }
     .runtime-limits {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-top: 14px;
+      margin-top: 16px;
     }
     dt, .command-label {
       color: var(--muted);
       font-size: 11px;
       font-weight: 820;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
     dd {
-      margin: 3px 0 0;
+      min-width: 0;
+      margin: 4px 0 0;
       overflow: hidden;
       color: var(--text);
       text-overflow: ellipsis;
@@ -1010,19 +1177,35 @@ const runtimesPageHTML = `<!doctype html>
     }
     .command {
       display: grid;
-      gap: 5px;
-      margin-top: 12px;
+      gap: 6px;
+      margin-top: 14px;
     }
     code {
       display: block;
-      overflow: auto;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
+      min-height: 38px;
+      overflow-wrap: anywhere;
+      padding: 9px 10px;
+      border: 1px solid var(--line-soft);
       border-radius: 6px;
       background: var(--code);
       color: var(--text);
       font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: nowrap;
+      white-space: pre-wrap;
+    }
+    .lang-c { --accent: #64c7e8; }
+    .lang-cpp { --accent: #6f9cff; }
+    .lang-csharp { --accent: #b984ff; }
+    .lang-go { --accent: #57d6c7; }
+    .lang-java { --accent: #f0ba63; }
+    .lang-javascript { --accent: #f4d35e; }
+    .lang-python { --accent: #7ab8ff; }
+    .lang-r { --accent: #78a7ff; }
+    .lang-rust { --accent: #ee8f73; }
+    .lang-typescript { --accent: #69a7ff; }
+    .lang-csharp .runtime-mark,
+    .lang-javascript .runtime-mark,
+    .lang-rust .runtime-mark {
+      color: #fff8ea;
     }
     footer {
       margin-top: 18px;
@@ -1031,31 +1214,47 @@ const runtimesPageHTML = `<!doctype html>
       text-align: right;
     }
     @media (max-width: 700px) {
-      main { width: min(100vw - 20px, 1180px); padding-top: 22px; }
-      header { align-items: flex-start; flex-direction: column; }
-      .meta { justify-content: flex-start; text-align: left; }
+      main { width: min(100vw - 20px, 1220px); padding: 18px 0 34px; }
+      .page-head { align-items: flex-start; flex-direction: column; min-height: 0; padding: 20px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      .toolbar { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .toolbar-note { text-align: left; }
+      .grid { grid-template-columns: 1fr; }
+      .runtime-head { align-items: flex-start; }
       .runtime-limits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
 <body>
   <main>
-    <header>
-      <h1>Sandkasten Runtimes</h1>
-      <div class="meta">
-        <span class="pill"><strong>{{.ActiveCount}}</strong> active</span>
-        <span class="pill"><strong>{{.TotalCount}}</strong> total</span>
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">run.diesw.tech</p>
+        <h1>Sandkasten Runtimes</h1>
+        <p class="subtitle">Live language runtimes, entry files, command phases, and default execution limits.</p>
       </div>
+      <section class="stats" aria-label="Runtime summary">
+        <div class="stat"><span>active</span><strong>{{.ActiveCount}}</strong></div>
+        <div class="stat"><span>total</span><strong>{{.TotalCount}}</strong></div>
+        <div class="stat stat-wide"><span>generated</span><strong>{{.GeneratedAt}}</strong></div>
+      </section>
     </header>
+    <div class="toolbar">
+      <h2 class="toolbar-title">Available runtimes</h2>
+      <div class="toolbar-note">Default limits shown per job phase</div>
+    </div>
     <section class="grid" aria-label="Runtime languages">
       {{range .Runtimes}}
-      <article class="{{if .Active}}is-active{{end}}">
+      <article class="lang-{{.LanguageClass}} {{if .Active}}is-active{{end}}">
         <div class="runtime-head">
-          <div>
-            <h2>{{.Language}}</h2>
-            <div class="version">{{.Version}}</div>
+          <div class="runtime-id">
+            <span class="runtime-mark">{{.Badge}}</span>
+            <div>
+              <h2>{{.Language}}</h2>
+              <div class="version">{{.Version}}</div>
+            </div>
           </div>
-          <span class="status">{{.Status}}</span>
+          <span class="status"><span class="status-dot"></span>{{.Status}}</span>
         </div>
         <dl class="runtime-meta">
           <div><dt>entry</dt><dd>{{.DefaultEntrypoint}}</dd></div>
@@ -1079,7 +1278,7 @@ const runtimesPageHTML = `<!doctype html>
       </article>
       {{end}}
     </section>
-    <footer>{{.GeneratedAt}}</footer>
+    <footer>generated {{.GeneratedAt}}</footer>
   </main>
 </body>
 </html>`
