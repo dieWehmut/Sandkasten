@@ -2,7 +2,7 @@ use laeufer_core::{BuildPlan, CommandPlan, Job, RunnerError, SeccompProfile};
 use std::path::PathBuf;
 
 use crate::archive::checked_entrypoint;
-use crate::constants::RUNNER_BIN_DIR;
+use crate::constants::{RUNNER_BIN_DIR, RUNNER_TMP_DIR};
 use crate::environment::{go_compile_env, runner_env};
 use crate::language::normalize_language;
 
@@ -63,6 +63,13 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "kotlin" => Ok(plan_kotlin(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "csharp" => Ok(plan_csharp(
             job,
             source_dir,
@@ -71,6 +78,15 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "javascript" => Ok(plan_javascript(job, source_dir, env, entrypoint)),
+        "julia" => Ok(plan_julia(job, source_dir, env, entrypoint)),
+        "lean4" => Ok(plan_lean4(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
+        "lua" => Ok(plan_lua(job, source_dir, env, entrypoint)),
         "python" => Ok(plan_python(job, source_dir, env, entrypoint)),
         "r" => Ok(plan_r(job, source_dir, env, entrypoint)),
         "typescript" => Ok(plan_typescript(job, source_dir, env, entrypoint)),
@@ -311,6 +327,63 @@ fn plan_csharp(
     BuildPlan { compile, run }
 }
 
+fn plan_kotlin(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let jar_path = source_dir.join(RUNNER_BIN_DIR).join("main.jar");
+    let tmp_arg = format!(
+        "-J-Djava.io.tmpdir={}",
+        source_dir.join(RUNNER_TMP_DIR).to_string_lossy()
+    );
+    let compile = compile_command_plan(
+        "kotlinc",
+        vec![
+            "-J-XX:ActiveProcessorCount=1".to_owned(),
+            tmp_arg,
+            entrypoint.to_string_lossy().into_owned(),
+            "-include-runtime".to_owned(),
+            "-d".to_owned(),
+            jar_path.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "-XX:ActiveProcessorCount=1".to_owned(),
+        format!(
+            "-Djava.io.tmpdir={}",
+            source_dir.join(RUNNER_TMP_DIR).to_string_lossy()
+        ),
+        "-jar".to_owned(),
+        jar_path.to_string_lossy().into_owned(),
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "java",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 fn plan_javascript(
     job: &Job,
     source_dir: PathBuf,
@@ -334,6 +407,137 @@ fn plan_javascript(
     run_args.extend(job.args.clone());
     let run = run_command_plan(
         "node",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+fn plan_julia(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "julia",
+        vec![
+            "--startup-file=no".to_owned(),
+            "--history-file=no".to_owned(),
+            "--compile=min".to_owned(),
+            "--optimize=0".to_owned(),
+            "-e".to_owned(),
+            "Meta.parse(read(ARGS[1], String))".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "--startup-file=no".to_owned(),
+        "--history-file=no".to_owned(),
+        "--compile=min".to_owned(),
+        "--optimize=0".to_owned(),
+        entrypoint,
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "julia",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+fn plan_lean4(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let olean_path = source_dir.join(RUNNER_BIN_DIR).join("main.olean");
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "lean",
+        vec![
+            "-o".to_owned(),
+            olean_path.to_string_lossy().into_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec!["--run".to_owned(), entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "lean",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+fn plan_lua(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "luac",
+        vec!["-p".to_owned(), entrypoint.clone()],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "lua",
         run_args,
         env,
         source_dir,

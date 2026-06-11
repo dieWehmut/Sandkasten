@@ -4,7 +4,12 @@ use crate::constants::{DEFAULT_RUNTIME_PATH, RUNNER_TMP_DIR};
 use crate::dirs::go_compile_cache_dir;
 
 pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
-    let tmp_dir = job_dir.join(RUNNER_TMP_DIR).to_string_lossy().into_owned();
+    let tmp_dir_path = job_dir.join(RUNNER_TMP_DIR);
+    let tmp_dir = tmp_dir_path.to_string_lossy().into_owned();
+    let julia_depot = tmp_dir_path
+        .join("julia-depot")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -17,6 +22,9 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("CGO_ENABLED".to_owned(), "0".to_owned()),
         ("GOTOOLCHAIN".to_owned(), "local".to_owned()),
         ("GOFLAGS".to_owned(), "-buildvcs=false".to_owned()),
+        ("JULIA_DEPOT_PATH".to_owned(), julia_depot),
+        ("JULIA_NUM_THREADS".to_owned(), "1".to_owned()),
+        ("JULIA_PKG_PRECOMPILE_AUTO".to_owned(), "0".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
     ]
 }

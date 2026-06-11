@@ -265,6 +265,101 @@ mod tests {
     }
 
     #[test]
+    fn kotlin_plan_builds_jar_and_runs_with_java() {
+        let job = job("kt", "Main.kt");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "kotlinc");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "-include-runtime"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.jar")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.program, "java");
+        assert!(plan.run.args.iter().any(|arg| arg == "-jar"));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.jar")));
+    }
+
+    #[test]
+    fn julia_plan_parses_without_startup_files_and_uses_private_depot() {
+        let job = job("jl", "main.jl");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "julia");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "--startup-file=no"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "--history-file=no"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "--compile=min"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("Meta.parse")));
+        assert_eq!(plan.run.program, "julia");
+        assert!(plan.run.args.iter().any(|arg| arg == "--optimize=0"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "JULIA_DEPOT_PATH" && value.ends_with("julia-depot")));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "JULIA_PKG_PRECOMPILE_AUTO" && value == "0"));
+    }
+
+    #[test]
+    fn lean4_plan_checks_to_olean_then_runs() {
+        let job = job("lean", "Main.lean");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "lean");
+        assert_eq!(plan.compile.args[0], "-o");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.olean")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.program, "lean");
+        assert_eq!(plan.run.args[0], "--run");
+        assert_eq!(plan.run.args[1], "Main.lean");
+    }
+
+    #[test]
+    fn lua_plan_checks_syntax_with_luac_then_runs_with_lua() {
+        let job = job("lua5.4", "main.lua");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "luac");
+        assert_eq!(plan.compile.args, vec!["-p", "main.lua"]);
+        assert_eq!(plan.run.program, "lua");
+        assert_eq!(plan.run.args[0], "main.lua");
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 
