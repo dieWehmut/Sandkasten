@@ -51,6 +51,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 	cfg := Load()
 
 	want := map[string]bool{
+		"bash":   false,
 		"julia":  false,
 		"kotlin": false,
 		"lean4":  false,

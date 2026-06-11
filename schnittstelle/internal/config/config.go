@@ -180,6 +180,7 @@ func runtimeResourceDefaults(runtimes []*pb.Runtime) map[string]jobs.ResourceDef
 func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 	languages := envList("SANDKASTEN_RUNTIME_LANGUAGES", []string{
 		"go",
+		"bash",
 		"c",
 		"cpp",
 		"csharp",

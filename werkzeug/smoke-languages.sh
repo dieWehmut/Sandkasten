@@ -91,6 +91,7 @@ need_tool curl "Install curl to exercise the HTTP API."
 need_tool jq "Install jq to parse smoke-test responses."
 need_tool psql "Install postgresql-client."
 need_runtime_tool go "Install Go 1.25+ where the runner child PATH can execute it."
+need_runtime_tool bash "Install bash for bash/shell jobs."
 need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
@@ -184,6 +185,8 @@ fi
 run_language go "hello, go" 'package main
 import "fmt"
 func main(){fmt.Println("hello, go")}'
+
+run_language bash "hello, bash" 'printf "%s\n" "hello, bash"'
 
 run_language c "hello, c" '#include <stdio.h>
 int main(void){puts("hello, c");return 0;}'

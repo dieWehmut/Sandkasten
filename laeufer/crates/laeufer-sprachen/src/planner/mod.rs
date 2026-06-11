@@ -27,6 +27,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "bash" => Ok(languages::plan_bash(job, source_dir, env, entrypoint)),
         "c" => Ok(languages::plan_c(
             job,
             source_dir,

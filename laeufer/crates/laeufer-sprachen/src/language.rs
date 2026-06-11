@@ -2,6 +2,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
     let normalized = language.trim().to_ascii_lowercase();
     let canonical = match normalized.as_str() {
         "go" | "golang" => "go",
+        "bash" | "shell" | "sh" => "bash",
         "c" => "c",
         "cpp" | "c++" => "cpp",
         "csharp" | "cs" | "c#" => "csharp",

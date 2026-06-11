@@ -39,6 +39,7 @@ ARG LEAN_VERSION=4.23.0
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
+      bash \
       curl \
       g++ \
       gcc \

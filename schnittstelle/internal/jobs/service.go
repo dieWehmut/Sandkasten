@@ -426,6 +426,8 @@ func NormalizeLanguage(language string) string {
 	switch language {
 	case "golang":
 		return "go"
+	case "shell", "sh":
+		return "bash"
 	case "c++":
 		return "cpp"
 	case "cs", "c#":
@@ -479,6 +481,8 @@ func normalizeRuntimeResourceDefaults(runtimeDefaults map[string]ResourceDefault
 
 func defaultEntrypoint(language string) string {
 	switch normalizeLanguage(language) {
+	case "bash":
+		return "main.sh"
 	case "c":
 		return "main.c"
 	case "cpp":
@@ -512,6 +516,8 @@ func defaultEntrypoint(language string) string {
 
 func runtimeAliases(language string) []string {
 	switch normalizeLanguage(language) {
+	case "bash":
+		return []string{"shell", "sh"}
 	case "go":
 		return []string{"golang"}
 	case "cpp":
@@ -545,6 +551,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
 	case "go":
 		return phase("go", "build", "-mod=vendor", "-trimpath", "-o", ".laeufer-bin/main", ".")
+	case "bash":
+		return phase("bash", "-n", "main.sh")
 	case "c":
 		return phase("gcc", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.c")
 	case "cpp":
@@ -580,6 +588,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
 	case "go", "c", "cpp", "rust":
 		return phase(".laeufer-bin/main")
+	case "bash":
+		return phase("bash", "--noprofile", "--norc", "main.sh")
 	case "csharp":
 		return phase("mono", ".laeufer-bin/main.exe")
 	case "java":

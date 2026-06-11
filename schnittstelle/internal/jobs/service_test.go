@@ -128,6 +128,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 		&fakeRepo{},
 		&pb.Runtime{Language: "go", Version: "1.26"},
 		[]*pb.Runtime{
+			{Language: "bash", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
@@ -142,6 +143,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 		compilePrefix []string
 		runPrefix     []string
 	}{
+		{
+			language:      "bash",
+			alias:         "shell",
+			entrypoint:    "main.sh",
+			compilePrefix: []string{"bash", "-n"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc"},
+		},
 		{
 			language:      "julia",
 			alias:         "jl",

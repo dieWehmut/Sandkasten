@@ -347,6 +347,8 @@ func normalizeLanguage(language string) string {
 	switch language {
 	case "", "golang":
 		return "go"
+	case "shell", "sh":
+		return "bash"
 	case "c++":
 		return "cpp"
 	case "cs", "c#":
@@ -378,6 +380,8 @@ func defaultEntrypoint(language string) string {
 	switch language {
 	case "go":
 		return "."
+	case "bash":
+		return "main.sh"
 	case "c":
 		return "main.c"
 	case "cpp":
@@ -413,7 +417,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "rust", "typescript":
+	case "bash", "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "rust", "typescript":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
@@ -734,6 +738,8 @@ func runtimesPageDataFromProto(resp *pb.ListRuntimesResponse) runtimesPageData {
 
 func runtimeBadge(language string) string {
 	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "bash":
+		return "SH"
 	case "c":
 		return "C"
 	case "cpp":

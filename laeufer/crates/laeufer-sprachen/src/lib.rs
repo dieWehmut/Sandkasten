@@ -223,6 +223,22 @@ mod tests {
     }
 
     #[test]
+    fn bash_plan_checks_syntax_then_runs_without_profiles() {
+        let job = job("shell", "main.sh");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "bash");
+        assert_eq!(plan.compile.args, vec!["-n", "main.sh"]);
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
+        assert_eq!(plan.run.program, "bash");
+        assert_eq!(plan.run.args[0], "--noprofile");
+        assert_eq!(plan.run.args[1], "--norc");
+        assert_eq!(plan.run.args[2], "main.sh");
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
+    }
+
+    #[test]
     fn typescript_plan_type_checks_then_runs_with_node_transform() {
         let job = job("typescript", "main.ts");
         let plan =
