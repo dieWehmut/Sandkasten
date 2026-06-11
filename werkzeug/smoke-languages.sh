@@ -95,6 +95,11 @@ need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
+need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
+need_runtime_tool julia "Install Julia for Julia jobs."
+need_runtime_tool lean "Install Lean 4 for Lean jobs."
+need_runtime_tool lua "Install Lua for Lua jobs."
+need_runtime_tool luac "Install Lua compiler for Lua syntax checks."
 need_runtime_tool mcs "Install Mono mcs for C# jobs."
 need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool node "Install Node.js for JavaScript jobs."
@@ -194,6 +199,16 @@ run_language java "hello, java" 'public class Main {
 }'
 
 run_language javascript "hello, javascript" 'console.log("hello, javascript");'
+
+run_language julia "hello, julia" 'println("hello, julia")'
+
+run_language kotlin "hello, kotlin" 'fun main() {
+    println("hello, kotlin")
+}'
+
+run_language lean4 "hello, lean4" 'def main : IO Unit := IO.println "hello, lean4"'
+
+run_language lua "hello, lua" 'print("hello, lua")'
 
 run_language python "hello, python" 'print("hello, python")'
 

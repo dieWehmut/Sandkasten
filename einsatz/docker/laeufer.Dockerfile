@@ -32,11 +32,18 @@ RUN cargo build --release --bin laeufer && \
 
 FROM golang:1.26-bookworm
 
+ARG JULIA_VERSION=1.10.10
+ARG JULIA_MINOR_VERSION=1.10
+ARG LEAN_VERSION=4.23.0
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
+      curl \
       g++ \
       gcc \
+      kotlin \
+      lua5.4 \
       mono-mcs \
       mono-runtime \
       node-typescript \
@@ -45,7 +52,16 @@ RUN apt-get update && \
       python3 \
       r-base-core \
       rustc \
-      tini && \
+      tini \
+      zstd && \
+    curl -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \
+    tar -xzf /tmp/julia.tar.gz -C /opt && \
+    ln -s "/opt/julia-${JULIA_VERSION}/bin/julia" /usr/local/bin/julia && \
+    curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
+    tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
+    ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
+    ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lake" /usr/local/bin/lake && \
+    rm -f /tmp/julia.tar.gz /tmp/lean.tar.zst && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 
