@@ -49,6 +49,7 @@ RUN apt-get update && \
       mono-runtime \
       node-typescript \
       nodejs \
+      php-cli \
       openjdk-17-jdk-headless \
       python3 \
       r-base-core \

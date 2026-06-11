@@ -442,6 +442,8 @@ func NormalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "php8", "php8.2":
+		return "php"
 	case "py", "python3":
 		return "python"
 	case "rscript":
@@ -503,6 +505,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "php":
+		return "main.php"
 	case "python":
 		return "main.py"
 	case "r":
@@ -538,6 +542,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lean"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "php":
+		return []string{"php8", "php8.2"}
 	case "python":
 		return []string{"py", "python3"}
 	case "r":
@@ -577,6 +583,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "php":
+		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "-l", "main.php")
 	case "python":
 		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
 	case "r":
@@ -612,6 +620,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("lean", "--run", "Main.lean")
 	case "lua":
 		return phase("lua", "main.lua")
+	case "php":
+		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "main.php")
 	case "python":
 		return phase("python3", "-B", "main.py")
 	case "r":

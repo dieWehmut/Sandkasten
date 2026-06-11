@@ -399,6 +399,28 @@ mod tests {
     }
 
     #[test]
+    fn php_plan_lints_then_runs_without_cli_opcache() {
+        let job = job("php8.2", "main.php");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "php");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-l"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "opcache.enable_cli=0"));
+        assert_eq!(plan.run.program, "php");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg == "opcache.enable_cli=0"));
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.php"));
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 

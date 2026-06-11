@@ -56,6 +56,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"kotlin": false,
 		"lean4":  false,
 		"lua":    false,
+		"php":    false,
 		"r":      false,
 		"ruby":   false,
 	}

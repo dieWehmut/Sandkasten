@@ -12,6 +12,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "kotlin" | "kt" => "kotlin",
         "lean" | "lean4" => "lean4",
         "lua" | "lua5.4" => "lua",
+        "php" | "php8" | "php8.2" => "php",
         "python" | "py" | "python3" => "python",
         "r" | "rscript" => "r",
         "ruby" | "rb" => "ruby",

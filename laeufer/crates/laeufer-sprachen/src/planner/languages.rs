@@ -541,6 +541,56 @@ pub(super) fn plan_lua(
     BuildPlan { compile, run }
 }
 
+pub(super) fn plan_php(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "php",
+        vec![
+            "-d".to_owned(),
+            "variables_order=EGPCS".to_owned(),
+            "-d".to_owned(),
+            "opcache.enable_cli=0".to_owned(),
+            "-l".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "-d".to_owned(),
+        "variables_order=EGPCS".to_owned(),
+        "-d".to_owned(),
+        "opcache.enable_cli=0".to_owned(),
+        entrypoint,
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "php",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(super) fn plan_python(
     job: &Job,
     source_dir: PathBuf,

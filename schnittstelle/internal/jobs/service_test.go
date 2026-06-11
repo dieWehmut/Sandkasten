@@ -133,6 +133,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
+			{Language: "php", Version: "system"},
 			{Language: "ruby", Version: "system"},
 		},
 	)
@@ -185,6 +186,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.rb",
 			compilePrefix: []string{"ruby", "-c"},
 			runPrefix:     []string{"ruby", "--disable=gems"},
+		},
+		{
+			language:      "php",
+			alias:         "php8.2",
+			entrypoint:    "main.php",
+			compilePrefix: []string{"php", "-d", "variables_order=EGPCS"},
+			runPrefix:     []string{"php", "-d", "variables_order=EGPCS"},
 		},
 	}
 

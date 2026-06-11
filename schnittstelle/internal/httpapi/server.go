@@ -363,6 +363,8 @@ func normalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "php8", "php8.2":
+		return "php"
 	case "py", "python3":
 		return "python"
 	case "rscript":
@@ -402,6 +404,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "php":
+		return "main.php"
 	case "python":
 		return "main.py"
 	case "r":
@@ -421,7 +425,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "ruby", "rust", "typescript":
+	case "bash", "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "php", "python", "r", "ruby", "rust", "typescript":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
@@ -764,6 +768,8 @@ func runtimeBadge(language string) string {
 		return "LN4"
 	case "lua":
 		return "LUA"
+	case "php":
+		return "PHP"
 	case "python":
 		return "PY"
 	case "r":
