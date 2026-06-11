@@ -1,0 +1,10 @@
+pub(crate) const RUNNER_BIN_DIR: &str = ".laeufer-bin";
+pub(crate) const RUNNER_CACHE_DIR: &str = ".laeufer-cache";
+pub(crate) const RUNNER_SHARED_DIR: &str = ".laeufer-shared";
+pub(crate) const RUNNER_TMP_DIR: &str = ".laeufer-tmp";
+pub(crate) const GO_BUILD_CACHE_DIR: &str = "go-build";
+pub(crate) const GO_BUILD_CACHE_ENV: &str = "LAEUFER_GO_BUILD_CACHE_DIR";
+pub(crate) const DEFAULT_RUNTIME_PATH: &str = "/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin";
+pub(crate) const DEFAULT_MAX_ARCHIVE_BYTES: u64 = 64 * 1024 * 1024;
+pub(crate) const DEFAULT_MAX_ARCHIVE_FILES: usize = 20_000;
+pub(crate) const DEFAULT_COMPILE_MEMORY_LIMIT_BYTES: u64 = 1024 * 1024 * 1024;
