@@ -123,6 +123,81 @@ func TestSubmitProjectAppliesRRuntimeManifest(t *testing.T) {
 	}
 }
 
+func TestNewLanguageRuntimeManifests(t *testing.T) {
+	service := NewServiceWithRuntimes(
+		&fakeRepo{},
+		&pb.Runtime{Language: "go", Version: "1.26"},
+		[]*pb.Runtime{
+			{Language: "julia", Version: "system"},
+			{Language: "kotlin", Version: "system"},
+			{Language: "lean4", Version: "system"},
+			{Language: "lua", Version: "system"},
+		},
+	)
+
+	tests := []struct {
+		language      string
+		alias         string
+		entrypoint    string
+		compilePrefix []string
+		runPrefix     []string
+	}{
+		{
+			language:      "julia",
+			alias:         "jl",
+			entrypoint:    "main.jl",
+			compilePrefix: []string{"julia", "--startup-file=no"},
+			runPrefix:     []string{"julia", "--startup-file=no"},
+		},
+		{
+			language:      "kotlin",
+			alias:         "kt",
+			entrypoint:    "Main.kt",
+			compilePrefix: []string{"kotlinc", "-J-XX:ActiveProcessorCount=1"},
+			runPrefix:     []string{"java", "-XX:ActiveProcessorCount=1"},
+		},
+		{
+			language:      "lean4",
+			alias:         "lean",
+			entrypoint:    "Main.lean",
+			compilePrefix: []string{"lean", "-o"},
+			runPrefix:     []string{"lean", "--run"},
+		},
+		{
+			language:      "lua",
+			alias:         "lua5.4",
+			entrypoint:    "main.lua",
+			compilePrefix: []string{"luac", "-p"},
+			runPrefix:     []string{"lua", "main.lua"},
+		},
+	}
+
+	resp, err := service.ListRuntimes(context.Background(), &pb.ListRuntimesRequest{})
+	if err != nil {
+		t.Fatalf("ListRuntimes() error = %v", err)
+	}
+	for _, tt := range tests {
+		t.Run(tt.language, func(t *testing.T) {
+			runtime := findRuntime(resp, tt.language)
+			if runtime == nil {
+				t.Fatalf("runtime %q missing from %+v", tt.language, resp.GetRuntimes())
+			}
+			if runtime.GetDefaultEntrypoint() != tt.entrypoint {
+				t.Fatalf("DefaultEntrypoint = %q", runtime.GetDefaultEntrypoint())
+			}
+			if !containsString(runtime.GetAliases(), tt.alias) {
+				t.Fatalf("Aliases = %v, want %s", runtime.GetAliases(), tt.alias)
+			}
+			if !hasPrefix(runtime.GetCompilePhase().GetCommand(), tt.compilePrefix) {
+				t.Fatalf("CompilePhase.Command = %v", runtime.GetCompilePhase().GetCommand())
+			}
+			if !hasPrefix(runtime.GetRunPhase().GetCommand(), tt.runPrefix) {
+				t.Fatalf("RunPhase.Command = %v", runtime.GetRunPhase().GetCommand())
+			}
+		})
+	}
+}
+
 func TestListRuntimesIncludesManifest(t *testing.T) {
 	service := NewServiceWithOptions(
 		&fakeRepo{},
@@ -445,4 +520,16 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func hasPrefix(values []string, prefix []string) bool {
+	if len(values) < len(prefix) {
+		return false
+	}
+	for i, value := range prefix {
+		if values[i] != value {
+			return false
+		}
+	}
+	return true
 }

@@ -432,6 +432,14 @@ func NormalizeLanguage(language string) string {
 		return "csharp"
 	case "js", "node":
 		return "javascript"
+	case "jl":
+		return "julia"
+	case "kt":
+		return "kotlin"
+	case "lean":
+		return "lean4"
+	case "lua5.4":
+		return "lua"
 	case "py", "python3":
 		return "python"
 	case "rscript":
@@ -481,6 +489,14 @@ func defaultEntrypoint(language string) string {
 		return "Main.java"
 	case "javascript":
 		return "main.js"
+	case "julia":
+		return "main.jl"
+	case "kotlin":
+		return "Main.kt"
+	case "lean4":
+		return "Main.lean"
+	case "lua":
+		return "main.lua"
 	case "python":
 		return "main.py"
 	case "r":
@@ -504,6 +520,14 @@ func runtimeAliases(language string) []string {
 		return []string{"cs", "c#"}
 	case "javascript":
 		return []string{"js", "node"}
+	case "julia":
+		return []string{"jl"}
+	case "kotlin":
+		return []string{"kt"}
+	case "lean4":
+		return []string{"lean"}
+	case "lua":
+		return []string{"lua5.4"}
 	case "python":
 		return []string{"py", "python3"}
 	case "r":
@@ -531,6 +555,14 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
 	case "javascript":
 		return phase("node", "--check", "main.js")
+	case "julia":
+		return phase("julia", "--startup-file=no", "--history-file=no", "--compile=min", "--optimize=0", "-e", "Meta.parse(read(ARGS[1], String))", "main.jl")
+	case "kotlin":
+		return phase("kotlinc", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "Main.kt", "-include-runtime", "-d", ".laeufer-bin/main.jar")
+	case "lean4":
+		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
+	case "lua":
+		return phase("luac", "-p", "main.lua")
 	case "python":
 		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
 	case "r":
@@ -554,6 +586,14 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("java", "-cp", ".laeufer-bin", "Main")
 	case "javascript":
 		return phase("node", "main.js")
+	case "julia":
+		return phase("julia", "--startup-file=no", "--history-file=no", "--compile=min", "--optimize=0", "main.jl")
+	case "kotlin":
+		return phase("java", "-XX:ActiveProcessorCount=1", "-Djava.io.tmpdir=.laeufer-tmp", "-jar", ".laeufer-bin/main.jar")
+	case "lean4":
+		return phase("lean", "--run", "Main.lean")
+	case "lua":
+		return phase("lua", "main.lua")
 	case "python":
 		return phase("python3", "-B", "main.py")
 	case "r":

@@ -353,6 +353,14 @@ func normalizeLanguage(language string) string {
 		return "csharp"
 	case "js", "node":
 		return "javascript"
+	case "jl":
+		return "julia"
+	case "kt":
+		return "kotlin"
+	case "lean":
+		return "lean4"
+	case "lua5.4":
+		return "lua"
 	case "py", "python3":
 		return "python"
 	case "rscript":
@@ -380,6 +388,14 @@ func defaultEntrypoint(language string) string {
 		return "Main.java"
 	case "javascript":
 		return "main.js"
+	case "julia":
+		return "main.jl"
+	case "kotlin":
+		return "Main.kt"
+	case "lean4":
+		return "Main.lean"
+	case "lua":
+		return "main.lua"
 	case "python":
 		return "main.py"
 	case "r":
@@ -397,7 +413,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "c", "cpp", "csharp", "java", "javascript", "python", "r", "rust", "typescript":
+	case "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "rust", "typescript":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
@@ -730,6 +746,14 @@ func runtimeBadge(language string) string {
 		return "JV"
 	case "javascript":
 		return "JS"
+	case "julia":
+		return "JL"
+	case "kotlin":
+		return "KT"
+	case "lean4":
+		return "LN4"
+	case "lua":
+		return "LUA"
 	case "python":
 		return "PY"
 	case "r":

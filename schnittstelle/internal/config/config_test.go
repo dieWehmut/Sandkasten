@@ -45,17 +45,28 @@ func TestLoadIgnoresRuntimeLimitEnvForDisabledLanguage(t *testing.T) {
 	}
 }
 
-func TestLoadIncludesRRuntimeByDefault(t *testing.T) {
+func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "")
 
 	cfg := Load()
 
+	want := map[string]bool{
+		"julia":  false,
+		"kotlin": false,
+		"lean4":  false,
+		"lua":    false,
+		"r":      false,
+	}
 	for _, runtime := range cfg.SupportedRuntimes {
-		if runtime.GetLanguage() == "r" {
-			return
+		if _, ok := want[runtime.GetLanguage()]; ok {
+			want[runtime.GetLanguage()] = true
 		}
 	}
-	t.Fatalf("SupportedRuntimes = %v, want r", cfg.SupportedRuntimes)
+	for language, found := range want {
+		if !found {
+			t.Fatalf("SupportedRuntimes = %v, want %s", cfg.SupportedRuntimes, language)
+		}
+	}
 }
 
 func TestCloneRuntimeCopiesManifestFields(t *testing.T) {

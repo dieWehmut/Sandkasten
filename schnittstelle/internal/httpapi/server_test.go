@@ -197,6 +197,49 @@ func TestRunRFromSourceSubmitsMainR(t *testing.T) {
 	}
 }
 
+func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
+	tests := []struct {
+		path       string
+		language   string
+		entrypoint string
+		source     string
+	}{
+		{path: "/v1/julia/run", language: "julia", entrypoint: "main.jl", source: `println("ok")`},
+		{path: "/v1/kt/run", language: "kotlin", entrypoint: "Main.kt", source: `fun main(){ println("ok") }`},
+		{path: "/v1/lean/run", language: "lean4", entrypoint: "Main.lean", source: `def main : IO Unit := IO.println "ok"`},
+		{path: "/v1/lua5.4/run", language: "lua", entrypoint: "main.lua", source: `print("ok")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.language, func(t *testing.T) {
+			service := &fakeService{}
+			server := New(service, "", nil).Handler()
+			body, err := json.Marshal(map[string]any{"source": tt.source, "wait": false})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, tt.path, bytes.NewReader(body))
+			rec := httptest.NewRecorder()
+
+			server.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusAccepted {
+				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			if service.submitted == nil {
+				t.Fatal("request was not submitted")
+			}
+			if service.submitted.Language != tt.language || service.submitted.Entrypoint != tt.entrypoint {
+				t.Fatalf("submitted = %+v", service.submitted)
+			}
+			files := readArchiveFiles(t, service.submitted.GetArchiveTargz())
+			if got := string(files[tt.entrypoint]); got != tt.source {
+				t.Fatalf("%s = %q, want %q", tt.entrypoint, got, tt.source)
+			}
+		})
+	}
+}
+
 func readArchiveFiles(t *testing.T, archive []byte) map[string][]byte {
 	t.Helper()
 	gzipReader, err := gzip.NewReader(bytes.NewReader(archive))
