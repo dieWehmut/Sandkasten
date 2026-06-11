@@ -53,6 +53,7 @@ RUN apt-get update && \
       openjdk-17-jdk-headless \
       python3 \
       r-base-core \
+      racket \
       ruby \
       rustc \
       scala \

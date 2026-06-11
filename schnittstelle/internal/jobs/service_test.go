@@ -135,6 +135,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "lua", Version: "system"},
 			{Language: "php", Version: "system"},
 			{Language: "prolog", Version: "system"},
+			{Language: "racket", Version: "system"},
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
 			{Language: "sql", Version: "system"},
@@ -203,6 +204,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.pl",
 			compilePrefix: []string{"swipl", "--no-packs", "-q"},
 			runPrefix:     []string{"swipl", "--no-packs", "-q"},
+		},
+		{
+			language:      "racket",
+			alias:         "rkt",
+			entrypoint:    "main.rkt",
+			compilePrefix: []string{"raco", "make"},
+			runPrefix:     []string{"racket", "-t"},
 		},
 		{
 			language:      "scala",

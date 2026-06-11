@@ -84,6 +84,7 @@ pub(crate) fn plan(
         "prolog" => Ok(languages::plan_prolog(job, source_dir, env, entrypoint)),
         "python" => Ok(languages::plan_python(job, source_dir, env, entrypoint)),
         "r" => Ok(languages::plan_r(job, source_dir, env, entrypoint)),
+        "racket" => Ok(languages::plan_racket(job, source_dir, env, entrypoint)),
         "ruby" => Ok(languages::plan_ruby(job, source_dir, env, entrypoint)),
         "scala" => Ok(languages::plan_scala(
             job,

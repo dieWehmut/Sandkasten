@@ -194,6 +194,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"prolog",
 		"python",
 		"r",
+		"racket",
 		"ruby",
 		"rust",
 		"scala",

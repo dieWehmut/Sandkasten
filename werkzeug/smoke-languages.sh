@@ -108,6 +108,8 @@ need_runtime_tool php "Install PHP CLI for PHP jobs."
 need_runtime_tool swipl "Install SWI-Prolog for Prolog jobs."
 need_runtime_tool python3 "Install Python 3 for Python jobs."
 need_runtime_tool Rscript "Install Rscript for R jobs."
+need_runtime_tool racket "Install Racket for Racket jobs."
+need_runtime_tool raco "Install Racket raco for Racket jobs."
 need_runtime_tool ruby "Install Ruby for Ruby jobs."
 need_runtime_tool rustc "Install rustc for Rust jobs."
 need_runtime_tool scala "Install Scala for Scala jobs."
@@ -226,6 +228,9 @@ run_language prolog "hello, prolog" 'main :- writeln("hello, prolog").'
 run_language python "hello, python" 'print("hello, python")'
 
 run_language r "hello, r" 'cat("hello, r\n")'
+
+run_language racket "hello, racket" '#lang racket/base
+(displayln "hello, racket")'
 
 run_language ruby "hello, ruby" 'puts "hello, ruby"'
 

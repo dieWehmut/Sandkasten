@@ -270,6 +270,28 @@ mod tests {
     }
 
     #[test]
+    fn racket_plan_compiles_with_private_cache_then_runs() {
+        let job = job("rkt", "main.rkt");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "raco");
+        assert_eq!(plan.compile.args, vec!["make", "main.rkt"]);
+        assert_eq!(plan.run.program, "racket");
+        assert_eq!(plan.run.args, vec!["-t", "main.rkt"]);
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "PLTUSERHOME" && value.ends_with("racket-addons")));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "PLTCOMPILEDROOTS" && value.ends_with("racket-compiled")));
+    }
+
+    #[test]
     fn ruby_plan_checks_syntax_and_disables_gems() {
         let job = job("rb", "main.rb");
         let plan =

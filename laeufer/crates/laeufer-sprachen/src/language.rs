@@ -16,6 +16,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "prolog" | "pl" | "swi-prolog" | "swipl" => "prolog",
         "python" | "py" | "python3" => "python",
         "r" | "rscript" => "r",
+        "racket" | "rkt" => "racket",
         "ruby" | "rb" => "ruby",
         "rust" | "rs" => "rust",
         "scala" | "sc" => "scala",

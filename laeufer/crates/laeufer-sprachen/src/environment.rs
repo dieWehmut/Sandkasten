@@ -10,6 +10,15 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("julia-depot")
         .to_string_lossy()
         .into_owned();
+    let racket_user_home = tmp_dir_path
+        .join("racket-addons")
+        .to_string_lossy()
+        .into_owned();
+    let racket_compiled_roots = job_dir
+        .join(crate::constants::RUNNER_CACHE_DIR)
+        .join("racket-compiled")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -26,6 +35,8 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("JULIA_NUM_THREADS".to_owned(), "1".to_owned()),
         ("JULIA_PKG_PRECOMPILE_AUTO".to_owned(), "0".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
+        ("PLTUSERHOME".to_owned(), racket_user_home),
+        ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),
         ("RUBYOPT".to_owned(), "--disable=gems".to_owned()),
     ]
 }
