@@ -75,6 +75,7 @@ RUN apt-get update && \
       swi-prolog \
       tini \
       tzdata \
+      xz-utils \
       zstd && \
     curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
