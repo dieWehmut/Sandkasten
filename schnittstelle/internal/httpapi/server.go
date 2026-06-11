@@ -367,6 +367,8 @@ func normalizeLanguage(language string) string {
 		return "python"
 	case "rscript":
 		return "r"
+	case "rb":
+		return "ruby"
 	case "rs":
 		return "rust"
 	case "ts":
@@ -404,6 +406,8 @@ func defaultEntrypoint(language string) string {
 		return "main.py"
 	case "r":
 		return "main.R"
+	case "ruby":
+		return "main.rb"
 	case "rust":
 		return "main.rs"
 	case "typescript":
@@ -417,7 +421,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "rust", "typescript":
+	case "bash", "c", "cpp", "csharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "python", "r", "ruby", "rust", "typescript":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
@@ -764,6 +768,8 @@ func runtimeBadge(language string) string {
 		return "PY"
 	case "r":
 		return "R"
+	case "ruby":
+		return "RB"
 	case "rust":
 		return "RS"
 	case "typescript":

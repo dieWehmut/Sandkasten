@@ -624,6 +624,43 @@ pub(super) fn plan_r(
     BuildPlan { compile, run }
 }
 
+pub(super) fn plan_ruby(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "ruby",
+        vec!["-c".to_owned(), entrypoint.clone()],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec!["--disable=gems".to_owned(), entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "ruby",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(super) fn plan_typescript(
     job: &Job,
     source_dir: PathBuf,

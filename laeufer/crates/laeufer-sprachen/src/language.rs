@@ -14,6 +14,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "lua" | "lua5.4" => "lua",
         "python" | "py" | "python3" => "python",
         "r" | "rscript" => "r",
+        "ruby" | "rb" => "ruby",
         "rust" | "rs" => "rust",
         "typescript" | "ts" => "typescript",
         _ => return None,

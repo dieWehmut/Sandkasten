@@ -270,6 +270,24 @@ mod tests {
     }
 
     #[test]
+    fn ruby_plan_checks_syntax_and_disables_gems() {
+        let job = job("rb", "main.rb");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "ruby");
+        assert_eq!(plan.compile.args, vec!["-c", "main.rb"]);
+        assert_eq!(plan.run.program, "ruby");
+        assert_eq!(plan.run.args[0], "--disable=gems");
+        assert_eq!(plan.run.args[1], "main.rb");
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "RUBYOPT" && value == "--disable=gems"));
+    }
+
+    #[test]
     fn java_plan_uses_entrypoint_stem_as_class_name() {
         let job = job("java", "Main.java");
         let plan =

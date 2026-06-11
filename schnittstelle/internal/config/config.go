@@ -192,6 +192,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"lua",
 		"python",
 		"r",
+		"ruby",
 		"rust",
 		"typescript",
 	})

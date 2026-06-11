@@ -57,6 +57,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"lean4":  false,
 		"lua":    false,
 		"r":      false,
+		"ruby":   false,
 	}
 	for _, runtime := range cfg.SupportedRuntimes {
 		if _, ok := want[runtime.GetLanguage()]; ok {

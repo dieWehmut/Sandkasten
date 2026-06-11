@@ -106,6 +106,7 @@ need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool node "Install Node.js for JavaScript jobs."
 need_runtime_tool python3 "Install Python 3 for Python jobs."
 need_runtime_tool Rscript "Install Rscript for R jobs."
+need_runtime_tool ruby "Install Ruby for Ruby jobs."
 need_runtime_tool rustc "Install rustc for Rust jobs."
 need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
 
@@ -216,6 +217,8 @@ run_language lua "hello, lua" 'print("hello, lua")'
 run_language python "hello, python" 'print("hello, python")'
 
 run_language r "hello, r" 'cat("hello, r\n")'
+
+run_language ruby "hello, ruby" 'puts "hello, ruby"'
 
 run_language rust "hello, rust" 'fn main() { println!("hello, rust"); }'
 

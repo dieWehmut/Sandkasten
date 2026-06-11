@@ -26,6 +26,7 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("JULIA_NUM_THREADS".to_owned(), "1".to_owned()),
         ("JULIA_PKG_PRECOMPILE_AUTO".to_owned(), "0".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
+        ("RUBYOPT".to_owned(), "--disable=gems".to_owned()),
     ]
 }
 

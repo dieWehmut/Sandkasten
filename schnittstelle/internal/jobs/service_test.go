@@ -133,6 +133,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
+			{Language: "ruby", Version: "system"},
 		},
 	)
 
@@ -177,6 +178,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.lua",
 			compilePrefix: []string{"luac", "-p"},
 			runPrefix:     []string{"lua", "main.lua"},
+		},
+		{
+			language:      "ruby",
+			alias:         "rb",
+			entrypoint:    "main.rb",
+			compilePrefix: []string{"ruby", "-c"},
+			runPrefix:     []string{"ruby", "--disable=gems"},
 		},
 	}
 

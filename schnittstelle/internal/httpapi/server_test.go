@@ -209,6 +209,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/kt/run", language: "kotlin", entrypoint: "Main.kt", source: `fun main(){ println("ok") }`},
 		{path: "/v1/lean/run", language: "lean4", entrypoint: "Main.lean", source: `def main : IO Unit := IO.println "ok"`},
 		{path: "/v1/lua5.4/run", language: "lua", entrypoint: "main.lua", source: `print("ok")`},
+		{path: "/v1/rb/run", language: "ruby", entrypoint: "main.rb", source: `puts "ok"`},
 	}
 
 	for _, tt := range tests {

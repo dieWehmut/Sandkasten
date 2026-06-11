@@ -446,6 +446,8 @@ func NormalizeLanguage(language string) string {
 		return "python"
 	case "rscript":
 		return "r"
+	case "rb":
+		return "ruby"
 	case "rs":
 		return "rust"
 	case "ts":
@@ -505,6 +507,8 @@ func defaultEntrypoint(language string) string {
 		return "main.py"
 	case "r":
 		return "main.R"
+	case "ruby":
+		return "main.rb"
 	case "rust":
 		return "main.rs"
 	case "typescript":
@@ -538,6 +542,8 @@ func runtimeAliases(language string) []string {
 		return []string{"py", "python3"}
 	case "r":
 		return []string{"rscript"}
+	case "ruby":
+		return []string{"rb"}
 	case "rust":
 		return []string{"rs"}
 	case "typescript":
@@ -575,6 +581,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
 	case "r":
 		return phase("Rscript", "--vanilla", "-e", "args <- commandArgs(trailingOnly = TRUE); parse(file = args[[1]])", "main.R")
+	case "ruby":
+		return phase("ruby", "-c", "main.rb")
 	case "rust":
 		return phase("rustc", "--edition=2021", "-O", "-o", ".laeufer-bin/main", "main.rs")
 	case "typescript":
@@ -608,6 +616,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("python3", "-B", "main.py")
 	case "r":
 		return phase("Rscript", "--vanilla", "main.R")
+	case "ruby":
+		return phase("ruby", "--disable=gems", "main.rb")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
 	default:
