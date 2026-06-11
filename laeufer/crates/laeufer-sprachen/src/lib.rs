@@ -461,6 +461,26 @@ mod tests {
     }
 
     #[test]
+    fn prolog_plan_parses_terms_without_consulting_then_runs_main() {
+        let job = job("swipl", "main.pl");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "swipl");
+        assert!(plan.compile.args.iter().any(|arg| arg == "--no-packs"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("read_term")));
+        assert!(!plan.compile.args.iter().any(|arg| arg == "-s"));
+        assert_eq!(plan.run.program, "swipl");
+        assert!(plan.run.args.iter().any(|arg| arg == "-s"));
+        assert!(plan.run.args.iter().any(|arg| arg == "main"));
+        assert!(plan.run.args.iter().any(|arg| arg == "halt"));
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 

@@ -191,6 +191,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"lean4",
 		"lua",
 		"php",
+		"prolog",
 		"python",
 		"r",
 		"ruby",

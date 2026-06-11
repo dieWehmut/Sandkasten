@@ -57,6 +57,7 @@ RUN apt-get update && \
       rustc \
       scala \
       sqlite3 \
+      swi-prolog \
       tini \
       zstd && \
     curl -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \

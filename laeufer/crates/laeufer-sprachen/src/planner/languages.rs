@@ -7,6 +7,7 @@ use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
 const CHECK_READABLE_SCRIPT: &str = "test -r \"$1\"";
+const PROLOG_SYNTAX_CHECK: &str = "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.";
 const SQLITE_RUN_SCRIPT: &str = "exec sqlite3 -batch -bail -safe :memory: < \"$1\"";
 
 pub(super) fn plan_go(
@@ -579,6 +580,63 @@ pub(super) fn plan_php(
     run_args.extend(job.args.clone());
     let run = run_command_plan(
         "php",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(super) fn plan_prolog(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "swipl",
+        vec![
+            "--no-packs".to_owned(),
+            "-q".to_owned(),
+            "-f".to_owned(),
+            "none".to_owned(),
+            "-g".to_owned(),
+            PROLOG_SYNTAX_CHECK.to_owned(),
+            "--".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "--no-packs".to_owned(),
+        "-q".to_owned(),
+        "-f".to_owned(),
+        "none".to_owned(),
+        "-s".to_owned(),
+        entrypoint,
+        "-g".to_owned(),
+        "main".to_owned(),
+        "-t".to_owned(),
+        "halt".to_owned(),
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "swipl",
         run_args,
         env,
         source_dir,

@@ -134,6 +134,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
 			{Language: "php", Version: "system"},
+			{Language: "prolog", Version: "system"},
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
 			{Language: "sql", Version: "system"},
@@ -195,6 +196,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.php",
 			compilePrefix: []string{"php", "-d", "variables_order=EGPCS"},
 			runPrefix:     []string{"php", "-d", "variables_order=EGPCS"},
+		},
+		{
+			language:      "prolog",
+			alias:         "swipl",
+			entrypoint:    "main.pl",
+			compilePrefix: []string{"swipl", "--no-packs", "-q"},
+			runPrefix:     []string{"swipl", "--no-packs", "-q"},
 		},
 		{
 			language:      "scala",

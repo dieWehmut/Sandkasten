@@ -444,6 +444,8 @@ func NormalizeLanguage(language string) string {
 		return "lua"
 	case "php8", "php8.2":
 		return "php"
+	case "pl", "swi-prolog", "swipl":
+		return "prolog"
 	case "py", "python3":
 		return "python"
 	case "rscript":
@@ -511,6 +513,8 @@ func defaultEntrypoint(language string) string {
 		return "main.lua"
 	case "php":
 		return "main.php"
+	case "prolog":
+		return "main.pl"
 	case "python":
 		return "main.py"
 	case "r":
@@ -552,6 +556,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lua5.4"}
 	case "php":
 		return []string{"php8", "php8.2"}
+	case "prolog":
+		return []string{"pl", "swi-prolog", "swipl"}
 	case "python":
 		return []string{"py", "python3"}
 	case "r":
@@ -597,6 +603,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("luac", "-p", "main.lua")
 	case "php":
 		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "-l", "main.php")
+	case "prolog":
+		return phase("swipl", "--no-packs", "-q", "-f", "none", "-g", "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.", "--", "main.pl")
 	case "python":
 		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
 	case "r":
@@ -638,6 +646,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("lua", "main.lua")
 	case "php":
 		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "main.php")
+	case "prolog":
+		return phase("swipl", "--no-packs", "-q", "-f", "none", "-s", "main.pl", "-g", "main", "-t", "halt")
 	case "python":
 		return phase("python3", "-B", "main.py")
 	case "r":
