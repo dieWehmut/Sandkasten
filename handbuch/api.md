@@ -86,6 +86,7 @@ Supported runtimes and default entrypoints:
 | `sql` | `sqlite`, `sqlite3` | `main.sql` |
 | `swift` | - | `main.swift` |
 | `typescript` | `ts` | `main.ts` |
+| `wdl` | `workflow-description-language` | `main.wdl` |
 | `zig` | - | `main.zig` |
 
 The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file.

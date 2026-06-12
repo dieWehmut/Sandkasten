@@ -140,6 +140,7 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
+        "wdl" => Ok(languages::plan_wdl(job, source_dir, env, entrypoint)),
         "zig" => Ok(languages::plan_zig(
             job,
             source_dir,

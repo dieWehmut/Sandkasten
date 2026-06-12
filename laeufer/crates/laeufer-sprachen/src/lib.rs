@@ -730,6 +730,33 @@ mod tests {
     }
 
     #[test]
+    fn wdl_plan_checks_workflow_then_prints_string_outputs() {
+        let job = job("workflow-description-language", "main.wdl");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "miniwdl");
+        assert_eq!(plan.compile.args[0], "check");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "--no-outside-imports"));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.wdl")
+        );
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan.run.args.iter().any(|arg| arg.contains("miniwdl run")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains(".laeufer-cache/wdl-output.json")));
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.wdl"));
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 

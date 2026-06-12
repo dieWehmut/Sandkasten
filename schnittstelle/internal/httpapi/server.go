@@ -401,6 +401,8 @@ func normalizeLanguage(language string) string {
 		return "swift"
 	case "ts":
 		return "typescript"
+	case "workflow-description-language":
+		return "wdl"
 	case "zig":
 		return "zig"
 	default:
@@ -470,6 +472,8 @@ func defaultEntrypoint(language string) string {
 		return "main.swift"
 	case "typescript":
 		return "main.ts"
+	case "wdl":
+		return "main.wdl"
 	case "zig":
 		return "main.zig"
 	default:
@@ -481,7 +485,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "dart", "elixir", "fsharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "zig":
+	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "dart", "elixir", "fsharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

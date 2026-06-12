@@ -72,6 +72,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"scala":   false,
 		"sql":     false,
 		"swift":   false,
+		"wdl":     false,
 		"zig":     false,
 	}
 	for _, runtime := range cfg.SupportedRuntimes {

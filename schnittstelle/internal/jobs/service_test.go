@@ -148,6 +148,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "scala", Version: "system"},
 			{Language: "sql", Version: "system"},
 			{Language: "swift", Version: "system"},
+			{Language: "wdl", Version: "system"},
 			{Language: "zig", Version: "system"},
 		},
 	)
@@ -305,6 +306,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.zig",
 			compilePrefix: []string{"zig", "build-exe"},
 			runPrefix:     []string{".laeufer-bin/main"},
+		},
+		{
+			language:      "wdl",
+			alias:         "workflow-description-language",
+			entrypoint:    "main.wdl",
+			compilePrefix: []string{"miniwdl", "check", "--no-outside-imports"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc", "-c"},
 		},
 	}
 

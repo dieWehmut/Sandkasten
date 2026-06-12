@@ -224,6 +224,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/sc/run", language: "scala", entrypoint: "Main.scala", source: `object Main extends App { println("ok") }`},
 		{path: "/v1/sqlite3/run", language: "sql", entrypoint: "main.sql", source: `select 'ok';`},
 		{path: "/v1/swift/run", language: "swift", entrypoint: "main.swift", source: `print("ok")`},
+		{path: "/v1/workflow-description-language/run", language: "wdl", entrypoint: "main.wdl", source: "version 1.0\nworkflow hello { output { String message = \"ok\" } }\n"},
 		{path: "/v1/zig/run", language: "zig", entrypoint: "main.zig", source: "extern fn write(fd: i32, buf: [*]const u8, count: usize) isize;\npub fn main() void { const msg = \"ok\\n\"; _ = write(1, msg.ptr, msg.len); }"},
 	}
 

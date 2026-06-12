@@ -10,6 +10,24 @@ const ELIXIR_SYNTAX_CHECK: &str =
     "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)";
 const PROLOG_SYNTAX_CHECK: &str = "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.";
 const SQLITE_RUN_SCRIPT: &str = "exec sqlite3 -batch -bail -safe :memory: < \"$1\"";
+const WDL_RUN_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache
+rm -rf .laeufer-cache/wdl-run .laeufer-cache/wdl-output.json
+miniwdl run --no-color --no-outside-imports --dir .laeufer-cache/wdl-run -o .laeufer-cache/wdl-output.json "$entrypoint" >/dev/null
+python3 - .laeufer-cache/wdl-output.json <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    outputs = json.load(handle).get("outputs", {})
+
+for key in sorted(outputs):
+    value = outputs[key]
+    if isinstance(value, str):
+        print(value)
+PY
+"#;
 
 pub(in crate::planner) fn plan_bash(
     job: &Job,
@@ -678,6 +696,52 @@ pub(in crate::planner) fn plan_typescript(
     let run = run_command_plan(
         "node",
         run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_wdl(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "miniwdl",
+        vec![
+            "check".to_owned(),
+            "--no-outside-imports".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            WDL_RUN_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
         env,
         source_dir,
         job.stdin.clone(),

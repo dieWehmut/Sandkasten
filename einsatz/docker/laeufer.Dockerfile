@@ -72,6 +72,8 @@ RUN apt-get update && \
       php-cli \
       openjdk-17-jdk-headless \
       python3 \
+      python3-pip \
+      python3-venv \
       r-base-core \
       racket \
       ruby \
@@ -99,6 +101,10 @@ RUN apt-get update && \
     curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
     bash /tmp/dotnet-install.sh --version "${DOTNET_SDK_VERSION}" --install-dir /opt/dotnet --no-path && \
     ln -s /opt/dotnet/dotnet /usr/local/bin/dotnet && \
+    python3 -m venv /opt/miniwdl && \
+    /opt/miniwdl/bin/pip install --upgrade pip setuptools wheel && \
+    /opt/miniwdl/bin/pip install miniwdl && \
+    ln -s /opt/miniwdl/bin/miniwdl /usr/local/bin/miniwdl && \
     curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \

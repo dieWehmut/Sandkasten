@@ -31,6 +31,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "sql" | "sqlite" | "sqlite3" => "sql",
         "swift" => "swift",
         "typescript" | "ts" => "typescript",
+        "wdl" | "workflow-description-language" => "wdl",
         "zig" => "zig",
         _ => return None,
     };

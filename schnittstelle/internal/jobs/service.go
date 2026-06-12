@@ -480,6 +480,8 @@ func NormalizeLanguage(language string) string {
 		return "swift"
 	case "ts":
 		return "typescript"
+	case "workflow-description-language":
+		return "wdl"
 	case "zig":
 		return "zig"
 	default:
@@ -571,6 +573,8 @@ func defaultEntrypoint(language string) string {
 		return "main.swift"
 	case "typescript":
 		return "main.ts"
+	case "wdl":
+		return "main.wdl"
 	case "zig":
 		return "main.zig"
 	default:
@@ -636,6 +640,8 @@ func runtimeAliases(language string) []string {
 		return nil
 	case "typescript":
 		return []string{"ts"}
+	case "wdl":
+		return []string{"workflow-description-language"}
 	case "zig":
 		return nil
 	default:
@@ -705,6 +711,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("swiftc", "-O", "-o", ".laeufer-bin/main", "main.swift")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
+	case "wdl":
+		return phase("miniwdl", "check", "--no-outside-imports", "main.wdl")
 	case "zig":
 		return phase("zig", "build-exe", "-O", "ReleaseSafe", "-lc", "--cache-dir", ".laeufer-cache/zig-cache", "--global-cache-dir", ".laeufer-cache/zig-global-cache", "-femit-bin=.laeufer-bin/main", "main.zig")
 	default:
@@ -762,6 +770,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase(".laeufer-bin/main")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
+	case "wdl":
+		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache\nrm -rf .laeufer-cache/wdl-run .laeufer-cache/wdl-output.json\nminiwdl run --no-color --no-outside-imports --dir .laeufer-cache/wdl-run -o .laeufer-cache/wdl-output.json \"$entrypoint\" >/dev/null\npython3 - .laeufer-cache/wdl-output.json <<'PY'\nimport json\nimport sys\n\nwith open(sys.argv[1], encoding=\"utf-8\") as handle:\n    outputs = json.load(handle).get(\"outputs\", {})\n\nfor key in sorted(outputs):\n    value = outputs[key]\n    if isinstance(value, str):\n        print(value)\nPY\n", "_", "main.wdl")
 	case "zig":
 		return phase(".laeufer-bin/main")
 	default:
