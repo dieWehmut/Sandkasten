@@ -375,6 +375,8 @@ func normalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "mojolang":
+		return "mojo"
 	case "nf":
 		return "nextflow"
 	case "nimrod":
@@ -448,6 +450,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "mojo":
+		return "main.mojo"
 	case "nextflow":
 		return "main.nf"
 	case "nim":
@@ -489,7 +493,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "dart", "elixir", "fsharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "nextflow", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
+	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "dart", "elixir", "fsharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

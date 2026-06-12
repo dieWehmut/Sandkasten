@@ -454,6 +454,8 @@ func NormalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "mojolang":
+		return "mojo"
 	case "nf":
 		return "nextflow"
 	case "nimrod":
@@ -549,6 +551,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "mojo":
+		return "main.mojo"
 	case "nextflow":
 		return "main.nf"
 	case "nim":
@@ -618,6 +622,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lean"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "mojo":
+		return []string{"mojolang"}
 	case "nextflow":
 		return []string{"nf"}
 	case "nim":
@@ -691,6 +697,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "mojo":
+		return phase("mojo", "build", "main.mojo", "-o", ".laeufer-bin/main")
 	case "nextflow":
 		return phase("nextflow", "lint", "main.nf")
 	case "nim":
@@ -730,7 +738,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cangjie", "cpp", "dart", "nim", "rust":
+	case "go", "c", "cangjie", "cpp", "dart", "mojo", "nim", "rust":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")

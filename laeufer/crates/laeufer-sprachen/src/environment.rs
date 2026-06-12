@@ -35,6 +35,15 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("pub-cache")
         .to_string_lossy()
         .into_owned();
+    let xdg_cache_home = tmp_dir_path
+        .join("xdg-cache")
+        .to_string_lossy()
+        .into_owned();
+    let modular_cache_dir = job_dir
+        .join(crate::constants::RUNNER_CACHE_DIR)
+        .join("mojo-cache")
+        .to_string_lossy()
+        .into_owned();
     let dotnet_home = tmp_dir_path
         .join("dotnet-home")
         .to_string_lossy()
@@ -57,6 +66,8 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("MIX_HOME".to_owned(), mix_home),
         ("HEX_HOME".to_owned(), hex_home),
         ("PUB_CACHE".to_owned(), pub_cache),
+        ("XDG_CACHE_HOME".to_owned(), xdg_cache_home),
+        ("MODULAR_CACHE_DIR".to_owned(), modular_cache_dir),
         ("DOTNET_CLI_HOME".to_owned(), dotnet_home),
         (
             "DOTNET_SKIP_FIRST_TIME_EXPERIENCE".to_owned(),

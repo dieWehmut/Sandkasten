@@ -107,6 +107,7 @@ need_runtime_tool julia "Install Julia for Julia jobs."
 need_runtime_tool lean "Install Lean 4 for Lean jobs."
 need_runtime_tool lua "Install Lua for Lua jobs."
 need_runtime_tool luac "Install Lua compiler for Lua syntax checks."
+need_runtime_tool mojo "Install Mojo for Mojo jobs."
 need_runtime_tool mcs "Install Mono mcs for C# jobs."
 need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool nextflow "Install Nextflow for Nextflow jobs."
@@ -248,6 +249,9 @@ run_language kotlin "hello, kotlin" 'fun main() {
 run_language lean4 "hello, lean4" 'def main : IO Unit := IO.println "hello, lean4"'
 
 run_language lua "hello, lua" 'print("hello, lua")'
+
+run_language mojo "hello, mojo" 'def main():
+    print("hello, mojo")' 1073741824
 
 run_language nextflow "hello, nextflow" 'workflow {
   println "hello, nextflow"

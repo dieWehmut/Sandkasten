@@ -18,6 +18,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "kotlin" | "kt" => "kotlin",
         "lean" | "lean4" => "lean4",
         "lua" | "lua5.4" => "lua",
+        "mojo" | "mojolang" => "mojo",
         "nextflow" | "nf" => "nextflow",
         "nim" | "nimrod" => "nim",
         "perl" | "perl5" => "perl",

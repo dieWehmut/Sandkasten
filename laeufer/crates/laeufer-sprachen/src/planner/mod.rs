@@ -110,6 +110,13 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "lua" => Ok(languages::plan_lua(job, source_dir, env, entrypoint)),
+        "mojo" => Ok(languages::plan_mojo(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "nextflow" => Ok(languages::plan_nextflow(job, source_dir, env, entrypoint)),
         "nim" => Ok(languages::plan_nim(
             job,

@@ -73,6 +73,7 @@ Supported runtimes and default entrypoints:
 | `kotlin` | `kt` | `Main.kt` |
 | `lean4` | `lean` | `Main.lean` |
 | `lua` | `lua5.4` | `main.lua` |
+| `mojo` | `mojolang` | `main.mojo` |
 | `nextflow` | `nf` | `main.nf` |
 | `nim` | `nimrod` | `main.nim` |
 | `perl` | `perl5` | `main.pl` |

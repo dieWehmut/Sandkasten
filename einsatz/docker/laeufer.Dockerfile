@@ -39,6 +39,7 @@ ARG SWIFT_VERSION=6.3.2
 ARG ZIG_VERSION=0.16.0
 ARG DART_VERSION=3.12.2
 ARG DOTNET_SDK_VERSION=10.0.301
+ARG PIXI_VERSION=0.70.2
 ARG NEXTFLOW_VERSION=26.04.3
 ARG CANGJIE_VERSION=1.1.3
 ARG CANGJIE_SHA256=2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
@@ -106,6 +107,20 @@ RUN apt-get update && \
     /opt/miniwdl/bin/pip install --upgrade pip setuptools wheel && \
     /opt/miniwdl/bin/pip install miniwdl && \
     ln -s /opt/miniwdl/bin/miniwdl /usr/local/bin/miniwdl && \
+    curl -fsSL https://pixi.sh/install.sh -o /tmp/pixi-install.sh && \
+    PIXI_VERSION="${PIXI_VERSION}" PIXI_HOME=/opt/pixi PIXI_BIN_DIR=/opt/pixi/bin sh /tmp/pixi-install.sh && \
+    ln -s /opt/pixi/bin/pixi /usr/local/bin/pixi && \
+    pixi init /opt/mojo -c https://conda.modular.com/max/ -c conda-forge && \
+    cd /opt/mojo && pixi add mojo && pixi run mojo --version && cd / && \
+    printf '\n[crash_reporting]\nenabled = false\n' >> /opt/mojo/.pixi/envs/default/share/max/modular.cfg && \
+    find /opt/pixi /opt/mojo -type d -exec chmod 0755 {} + && \
+    find /opt/pixi /opt/mojo -type f -exec chmod a+r {} + && \
+    find /opt/pixi/bin /opt/mojo/.pixi -type f -perm /111 -exec chmod 0755 {} + && \
+    { \
+      printf '%s\n' '#!/bin/sh'; \
+      printf '%s\n' 'exec /usr/local/bin/pixi run --frozen --no-install -q --manifest-path /opt/mojo/pixi.toml --executable mojo "$@"'; \
+    } > /usr/local/bin/mojo && \
+    chmod 0755 /usr/local/bin/mojo && \
     mkdir -p /opt/nextflow && \
     curl -fsSL https://get.nextflow.io -o /usr/local/bin/nextflow-launcher && \
     chmod 0755 /usr/local/bin/nextflow-launcher && \
@@ -145,7 +160,7 @@ RUN apt-get update && \
     chmod 0755 /usr/local/bin/cjc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
+    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/pixi-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 

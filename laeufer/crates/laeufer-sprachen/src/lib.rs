@@ -348,6 +348,17 @@ mod tests {
         assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
         assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
         assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "MODULAR_CACHE_DIR"
+                && value.ends_with(".laeufer-cache/mojo-cache")));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "XDG_CACHE_HOME" && value.ends_with("xdg-cache")));
     }
 
     #[test]
@@ -401,6 +412,25 @@ mod tests {
             .env
             .iter()
             .any(|(key, value)| key == "PUB_CACHE" && value.ends_with("pub-cache")));
+    }
+
+    #[test]
+    fn mojo_plan_compiles_executable_with_mojo_build() {
+        let job = job("mojolang", "main.mojo");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "mojo");
+        assert_eq!(plan.compile.args[0], "build");
+        assert_eq!(plan.compile.args[1], "main.mojo");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
     }
 
     #[test]

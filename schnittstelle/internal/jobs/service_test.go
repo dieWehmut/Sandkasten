@@ -139,6 +139,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
+			{Language: "mojo", Version: "system"},
 			{Language: "nextflow", Version: "system"},
 			{Language: "nim", Version: "system"},
 			{Language: "perl", Version: "system"},
@@ -237,6 +238,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.lua",
 			compilePrefix: []string{"luac", "-p"},
 			runPrefix:     []string{"lua", "main.lua"},
+		},
+		{
+			language:      "mojo",
+			alias:         "mojolang",
+			entrypoint:    "main.mojo",
+			compilePrefix: []string{"mojo", "build"},
+			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
 			language:      "ruby",
