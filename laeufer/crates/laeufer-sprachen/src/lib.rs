@@ -904,7 +904,8 @@ mod tests {
             .run
             .args
             .iter()
-            .any(|arg| arg.contains("rm -rf .laeufer-tmp/xdg-runtime")));
+            .any(|arg| arg.contains("XDG_RUNTIME_DIR=\"$PWD/.laeufer-tmp/qml-runtime\"")));
+        assert!(plan.run.args.iter().any(|arg| arg.contains("umask 077")));
         assert!(plan
             .run
             .args

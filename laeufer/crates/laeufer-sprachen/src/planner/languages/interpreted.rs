@@ -74,9 +74,9 @@ PY
 const QML_RUN_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
 mkdir -p .laeufer-cache/qml .laeufer-tmp
-rm -rf .laeufer-tmp/xdg-runtime
-mkdir -p .laeufer-tmp/xdg-runtime
-chmod 700 .laeufer-tmp/xdg-runtime 2>/dev/null || true
+export XDG_RUNTIME_DIR="$PWD/.laeufer-tmp/qml-runtime"
+umask 077
+mkdir -p "$XDG_RUNTIME_DIR"
 stdout=.laeufer-cache/qml/stdout
 stderr=.laeufer-cache/qml/stderr
 status=0
