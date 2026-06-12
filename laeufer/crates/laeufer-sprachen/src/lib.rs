@@ -505,6 +505,37 @@ mod tests {
     }
 
     #[test]
+    fn haskell_plan_compiles_binary_with_private_output_dirs() {
+        let job = job("ghc", "Main.hs");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "ghc");
+        assert_eq!(plan.compile.args[0], "-O2");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-threaded"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-outputdir"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-cache/haskell")));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-tmpdir"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-tmp")));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-i."));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

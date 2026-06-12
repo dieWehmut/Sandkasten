@@ -68,6 +68,7 @@ Supported runtimes and default entrypoints:
 | `dart` | - | `main.dart` |
 | `elixir` | `ex`, `exs` | `main.exs` |
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
+| `haskell` | `hs`, `ghc` | `Main.hs` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |
 | `julia` | `jl` | `main.jl` |

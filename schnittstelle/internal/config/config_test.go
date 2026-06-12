@@ -59,6 +59,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"dart":     false,
 		"elixir":   false,
 		"fsharp":   false,
+		"haskell":  false,
 		"julia":    false,
 		"kotlin":   false,
 		"lean4":    false,

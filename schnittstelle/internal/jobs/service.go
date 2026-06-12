@@ -446,6 +446,8 @@ func NormalizeLanguage(language string) string {
 		return "elixir"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "hs", "ghc":
+		return "haskell"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -543,6 +545,8 @@ func defaultEntrypoint(language string) string {
 		return "main.exs"
 	case "fsharp":
 		return "main.fs"
+	case "haskell":
+		return "Main.hs"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -618,6 +622,8 @@ func runtimeAliases(language string) []string {
 		return []string{"ex", "exs"}
 	case "fsharp":
 		return []string{"f#", "fs", "f-sharp", "f_sharp"}
+	case "haskell":
+		return []string{"hs", "ghc"}
 	case "javascript":
 		return []string{"js", "node"}
 	case "julia":
@@ -693,6 +699,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("elixir", "--erl", "+S 1", "-e", "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)", "--", "main.exs")
 	case "fsharp":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nproject=\".laeufer-cache/fsharp-project\"\nrm -rf \"$project\"\nmkdir -p \"$project\"\ncat > \"$project/fsharp-project.fsproj\" <<'EOF'\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n    <NuGetAudit>false</NuGetAudit>\n  </PropertyGroup>\n  <ItemGroup>\n    <Compile Include=\"Program.fs\" />\n  </ItemGroup>\n</Project>\nEOF\ncp \"$entrypoint\" \"$project/Program.fs\"\ndotnet restore \"$project\" --ignore-failed-sources --disable-parallel -p:NuGetAudit=false\ndotnet build \"$project\" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -p:NuGetAudit=false -o .laeufer-bin\n", "_", "main.fs")
+	case "haskell":
+		return phase("ghc", "-O2", "-threaded", "-outputdir", ".laeufer-cache/haskell", "-tmpdir", ".laeufer-tmp", "-i.", "-o", ".laeufer-bin/main", "Main.hs")
 	case "java":
 		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
 	case "javascript":
@@ -746,7 +754,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cangjie", "cpp", "crystal", "dart", "mojo", "nim", "rust":
+	case "go", "c", "cangjie", "cpp", "crystal", "dart", "haskell", "mojo", "nim", "rust":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")

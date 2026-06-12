@@ -191,6 +191,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"dart",
 		"elixir",
 		"fsharp",
+		"haskell",
 		"java",
 		"javascript",
 		"julia",

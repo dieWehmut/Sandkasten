@@ -367,6 +367,8 @@ func normalizeLanguage(language string) string {
 		return "elixir"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "hs", "ghc":
+		return "haskell"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -442,6 +444,8 @@ func defaultEntrypoint(language string) string {
 		return "main.exs"
 	case "fsharp":
 		return "main.fs"
+	case "haskell":
+		return "Main.hs"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -497,7 +501,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "fsharp", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
+	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "fsharp", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

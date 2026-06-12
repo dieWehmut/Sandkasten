@@ -336,6 +336,55 @@ pub(in crate::planner) fn plan_fsharp(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_haskell(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
+    let output_dir = source_dir.join(RUNNER_CACHE_DIR).join("haskell");
+    let tmp_dir = source_dir.join(RUNNER_TMP_DIR);
+    let compile = compile_command_plan(
+        "ghc",
+        vec![
+            "-O2".to_owned(),
+            "-threaded".to_owned(),
+            "-outputdir".to_owned(),
+            output_dir.to_string_lossy().into_owned(),
+            "-tmpdir".to_owned(),
+            tmp_dir.to_string_lossy().into_owned(),
+            "-i.".to_owned(),
+            "-o".to_owned(),
+            binary_path.to_string_lossy().into_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        binary_path.to_string_lossy().into_owned(),
+        job.args.clone(),
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 struct NativeCompiler {
     program: &'static str,
     args: Vec<&'static str>,

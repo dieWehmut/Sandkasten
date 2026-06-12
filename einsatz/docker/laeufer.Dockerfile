@@ -56,6 +56,7 @@ RUN apt-get update && \
       g++ \
       gcc \
       git \
+      ghc \
       kotlin \
       libcurl4-openssl-dev \
       libedit2 \
