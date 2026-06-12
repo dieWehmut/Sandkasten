@@ -546,6 +546,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			if !hasPrefix(runtime.GetRunPhase().GetCommand(), tt.runPrefix) {
 				t.Fatalf("RunPhase.Command = %v", runtime.GetRunPhase().GetCommand())
 			}
+			if tt.language == "markdown" && !commandContains(runtime.GetCompilePhase().GetCommand(), "puppeteerConfig") {
+				t.Fatalf("CompilePhase.Command = %v, want puppeteerConfig for Mermaid CLI", runtime.GetCompilePhase().GetCommand())
+			}
 		})
 	}
 }
@@ -868,6 +871,15 @@ func findRuntime(resp *pb.ListRuntimesResponse, language string) *pb.Runtime {
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func commandContains(values []string, want string) bool {
+	for _, value := range values {
+		if strings.Contains(value, want) {
 			return true
 		}
 	}

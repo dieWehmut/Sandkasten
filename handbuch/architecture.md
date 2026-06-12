@@ -1,6 +1,6 @@
 # Architecture
 
-Sandkasten v1 is a self-hosted code execution system for Go, Bash/Shell, C, Cangjie, Clojure, CSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, GDScript, Haskell, HTML, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Mojo, Next.js, Nextflow, Nim, Perl, PHP, Prolog, Python, QML, R, Racket, Ruby, Rust, Scala, SCSS, SQL, Swift, Tailwind CSS, TypeScript, TSX/React, Vue 3, WDL, and Zig jobs.
+Sandkasten v1 is a self-hosted code execution system for Go, Assembly, Bash/Shell, C, Cangjie, Clojure, CSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal, Perl, PHP, Prolog, Python, QML, R, Racket, Ruby, Rust, Scala, SCSS, SQL, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig jobs.
 The repository uses German directory names for component ownership:
 
 - `schnittstelle/`: Go gRPC API.
@@ -34,9 +34,9 @@ Go jobs must provide:
 - `vendor/` directory.
 - An entrypoint path, defaulting to `.`.
 
-The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.css`, `main.cpp`, `Program.cs`, `main.v`, `main.cr`, `main.dart`, `main.exs`, `main.erl`, `main.fs`, `main.gd`, `Main.hs`, `index.html`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `Main.lean`, `main.lua`, `main.mojo`, `app/page.tsx`, `main.nf`, `main.nim`, `main.pl`, `main.php`, `main.py`, `main.qml`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.scss`, `main.sql`, `main.swift`, `main.ts`, `main.tsx`, `main.vue`, `main.wdl`, and `main.zig`.
+The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.s`, `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.css`, `main.cpp`, `Program.cs`, `main.v`, `main.cr`, `main.dart`, `main.exs`, `main.erl`, `main.fs`, `main.f90`, `main.gd`, `src/main.gleam`, `main.m`, `main.dot`, `Main.hs`, `index.html`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `main.tex`, `Main.lean`, `main.lua`, `main.md`, `main.mdx`, `main.mojo`, `app/page.tsx`, `main.nf`, `main.nim`, `main.ml`, `main.pas`, `main.pl`, `main.php`, `main.py`, `main.qml`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.scss`, `main.sql`, `main.swift`, `main.ts`, `main.tsx`, `main.typ`, `main.vv`, `main.vue`, `main.wdl`, and `main.zig`.
 
-Frontend runtimes produce text artifacts through stdout: HTML/CSS source, compiled SCSS/Tailwind CSS, React TSX/Vue 3 server-rendered markup, or static HTML rendered from a Next.js `app/page.tsx` component. They use globally installed Node packages exposed through `NODE_PATH`; jobs must not fetch npm dependencies at execution time.
+Frontend and document runtimes produce text artifacts through stdout: HTML/CSS source, compiled SCSS/Tailwind CSS, React TSX/Vue 3 server-rendered markup, static HTML rendered from a Next.js `app/page.tsx` component, Markdown/MDX static HTML, Graphviz/Typst SVG, or a LaTeX compile marker. They use globally installed Node packages exposed through `NODE_PATH`; jobs must not fetch npm dependencies at execution time. HTML and SVG outputs are untrusted user artifacts and should be previewed only through client-side sandboxing policies.
 
 The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking. When `LAEUFER_ROOTFS` is configured, child commands execute after a `pivot_root` into that rootfs with the job directory mounted at `/workspace`, private `/tmp`, read-only `/proc` with expanded sensitive proc-file masks and empty read-only proc-directory masks, and a minimal `/dev`.
 

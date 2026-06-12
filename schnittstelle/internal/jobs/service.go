@@ -111,7 +111,12 @@ const entrypoint = process.argv[2];
 const source = fs.readFileSync(entrypoint, 'utf8');
 const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
 const mermaidConfigPath = '.laeufer-cache/mermaid/config.json';
+const puppeteerConfigPath = '.laeufer-cache/mermaid/puppeteer.json';
 fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
+fs.writeFileSync(puppeteerConfigPath, JSON.stringify({
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+}));
 
 const diagrams = [];
 const fence = String.fromCharCode(96).repeat(3);
@@ -122,7 +127,7 @@ const markdown = source.replace(mermaidFence, (_match, diagram) => {
   const input = '.laeufer-cache/mermaid/' + id + '.mmd';
   const output = '.laeufer-cache/mermaid/' + id + '.svg';
   fs.writeFileSync(input, diagram);
-  childProcess.execFileSync('mmdc', ['--quiet', '-i', input, '-o', output, '-c', mermaidConfigPath], { stdio: ['ignore', 'ignore', 'inherit'] });
+  childProcess.execFileSync('mmdc', ['--quiet', '-i', input, '-o', output, '-c', mermaidConfigPath, '-p', puppeteerConfigPath], { stdio: ['ignore', 'ignore', 'inherit'] });
   diagrams.push({ placeholder, svg: fs.readFileSync(output, 'utf8') });
   return placeholder;
 });

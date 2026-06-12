@@ -1320,6 +1320,11 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("mmdc") && arg.contains("securityLevel")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("puppeteerConfig") && arg.contains("/usr/bin/chromium")));
         assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
         assert_eq!(plan.run.program, "cat");
         assert_eq!(plan.run.args, vec![".laeufer-bin/main.html"]);

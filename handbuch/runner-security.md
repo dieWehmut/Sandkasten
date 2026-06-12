@@ -55,7 +55,7 @@ The runner pod is privileged because the runner must configure kernel isolation 
 
 ## Rootfs and Network
 
-The runner image includes system toolchains and language SDKs for the supported languages. Go jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`; non-Go jobs are single-file source programs by default. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes.
+The runner image includes system toolchains and language SDKs for the supported languages, including document/render toolchains for Markdown/Mermaid, MDX, Graphviz DOT, Typst, and LaTeX. Go jobs are required to ship a `vendor/` directory and compile with `-mod=vendor`; non-Go jobs are single-file source programs by default. The child process gets a private network namespace by default; do not disable `LAEUFER_REQUIRE_PRIVATE_NAMESPACES` on production runner nodes. HTML and SVG outputs from document runtimes remain untrusted job artifacts and must be treated as preview-only content by clients.
 
 ## Seccomp
 

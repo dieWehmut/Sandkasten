@@ -43,22 +43,34 @@ ARG PIXI_VERSION=0.70.2
 ARG NEXTFLOW_VERSION=26.04.3
 ARG CANGJIE_VERSION=1.1.3
 ARG CANGJIE_SHA256=2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
+ARG GLEAM_VERSION=1.17.0
+ARG GLEAM_SHA256=c0d1eaadac40c88ac93ea45fc150f6363f4ceb8c925b5ac90f371b1665613cc4
+ARG V_VERSION=weekly.2026.08
+ARG V_SHA256=9a71226a554a184d7d4dac9898bc5a9a65b496da26ec1ad0d412721b775be789
+ARG TYPST_VERSION=0.14.2
+ARG TYPST_SHA256=a6044cbad2a954deb921167e257e120ac0a16b20339ec01121194ff9d394996d
+ARG TECTONIC_VERSION=0.16.9
+ARG TECTONIC_SHA256=60b13a0826ae7ad9ce34b4a2df06bff2cfcfa6dda8a915477c0cbb84e1a4a902
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
       bash \
+      chromium \
       clojure \
       curl \
       coq \
       crystal \
       elixir \
       erlang-dev \
+      fpc \
       g++ \
       gcc \
       git \
       godot3-server \
+      gfortran \
       ghc \
+      graphviz \
       kotlin \
       libcurl4-openssl-dev \
       libedit2 \
@@ -75,6 +87,8 @@ RUN apt-get update && \
       node-typescript \
       nodejs \
       npm \
+      ocaml-nox \
+      octave \
       perl \
       php-cli \
       openjdk-17-jdk-headless \
@@ -108,7 +122,7 @@ RUN apt-get update && \
       tzdata \
       xz-utils \
       zstd && \
-    npm install -g --prefix /usr/local \
+    PUPPETEER_SKIP_DOWNLOAD=true npm install -g --prefix /usr/local \
       sass@1.99.0 \
       esbuild@0.24.2 \
       react@18.3.1 \
@@ -120,10 +134,30 @@ RUN apt-get update && \
       tailwindcss@3.4.19 \
       postcss@8.4.49 \
       autoprefixer@10.4.20 \
+      markdown-it@14.2.0 \
+      @mdx-js/mdx@3.1.1 \
+      @mermaid-js/mermaid-cli@11.15.0 \
+      puppeteer@23.11.1 \
       typescript@5.8.3 \
       @types/react@18.3.23 \
       @types/react-dom@18.3.7 \
       @types/node@20.19.1 && \
+    curl -fL "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/gleam.tar.gz && \
+    echo "${GLEAM_SHA256}  /tmp/gleam.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/gleam.tar.gz -C /usr/local/bin gleam && \
+    chmod 0755 /usr/local/bin/gleam && \
+    curl -fL "https://github.com/vlang/v/releases/download/${V_VERSION}/v_linux.zip" -o /tmp/v_linux.zip && \
+    echo "${V_SHA256}  /tmp/v_linux.zip" | sha256sum -c - && \
+    unzip -q /tmp/v_linux.zip -d /opt && \
+    ln -s /opt/v/v /usr/local/bin/v && \
+    curl -fL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" -o /tmp/typst.tar.xz && \
+    echo "${TYPST_SHA256}  /tmp/typst.tar.xz" | sha256sum -c - && \
+    tar -xJf /tmp/typst.tar.xz -C /opt && \
+    ln -s "/opt/typst-x86_64-unknown-linux-musl/typst" /usr/local/bin/typst && \
+    curl -fL "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/tectonic.tar.gz && \
+    echo "${TECTONIC_SHA256}  /tmp/tectonic.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin tectonic && \
+    chmod 0755 /usr/local/bin/tectonic && \
     curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
     ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
@@ -197,7 +231,7 @@ RUN apt-get update && \
     chmod 0755 /usr/local/bin/cjc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/pixi-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
+    rm -f /tmp/gleam.tar.gz /tmp/v_linux.zip /tmp/typst.tar.xz /tmp/tectonic.tar.gz /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/pixi-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 
@@ -209,6 +243,7 @@ ENV LAEUFER_WORK_DIR=/var/lib/sandkasten/laeufer
 ENV PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
 ENV LAEUFER_RUNTIME_PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
 ENV NODE_PATH=/usr/local/lib/node_modules
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 

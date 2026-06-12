@@ -57,6 +57,7 @@ Supported runtimes and default entrypoints:
 | Language | Aliases | Default entrypoint |
 | --- | --- | --- |
 | `go` | `golang` | `.` |
+| `assembly` | `asm`, `gas`, `nasm` | `main.s` |
 | `bash` | `shell`, `sh` | `main.sh` |
 | `c` | - | `main.c` |
 | `cangjie` | `cj`, `cjc`, `仓颉` | `main.cj` |
@@ -70,19 +71,28 @@ Supported runtimes and default entrypoints:
 | `elixir` | `ex`, `exs` | `main.exs` |
 | `erlang` | `erl`, `erts` | `main.erl` |
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
+| `fortran` | `f90`, `gfortran` | `main.f90` |
 | `gdscript` | `gd`, `godot`, `godot3` | `main.gd` |
+| `gleam` | `gleamlang` | `src/main.gleam` |
+| `graphviz` | `dot`, `gv` | `main.dot` |
 | `haskell` | `hs`, `ghc` | `Main.hs` |
 | `html` | `htm` | `index.html` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |
 | `julia` | `jl` | `main.jl` |
 | `kotlin` | `kt` | `Main.kt` |
+| `latex` | `tex` | `main.tex` |
 | `lean4` | `lean` | `Main.lean` |
 | `lua` | `lua5.4` | `main.lua` |
+| `markdown` | `md` | `main.md` |
+| `mdx` | - | `main.mdx` |
 | `mojo` | `mojolang` | `main.mojo` |
 | `nextjs` | `next`, `next.js` | `app/page.tsx` |
 | `nextflow` | `nf` | `main.nf` |
 | `nim` | `nimrod` | `main.nim` |
+| `octave` | `gnu-octave`, `m` | `main.m` |
+| `ocaml` | `ml`, `ocamlopt` | `main.ml` |
+| `pascal` | `fpc`, `freepascal` | `main.pas` |
 | `perl` | `perl5` | `main.pl` |
 | `php` | `php8`, `php8.2` | `main.php` |
 | `prolog` | `pl`, `swi-prolog`, `swipl` | `main.pl` |
@@ -97,13 +107,15 @@ Supported runtimes and default entrypoints:
 | `sql` | `sqlite`, `sqlite3` | `main.sql` |
 | `swift` | - | `main.swift` |
 | `tailwindcss` | `tailwind`, `tailwind-css` | `main.css` |
+| `typst` | `typ` | `main.typ` |
 | `typescript` | `ts` | `main.ts` |
 | `tsx` | `jsx`, `react`, `react-tsx` | `main.tsx` |
+| `vlang` | `v`, `v-language` | `main.vv` |
 | `vue3` | `vue`, `vuejs` | `main.vue` |
 | `wdl` | `workflow-description-language` | `main.wdl` |
 | `zig` | - | `main.zig` |
 
-The frontend runtimes are still sandboxed batch jobs. `html` and `css` validate and return source text, `scss` and `tailwindcss` return compiled CSS, `tsx` and `vue3` run server-side rendering through the bundled Node toolchain, and `nextjs` renders the default `app/page.tsx` component to static HTML.
+The frontend and document runtimes are still sandboxed batch jobs. `html` and `css` validate and return source text, `scss` and `tailwindcss` return compiled CSS, `tsx` and `vue3` run server-side rendering through the bundled Node toolchain, `nextjs` renders the default `app/page.tsx` component to static HTML, `markdown`/`mdx` return static HTML, `graphviz` and `typst` return SVG, and `latex` returns a deterministic success marker after offline compilation. `markdown` Mermaid fences render inside the child sandbox and the resulting HTML/SVG must be treated as untrusted output.
 
 The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file. `nextjs` uses `app/page.tsx` as its generated source path when submitted through the HTTP source shortcut.
 

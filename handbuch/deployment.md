@@ -21,7 +21,7 @@ PRUNE_BUILDKIT_ALL=1 make docker-clean
 Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
-- The runner image includes Go plus toolchains/interpreters for Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, GDScript/Godot, Haskell, HTML, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Mojo, Next.js, Nextflow, Nim, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Vue 3, WDL, and Zig execution.
+- The runner image includes Go plus toolchains/interpreters for Assembly, Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript/Godot, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX/Tectonic, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal/Free Pascal, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig execution.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development
@@ -53,7 +53,7 @@ Run the full language smoke when all supported local toolchains are installed:
 ./werkzeug/smoke-languages.sh
 ```
 
-The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `css`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `gdscript`, `haskell`, `html`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `mojo`, `nextjs`, `nextflow`, `nim`, `perl`, `php`, `prolog`, `python`, `qml`, `r`, `racket`, `ruby`, `rust`, `scala`, `scss`, `sql`, `swift`, `tailwindcss`, `typescript`, `tsx`, `vue3`, `wdl`, and `zig`.
+The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `css`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `fortran`, `gdscript`, `gleam`, `graphviz`, `haskell`, `html`, `java`, `javascript`, `julia`, `kotlin`, `latex`, `lean4`, `lua`, `markdown`, `mdx`, `mojo`, `nextjs`, `nextflow`, `nim`, `octave`, `ocaml`, `pascal`, `assembly`, `perl`, `php`, `prolog`, `python`, `qml`, `r`, `racket`, `ruby`, `rust`, `scala`, `scss`, `sql`, `swift`, `tailwindcss`, `typst`, `typescript`, `tsx`, `vlang`, `vue3`, `wdl`, and `zig`.
 
 ## Kubernetes
 

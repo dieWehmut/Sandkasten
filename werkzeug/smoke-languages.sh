@@ -138,21 +138,29 @@ need_runtime_tool elixir "Install Elixir for Elixir jobs."
 need_runtime_tool erlc "Install Erlang compiler for Erlang jobs."
 need_runtime_tool erl "Install Erlang runtime for Erlang jobs."
 need_runtime_tool dotnet "Install .NET SDK for F# jobs."
+need_runtime_tool gfortran "Install GNU Fortran for Fortran jobs."
 need_runtime_tool godot3-server "Install Godot server for GDScript jobs."
+need_runtime_tool gleam "Install Gleam for Gleam jobs."
 need_runtime_tool ghc "Install GHC for Haskell jobs."
+need_runtime_tool dot "Install Graphviz for Graphviz DOT jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
 need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
 need_runtime_tool julia "Install Julia for Julia jobs."
+need_runtime_tool tectonic "Install Tectonic for LaTeX jobs."
 need_runtime_tool lean "Install Lean 4 for Lean jobs."
 need_runtime_tool lua "Install Lua for Lua jobs."
 need_runtime_tool luac "Install Lua compiler for Lua syntax checks."
+need_runtime_tool mmdc "Install Mermaid CLI for Markdown Mermaid jobs."
 need_runtime_tool mojo "Install Mojo for Mojo jobs."
 need_runtime_tool mcs "Install Mono mcs for C# jobs."
 need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool nextflow "Install Nextflow for Nextflow jobs."
 need_runtime_tool nim "Install Nim for Nim jobs."
 need_runtime_tool node "Install Node.js for JavaScript jobs."
+need_runtime_tool octave-cli "Install GNU Octave for Octave jobs."
+need_runtime_tool ocamlopt "Install OCaml native compiler for OCaml jobs."
+need_runtime_tool fpc "Install Free Pascal for Pascal jobs."
 need_runtime_tool sass "Install Sass for SCSS jobs."
 need_runtime_tool esbuild "Install esbuild for TSX/Vue jobs."
 need_runtime_tool tailwindcss "Install Tailwind CSS CLI for Tailwind CSS jobs."
@@ -171,8 +179,10 @@ need_runtime_tool scala "Install Scala for Scala jobs."
 need_runtime_tool scalac "Install Scalac for Scala jobs."
 need_runtime_tool sqlite3 "Install SQLite CLI for SQL jobs."
 need_runtime_tool swiftc "Install Swift for Swift jobs."
+need_runtime_tool typst "Install Typst for Typst jobs."
 need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
 need_runtime_tool miniwdl "Install miniwdl for WDL jobs."
+need_runtime_tool v "Install V for V language jobs."
 need_runtime_tool zig "Install Zig for Zig jobs."
 
 printf 'Checking database connectivity...\n'
@@ -287,10 +297,24 @@ main() -> io:format("hello, erlang~n", []).'
 
 run_language fsharp "hello, fsharp" 'printfn "hello, fsharp"' 1073741824
 
+run_language fortran " hello, fortran" 'program main
+  print *, "hello, fortran"
+end program main' 1073741824
+
 run_language gdscript "hello, gdscript" 'extends SceneTree
 func _init():
     print("hello, gdscript")
     quit()' 1073741824
+
+run_language gleam "hello, gleam" 'import gleam/io
+
+pub fn main() {
+  io.println("hello, gleam")
+}' 1073741824
+
+run_language_contains graphviz "<svg" 'digraph G {
+  hello -> graphviz;
+}'
 
 run_language haskell "hello, haskell" 'main :: IO ()
 main = putStrLn "hello, haskell"' 1073741824
@@ -309,9 +333,24 @@ run_language kotlin "hello, kotlin" 'fun main() {
     println("hello, kotlin")
 }'
 
+run_language latex "latex compiled" '\documentclass{article}
+\begin{document}
+hello, latex
+\end{document}' 1073741824
+
 run_language lean4 "hello, lean4" 'def main : IO Unit := IO.println "hello, lean4"'
 
 run_language lua "hello, lua" 'print("hello, lua")'
+
+run_language_contains markdown "<h1>hello, markdown</h1>" '# hello, markdown
+
+```mermaid
+graph TD; A-->B;
+```' 1073741824
+
+run_language_contains mdx "<h1>hello, mdx</h1>" '# hello, mdx
+
+<strong>static mdx</strong>' 1073741824
 
 run_language mojo "hello, mojo" 'def main():
     print("hello, mojo")' 1073741824
@@ -325,6 +364,20 @@ run_language nextflow "hello, nextflow" 'workflow {
 }' 1073741824
 
 run_language nim "hello, nim" 'echo "hello, nim"'
+
+run_language octave "hello, octave" 'disp("hello, octave")'
+
+run_language ocaml "hello, ocaml" 'print_endline "hello, ocaml"'
+
+run_language pascal "hello, pascal" 'program main;
+begin
+  writeln('"'"'hello, pascal'"'"');
+end.'
+
+run_language assembly "" '.global main
+main:
+  mov $0, %eax
+  ret'
 
 run_language perl "hello, perl" 'print "hello, perl\n";'
 
@@ -368,6 +421,8 @@ run_language swift "hello, swift" 'print("hello, swift")' 1073741824
 run_language_contains tailwindcss ".text-red-500{" '/* text-red-500 font-bold */
 @tailwind utilities;'
 
+run_language_contains typst "<svg" '= hello, typst' 1073741824
+
 run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
 console.log(msg);'
 
@@ -377,6 +432,10 @@ run_language tsx "<main>Hello, TSX</main>" 'export default function App() {
 
 run_language vue3 "<style>.greeting { color: teal; }</style><main class=\"greeting\">Hello, Vue</main>" '<template><main class="greeting">Hello, Vue</main></template>
 <style>.greeting { color: teal; }</style>'
+
+run_language vlang "hello, vlang" "fn main() {
+  println('hello, vlang')
+}"
 
 run_language wdl "hello, wdl" 'version 1.0
 workflow hello {
