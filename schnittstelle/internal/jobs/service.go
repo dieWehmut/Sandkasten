@@ -446,6 +446,8 @@ func NormalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "nimrod":
+		return "nim"
 	case "perl5":
 		return "perl"
 	case "php8", "php8.2":
@@ -527,6 +529,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "nim":
+		return "main.nim"
 	case "perl":
 		return "main.pl"
 	case "php":
@@ -582,6 +586,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lean"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "nim":
+		return []string{"nimrod"}
 	case "perl":
 		return []string{"perl5"}
 	case "php":
@@ -641,6 +647,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "nim":
+		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache", ".laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
 	case "perl":
 		return phase("perl", "-c", "main.pl")
 	case "php":
@@ -674,7 +682,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cangjie", "cpp", "rust":
+	case "go", "c", "cangjie", "cpp", "nim", "rust":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")

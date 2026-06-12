@@ -4,7 +4,7 @@ mod systems;
 
 pub(super) use self::compiled::{
     plan_c, plan_cangjie, plan_coq, plan_cpp, plan_csharp, plan_java, plan_kotlin, plan_lean4,
-    plan_rust, plan_scala, plan_swift, plan_zig,
+    plan_nim, plan_rust, plan_scala, plan_swift, plan_zig,
 };
 pub(super) use self::interpreted::{
     plan_bash, plan_javascript, plan_julia, plan_lua, plan_perl, plan_php, plan_prolog,

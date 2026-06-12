@@ -14,6 +14,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "kotlin" | "kt" => "kotlin",
         "lean" | "lean4" => "lean4",
         "lua" | "lua5.4" => "lua",
+        "nim" | "nimrod" => "nim",
         "perl" | "perl5" => "perl",
         "php" | "php8" | "php8.2" => "php",
         "prolog" | "pl" | "swi-prolog" | "swipl" => "prolog",

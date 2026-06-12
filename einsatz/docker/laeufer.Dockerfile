@@ -61,6 +61,7 @@ RUN apt-get update && \
       lua5.4 \
       mono-mcs \
       mono-runtime \
+      nim \
       node-typescript \
       nodejs \
       perl \

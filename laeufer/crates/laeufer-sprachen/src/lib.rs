@@ -300,6 +300,34 @@ mod tests {
     }
 
     #[test]
+    fn nim_plan_compiles_release_binary_with_private_cache() {
+        let job = job("nimrod", "main.nim");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "nim");
+        assert_eq!(plan.compile.args[0], "c");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "--parallelBuild:1"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "--nimcache"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-cache/nim")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

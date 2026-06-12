@@ -90,6 +90,54 @@ pub(in crate::planner) fn plan_cangjie(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_nim(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
+    let nim_cache = source_dir.join(RUNNER_CACHE_DIR).join("nim");
+    let compile = compile_command_plan(
+        "nim",
+        vec![
+            "c".to_owned(),
+            "--hints:off".to_owned(),
+            "--warnings:off".to_owned(),
+            "--verbosity:0".to_owned(),
+            "--parallelBuild:1".to_owned(),
+            "--nimcache".to_owned(),
+            nim_cache.to_string_lossy().into_owned(),
+            "-d:release".to_owned(),
+            format!("--out:{}", binary_path.to_string_lossy()),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        binary_path.to_string_lossy().into_owned(),
+        job.args.clone(),
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 struct NativeCompiler {
     program: &'static str,
     args: Vec<&'static str>,
