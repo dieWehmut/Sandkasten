@@ -77,6 +77,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "elixir" => Ok(languages::plan_elixir(job, source_dir, env, entrypoint)),
         "coq" => Ok(languages::plan_coq(
             job,
             source_dir,

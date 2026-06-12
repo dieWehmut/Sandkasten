@@ -131,6 +131,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "bash", Version: "system"},
 			{Language: "cangjie", Version: "system"},
 			{Language: "coq", Version: "system"},
+			{Language: "elixir", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
@@ -175,6 +176,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.v",
 			compilePrefix: []string{"coqc", "-q"},
 			runPrefix:     []string{"test", "-f"},
+		},
+		{
+			language:      "elixir",
+			alias:         "exs",
+			entrypoint:    "main.exs",
+			compilePrefix: []string{"elixir", "--erl", "+S 1"},
+			runPrefix:     []string{"elixir", "--erl", "+S 1"},
 		},
 		{
 			language:      "julia",

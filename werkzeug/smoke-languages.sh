@@ -96,6 +96,7 @@ need_runtime_tool cjc "Install the Cangjie SDK for Cangjie jobs."
 need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool coqc "Install Coq for Coq jobs."
+need_runtime_tool elixir "Install Elixir for Elixir jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
 need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
@@ -216,6 +217,8 @@ run_language csharp "hello, csharp" 'using System;
 class Program { static void Main() { Console.WriteLine("hello, csharp"); } }'
 
 run_language coq "" 'Goal True. Proof. exact I. Qed.'
+
+run_language elixir "hello, elixir" 'IO.puts("hello, elixir")'
 
 run_language java "hello, java" 'public class Main {
   public static void main(String[] args) { System.out.println("hello, java"); }

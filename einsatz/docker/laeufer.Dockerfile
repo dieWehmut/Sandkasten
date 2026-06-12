@@ -46,6 +46,7 @@ RUN apt-get update && \
       bash \
       curl \
       coq \
+      elixir \
       g++ \
       gcc \
       git \

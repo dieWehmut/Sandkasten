@@ -239,6 +239,36 @@ mod tests {
     }
 
     #[test]
+    fn elixir_plan_parses_then_runs_with_private_mix_home() {
+        let job = job("exs", "main.exs");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "elixir");
+        assert_eq!(plan.compile.args[0], "--erl");
+        assert_eq!(plan.compile.args[1], "+S 1");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("Code.string_to_quoted!")));
+        assert_eq!(plan.run.program, "elixir");
+        assert_eq!(plan.run.args[0], "--erl");
+        assert_eq!(plan.run.args[1], "+S 1");
+        assert_eq!(plan.run.args[2], "main.exs");
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "MIX_HOME" && value.ends_with("mix")));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "HEX_HOME" && value.ends_with("hex")));
+    }
+
+    #[test]
     fn typescript_plan_type_checks_then_runs_with_node_transform() {
         let job = job("typescript", "main.ts");
         let plan =

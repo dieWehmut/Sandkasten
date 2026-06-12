@@ -436,6 +436,8 @@ func NormalizeLanguage(language string) string {
 		return "csharp"
 	case "coqtop", "coqc":
 		return "coq"
+	case "ex", "exs":
+		return "elixir"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -517,6 +519,8 @@ func defaultEntrypoint(language string) string {
 		return "Program.cs"
 	case "coq":
 		return "main.v"
+	case "elixir":
+		return "main.exs"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -576,6 +580,8 @@ func runtimeAliases(language string) []string {
 		return []string{"cs", "c#"}
 	case "coq":
 		return []string{"coqtop", "coqc"}
+	case "elixir":
+		return []string{"ex", "exs"}
 	case "javascript":
 		return []string{"js", "node"}
 	case "julia":
@@ -635,6 +641,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("mcs", "-nologo", "-out:.laeufer-bin/main.exe", "Program.cs")
 	case "coq":
 		return phase("coqc", "-q", "-R", ".", "Sandbox", "main.v")
+	case "elixir":
+		return phase("elixir", "--erl", "+S 1", "-e", "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)", "--", "main.exs")
 	case "java":
 		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
 	case "javascript":
@@ -690,6 +698,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("mono", ".laeufer-bin/main.exe")
 	case "coq":
 		return phase("test", "-f", "main.vo")
+	case "elixir":
+		return phase("elixir", "--erl", "+S 1", "main.exs")
 	case "java":
 		return phase("java", "-cp", ".laeufer-bin", "Main")
 	case "javascript":

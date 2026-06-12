@@ -6,6 +6,8 @@ use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
 const CHECK_READABLE_SCRIPT: &str = "test -r \"$1\"";
+const ELIXIR_SYNTAX_CHECK: &str =
+    "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)";
 const PROLOG_SYNTAX_CHECK: &str = "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.";
 const SQLITE_RUN_SCRIPT: &str = "exec sqlite3 -batch -bail -safe :memory: < \"$1\"";
 
@@ -69,6 +71,50 @@ pub(in crate::planner) fn plan_javascript(
     run_args.extend(job.args.clone());
     let run = run_command_plan(
         "node",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_elixir(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "elixir",
+        vec![
+            "--erl".to_owned(),
+            "+S 1".to_owned(),
+            "-e".to_owned(),
+            ELIXIR_SYNTAX_CHECK.to_owned(),
+            "--".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec!["--erl".to_owned(), "+S 1".to_owned(), entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "elixir",
         run_args,
         env,
         source_dir,
