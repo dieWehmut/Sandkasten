@@ -395,6 +395,8 @@ func normalizeLanguage(language string) string {
 		return "prolog"
 	case "py", "python3":
 		return "python"
+	case "qtqml", "qml5", "qml6":
+		return "qml"
 	case "rscript":
 		return "r"
 	case "rkt":
@@ -476,6 +478,8 @@ func defaultEntrypoint(language string) string {
 		return "main.pl"
 	case "python":
 		return "main.py"
+	case "qml":
+		return "main.qml"
 	case "r":
 		return "main.R"
 	case "racket":
@@ -505,7 +509,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
+	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

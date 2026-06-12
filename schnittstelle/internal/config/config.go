@@ -206,6 +206,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"php",
 		"prolog",
 		"python",
+		"qml",
 		"r",
 		"racket",
 		"ruby",

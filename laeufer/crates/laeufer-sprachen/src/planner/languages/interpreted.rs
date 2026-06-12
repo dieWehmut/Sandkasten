@@ -44,6 +44,45 @@ for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
     print(line, end="")
 PY
 "#;
+const QML_RUN_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/qml .laeufer-tmp
+rm -rf .laeufer-tmp/xdg-runtime
+mkdir -p .laeufer-tmp/xdg-runtime
+chmod 700 .laeufer-tmp/xdg-runtime 2>/dev/null || true
+stdout=.laeufer-cache/qml/stdout
+stderr=.laeufer-cache/qml/stderr
+status=0
+qml "$entrypoint" >"$stdout" 2>"$stderr" || status=$?
+if [ "$status" -ne 0 ] && ! python3 - "$status" "$stdout" "$stderr" <<'PY'
+import sys
+
+status = int(sys.argv[1])
+stdout = open(sys.argv[2], encoding="utf-8", errors="replace").read().splitlines()
+stderr = open(sys.argv[3], encoding="utf-8", errors="replace").read().splitlines()
+
+known_stdout = all(not line or line == "qml: Did not load any objects, exiting." for line in stdout)
+console_only = all((not line) or line.startswith("qml: ") for line in stderr)
+sys.exit(0 if status == 2 and known_stdout and console_only else 1)
+PY
+then
+    cat "$stdout" >&2
+    cat "$stderr" >&2
+    exit 1
+fi
+python3 - "$stdout" "$stderr" <<'PY'
+import sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            stripped = line.rstrip("\n")
+            if stripped == "qml: Did not load any objects, exiting.":
+                continue
+            if stripped.startswith("qml: "):
+                print(stripped[5:])
+PY
+"#;
 
 pub(in crate::planner) fn plan_bash(
     job: &Job,
@@ -347,6 +386,48 @@ pub(in crate::planner) fn plan_nextflow(
             "--norc".to_owned(),
             "-c".to_owned(),
             NEXTFLOW_RUN_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_qml(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "/usr/lib/qt6/bin/qmllint",
+        vec!["--ignore-settings".to_owned(), entrypoint.clone()],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            QML_RUN_SCRIPT.to_owned(),
             "_".to_owned(),
             entrypoint,
         ],

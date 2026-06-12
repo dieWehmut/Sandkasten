@@ -28,6 +28,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "php" | "php8" | "php8.2" => "php",
         "prolog" | "pl" | "swi-prolog" | "swipl" => "prolog",
         "python" | "py" | "python3" => "python",
+        "qml" | "qtqml" | "qml5" | "qml6" => "qml",
         "r" | "rscript" => "r",
         "racket" | "rkt" => "racket",
         "ruby" | "rb" => "ruby",

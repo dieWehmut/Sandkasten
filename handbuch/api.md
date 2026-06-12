@@ -83,6 +83,7 @@ Supported runtimes and default entrypoints:
 | `php` | `php8`, `php8.2` | `main.php` |
 | `prolog` | `pl`, `swi-prolog`, `swipl` | `main.pl` |
 | `python` | `py`, `python3` | `main.py` |
+| `qml` | `qtqml`, `qml5`, `qml6` | `main.qml` |
 | `r` | `rscript` | `main.R` |
 | `racket` | `rkt` | `main.rkt` |
 | `ruby` | `rb` | `main.rb` |

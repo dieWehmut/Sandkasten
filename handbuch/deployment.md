@@ -46,7 +46,7 @@ Run the full language smoke when all supported local toolchains are installed:
 ./werkzeug/smoke-languages.sh
 ```
 
-The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `haskell`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `mojo`, `nextflow`, `nim`, `perl`, `php`, `prolog`, `python`, `r`, `racket`, `ruby`, `rust`, `scala`, `sql`, `swift`, `typescript`, `wdl`, and `zig`.
+The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `haskell`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `mojo`, `nextflow`, `nim`, `perl`, `php`, `prolog`, `python`, `qml`, `r`, `racket`, `ruby`, `rust`, `scala`, `sql`, `swift`, `typescript`, `wdl`, and `zig`.
 
 ## Kubernetes
 

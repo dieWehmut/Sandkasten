@@ -837,6 +837,59 @@ mod tests {
     }
 
     #[test]
+    fn qml_plan_lints_with_qt6_then_runs_offscreen_with_filtered_output() {
+        let job = job("qtqml", "main.qml");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "/usr/lib/qt6/bin/qmllint");
+        assert_eq!(plan.compile.args, vec!["--ignore-settings", "main.qml"]);
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("qml \"$entrypoint\"")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("Did not load any objects")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("rm -rf .laeufer-tmp/xdg-runtime")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("status == 2 and known_stdout and console_only")));
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.qml"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "QT_QPA_PLATFORM" && value == "offscreen"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "QT_QUICK_BACKEND" && value == "software"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "XDG_RUNTIME_DIR"
+                && value.ends_with(".laeufer-tmp/xdg-runtime")));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "QML_DISABLE_DISK_CACHE" && value == "1"));
+    }
+
+    #[test]
     fn prolog_plan_parses_terms_without_consulting_then_runs_main() {
         let job = job("swipl", "main.pl");
         let plan =

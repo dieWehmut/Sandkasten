@@ -224,6 +224,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/perl5/run", language: "perl", entrypoint: "main.pl", source: `print "ok\n";`},
 		{path: "/v1/php8.2/run", language: "php", entrypoint: "main.php", source: `<?php echo "ok\n";`},
 		{path: "/v1/swipl/run", language: "prolog", entrypoint: "main.pl", source: `main :- writeln(ok).`},
+		{path: "/v1/qtqml/run", language: "qml", entrypoint: "main.qml", source: "import QtQml 2.15\nQtObject { Component.onCompleted: { console.log(\"ok\"); Qt.quit() } }\n"},
 		{path: "/v1/rkt/run", language: "racket", entrypoint: "main.rkt", source: "#lang racket/base\n(displayln \"ok\")"},
 		{path: "/v1/rb/run", language: "ruby", entrypoint: "main.rb", source: `puts "ok"`},
 		{path: "/v1/sc/run", language: "scala", entrypoint: "Main.scala", source: `object Main extends App { println("ok") }`},

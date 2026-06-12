@@ -121,6 +121,8 @@ need_runtime_tool perl "Install Perl for Perl jobs."
 need_runtime_tool php "Install PHP CLI for PHP jobs."
 need_runtime_tool swipl "Install SWI-Prolog for Prolog jobs."
 need_runtime_tool python3 "Install Python 3 for Python jobs."
+need_runtime_tool qml "Install Qt QML runtime for QML jobs."
+need_runtime_tool /usr/lib/qt6/bin/qmllint "Install Qt 6 QML tooling for QML lint checks."
 need_runtime_tool Rscript "Install Rscript for R jobs."
 need_runtime_tool racket "Install Racket for Racket jobs."
 need_runtime_tool raco "Install Racket raco for Racket jobs."
@@ -279,6 +281,14 @@ run_language php "hello, php" '<?php echo "hello, php\n";'
 run_language prolog "hello, prolog" 'main :- writeln("hello, prolog").'
 
 run_language python "hello, python" 'print("hello, python")'
+
+run_language qml "hello, qml" 'import QtQml 2.15
+QtObject {
+    Component.onCompleted: {
+        console.log("hello, qml")
+        Qt.quit()
+    }
+}' 1073741824
 
 run_language r "hello, r" 'cat("hello, r\n")'
 

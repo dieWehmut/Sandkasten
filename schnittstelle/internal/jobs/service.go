@@ -474,6 +474,8 @@ func NormalizeLanguage(language string) string {
 		return "prolog"
 	case "py", "python3":
 		return "python"
+	case "qtqml", "qml5", "qml6":
+		return "qml"
 	case "rscript":
 		return "r"
 	case "rkt":
@@ -577,6 +579,8 @@ func defaultEntrypoint(language string) string {
 		return "main.pl"
 	case "python":
 		return "main.py"
+	case "qml":
+		return "main.qml"
 	case "r":
 		return "main.R"
 	case "racket":
@@ -654,6 +658,8 @@ func runtimeAliases(language string) []string {
 		return []string{"pl", "swi-prolog", "swipl"}
 	case "python":
 		return []string{"py", "python3"}
+	case "qml":
+		return []string{"qtqml", "qml5", "qml6"}
 	case "r":
 		return []string{"rscript"}
 	case "racket":
@@ -735,6 +741,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("swipl", "--no-packs", "-q", "-f", "none", "-g", "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.", "--", "main.pl")
 	case "python":
 		return phase("python3", "-c", "import ast, pathlib, sys; path=sys.argv[1]; ast.parse(pathlib.Path(path).read_text(encoding='utf-8'), filename=path)", "main.py")
+	case "qml":
+		return phase("/usr/lib/qt6/bin/qmllint", "--ignore-settings", "main.qml")
 	case "r":
 		return phase("Rscript", "--vanilla", "-e", "args <- commandArgs(trailingOnly = TRUE); parse(file = args[[1]])", "main.R")
 	case "racket":
@@ -800,6 +808,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("swipl", "--no-packs", "-q", "-f", "none", "-s", "main.pl", "-g", "main", "-t", "halt")
 	case "python":
 		return phase("python3", "-B", "main.py")
+	case "qml":
+		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/qml .laeufer-tmp\nrm -rf .laeufer-tmp/xdg-runtime\nmkdir -p .laeufer-tmp/xdg-runtime\nchmod 700 .laeufer-tmp/xdg-runtime 2>/dev/null || true\nstdout=.laeufer-cache/qml/stdout\nstderr=.laeufer-cache/qml/stderr\nstatus=0\nqml \"$entrypoint\" >\"$stdout\" 2>\"$stderr\" || status=$?\nif [ \"$status\" -ne 0 ] && ! python3 - \"$status\" \"$stdout\" \"$stderr\" <<'PY'\nimport sys\n\nstatus = int(sys.argv[1])\nstdout = open(sys.argv[2], encoding=\"utf-8\", errors=\"replace\").read().splitlines()\nstderr = open(sys.argv[3], encoding=\"utf-8\", errors=\"replace\").read().splitlines()\n\nknown_stdout = all(not line or line == \"qml: Did not load any objects, exiting.\" for line in stdout)\nconsole_only = all((not line) or line.startswith(\"qml: \") for line in stderr)\nsys.exit(0 if status == 2 and known_stdout and console_only else 1)\nPY\nthen\n    cat \"$stdout\" >&2\n    cat \"$stderr\" >&2\n    exit 1\nfi\npython3 - \"$stdout\" \"$stderr\" <<'PY'\nimport sys\n\nfor path in sys.argv[1:]:\n    with open(path, encoding=\"utf-8\", errors=\"replace\") as handle:\n        for line in handle:\n            stripped = line.rstrip(\"\\n\")\n            if stripped == \"qml: Did not load any objects, exiting.\":\n                continue\n            if stripped.startswith(\"qml: \"):\n                print(stripped[5:])\nPY\n", "_", "main.qml")
 	case "r":
 		return phase("Rscript", "--vanilla", "main.R")
 	case "racket":

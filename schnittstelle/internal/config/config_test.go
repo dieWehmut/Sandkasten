@@ -71,6 +71,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"perl":     false,
 		"php":      false,
 		"prolog":   false,
+		"qml":      false,
 		"r":        false,
 		"racket":   false,
 		"ruby":     false,

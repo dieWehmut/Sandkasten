@@ -148,6 +148,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "perl", Version: "system"},
 			{Language: "php", Version: "system"},
 			{Language: "prolog", Version: "system"},
+			{Language: "qml", Version: "system"},
 			{Language: "racket", Version: "system"},
 			{Language: "ruby", Version: "system"},
 			{Language: "scala", Version: "system"},
@@ -311,6 +312,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.pl",
 			compilePrefix: []string{"swipl", "--no-packs", "-q"},
 			runPrefix:     []string{"swipl", "--no-packs", "-q"},
+		},
+		{
+			language:      "qml",
+			alias:         "qtqml",
+			entrypoint:    "main.qml",
+			compilePrefix: []string{"/usr/lib/qt6/bin/qmllint", "--ignore-settings"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc", "-c"},
 		},
 		{
 			language:      "racket",

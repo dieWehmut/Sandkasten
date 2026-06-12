@@ -79,6 +79,22 @@ RUN apt-get update && \
       python3 \
       python3-pip \
       python3-venv \
+      qml \
+      qml-module-qtquick2 \
+      qml-module-qtquick-controls2 \
+      qml-module-qtquick-window2 \
+      qml6-module-qtqml \
+      qml6-module-qtqml-workerscript \
+      qml6-module-qtquick \
+      qml6-module-qtquick-controls \
+      qml6-module-qtquick-window \
+      qmlscene \
+      qtbase5-dev \
+      qt6-base-dev \
+      qt6-declarative-dev \
+      qt6-tools-dev-tools \
+      qtdeclarative5-dev \
+      qtquickcontrols2-5-dev \
       r-base-core \
       racket \
       ruby \

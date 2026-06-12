@@ -44,6 +44,10 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("xdg-cache")
         .to_string_lossy()
         .into_owned();
+    let xdg_runtime_dir = tmp_dir_path
+        .join("xdg-runtime")
+        .to_string_lossy()
+        .into_owned();
     let modular_cache_dir = job_dir
         .join(crate::constants::RUNNER_CACHE_DIR)
         .join("mojo-cache")
@@ -77,6 +81,7 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("PUB_CACHE".to_owned(), pub_cache),
         ("CRYSTAL_CACHE_DIR".to_owned(), crystal_cache),
         ("XDG_CACHE_HOME".to_owned(), xdg_cache_home),
+        ("XDG_RUNTIME_DIR".to_owned(), xdg_runtime_dir),
         ("MODULAR_CACHE_DIR".to_owned(), modular_cache_dir),
         ("DOTNET_CLI_HOME".to_owned(), dotnet_home),
         (
@@ -87,6 +92,9 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("DOTNET_CLI_TELEMETRY_OPTOUT".to_owned(), "1".to_owned()),
         ("ERL_FLAGS".to_owned(), "+S 1:1 +A 0".to_owned()),
         ("ERL_CRASH_DUMP".to_owned(), erlang_crash_dump),
+        ("QT_QPA_PLATFORM".to_owned(), "offscreen".to_owned()),
+        ("QT_QUICK_BACKEND".to_owned(), "software".to_owned()),
+        ("QML_DISABLE_DISK_CACHE".to_owned(), "1".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),
