@@ -443,6 +443,16 @@ mod tests {
             .compile
             .args
             .iter()
+            .any(|arg| arg.contains("<Compile Include=\"Program.fs\" />")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("NuGetAudit=false")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
             .any(|arg| arg.contains("dotnet restore")));
         assert!(plan
             .compile

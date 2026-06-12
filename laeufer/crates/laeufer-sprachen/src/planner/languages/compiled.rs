@@ -15,12 +15,16 @@ cat > "$project/fsharp-project.fsproj" <<'EOF'
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
 </Project>
 EOF
 cp "$entrypoint" "$project/Program.fs"
-dotnet restore "$project" --ignore-failed-sources --disable-parallel
-dotnet build "$project" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -o .laeufer-bin
+dotnet restore "$project" --ignore-failed-sources --disable-parallel -p:NuGetAudit=false
+dotnet build "$project" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -p:NuGetAudit=false -o .laeufer-bin
 "#;
 
 pub(in crate::planner) fn plan_c(
