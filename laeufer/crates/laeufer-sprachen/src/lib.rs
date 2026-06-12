@@ -1261,6 +1261,7 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("parse") && arg.contains("main.m")));
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "octave-cli");
         assert_eq!(plan.run.args.last().map(String::as_str), Some("main.m"));
     }
@@ -1326,6 +1327,7 @@ mod tests {
             .iter()
             .any(|arg| arg.contains("puppeteerConfig") && arg.contains("/usr/bin/chromium")));
         assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");
         assert_eq!(plan.run.args, vec![".laeufer-bin/main.html"]);
     }
@@ -1352,6 +1354,7 @@ mod tests {
             plan.compile.args.last().map(String::as_str),
             Some("main.mdx")
         );
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");
         assert_eq!(plan.run.args, vec![".laeufer-bin/main.html"]);
     }
@@ -1368,6 +1371,7 @@ mod tests {
             plan.compile.args,
             vec!["-Tsvg", "-o", ".laeufer-bin/main.svg", "main.dot"]
         );
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");
         assert_eq!(plan.run.args, vec![".laeufer-bin/main.svg"]);
     }
@@ -1390,6 +1394,7 @@ mod tests {
                 ".laeufer-bin/main.svg"
             ]
         );
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");
         assert_eq!(plan.run.args, vec![".laeufer-bin/main.svg"]);
     }
@@ -1412,6 +1417,7 @@ mod tests {
                 "main.tex"
             ]
         );
+        assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "printf");
         assert_eq!(plan.run.args, vec!["latex compiled\n"]);
     }
@@ -1445,6 +1451,11 @@ mod tests {
     fn assert_compile_run_seccomp(plan: &BuildPlan) {
         assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
         assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
+    }
+
+    fn assert_compile_uses_compile_memory_and_run_uses_job_memory(plan: &BuildPlan) {
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.memory_limit_bytes, 256 * 1024 * 1024);
     }
 
     fn job(language: &str, entrypoint: &str) -> Job {

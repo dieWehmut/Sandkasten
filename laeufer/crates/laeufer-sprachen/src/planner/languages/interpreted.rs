@@ -563,6 +563,7 @@ pub(in crate::planner) fn plan_octave(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let mut compile_args = octave_base_args();
@@ -578,7 +579,7 @@ pub(in crate::planner) fn plan_octave(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
@@ -661,6 +662,7 @@ pub(in crate::planner) fn plan_markdown(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let output = format!("{RUNNER_BIN_DIR}/main.html");
@@ -679,7 +681,7 @@ pub(in crate::planner) fn plan_markdown(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
@@ -704,6 +706,7 @@ pub(in crate::planner) fn plan_mdx(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let output = format!("{RUNNER_BIN_DIR}/main.html");
@@ -722,7 +725,7 @@ pub(in crate::planner) fn plan_mdx(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
@@ -747,6 +750,7 @@ pub(in crate::planner) fn plan_graphviz(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let output = format!("{RUNNER_BIN_DIR}/main.svg");
@@ -763,7 +767,7 @@ pub(in crate::planner) fn plan_graphviz(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
@@ -788,6 +792,7 @@ pub(in crate::planner) fn plan_typst(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let output = format!("{RUNNER_BIN_DIR}/main.svg");
@@ -805,7 +810,7 @@ pub(in crate::planner) fn plan_typst(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
@@ -830,6 +835,7 @@ pub(in crate::planner) fn plan_latex(
     source_dir: PathBuf,
     env: Vec<(String, String)>,
     entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let compile = compile_command_plan(
@@ -846,7 +852,7 @@ pub(in crate::planner) fn plan_latex(
         Default::default(),
         PhaseBudget {
             timeout: job.limits.compile_timeout,
-            memory_limit_bytes: job.limits.memory_limit_bytes,
+            memory_limit_bytes: compile_memory_limit_bytes,
         },
         job,
     );
