@@ -86,6 +86,13 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "dart" => Ok(languages::plan_dart(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "javascript" => Ok(languages::plan_javascript(job, source_dir, env, entrypoint)),
         "julia" => Ok(languages::plan_julia(job, source_dir, env, entrypoint)),
         "lean4" => Ok(languages::plan_lean4(

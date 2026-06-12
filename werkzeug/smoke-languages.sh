@@ -97,6 +97,7 @@ need_runtime_tool clojure "Install Clojure for Clojure jobs."
 need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool coqc "Install Coq for Coq jobs."
+need_runtime_tool dart "Install Dart SDK for Dart jobs."
 need_runtime_tool elixir "Install Elixir for Elixir jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
@@ -220,6 +221,10 @@ run_language csharp "hello, csharp" 'using System;
 class Program { static void Main() { Console.WriteLine("hello, csharp"); } }'
 
 run_language coq "" 'Goal True. Proof. exact I. Qed.'
+
+run_language dart "hello, dart" 'void main() {
+  print("hello, dart");
+}' 1073741824
 
 run_language elixir "hello, elixir" 'IO.puts("hello, elixir")'
 

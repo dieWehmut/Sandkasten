@@ -379,6 +379,31 @@ mod tests {
     }
 
     #[test]
+    fn dart_plan_compiles_executable_with_private_pub_cache() {
+        let job = job("dart", "main.dart");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "dart");
+        assert_eq!(plan.compile.args[0], "--disable-analytics");
+        assert_eq!(plan.compile.args[1], "compile");
+        assert_eq!(plan.compile.args[2], "exe");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "PUB_CACHE" && value.ends_with("pub-cache")));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

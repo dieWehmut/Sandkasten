@@ -132,6 +132,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "cangjie", Version: "system"},
 			{Language: "clojure", Version: "system"},
 			{Language: "coq", Version: "system"},
+			{Language: "dart", Version: "system"},
 			{Language: "elixir", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
@@ -184,6 +185,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.v",
 			compilePrefix: []string{"coqc", "-q"},
 			runPrefix:     []string{"test", "-f"},
+		},
+		{
+			language:      "dart",
+			alias:         "",
+			entrypoint:    "main.dart",
+			compilePrefix: []string{"dart", "--disable-analytics", "compile", "exe"},
+			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
 			language:      "elixir",

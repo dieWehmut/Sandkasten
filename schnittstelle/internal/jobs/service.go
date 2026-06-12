@@ -438,6 +438,8 @@ func NormalizeLanguage(language string) string {
 		return "csharp"
 	case "coqtop", "coqc":
 		return "coq"
+	case "dart":
+		return "dart"
 	case "ex", "exs":
 		return "elixir"
 	case "js", "node":
@@ -523,6 +525,8 @@ func defaultEntrypoint(language string) string {
 		return "Program.cs"
 	case "coq":
 		return "main.v"
+	case "dart":
+		return "main.dart"
 	case "elixir":
 		return "main.exs"
 	case "java":
@@ -586,6 +590,8 @@ func runtimeAliases(language string) []string {
 		return []string{"cs", "c#"}
 	case "coq":
 		return []string{"coqtop", "coqc"}
+	case "dart":
+		return nil
 	case "elixir":
 		return []string{"ex", "exs"}
 	case "javascript":
@@ -649,6 +655,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("mcs", "-nologo", "-out:.laeufer-bin/main.exe", "Program.cs")
 	case "coq":
 		return phase("coqc", "-q", "-R", ".", "Sandbox", "main.v")
+	case "dart":
+		return phase("dart", "--disable-analytics", "compile", "exe", "main.dart", "-o", ".laeufer-bin/main")
 	case "elixir":
 		return phase("elixir", "--erl", "+S 1", "-e", "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)", "--", "main.exs")
 	case "java":
@@ -698,7 +706,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cangjie", "cpp", "nim", "rust":
+	case "go", "c", "cangjie", "cpp", "dart", "nim", "rust":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")

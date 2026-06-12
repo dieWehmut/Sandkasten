@@ -37,6 +37,7 @@ ARG JULIA_MINOR_VERSION=1.10
 ARG LEAN_VERSION=4.23.0
 ARG SWIFT_VERSION=6.3.2
 ARG ZIG_VERSION=0.16.0
+ARG DART_VERSION=3.12.2
 ARG CANGJIE_VERSION=1.1.3
 ARG CANGJIE_SHA256=2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
 
@@ -87,6 +88,13 @@ RUN apt-get update && \
     curl -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \
     tar -xzf /tmp/julia.tar.gz -C /opt && \
     ln -s "/opt/julia-${JULIA_VERSION}/bin/julia" /usr/local/bin/julia && \
+    curl -fsSL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip.sha256sum" -o /tmp/dart.sha256sum && \
+    curl -fL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip" -o /tmp/dart-sdk.zip && \
+    awk '{print $1 "  /tmp/dart-sdk.zip"}' /tmp/dart.sha256sum | sha256sum -c - && \
+    unzip -q /tmp/dart-sdk.zip -d /opt && \
+    mv /opt/dart-sdk "/opt/dart-sdk-${DART_VERSION}" && \
+    ln -s "/opt/dart-sdk-${DART_VERSION}" /opt/dart-sdk && \
+    ln -s /opt/dart-sdk/bin/dart /usr/local/bin/dart && \
     curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
@@ -114,7 +122,7 @@ RUN apt-get update && \
     chmod 0755 /usr/local/bin/cjc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
+    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 

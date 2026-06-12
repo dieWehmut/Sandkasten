@@ -64,6 +64,7 @@ Supported runtimes and default entrypoints:
 | `cpp` | `c++` | `main.cpp` |
 | `csharp` | `cs`, `c#` | `Program.cs` |
 | `coq` | `coqtop`, `coqc` | `main.v` |
+| `dart` | - | `main.dart` |
 | `elixir` | `ex`, `exs` | `main.exs` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |

@@ -31,6 +31,10 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .into_owned();
     let mix_home = tmp_dir_path.join("mix").to_string_lossy().into_owned();
     let hex_home = tmp_dir_path.join("hex").to_string_lossy().into_owned();
+    let pub_cache = tmp_dir_path
+        .join("pub-cache")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -48,6 +52,7 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("JULIA_PKG_PRECOMPILE_AUTO".to_owned(), "0".to_owned()),
         ("MIX_HOME".to_owned(), mix_home),
         ("HEX_HOME".to_owned(), hex_home),
+        ("PUB_CACHE".to_owned(), pub_cache),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),

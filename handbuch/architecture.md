@@ -1,6 +1,6 @@
 # Architecture
 
-Sandkasten v1 is a self-hosted code execution system for Go, Bash/Shell, C, Cangjie, Clojure, C++, C#, Coq, Elixir, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL, Swift, TypeScript, and Zig jobs.
+Sandkasten v1 is a self-hosted code execution system for Go, Bash/Shell, C, Cangjie, Clojure, C++, C#, Coq, Dart, Elixir, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL, Swift, TypeScript, and Zig jobs.
 The repository uses German directory names for component ownership:
 
 - `schnittstelle/`: Go gRPC API.
@@ -34,7 +34,7 @@ Go jobs must provide:
 - `vendor/` directory.
 - An entrypoint path, defaulting to `.`.
 
-The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.cpp`, `Program.cs`, `main.v`, `main.exs`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `Main.lean`, `main.lua`, `main.nim`, `main.pl`, `main.php`, `main.py`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.sql`, `main.swift`, `main.ts`, and `main.zig`.
+The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.cpp`, `Program.cs`, `main.v`, `main.dart`, `main.exs`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `Main.lean`, `main.lua`, `main.nim`, `main.pl`, `main.php`, `main.py`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.sql`, `main.swift`, `main.ts`, and `main.zig`.
 
 The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking. When `LAEUFER_ROOTFS` is configured, child commands execute after a `pivot_root` into that rootfs with the job directory mounted at `/workspace`, private `/tmp`, read-only `/proc` with expanded sensitive proc-file masks and empty read-only proc-directory masks, and a minimal `/dev`.
 
