@@ -135,6 +135,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "crystal", Version: "system"},
 			{Language: "dart", Version: "system"},
 			{Language: "elixir", Version: "system"},
+			{Language: "erlang", Version: "system"},
 			{Language: "fsharp", Version: "system"},
 			{Language: "haskell", Version: "system"},
 			{Language: "julia", Version: "system"},
@@ -212,6 +213,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.exs",
 			compilePrefix: []string{"elixir", "--erl", "+S 1"},
 			runPrefix:     []string{"elixir", "--erl", "+S 1"},
+		},
+		{
+			language:      "erlang",
+			alias:         "erl",
+			entrypoint:    "main.erl",
+			compilePrefix: []string{"erlc", "+debug_info"},
+			runPrefix:     []string{"erl", "-noshell", "-pa"},
 		},
 		{
 			language:      "fsharp",

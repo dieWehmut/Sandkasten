@@ -444,6 +444,8 @@ func NormalizeLanguage(language string) string {
 		return "dart"
 	case "ex", "exs":
 		return "elixir"
+	case "erl", "erts":
+		return "erlang"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
 	case "hs", "ghc":
@@ -543,6 +545,8 @@ func defaultEntrypoint(language string) string {
 		return "main.dart"
 	case "elixir":
 		return "main.exs"
+	case "erlang":
+		return "main.erl"
 	case "fsharp":
 		return "main.fs"
 	case "haskell":
@@ -620,6 +624,8 @@ func runtimeAliases(language string) []string {
 		return nil
 	case "elixir":
 		return []string{"ex", "exs"}
+	case "erlang":
+		return []string{"erl", "erts"}
 	case "fsharp":
 		return []string{"f#", "fs", "f-sharp", "f_sharp"}
 	case "haskell":
@@ -697,6 +703,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("dart", "--disable-analytics", "compile", "exe", "main.dart", "-o", ".laeufer-bin/main")
 	case "elixir":
 		return phase("elixir", "--erl", "+S 1", "-e", "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)", "--", "main.exs")
+	case "erlang":
+		return phase("erlc", "+debug_info", "-o", ".laeufer-bin", "main.erl")
 	case "fsharp":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nproject=\".laeufer-cache/fsharp-project\"\nrm -rf \"$project\"\nmkdir -p \"$project\"\ncat > \"$project/fsharp-project.fsproj\" <<'EOF'\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n    <NuGetAudit>false</NuGetAudit>\n  </PropertyGroup>\n  <ItemGroup>\n    <Compile Include=\"Program.fs\" />\n  </ItemGroup>\n</Project>\nEOF\ncp \"$entrypoint\" \"$project/Program.fs\"\ndotnet restore \"$project\" --ignore-failed-sources --disable-parallel -p:NuGetAudit=false\ndotnet build \"$project\" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -p:NuGetAudit=false -o .laeufer-bin\n", "_", "main.fs")
 	case "haskell":
@@ -766,6 +774,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("test", "-f", "main.vo")
 	case "elixir":
 		return phase("elixir", "--erl", "+S 1", "main.exs")
+	case "erlang":
+		return phase("erl", "-noshell", "-pa", ".laeufer-bin", "-s", "main", "main", "-s", "init", "stop")
 	case "fsharp":
 		return phase("dotnet", ".laeufer-bin/fsharp-project.dll")
 	case "java":

@@ -203,6 +203,59 @@ pub(in crate::planner) fn plan_crystal(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_erlang(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let output_dir = source_dir.join(RUNNER_BIN_DIR);
+    let compile = compile_command_plan(
+        "erlc",
+        vec![
+            "+debug_info".to_owned(),
+            "-o".to_owned(),
+            output_dir.to_string_lossy().into_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "-noshell".to_owned(),
+        "-pa".to_owned(),
+        output_dir.to_string_lossy().into_owned(),
+        "-s".to_owned(),
+        "main".to_owned(),
+        "main".to_owned(),
+        "-s".to_owned(),
+        "init".to_owned(),
+        "stop".to_owned(),
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "erl",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(in crate::planner) fn plan_dart(
     job: &Job,
     source_dir: PathBuf,

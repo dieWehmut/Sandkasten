@@ -34,7 +34,7 @@ Go jobs must provide:
 - `vendor/` directory.
 - An entrypoint path, defaulting to `.`.
 
-The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.cpp`, `Program.cs`, `main.v`, `main.cr`, `main.dart`, `main.exs`, `main.fs`, `Main.hs`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `Main.lean`, `main.lua`, `main.mojo`, `main.nf`, `main.nim`, `main.pl`, `main.php`, `main.py`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.sql`, `main.swift`, `main.ts`, `main.wdl`, and `main.zig`.
+The non-Go runtime contract is single-file source with language-specific default entrypoints: `main.sh`, `main.c`, `main.cj`, `main.clj`, `main.cpp`, `Program.cs`, `main.v`, `main.cr`, `main.dart`, `main.exs`, `main.erl`, `main.fs`, `Main.hs`, `Main.java`, `main.js`, `main.jl`, `Main.kt`, `Main.lean`, `main.lua`, `main.mojo`, `main.nf`, `main.nim`, `main.pl`, `main.php`, `main.py`, `main.R`, `main.rkt`, `main.rb`, `main.rs`, `Main.scala`, `main.sql`, `main.swift`, `main.ts`, `main.wdl`, and `main.zig`.
 
 The runner must not fetch dependencies from the network. Runtime images/rootfs assets assume vendored Go builds, system toolchains for non-Go languages, and restricted networking. When `LAEUFER_ROOTFS` is configured, child commands execute after a `pivot_root` into that rootfs with the job directory mounted at `/workspace`, private `/tmp`, read-only `/proc` with expanded sensitive proc-file masks and empty read-only proc-directory masks, and a minimal `/dev`.
 

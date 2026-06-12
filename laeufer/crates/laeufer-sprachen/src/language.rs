@@ -12,6 +12,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "crystal" | "cr" => "crystal",
         "dart" => "dart",
         "elixir" | "ex" | "exs" => "elixir",
+        "erlang" | "erl" | "erts" => "erlang",
         "fsharp" | "f#" | "fs" | "f-sharp" | "f_sharp" => "fsharp",
         "haskell" | "hs" | "ghc" => "haskell",
         "java" => "java",

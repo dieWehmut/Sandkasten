@@ -53,6 +53,10 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("dotnet-home")
         .to_string_lossy()
         .into_owned();
+    let erlang_crash_dump = tmp_dir_path
+        .join("erl_crash.dump")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -81,6 +85,8 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ),
         ("DOTNET_NOLOGO".to_owned(), "1".to_owned()),
         ("DOTNET_CLI_TELEMETRY_OPTOUT".to_owned(), "1".to_owned()),
+        ("ERL_FLAGS".to_owned(), "+S 1:1 +A 0".to_owned()),
+        ("ERL_CRASH_DUMP".to_owned(), erlang_crash_dump),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),

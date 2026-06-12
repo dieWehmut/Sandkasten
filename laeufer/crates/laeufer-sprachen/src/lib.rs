@@ -505,6 +505,37 @@ mod tests {
     }
 
     #[test]
+    fn erlang_plan_compiles_beam_and_limits_vm_threads() {
+        let job = job("erl", "main.erl");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "erlc");
+        assert!(plan.compile.args.iter().any(|arg| arg == "+debug_info"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin")));
+        assert_eq!(plan.run.program, "erl");
+        assert_eq!(plan.run.args[0], "-noshell");
+        assert!(plan.run.args.iter().any(|arg| arg == "-pa"));
+        assert!(plan.run.args.iter().any(|arg| arg == "main"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "ERL_FLAGS" && value == "+S 1:1 +A 0"));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "ERL_CRASH_DUMP"
+                && value.ends_with(".laeufer-tmp/erl_crash.dump")));
+    }
+
+    #[test]
     fn haskell_plan_compiles_binary_with_private_output_dirs() {
         let job = job("ghc", "Main.hs");
         let plan =

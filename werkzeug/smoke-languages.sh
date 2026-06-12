@@ -100,6 +100,8 @@ need_runtime_tool coqc "Install Coq for Coq jobs."
 need_runtime_tool crystal "Install Crystal for Crystal jobs."
 need_runtime_tool dart "Install Dart SDK for Dart jobs."
 need_runtime_tool elixir "Install Elixir for Elixir jobs."
+need_runtime_tool erlc "Install Erlang compiler for Erlang jobs."
+need_runtime_tool erl "Install Erlang runtime for Erlang jobs."
 need_runtime_tool dotnet "Install .NET SDK for F# jobs."
 need_runtime_tool ghc "Install GHC for Haskell jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
@@ -235,6 +237,10 @@ run_language dart "hello, dart" 'void main() {
 }' 1073741824
 
 run_language elixir "hello, elixir" 'IO.puts("hello, elixir")'
+
+run_language erlang "hello, erlang" '-module(main).
+-export([main/0]).
+main() -> io:format("hello, erlang~n", []).'
 
 run_language fsharp "hello, fsharp" 'printfn "hello, fsharp"' 1073741824
 

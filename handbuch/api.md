@@ -67,6 +67,7 @@ Supported runtimes and default entrypoints:
 | `crystal` | `cr` | `main.cr` |
 | `dart` | - | `main.dart` |
 | `elixir` | `ex`, `exs` | `main.exs` |
+| `erlang` | `erl`, `erts` | `main.erl` |
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
 | `haskell` | `hs`, `ghc` | `Main.hs` |
 | `java` | - | `Main.java` |

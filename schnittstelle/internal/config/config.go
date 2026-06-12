@@ -190,6 +190,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"crystal",
 		"dart",
 		"elixir",
+		"erlang",
 		"fsharp",
 		"haskell",
 		"java",

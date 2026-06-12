@@ -79,6 +79,13 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "elixir" => Ok(languages::plan_elixir(job, source_dir, env, entrypoint)),
+        "erlang" => Ok(languages::plan_erlang(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "coq" => Ok(languages::plan_coq(
             job,
             source_dir,

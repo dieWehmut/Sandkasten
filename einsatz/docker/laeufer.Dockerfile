@@ -53,6 +53,7 @@ RUN apt-get update && \
       coq \
       crystal \
       elixir \
+      erlang-dev \
       g++ \
       gcc \
       git \
