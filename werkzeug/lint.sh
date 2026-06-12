@@ -31,6 +31,8 @@ else
   done
 fi
 
+run_or_fail "security config check" "$ROOT/werkzeug/check-security-config.sh"
+
 if [[ -f "$ROOT/vertrag/buf.yaml" ]]; then
   if command -v buf >/dev/null 2>&1; then
     run_or_fail "buf lint" bash -c "cd \"\$1\" && buf lint" bash "$ROOT/vertrag"

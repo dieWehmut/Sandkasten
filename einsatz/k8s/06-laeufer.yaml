@@ -61,8 +61,11 @@ spec:
             requests:
               cpu: 500m
               memory: 512Mi
+              ephemeral-storage: 2Gi
             limits:
+              cpu: "2"
               memory: 2Gi
+              ephemeral-storage: 8Gi
       volumes:
         - name: work
           hostPath:

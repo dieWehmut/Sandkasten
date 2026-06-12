@@ -124,11 +124,17 @@ PY"#,
         .await;
 
     match result {
-        Ok(output) => assert_ne!(
-            output.exit_code,
-            Some(0),
-            "fork probe unexpectedly succeeded"
-        ),
+        Ok(output) => {
+            assert_ne!(
+                output.exit_code,
+                Some(0),
+                "fork probe unexpectedly succeeded"
+            );
+            assert!(
+                output.pids_peak >= harness.config.pids_max,
+                "fork probe did not reach pids cgroup limit: {output:?}"
+            );
+        }
         Err(RunnerError::TimeLimitExceeded(_) | RunnerError::System(_)) => {}
         Err(error) => panic!("unexpected pids limit result: {error:?}"),
     }

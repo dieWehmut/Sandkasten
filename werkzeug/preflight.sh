@@ -28,6 +28,44 @@ need_cmd() {
   fi
 }
 
+need_env_u64() {
+  local name="$1"
+  local min="$2"
+  local value="${!name:-}"
+  if [[ -z "$value" ]]; then
+    fail "$name is not set"
+    return
+  fi
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    fail "$name must be an unsigned integer, got: $value"
+    return
+  fi
+  if (( value < min )); then
+    fail "$name must be >= $min, got: $value"
+    return
+  fi
+  pass "$name=$value"
+}
+
+need_env_u64_max() {
+  local name="$1"
+  local max="$2"
+  local value="${!name:-}"
+  if [[ -z "$value" ]]; then
+    fail "$name is not set"
+    return
+  fi
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    fail "$name must be an unsigned integer, got: $value"
+    return
+  fi
+  if (( value == 0 || value > max )); then
+    fail "$name must be between 1 and $max, got: $value"
+    return
+  fi
+  pass "$name=$value"
+}
+
 if [[ "$(uname -s)" != "Linux" ]]; then
   fail "runner preflight requires Linux"
 else
@@ -49,8 +87,22 @@ if mountpoint -q /sys/fs/cgroup 2>/dev/null; then
   pass "/sys/fs/cgroup is mounted"
   if [[ -r /sys/fs/cgroup/cgroup.controllers ]]; then
     pass "cgroup v2 unified hierarchy detected"
+    controllers="$(cat /sys/fs/cgroup/cgroup.controllers)"
+    for controller in cpu memory pids; do
+      if grep -qw "$controller" <<<"$controllers"; then
+        pass "cgroup controller available: $controller"
+      else
+        fail "required cgroup controller missing: $controller"
+      fi
+    done
+    cgroup_root="${LAEUFER_CGROUP_ROOT:-/sys/fs/cgroup}"
+    if [[ -w "$cgroup_root" ]]; then
+      pass "$cgroup_root is writable"
+    else
+      fail "$cgroup_root is not writable; runner cannot create per-command cgroups"
+    fi
   else
-    warn "cgroup v2 controller file not found; runner cgroup enforcement may need host-specific configuration"
+    fail "cgroup v2 controller file not found"
   fi
 else
   fail "/sys/fs/cgroup is not mounted"
@@ -76,6 +128,22 @@ fi
 need_cmd unshare "install util-linux to test namespace support locally"
 need_cmd ip "install iproute2 if the sandbox config needs network namespace inspection"
 need_cmd findmnt "install util-linux for mount diagnostics"
+
+: "${LAEUFER_PIDS_MAX:=64}"
+: "${LAEUFER_RLIMIT_NPROC:=64}"
+: "${LAEUFER_RLIMIT_CPU_SECONDS:=2}"
+: "${LAEUFER_RLIMIT_NOFILE:=1024}"
+: "${LAEUFER_MEMORY_SWAP_MAX_BYTES:=0}"
+
+need_env_u64_max LAEUFER_PIDS_MAX 256
+need_env_u64_max LAEUFER_RLIMIT_NPROC 256
+need_env_u64 LAEUFER_RLIMIT_CPU_SECONDS 1
+need_env_u64 LAEUFER_RLIMIT_NOFILE 64
+if [[ "$LAEUFER_MEMORY_SWAP_MAX_BYTES" == "0" ]]; then
+  pass "memory.swap.max will be disabled"
+else
+  warn "memory.swap.max is set to $LAEUFER_MEMORY_SWAP_MAX_BYTES; production runners should normally use 0"
+fi
 
 if command -v unshare >/dev/null 2>&1; then
   if unshare --user --map-root-user true >/dev/null 2>&1; then

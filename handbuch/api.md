@@ -150,9 +150,9 @@ Backpressure returns gRPC `ResourceExhausted` and HTTP `503 resource_exhausted`.
 
 ## Runner Rlimits
 
-The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=1024`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. Optional `LAEUFER_RLIMIT_CPU_SECONDS` is disabled when unset or `0`; when set, it installs an `RLIMIT_CPU` soft limit with a one-second higher hard limit.
+The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CPU_SECONDS=2`, `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=1024`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. `LAEUFER_RLIMIT_CPU_SECONDS` installs an `RLIMIT_CPU` soft limit with a one-second higher hard limit; unset or `0` keeps the safe default.
 
-Per-command cgroups also set `memory.oom.group=1`, `pids.max`, `memory.max`, and `cpu.max`. `LAEUFER_PIDS_MAX` defaults to `64`; set it to `0` to write `pids.max=max`. `LAEUFER_MEMORY_SWAP_MAX_BYTES` is optional; when set, its value is written to `memory.swap.max`, so `0` disables swap for the command cgroup.
+Per-command cgroups also set `memory.oom.group=1`, `pids.max`, `memory.max`, `cpu.max`, and `memory.swap.max`. `LAEUFER_PIDS_MAX` defaults to `64`; set it to `0` to write `pids.max=max`. `LAEUFER_MEMORY_SWAP_MAX_BYTES` defaults to `0`, which disables swap for the command cgroup.
 
 Completed job results include cgroup diagnostics. gRPC exposes them on `JobResult` as `memory_peak_bytes`, `memory_oom_kill_count`, `cpu_usage_usec`, `cpu_throttled_usec`, and `pids_peak`; HTTP `GET /v1/jobs/{id}` returns the same values under `diagnostics`. The same terminal counters are copied to the finishing `job_attempts` row for retry forensics, alongside `terminal_reason`, `cgroup_path`, and `child_pid`.
 

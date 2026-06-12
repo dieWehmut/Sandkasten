@@ -9,9 +9,9 @@ The current runner implementation applies these controls for each child command:
 - Dedicated Kubernetes nodes labeled `sandkasten.dev/runner=true`.
 - A matching taint so ordinary workloads are not scheduled on runner nodes.
 - Privileged runner pods only on those nodes.
-- Per-command cgroup v2 limits for CPU, memory, process count, and output, with `memory.oom.group=1`, configurable `pids.max`, and optional `memory.swap.max`.
+- Per-command cgroup v2 limits for CPU, memory, process count, and output, with `memory.oom.group=1`, configurable `pids.max`, and `memory.swap.max` defaulting to `0`.
 - Result-level cgroup diagnostics from `memory.peak`, `memory.events oom_kill`, `cpu.stat usage_usec/throttled_usec`, and `pids.peak/current`, persisted with job artifacts and returned by the APIs.
-- Per-child rlimits for optional CPU seconds, core dump size, file size, open file count, process count, stack, and memlock.
+- Per-child rlimits for CPU seconds, core dump size, file size, open file count, process count, stack, and memlock. CPU time defaults to 2 seconds, and process count defaults to 64.
 - `unshare` via libc for mount, IPC, UTS, and network namespaces.
 - Private mount propagation for the child mount namespace.
 - Optional `LAEUFER_ROOTFS` setup: bind the configured rootfs as the new root, bind the job directory to `/workspace`, mount private `/tmp`, read-only `/proc`, and a minimal `/dev` with only `null`, `zero`, `random`, and `urandom`, then mask sensitive proc files such as kernel symbols/messages, memory maps, module lists, scheduler/timer debug, IRQ/IO metadata, and VM/page stats with `/dev/null`, and bind empty read-only directories over `/proc/sys`, `/proc/irq`, `/proc/bus`, and related proc host-metadata directories before `pivot_root`.

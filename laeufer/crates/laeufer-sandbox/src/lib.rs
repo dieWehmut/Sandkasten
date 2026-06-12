@@ -70,7 +70,7 @@ impl SandboxConfig {
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::temp_dir().join("laeufer-sandbox"));
         let pids_max = env_u64("LAEUFER_PIDS_MAX", DEFAULT_PIDS_MAX)?;
-        let memory_swap_max_bytes = optional_env_u64("LAEUFER_MEMORY_SWAP_MAX_BYTES")?;
+        let memory_swap_max_bytes = optional_env_u64("LAEUFER_MEMORY_SWAP_MAX_BYTES")?.or(Some(0));
         let reject_supervisor_dangerous_capabilities =
             std::env::var("LAEUFER_REJECT_SUPERVISOR_DANGEROUS_CAPS").unwrap_or_default() == "1";
         let require_private_namespaces =
@@ -103,7 +103,7 @@ impl Default for SandboxConfig {
             rootfs: None,
             sandbox_root: std::env::temp_dir().join("laeufer-sandbox"),
             pids_max: DEFAULT_PIDS_MAX,
-            memory_swap_max_bytes: None,
+            memory_swap_max_bytes: Some(0),
             reject_supervisor_dangerous_capabilities: false,
             require_private_namespaces: true,
             enable_seccomp: true,
@@ -128,7 +128,7 @@ pub struct ChildRlimits {
 impl ChildRlimits {
     fn from_env() -> Result<Self, RunnerError> {
         Ok(Self {
-            cpu_seconds: optional_nonzero_env_u64("LAEUFER_RLIMIT_CPU_SECONDS")?,
+            cpu_seconds: optional_nonzero_env_u64("LAEUFER_RLIMIT_CPU_SECONDS")?.or(Some(2)),
             core_bytes: env_u64("LAEUFER_RLIMIT_CORE_BYTES", 0)?,
             file_size_bytes: env_u64("LAEUFER_RLIMIT_FSIZE_BYTES", 64 * 1024 * 1024)?,
             nofile: env_u64("LAEUFER_RLIMIT_NOFILE", 1024)?,
@@ -142,7 +142,7 @@ impl ChildRlimits {
 impl Default for ChildRlimits {
     fn default() -> Self {
         Self {
-            cpu_seconds: None,
+            cpu_seconds: Some(2),
             core_bytes: 0,
             file_size_bytes: 64 * 1024 * 1024,
             nofile: 1024,
@@ -320,7 +320,7 @@ async fn execute_command(
             await_stdin(stdin_task).await?;
             let _ = await_output(stdout_task).await;
             let _ = await_output(stderr_task).await;
-            cgroup.kill_all_and_wait_empty().await?;
+            cgroup.kill_all_and_wait_empty(child_pid).await?;
             return Err(RunnerError::Canceled(format!(
                 "command {:?} canceled",
                 plan.program
@@ -332,7 +332,7 @@ async fn execute_command(
             await_stdin(stdin_task).await?;
             let _ = await_output(stdout_task).await;
             let _ = await_output(stderr_task).await;
-            cgroup.kill_all_and_wait_empty().await?;
+            cgroup.kill_all_and_wait_empty(child_pid).await?;
             return Err(RunnerError::TimeLimitExceeded(format!(
                 "command {:?} exceeded {} ms",
                 execution_plan.plan.program,
@@ -341,7 +341,7 @@ async fn execute_command(
         }
     };
 
-    cgroup.kill_all_and_wait_empty().await?;
+    cgroup.kill_all_and_wait_empty(child_pid).await?;
     await_stdin(stdin_task).await?;
     let stdout = await_output(stdout_task).await?;
     let stderr = await_output(stderr_task).await?;
@@ -483,13 +483,22 @@ impl CgroupGuard {
         }
     }
 
-    async fn kill_all_and_wait_empty(&self) -> Result<(), RunnerError> {
+    async fn kill_all_and_wait_empty(
+        &self,
+        process_group_leader: Option<u32>,
+    ) -> Result<(), RunnerError> {
         self.kill_all();
         if !self.supports_kernel_kill {
+            reap_process_group_children(process_group_leader).map_err(|error| {
+                RunnerError::System(format!("reap reparented child zombies: {error}"))
+            })?;
             return Ok(());
         }
         let deadline = Instant::now() + CGROUP_EMPTY_WAIT_TIMEOUT;
         loop {
+            reap_process_group_children(process_group_leader).map_err(|error| {
+                RunnerError::System(format!("reap reparented child zombies: {error}"))
+            })?;
             let pids = self.member_pids().map_err(|error| {
                 RunnerError::System(format!("read cgroup procs {:?}: {error}", self.procs_path))
             })?;
@@ -716,6 +725,42 @@ fn reap_cgroup_member_children(pids: &[libc::pid_t]) -> io::Result<usize> {
 
 #[cfg(not(unix))]
 fn reap_cgroup_member_children(_: &[i32]) -> io::Result<usize> {
+    Ok(0)
+}
+
+#[cfg(unix)]
+fn reap_process_group_children(process_group_leader: Option<u32>) -> io::Result<usize> {
+    let Some(process_group_leader) = process_group_leader else {
+        return Ok(0);
+    };
+    let Ok(process_group_id) = i32::try_from(process_group_leader) else {
+        return Ok(0);
+    };
+    if process_group_id <= 1 {
+        return Ok(0);
+    }
+    let mut reaped = 0;
+    loop {
+        let mut status = 0;
+        let result = unsafe { libc::waitpid(-process_group_id, &mut status, libc::WNOHANG) };
+        if result > 0 {
+            reaped += 1;
+            continue;
+        }
+        if result == 0 {
+            return Ok(reaped);
+        }
+        let error = io::Error::last_os_error();
+        match error.raw_os_error() {
+            Some(libc::ECHILD) => return Ok(reaped),
+            Some(libc::EINTR) => continue,
+            _ => return Err(error),
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn reap_process_group_children(_: Option<u32>) -> io::Result<usize> {
     Ok(0)
 }
 
@@ -1738,6 +1783,25 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(unix)]
+    async fn timeout_reaps_background_descendant_zombies() {
+        let before = zombie_children_of_current_process();
+        let mut plan = shell_plan("sleep 30 & sleep 30", 1024);
+        plan.timeout = Duration::from_millis(50);
+
+        let err = execute_command_without_cgroup(&plan)
+            .await
+            .expect_err("command times out");
+
+        assert!(matches!(err, RunnerError::TimeLimitExceeded(_)));
+        let after = zombie_children_of_current_process();
+        assert_eq!(
+            after, before,
+            "timed-out descendants were left as runner child zombies"
+        );
+    }
+
+    #[tokio::test]
     async fn closes_inherited_file_descriptors() {
         let leaked = tempfile::NamedTempFile::new().expect("temp file");
         clear_cloexec(leaked.as_file());
@@ -1953,7 +2017,7 @@ mod tests {
         };
 
         cgroup
-            .kill_all_and_wait_empty()
+            .kill_all_and_wait_empty(None)
             .await
             .expect("empty cgroup is confirmed");
 
@@ -2166,12 +2230,24 @@ mod tests {
     fn default_child_rlimits_are_conservative() {
         let limits = ChildRlimits::default();
 
-        assert_eq!(limits.cpu_seconds, None);
+        assert_eq!(limits.cpu_seconds, Some(2));
         assert_eq!(limits.core_bytes, 0);
         assert_eq!(limits.file_size_bytes, 64 * 1024 * 1024);
         assert_eq!(limits.nofile, 1024);
         assert_eq!(limits.nproc, DEFAULT_PIDS_MAX);
         assert_eq!(limits.memlock_bytes, 0);
+    }
+
+    #[test]
+    fn default_config_disables_swap_and_caps_processes() {
+        let config = SandboxConfig::default();
+
+        assert_eq!(config.pids_max, DEFAULT_PIDS_MAX);
+        assert_eq!(config.memory_swap_max_bytes, Some(0));
+        assert_eq!(config.child_rlimits.cpu_seconds, Some(2));
+        assert_eq!(config.child_rlimits.nproc, DEFAULT_PIDS_MAX);
+        assert!(config.require_private_namespaces);
+        assert!(config.enable_seccomp);
     }
 
     fn shell_plan(script: &str, max_output_bytes: u64) -> CommandPlan {
@@ -2243,4 +2319,22 @@ mod tests {
 
     #[cfg(not(unix))]
     fn clear_cloexec(_: &fs::File) {}
+
+    #[cfg(unix)]
+    fn zombie_children_of_current_process() -> usize {
+        let output = std::process::Command::new("ps")
+            .args(["-eo", "ppid=,stat="])
+            .output()
+            .expect("ps output");
+        assert!(output.status.success(), "ps failed: {output:?}");
+        let current_pid = std::process::id().to_string();
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| {
+                let mut parts = line.split_whitespace();
+                Some((parts.next()?, parts.next()?))
+            })
+            .filter(|(ppid, stat)| *ppid == current_pid && stat.starts_with('Z'))
+            .count()
+    }
 }

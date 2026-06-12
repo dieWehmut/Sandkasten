@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: help gen-proto test lint docker-build preflight dev-up smoke-go smoke-languages
+.PHONY: help gen-proto test lint docker-build docker-clean preflight dev-up smoke-go smoke-languages
 
 help:
 	@printf "sandkasten targets:\n"
@@ -11,6 +11,7 @@ help:
 	@printf "  smoke-go      Run local API + runner Go execution smoke test\n"
 	@printf "  smoke-languages Run local HTTP smoke test for all supported languages\n"
 	@printf "  docker-build  Build service images\n"
+	@printf "  docker-clean  Remove unused Sandkasten build images and BuildKit cache\n"
 
 gen-proto:
 	./werkzeug/gen-proto.sh
@@ -27,6 +28,9 @@ preflight:
 docker-build:
 	docker build -f einsatz/docker/api.Dockerfile -t sandkasten-api:dev .
 	docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
+
+docker-clean:
+	./werkzeug/docker-clean.sh
 
 dev-up:
 	./werkzeug/dev-up.sh

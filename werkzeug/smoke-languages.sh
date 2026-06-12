@@ -355,6 +355,7 @@ run_language scala "hello, scala" 'object Main extends App {
   println("hello, scala")
 }' 1073741824
 
+# shellcheck disable=SC2016
 run_language scss ".button {
   color: #0f766e;
 }" '$color: #0f766e;

@@ -11,6 +11,13 @@ docker build -f einsatz/docker/api.Dockerfile -t sandkasten-api:dev .
 docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
 ```
 
+Remove stale Sandkasten images and unused BuildKit cache after repeated runtime builds:
+
+```sh
+make docker-clean
+PRUNE_BUILDKIT_ALL=1 make docker-clean
+```
+
 Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
