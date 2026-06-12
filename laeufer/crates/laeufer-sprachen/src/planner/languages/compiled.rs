@@ -4,6 +4,25 @@ use std::path::PathBuf;
 use crate::constants::{RUNNER_BIN_DIR, RUNNER_CACHE_DIR, RUNNER_TMP_DIR};
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
+const FSHARP_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+project=".laeufer-cache/fsharp-project"
+rm -rf "$project"
+mkdir -p "$project"
+cat > "$project/fsharp-project.fsproj" <<'EOF'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
+EOF
+cp "$entrypoint" "$project/Program.fs"
+dotnet restore "$project" --ignore-failed-sources --disable-parallel
+dotnet build "$project" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -o .laeufer-bin
+"#;
+
 pub(in crate::planner) fn plan_c(
     job: &Job,
     source_dir: PathBuf,
@@ -168,6 +187,55 @@ pub(in crate::planner) fn plan_dart(
     let run = run_command_plan(
         binary_path.to_string_lossy().into_owned(),
         job.args.clone(),
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_fsharp(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            FSHARP_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![source_dir
+        .join(RUNNER_BIN_DIR)
+        .join("fsharp-project.dll")
+        .to_string_lossy()
+        .into_owned()];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "dotnet",
+        run_args,
         env,
         source_dir,
         job.stdin.clone(),

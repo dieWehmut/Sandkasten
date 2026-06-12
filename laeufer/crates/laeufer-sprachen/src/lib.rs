@@ -404,6 +404,42 @@ mod tests {
     }
 
     #[test]
+    fn fsharp_plan_builds_project_and_runs_compiled_dll() {
+        let job = job("f#", "main.fs");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("dotnet restore")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("dotnet build")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.fs")
+        );
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert_eq!(plan.run.program, "dotnet");
+        assert!(plan.run.args[0].ends_with(".laeufer-bin/fsharp-project.dll"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "DOTNET_CLI_HOME" && value.ends_with("dotnet-home")));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "DOTNET_CLI_TELEMETRY_OPTOUT" && value == "1"));
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

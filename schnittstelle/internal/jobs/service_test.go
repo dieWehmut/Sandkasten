@@ -134,6 +134,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "coq", Version: "system"},
 			{Language: "dart", Version: "system"},
 			{Language: "elixir", Version: "system"},
+			{Language: "fsharp", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
@@ -199,6 +200,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.exs",
 			compilePrefix: []string{"elixir", "--erl", "+S 1"},
 			runPrefix:     []string{"elixir", "--erl", "+S 1"},
+		},
+		{
+			language:      "fsharp",
+			alias:         "f#",
+			entrypoint:    "main.fs",
+			compilePrefix: []string{"bash", "--noprofile", "--norc", "-c"},
+			runPrefix:     []string{"dotnet", ".laeufer-bin/fsharp-project.dll"},
 		},
 		{
 			language:      "julia",

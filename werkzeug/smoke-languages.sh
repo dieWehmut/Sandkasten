@@ -99,6 +99,7 @@ need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool coqc "Install Coq for Coq jobs."
 need_runtime_tool dart "Install Dart SDK for Dart jobs."
 need_runtime_tool elixir "Install Elixir for Elixir jobs."
+need_runtime_tool dotnet "Install .NET SDK for F# jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
 need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
@@ -227,6 +228,8 @@ run_language dart "hello, dart" 'void main() {
 }' 1073741824
 
 run_language elixir "hello, elixir" 'IO.puts("hello, elixir")'
+
+run_language fsharp "hello, fsharp" 'printfn "hello, fsharp"' 1073741824
 
 run_language java "hello, java" 'public class Main {
   public static void main(String[] args) { System.out.println("hello, java"); }

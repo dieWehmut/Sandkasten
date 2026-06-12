@@ -442,6 +442,8 @@ func NormalizeLanguage(language string) string {
 		return "dart"
 	case "ex", "exs":
 		return "elixir"
+	case "f#", "fs", "f-sharp", "f_sharp":
+		return "fsharp"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -529,6 +531,8 @@ func defaultEntrypoint(language string) string {
 		return "main.dart"
 	case "elixir":
 		return "main.exs"
+	case "fsharp":
+		return "main.fs"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -594,6 +598,8 @@ func runtimeAliases(language string) []string {
 		return nil
 	case "elixir":
 		return []string{"ex", "exs"}
+	case "fsharp":
+		return []string{"f#", "fs", "f-sharp", "f_sharp"}
 	case "javascript":
 		return []string{"js", "node"}
 	case "julia":
@@ -659,6 +665,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("dart", "--disable-analytics", "compile", "exe", "main.dart", "-o", ".laeufer-bin/main")
 	case "elixir":
 		return phase("elixir", "--erl", "+S 1", "-e", "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)", "--", "main.exs")
+	case "fsharp":
+		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nproject=\".laeufer-cache/fsharp-project\"\nrm -rf \"$project\"\nmkdir -p \"$project\"\ncat > \"$project/fsharp-project.fsproj\" <<'EOF'\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n  </PropertyGroup>\n</Project>\nEOF\ncp \"$entrypoint\" \"$project/Program.fs\"\ndotnet restore \"$project\" --ignore-failed-sources --disable-parallel\ndotnet build \"$project\" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -o .laeufer-bin\n", "_", "main.fs")
 	case "java":
 		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
 	case "javascript":
@@ -718,6 +726,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("test", "-f", "main.vo")
 	case "elixir":
 		return phase("elixir", "--erl", "+S 1", "main.exs")
+	case "fsharp":
+		return phase("dotnet", ".laeufer-bin/fsharp-project.dll")
 	case "java":
 		return phase("java", "-cp", ".laeufer-bin", "Main")
 	case "javascript":

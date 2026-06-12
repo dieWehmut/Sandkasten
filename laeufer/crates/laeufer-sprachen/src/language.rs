@@ -11,6 +11,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "coq" | "coqtop" | "coqc" => "coq",
         "dart" => "dart",
         "elixir" | "ex" | "exs" => "elixir",
+        "fsharp" | "f#" | "fs" | "f-sharp" | "f_sharp" => "fsharp",
         "java" => "java",
         "javascript" | "js" | "node" => "javascript",
         "julia" | "jl" => "julia",

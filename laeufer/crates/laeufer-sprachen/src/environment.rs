@@ -35,6 +35,10 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         .join("pub-cache")
         .to_string_lossy()
         .into_owned();
+    let dotnet_home = tmp_dir_path
+        .join("dotnet-home")
+        .to_string_lossy()
+        .into_owned();
     vec![
         ("PATH".to_owned(), runtime_path()),
         ("HOME".to_owned(), tmp_dir.clone()),
@@ -53,6 +57,13 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("MIX_HOME".to_owned(), mix_home),
         ("HEX_HOME".to_owned(), hex_home),
         ("PUB_CACHE".to_owned(), pub_cache),
+        ("DOTNET_CLI_HOME".to_owned(), dotnet_home),
+        (
+            "DOTNET_SKIP_FIRST_TIME_EXPERIENCE".to_owned(),
+            "1".to_owned(),
+        ),
+        ("DOTNET_NOLOGO".to_owned(), "1".to_owned()),
+        ("DOTNET_CLI_TELEMETRY_OPTOUT".to_owned(), "1".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),

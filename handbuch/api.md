@@ -66,6 +66,7 @@ Supported runtimes and default entrypoints:
 | `coq` | `coqtop`, `coqc` | `main.v` |
 | `dart` | - | `main.dart` |
 | `elixir` | `ex`, `exs` | `main.exs` |
+| `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |
 | `julia` | `jl` | `main.jl` |

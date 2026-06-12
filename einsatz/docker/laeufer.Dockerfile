@@ -38,6 +38,7 @@ ARG LEAN_VERSION=4.23.0
 ARG SWIFT_VERSION=6.3.2
 ARG ZIG_VERSION=0.16.0
 ARG DART_VERSION=3.12.2
+ARG DOTNET_SDK_VERSION=10.0.301
 ARG CANGJIE_VERSION=1.1.3
 ARG CANGJIE_SHA256=2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
 
@@ -95,6 +96,9 @@ RUN apt-get update && \
     mv /opt/dart-sdk "/opt/dart-sdk-${DART_VERSION}" && \
     ln -s "/opt/dart-sdk-${DART_VERSION}" /opt/dart-sdk && \
     ln -s /opt/dart-sdk/bin/dart /usr/local/bin/dart && \
+    curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
+    bash /tmp/dotnet-install.sh --version "${DOTNET_SDK_VERSION}" --install-dir /opt/dotnet --no-path && \
+    ln -s /opt/dotnet/dotnet /usr/local/bin/dotnet && \
     curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
@@ -122,7 +126,7 @@ RUN apt-get update && \
     chmod 0755 /usr/local/bin/cjc && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
-    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
+    rm -f /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 
