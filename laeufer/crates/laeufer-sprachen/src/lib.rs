@@ -757,6 +757,25 @@ mod tests {
     }
 
     #[test]
+    fn nextflow_plan_lints_then_runs_offline_without_container_backends() {
+        let job = job("nf", "main.nf");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "nextflow");
+        assert_eq!(plan.compile.args, vec!["lint", "main.nf"]);
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan.run.args.iter().any(|arg| arg.contains("nextflow run")));
+        assert!(plan.run.args.iter().any(|arg| arg.contains("-offline")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("-without-docker")));
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.nf"));
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 

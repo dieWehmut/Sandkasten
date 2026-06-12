@@ -28,6 +28,22 @@ for key in sorted(outputs):
         print(value)
 PY
 "#;
+const NEXTFLOW_RUN_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/nextflow .laeufer-cache/nextflow-work
+nextflow run "$entrypoint" -ansi-log false -offline -without-docker -without-podman -without-conda -without-spack -work-dir .laeufer-cache/nextflow-work > .laeufer-cache/nextflow/stdout 2> .laeufer-cache/nextflow/stderr
+python3 - .laeufer-cache/nextflow/stdout <<'PY'
+import sys
+
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    stripped = line.strip()
+    if not stripped:
+        continue
+    if stripped.startswith("N E X T F L O W") or stripped.startswith("Launching `"):
+        continue
+    print(line, end="")
+PY
+"#;
 
 pub(in crate::planner) fn plan_bash(
     job: &Job,
@@ -292,6 +308,48 @@ pub(in crate::planner) fn plan_lua(
     let run = run_command_plan(
         "lua",
         run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_nextflow(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "nextflow",
+        vec!["lint".to_owned(), entrypoint.clone()],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            NEXTFLOW_RUN_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
         env,
         source_dir,
         job.stdin.clone(),

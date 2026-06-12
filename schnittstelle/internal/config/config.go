@@ -196,6 +196,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"kotlin",
 		"lean4",
 		"lua",
+		"nextflow",
 		"nim",
 		"perl",
 		"php",

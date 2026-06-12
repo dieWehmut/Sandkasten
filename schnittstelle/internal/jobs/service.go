@@ -454,6 +454,8 @@ func NormalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "nf":
+		return "nextflow"
 	case "nimrod":
 		return "nim"
 	case "perl5":
@@ -547,6 +549,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "nextflow":
+		return "main.nf"
 	case "nim":
 		return "main.nim"
 	case "perl":
@@ -614,6 +618,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lean"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "nextflow":
+		return []string{"nf"}
 	case "nim":
 		return []string{"nimrod"}
 	case "perl":
@@ -685,6 +691,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "nextflow":
+		return phase("nextflow", "lint", "main.nf")
 	case "nim":
 		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache", ".laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
 	case "perl":
@@ -748,6 +756,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("lean", "--run", "Main.lean")
 	case "lua":
 		return phase("lua", "main.lua")
+	case "nextflow":
+		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/nextflow .laeufer-cache/nextflow-work\nnextflow run \"$entrypoint\" -ansi-log false -offline -without-docker -without-podman -without-conda -without-spack -work-dir .laeufer-cache/nextflow-work > .laeufer-cache/nextflow/stdout 2> .laeufer-cache/nextflow/stderr\npython3 - .laeufer-cache/nextflow/stdout <<'PY'\nimport sys\n\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    stripped = line.strip()\n    if not stripped:\n        continue\n    if stripped.startswith(\"N E X T F L O W\") or stripped.startswith(\"Launching `\"):\n        continue\n    print(line, end=\"\")\nPY\n", "_", "main.nf")
 	case "perl":
 		return phase("perl", "main.pl")
 	case "php":

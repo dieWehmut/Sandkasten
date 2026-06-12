@@ -14,7 +14,7 @@ docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
 Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
-- The runner image includes Go plus toolchains/interpreters for Bash/Shell, C, Cangjie, Clojure, C++, C#, Coq, Dart, Elixir, F#, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL/SQLite, Swift, TypeScript, WDL, and Zig execution.
+- The runner image includes Go plus toolchains/interpreters for Bash/Shell, C, Cangjie, Clojure, C++, C#, Coq, Dart, Elixir, F#, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nextflow, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL/SQLite, Swift, TypeScript, WDL, and Zig execution.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development
@@ -46,7 +46,7 @@ Run the full language smoke when all supported local toolchains are installed:
 ./werkzeug/smoke-languages.sh
 ```
 
-The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `c`, `cpp`, `csharp`, `coq`, `dart`, `elixir`, `fsharp`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `nim`, `perl`, `php`, `prolog`, `python`, `r`, `racket`, `ruby`, `rust`, `scala`, `sql`, `swift`, `typescript`, `wdl`, and `zig`.
+The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `c`, `cpp`, `csharp`, `coq`, `dart`, `elixir`, `fsharp`, `java`, `javascript`, `julia`, `kotlin`, `lean4`, `lua`, `nextflow`, `nim`, `perl`, `php`, `prolog`, `python`, `r`, `racket`, `ruby`, `rust`, `scala`, `sql`, `swift`, `typescript`, `wdl`, and `zig`.
 
 ## Kubernetes
 

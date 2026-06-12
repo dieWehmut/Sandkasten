@@ -73,6 +73,7 @@ Supported runtimes and default entrypoints:
 | `kotlin` | `kt` | `Main.kt` |
 | `lean4` | `lean` | `Main.lean` |
 | `lua` | `lua5.4` | `main.lua` |
+| `nextflow` | `nf` | `main.nf` |
 | `nim` | `nimrod` | `main.nim` |
 | `perl` | `perl5` | `main.pl` |
 | `php` | `php8`, `php8.2` | `main.php` |

@@ -39,6 +39,7 @@ ARG SWIFT_VERSION=6.3.2
 ARG ZIG_VERSION=0.16.0
 ARG DART_VERSION=3.12.2
 ARG DOTNET_SDK_VERSION=10.0.301
+ARG NEXTFLOW_VERSION=26.04.3
 ARG CANGJIE_VERSION=1.1.3
 ARG CANGJIE_SHA256=2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
 
@@ -105,6 +106,18 @@ RUN apt-get update && \
     /opt/miniwdl/bin/pip install --upgrade pip setuptools wheel && \
     /opt/miniwdl/bin/pip install miniwdl && \
     ln -s /opt/miniwdl/bin/miniwdl /usr/local/bin/miniwdl && \
+    mkdir -p /opt/nextflow && \
+    curl -fsSL https://get.nextflow.io -o /usr/local/bin/nextflow-launcher && \
+    chmod 0755 /usr/local/bin/nextflow-launcher && \
+    NXF_HOME=/opt/nextflow NXF_VER="${NEXTFLOW_VERSION}" /usr/local/bin/nextflow-launcher -version && \
+    find /opt/nextflow -type d -exec chmod 0755 {} + && \
+    find /opt/nextflow -type f -exec chmod 0644 {} + && \
+    { \
+      printf '%s\n' '#!/bin/sh'; \
+      printf '%s\n' 'export NXF_HOME="${NXF_HOME:-/opt/nextflow}"'; \
+      printf '%s\n' 'exec /usr/local/bin/nextflow-launcher "$@"'; \
+    } > /usr/local/bin/nextflow && \
+    chmod 0755 /usr/local/bin/nextflow && \
     curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \

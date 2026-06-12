@@ -139,6 +139,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
+			{Language: "nextflow", Version: "system"},
 			{Language: "nim", Version: "system"},
 			{Language: "perl", Version: "system"},
 			{Language: "php", Version: "system"},
@@ -250,6 +251,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.nim",
 			compilePrefix: []string{"nim", "c", "--hints:off"},
 			runPrefix:     []string{".laeufer-bin/main"},
+		},
+		{
+			language:      "nextflow",
+			alias:         "nf",
+			entrypoint:    "main.nf",
+			compilePrefix: []string{"nextflow", "lint"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc", "-c"},
 		},
 		{
 			language:      "perl",
