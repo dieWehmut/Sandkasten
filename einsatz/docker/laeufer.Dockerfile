@@ -51,6 +51,7 @@ ARG TYPST_VERSION=0.14.2
 ARG TYPST_SHA256=a6044cbad2a954deb921167e257e120ac0a16b20339ec01121194ff9d394996d
 ARG TECTONIC_VERSION=0.16.9
 ARG TECTONIC_SHA256=60b13a0826ae7ad9ce34b4a2df06bff2cfcfa6dda8a915477c0cbb84e1a4a902
+ARG CURL_RETRY_ARGS="--retry 5 --retry-delay 2 --retry-connrefused --retry-all-errors --http1.1"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -142,43 +143,43 @@ RUN apt-get update && \
       @types/react@18.3.23 \
       @types/react-dom@18.3.7 \
       @types/node@20.19.1 && \
-    curl -fL "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/gleam.tar.gz && \
+    curl ${CURL_RETRY_ARGS} -fL "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/gleam.tar.gz && \
     echo "${GLEAM_SHA256}  /tmp/gleam.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/gleam.tar.gz -C /usr/local/bin gleam && \
     chmod 0755 /usr/local/bin/gleam && \
-    curl -fL "https://github.com/vlang/v/releases/download/${V_VERSION}/v_linux.zip" -o /tmp/v_linux.zip && \
+    curl ${CURL_RETRY_ARGS} -fL "https://github.com/vlang/v/releases/download/${V_VERSION}/v_linux.zip" -o /tmp/v_linux.zip && \
     echo "${V_SHA256}  /tmp/v_linux.zip" | sha256sum -c - && \
     unzip -q /tmp/v_linux.zip -d /opt && \
     ln -s /opt/v/v /usr/local/bin/v && \
-    curl -fL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" -o /tmp/typst.tar.xz && \
+    curl ${CURL_RETRY_ARGS} -fL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" -o /tmp/typst.tar.xz && \
     echo "${TYPST_SHA256}  /tmp/typst.tar.xz" | sha256sum -c - && \
     tar -xJf /tmp/typst.tar.xz -C /opt && \
     ln -s "/opt/typst-x86_64-unknown-linux-musl/typst" /usr/local/bin/typst && \
-    curl -fL "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/tectonic.tar.gz && \
+    curl ${CURL_RETRY_ARGS} -fL "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz" -o /tmp/tectonic.tar.gz && \
     echo "${TECTONIC_SHA256}  /tmp/tectonic.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin tectonic && \
     chmod 0755 /usr/local/bin/tectonic && \
-    curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
+    curl ${CURL_RETRY_ARGS} -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
     ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
-    curl -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \
+    curl ${CURL_RETRY_ARGS} -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR_VERSION}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tar.gz && \
     tar -xzf /tmp/julia.tar.gz -C /opt && \
     ln -s "/opt/julia-${JULIA_VERSION}/bin/julia" /usr/local/bin/julia && \
-    curl -fsSL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip.sha256sum" -o /tmp/dart.sha256sum && \
-    curl -fL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip" -o /tmp/dart-sdk.zip && \
+    curl ${CURL_RETRY_ARGS} -fsSL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip.sha256sum" -o /tmp/dart.sha256sum && \
+    curl ${CURL_RETRY_ARGS} -fL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip" -o /tmp/dart-sdk.zip && \
     awk '{print $1 "  /tmp/dart-sdk.zip"}' /tmp/dart.sha256sum | sha256sum -c - && \
     unzip -q /tmp/dart-sdk.zip -d /opt && \
     mv /opt/dart-sdk "/opt/dart-sdk-${DART_VERSION}" && \
     ln -s "/opt/dart-sdk-${DART_VERSION}" /opt/dart-sdk && \
     ln -s /opt/dart-sdk/bin/dart /usr/local/bin/dart && \
-    curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
+    curl ${CURL_RETRY_ARGS} -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
     bash /tmp/dotnet-install.sh --version "${DOTNET_SDK_VERSION}" --install-dir /opt/dotnet --no-path && \
     ln -s /opt/dotnet/dotnet /usr/local/bin/dotnet && \
     python3 -m venv /opt/miniwdl && \
     /opt/miniwdl/bin/pip install --upgrade pip setuptools wheel && \
     /opt/miniwdl/bin/pip install miniwdl && \
     ln -s /opt/miniwdl/bin/miniwdl /usr/local/bin/miniwdl && \
-    curl -fsSL https://pixi.sh/install.sh -o /tmp/pixi-install.sh && \
+    curl ${CURL_RETRY_ARGS} -fsSL https://pixi.sh/install.sh -o /tmp/pixi-install.sh && \
     PIXI_VERSION="${PIXI_VERSION}" PIXI_HOME=/opt/pixi PIXI_BIN_DIR=/opt/pixi/bin sh /tmp/pixi-install.sh && \
     ln -s /opt/pixi/bin/pixi /usr/local/bin/pixi && \
     pixi init /opt/mojo -c https://conda.modular.com/max/ -c conda-forge && \
@@ -193,7 +194,7 @@ RUN apt-get update && \
     } > /usr/local/bin/mojo && \
     chmod 0755 /usr/local/bin/mojo && \
     mkdir -p /opt/nextflow && \
-    curl -fsSL https://get.nextflow.io -o /usr/local/bin/nextflow-launcher && \
+    curl ${CURL_RETRY_ARGS} -fsSL https://get.nextflow.io -o /usr/local/bin/nextflow-launcher && \
     chmod 0755 /usr/local/bin/nextflow-launcher && \
     NXF_HOME=/opt/nextflow NXF_VER="${NEXTFLOW_VERSION}" /usr/local/bin/nextflow-launcher -version && \
     find /opt/nextflow -type d -exec chmod 0755 {} + && \
@@ -204,15 +205,15 @@ RUN apt-get update && \
       printf '%s\n' 'exec /usr/local/bin/nextflow-launcher "$@"'; \
     } > /usr/local/bin/nextflow && \
     chmod 0755 /usr/local/bin/nextflow && \
-    curl -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
+    curl ${CURL_RETRY_ARGS} -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst && \
     tar --zstd -xf /tmp/lean.tar.zst -C /opt && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean && \
     ln -s "/opt/lean-${LEAN_VERSION}-linux/bin/lake" /usr/local/bin/lake && \
-    curl -fL "https://download.swift.org/swift-${SWIFT_VERSION}-release/debian12/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-debian12.tar.gz" -o /tmp/swift.tar.gz && \
+    curl ${CURL_RETRY_ARGS} -fL "https://download.swift.org/swift-${SWIFT_VERSION}-release/debian12/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-debian12.tar.gz" -o /tmp/swift.tar.gz && \
     tar -xzf /tmp/swift.tar.gz -C /opt && \
     ln -s "/opt/swift-${SWIFT_VERSION}-RELEASE-debian12/usr/bin/swift" /usr/local/bin/swift && \
     ln -s "/opt/swift-${SWIFT_VERSION}-RELEASE-debian12/usr/bin/swiftc" /usr/local/bin/swiftc && \
-    curl -fL "https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-${CANGJIE_VERSION}.tar.gz&objectKey=6a19349d21f5a8178d6fd22b" -o /tmp/cangjie.tar.gz && \
+    curl ${CURL_RETRY_ARGS} -fL "https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-${CANGJIE_VERSION}.tar.gz&objectKey=6a19349d21f5a8178d6fd22b" -o /tmp/cangjie.tar.gz && \
     echo "${CANGJIE_SHA256}  /tmp/cangjie.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/cangjie.tar.gz -C /opt && \
     find /opt/cangjie -type d -exec chmod 0755 {} + && \
