@@ -391,10 +391,16 @@ func normalizeLanguage(language string) string {
 		return "kotlin"
 	case "lean":
 		return "lean4"
+	case "tex":
+		return "latex"
 	case "lua5.4":
 		return "lua"
+	case "md":
+		return "markdown"
 	case "mojolang":
 		return "mojo"
+	case "dot", "gv":
+		return "graphviz"
 	case "next", "next.js":
 		return "nextjs"
 	case "nf":
@@ -439,6 +445,8 @@ func normalizeLanguage(language string) string {
 		return "typescript"
 	case "jsx", "react", "react-tsx":
 		return "tsx"
+	case "typ":
+		return "typst"
 	case "v", "v-language":
 		return "vlang"
 	case "vue", "vuejs":
@@ -502,10 +510,18 @@ func defaultEntrypoint(language string) string {
 		return "Main.kt"
 	case "lean4":
 		return "Main.lean"
+	case "latex":
+		return "main.tex"
 	case "lua":
 		return "main.lua"
+	case "markdown":
+		return "main.md"
+	case "mdx":
+		return "main.mdx"
 	case "mojo":
 		return "main.mojo"
+	case "graphviz":
+		return "main.dot"
 	case "nextjs":
 		return "app/page.tsx"
 	case "nextflow":
@@ -552,6 +568,8 @@ func defaultEntrypoint(language string) string {
 		return "main.ts"
 	case "tsx":
 		return "main.tsx"
+	case "typst":
+		return "main.typ"
 	case "vlang":
 		return "main.vv"
 	case "vue3":
@@ -569,7 +587,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "assembly", "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fortran", "fsharp", "gdscript", "gleam", "haskell", "html", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextjs", "nextflow", "nim", "octave", "ocaml", "pascal", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typescript", "tsx", "vlang", "vue3", "wdl", "zig":
+	case "assembly", "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fortran", "fsharp", "gdscript", "gleam", "graphviz", "haskell", "html", "java", "javascript", "julia", "kotlin", "latex", "lean4", "lua", "markdown", "mdx", "mojo", "nextjs", "nextflow", "nim", "octave", "ocaml", "pascal", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typst", "typescript", "tsx", "vlang", "vue3", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

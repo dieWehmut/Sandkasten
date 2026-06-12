@@ -88,11 +88,11 @@ const { renderToStaticMarkup } = require('react-dom/server');
   }
   const { evaluate } = await import('@mdx-js/mdx');
   const runtime = await import('react/jsx-runtime');
-  const module = await evaluate(source, {
+  const mdxModule = await evaluate(source, {
     ...runtime,
     useMDXComponents: () => ({}),
   });
-  const Component = module.default;
+  const Component = mdxModule.default;
   if (typeof Component !== 'function') {
     throw new Error('MDX document must compile to a default component');
   }

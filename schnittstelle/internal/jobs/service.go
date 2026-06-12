@@ -99,6 +99,66 @@ EOF
 cp "$entrypoint" "$project/src/main.gleam"
 gleam build --target erlang --root "$project"`
 
+const markdownRenderScript = `set -eu
+entrypoint="$1"
+mkdir -p .laeufer-bin .laeufer-cache/mermaid
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const childProcess = require('child_process');
+const MarkdownIt = require('markdown-it');
+
+const entrypoint = process.argv[2];
+const source = fs.readFileSync(entrypoint, 'utf8');
+const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
+const mermaidConfigPath = '.laeufer-cache/mermaid/config.json';
+fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
+
+const diagrams = [];
+const fence = String.fromCharCode(96).repeat(3);
+const mermaidFence = new RegExp(fence + 'mermaid[^\\n]*\\n([\\s\\S]*?)' + fence, 'g');
+const markdown = source.replace(mermaidFence, (_match, diagram) => {
+  const id = diagrams.length;
+  const placeholder = 'SANDKASTEN_MERMAID_' + id;
+  const input = '.laeufer-cache/mermaid/' + id + '.mmd';
+  const output = '.laeufer-cache/mermaid/' + id + '.svg';
+  fs.writeFileSync(input, diagram);
+  childProcess.execFileSync('mmdc', ['--quiet', '-i', input, '-o', output, '-c', mermaidConfigPath], { stdio: ['ignore', 'ignore', 'inherit'] });
+  diagrams.push({ placeholder, svg: fs.readFileSync(output, 'utf8') });
+  return placeholder;
+});
+
+let html = md.render(markdown);
+for (const diagram of diagrams) {
+  html = html.replace('<p>' + diagram.placeholder + '</p>', diagram.svg);
+  html = html.replace(diagram.placeholder, diagram.svg);
+}
+fs.writeFileSync('.laeufer-bin/main.html', html);
+NODE`
+
+const mdxRenderScript = `set -eu
+entrypoint="$1"
+mkdir -p .laeufer-bin .laeufer-cache/mdx
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+
+(async () => {
+  const entrypoint = process.argv[2];
+  const source = fs.readFileSync(entrypoint, 'utf8');
+  if (/^\s*(import|export)\s/m.test(source)) {
+    throw new Error('MDX import/export statements are not supported');
+  }
+  const { evaluate } = await import('@mdx-js/mdx');
+  const runtime = await import('react/jsx-runtime');
+  const mdxModule = await evaluate(source, { ...runtime, useMDXComponents: () => ({}) });
+  fs.writeFileSync('.laeufer-bin/main.html', renderToStaticMarkup(React.createElement(mdxModule.default, {})) + '\n');
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exit(1);
+});
+NODE`
+
 type Repository interface {
 	CreateJob(ctx context.Context, job CreateJob) (*pb.SubmitGoProjectResponse, error)
 	GetJob(ctx context.Context, jobID string) (*pb.Job, error)
@@ -552,10 +612,16 @@ func NormalizeLanguage(language string) string {
 		return "kotlin"
 	case "lean":
 		return "lean4"
+	case "tex":
+		return "latex"
 	case "lua5.4":
 		return "lua"
+	case "md":
+		return "markdown"
 	case "mojolang":
 		return "mojo"
+	case "dot", "gv":
+		return "graphviz"
 	case "next", "next.js":
 		return "nextjs"
 	case "nf":
@@ -600,6 +666,8 @@ func NormalizeLanguage(language string) string {
 		return "typescript"
 	case "jsx", "react", "react-tsx":
 		return "tsx"
+	case "typ":
+		return "typst"
 	case "v", "v-language":
 		return "vlang"
 	case "vue", "vuejs":
@@ -685,10 +753,18 @@ func defaultEntrypoint(language string) string {
 		return "Main.kt"
 	case "lean4":
 		return "Main.lean"
+	case "latex":
+		return "main.tex"
 	case "lua":
 		return "main.lua"
+	case "markdown":
+		return "main.md"
+	case "mdx":
+		return "main.mdx"
 	case "mojo":
 		return "main.mojo"
+	case "graphviz":
+		return "main.dot"
 	case "nextjs":
 		return "app/page.tsx"
 	case "nextflow":
@@ -735,6 +811,8 @@ func defaultEntrypoint(language string) string {
 		return "main.ts"
 	case "tsx":
 		return "main.tsx"
+	case "typst":
+		return "main.typ"
 	case "vlang":
 		return "main.vv"
 	case "vue3":
@@ -794,10 +872,18 @@ func runtimeAliases(language string) []string {
 		return []string{"kt"}
 	case "lean4":
 		return []string{"lean"}
+	case "latex":
+		return []string{"tex"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "markdown":
+		return []string{"md"}
+	case "mdx":
+		return nil
 	case "mojo":
 		return []string{"mojolang"}
+	case "graphviz":
+		return []string{"dot", "gv"}
 	case "nextjs":
 		return []string{"next", "next.js"}
 	case "nextflow":
@@ -844,6 +930,8 @@ func runtimeAliases(language string) []string {
 		return []string{"ts"}
 	case "tsx":
 		return []string{"jsx", "react", "react-tsx"}
+	case "typst":
+		return []string{"typ"}
 	case "vlang":
 		return []string{"v", "v-language"}
 	case "vue3":
@@ -907,10 +995,18 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("kotlinc", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "Main.kt", "-include-runtime", "-d", ".laeufer-bin/main.jar")
 	case "lean4":
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
+	case "latex":
+		return phase("tectonic", "--offline", "--keep-logs", "--outdir", ".laeufer-bin", "main.tex")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "markdown":
+		return phase("bash", "--noprofile", "--norc", "-c", markdownRenderScript, "_", "main.md")
+	case "mdx":
+		return phase("bash", "--noprofile", "--norc", "-c", mdxRenderScript, "_", "main.mdx")
 	case "mojo":
 		return phase("mojo", "build", "main.mojo", "-o", ".laeufer-bin/main")
+	case "graphviz":
+		return phase("dot", "-Tsvg", "-o", ".laeufer-bin/main.svg", "main.dot")
 	case "nextjs":
 		return phase("bash", "--noprofile", "--norc", "-c", nextjsBuildScript, "_", "app/page.tsx")
 	case "nextflow":
@@ -957,6 +1053,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
 	case "tsx":
 		return phase("bash", "--noprofile", "--norc", "-c", tsxBuildScript, "_", "main.tsx")
+	case "typst":
+		return phase("typst", "compile", "--root", ".", "main.typ", ".laeufer-bin/main.svg")
 	case "vlang":
 		return phase("v", "-prod", "-o", ".laeufer-bin/main", "main.vv")
 	case "vue3":
@@ -1006,8 +1104,12 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("java", "-XX:ActiveProcessorCount=1", "-Djava.io.tmpdir=.laeufer-tmp", "-jar", ".laeufer-bin/main.jar")
 	case "lean4":
 		return phase("lean", "--run", "Main.lean")
+	case "latex":
+		return phase("printf", "latex compiled\n")
 	case "lua":
 		return phase("lua", "main.lua")
+	case "markdown", "mdx":
+		return phase("cat", ".laeufer-bin/main.html")
 	case "nextjs":
 		return phase("node", ".laeufer-bin/next.cjs")
 	case "nextflow":
@@ -1044,6 +1146,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("node", ".laeufer-bin/main.js")
 	case "tsx":
 		return phase("node", ".laeufer-bin/main.cjs")
+	case "graphviz", "typst":
+		return phase("cat", ".laeufer-bin/main.svg")
 	case "vue3":
 		return phase("node", ".laeufer-bin/vue.cjs")
 	case "wdl":
