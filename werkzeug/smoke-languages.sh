@@ -374,6 +374,7 @@ begin
   writeln('"'"'hello, pascal'"'"');
 end.'
 
+# shellcheck disable=SC2016
 run_language assembly "" '.global main
 main:
   mov $0, %eax
