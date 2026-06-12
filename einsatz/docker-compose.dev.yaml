@@ -29,7 +29,7 @@ services:
       SANDKASTEN_API_HTTP_ADDR: ":8080"
       SANDKASTEN_API_CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,https://diewehmut.github.io"
       SANDKASTEN_API_TOKEN: dev-token
-      SANDKASTEN_RUNTIME_LANGUAGES: go,bash,c,cangjie,clojure,css,cpp,csharp,coq,crystal,dart,elixir,erlang,fsharp,gdscript,haskell,html,java,javascript,julia,kotlin,lean4,lua,mojo,nextjs,nextflow,nim,perl,php,prolog,python,qml,r,racket,ruby,rust,scala,scss,sql,swift,tailwindcss,typescript,tsx,vue3,wdl,zig
+      SANDKASTEN_RUNTIME_LANGUAGES: go,assembly,bash,c,cangjie,clojure,css,cpp,csharp,coq,crystal,dart,elixir,erlang,fsharp,fortran,gdscript,gleam,graphviz,haskell,html,java,javascript,julia,kotlin,lean4,latex,lua,markdown,mdx,mojo,nextjs,nextflow,nim,octave,ocaml,pascal,perl,php,prolog,python,qml,r,racket,ruby,rust,scala,scss,sql,swift,tailwindcss,typescript,tsx,typst,vlang,vue3,wdl,zig
     ports:
       - "50051:50051"
       - "8080:8080"

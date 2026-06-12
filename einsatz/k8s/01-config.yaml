@@ -18,7 +18,7 @@ data:
   SANDKASTEN_RUNTIME_VERSION: "1.26"
   SANDKASTEN_RUNTIME_IMAGE: "sandkasten/go:1.26"
   SANDKASTEN_RUNTIME_REQUIRES_VENDOR: "true"
-  SANDKASTEN_RUNTIME_LANGUAGES: "go,bash,c,cangjie,clojure,css,cpp,csharp,coq,crystal,dart,elixir,erlang,fsharp,gdscript,haskell,html,java,javascript,julia,kotlin,lean4,lua,mojo,nextjs,nextflow,nim,perl,php,prolog,python,qml,r,racket,ruby,rust,scala,scss,sql,swift,tailwindcss,typescript,tsx,vue3,wdl,zig"
+  SANDKASTEN_RUNTIME_LANGUAGES: "go,assembly,bash,c,cangjie,clojure,css,cpp,csharp,coq,crystal,dart,elixir,erlang,fsharp,fortran,gdscript,gleam,graphviz,haskell,html,java,javascript,julia,kotlin,lean4,latex,lua,markdown,mdx,mojo,nextjs,nextflow,nim,octave,ocaml,pascal,perl,php,prolog,python,qml,r,racket,ruby,rust,scala,scss,sql,swift,tailwindcss,typescript,tsx,typst,vlang,vue3,wdl,zig"
   LAEUFER_POLL_INTERVAL_MS: "1000"
   LAEUFER_LEASE_TTL_MS: "60000"
   LAEUFER_WORK_DIR: "/var/lib/sandkasten/laeufer"
