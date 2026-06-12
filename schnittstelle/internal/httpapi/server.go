@@ -345,6 +345,8 @@ func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 func normalizeLanguage(language string) string {
 	language = strings.ToLower(strings.TrimSpace(language))
 	switch language {
+	case "asm", "gas", "nasm":
+		return "assembly"
 	case "", "golang":
 		return "go"
 	case "shell", "sh":
@@ -371,8 +373,12 @@ func normalizeLanguage(language string) string {
 		return "erlang"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "f90", "gfortran":
+		return "fortran"
 	case "gd", "godot", "godot3":
 		return "gdscript"
+	case "gleamlang":
+		return "gleam"
 	case "hs", "ghc":
 		return "haskell"
 	case "htm":
@@ -395,6 +401,12 @@ func normalizeLanguage(language string) string {
 		return "nextflow"
 	case "nimrod":
 		return "nim"
+	case "gnu-octave", "m":
+		return "octave"
+	case "ml", "ocamlopt":
+		return "ocaml"
+	case "fpc", "freepascal":
+		return "pascal"
 	case "perl5":
 		return "perl"
 	case "php8", "php8.2":
@@ -427,6 +439,8 @@ func normalizeLanguage(language string) string {
 		return "typescript"
 	case "jsx", "react", "react-tsx":
 		return "tsx"
+	case "v", "v-language":
+		return "vlang"
 	case "vue", "vuejs":
 		return "vue3"
 	case "workflow-description-language":
@@ -468,8 +482,12 @@ func defaultEntrypoint(language string) string {
 		return "main.erl"
 	case "fsharp":
 		return "main.fs"
+	case "fortran":
+		return "main.f90"
 	case "gdscript":
 		return "main.gd"
+	case "gleam":
+		return "src/main.gleam"
 	case "haskell":
 		return "Main.hs"
 	case "html":
@@ -494,6 +512,14 @@ func defaultEntrypoint(language string) string {
 		return "main.nf"
 	case "nim":
 		return "main.nim"
+	case "octave":
+		return "main.m"
+	case "ocaml":
+		return "main.ml"
+	case "pascal":
+		return "main.pas"
+	case "assembly":
+		return "main.s"
 	case "perl":
 		return "main.pl"
 	case "php":
@@ -526,6 +552,8 @@ func defaultEntrypoint(language string) string {
 		return "main.ts"
 	case "tsx":
 		return "main.tsx"
+	case "vlang":
+		return "main.vv"
 	case "vue3":
 		return "main.vue"
 	case "wdl":
@@ -541,7 +569,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "gdscript", "haskell", "html", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextjs", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typescript", "tsx", "vue3", "wdl", "zig":
+	case "assembly", "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fortran", "fsharp", "gdscript", "gleam", "haskell", "html", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextjs", "nextflow", "nim", "octave", "ocaml", "pascal", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typescript", "tsx", "vlang", "vue3", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

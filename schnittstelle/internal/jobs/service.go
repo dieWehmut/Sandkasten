@@ -78,6 +78,27 @@ fs.writeFileSync('.laeufer-cache/next/entry.cjs', output);
 NODE
 esbuild .laeufer-cache/next/entry.cjs --bundle --platform=node --format=cjs --jsx=automatic --outfile=.laeufer-bin/next.cjs >/dev/null`
 
+const gleamBuildScript = `set -eu
+entrypoint="$1"
+project=".laeufer-cache/gleam-project"
+rm -rf "$project"
+mkdir -p "$project/src"
+cat > "$project/gleam.toml" <<'EOF'
+name = "sandkasten_job"
+version = "1.0.0"
+target = "erlang"
+description = "Sandkasten generated Gleam project"
+licences = ["Apache-2.0"]
+EOF
+cat > "$project/manifest.toml" <<'EOF'
+packages = [
+]
+
+[requirements]
+EOF
+cp "$entrypoint" "$project/src/main.gleam"
+gleam build --target erlang --root "$project"`
+
 type Repository interface {
 	CreateJob(ctx context.Context, job CreateJob) (*pb.SubmitGoProjectResponse, error)
 	GetJob(ctx context.Context, jobID string) (*pb.Job, error)
@@ -485,6 +506,8 @@ func normalizeLanguage(language string) string {
 func NormalizeLanguage(language string) string {
 	language = strings.ToLower(strings.TrimSpace(language))
 	switch language {
+	case "asm", "gas", "nasm":
+		return "assembly"
 	case "golang":
 		return "go"
 	case "shell", "sh":
@@ -511,8 +534,12 @@ func NormalizeLanguage(language string) string {
 		return "erlang"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "f90", "gfortran":
+		return "fortran"
 	case "gd", "godot", "godot3":
 		return "gdscript"
+	case "gleamlang":
+		return "gleam"
 	case "hs", "ghc":
 		return "haskell"
 	case "htm":
@@ -535,6 +562,12 @@ func NormalizeLanguage(language string) string {
 		return "nextflow"
 	case "nimrod":
 		return "nim"
+	case "gnu-octave", "m":
+		return "octave"
+	case "ml", "ocamlopt":
+		return "ocaml"
+	case "fpc", "freepascal":
+		return "pascal"
 	case "perl5":
 		return "perl"
 	case "php8", "php8.2":
@@ -567,6 +600,8 @@ func NormalizeLanguage(language string) string {
 		return "typescript"
 	case "jsx", "react", "react-tsx":
 		return "tsx"
+	case "v", "v-language":
+		return "vlang"
 	case "vue", "vuejs":
 		return "vue3"
 	case "workflow-description-language":
@@ -630,8 +665,12 @@ func defaultEntrypoint(language string) string {
 		return "main.erl"
 	case "fsharp":
 		return "main.fs"
+	case "fortran":
+		return "main.f90"
 	case "gdscript":
 		return "main.gd"
+	case "gleam":
+		return "src/main.gleam"
 	case "haskell":
 		return "Main.hs"
 	case "html":
@@ -656,6 +695,14 @@ func defaultEntrypoint(language string) string {
 		return "main.nf"
 	case "nim":
 		return "main.nim"
+	case "octave":
+		return "main.m"
+	case "ocaml":
+		return "main.ml"
+	case "pascal":
+		return "main.pas"
+	case "assembly":
+		return "main.s"
 	case "perl":
 		return "main.pl"
 	case "php":
@@ -688,6 +735,8 @@ func defaultEntrypoint(language string) string {
 		return "main.ts"
 	case "tsx":
 		return "main.tsx"
+	case "vlang":
+		return "main.vv"
 	case "vue3":
 		return "main.vue"
 	case "wdl":
@@ -727,8 +776,12 @@ func runtimeAliases(language string) []string {
 		return []string{"erl", "erts"}
 	case "fsharp":
 		return []string{"f#", "fs", "f-sharp", "f_sharp"}
+	case "fortran":
+		return []string{"f90", "gfortran"}
 	case "gdscript":
 		return []string{"gd", "godot", "godot3"}
+	case "gleam":
+		return []string{"gleamlang"}
 	case "haskell":
 		return []string{"hs", "ghc"}
 	case "html":
@@ -751,6 +804,14 @@ func runtimeAliases(language string) []string {
 		return []string{"nf"}
 	case "nim":
 		return []string{"nimrod"}
+	case "octave":
+		return []string{"gnu-octave", "m"}
+	case "ocaml":
+		return []string{"ml", "ocamlopt"}
+	case "pascal":
+		return []string{"fpc", "freepascal"}
+	case "assembly":
+		return []string{"asm", "gas", "nasm"}
 	case "perl":
 		return []string{"perl5"}
 	case "php":
@@ -783,6 +844,8 @@ func runtimeAliases(language string) []string {
 		return []string{"ts"}
 	case "tsx":
 		return []string{"jsx", "react", "react-tsx"}
+	case "vlang":
+		return []string{"v", "v-language"}
 	case "vue3":
 		return []string{"vue", "vuejs"}
 	case "wdl":
@@ -824,8 +887,12 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("erlc", "+debug_info", "-o", ".laeufer-bin", "main.erl")
 	case "fsharp":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nproject=\".laeufer-cache/fsharp-project\"\nrm -rf \"$project\"\nmkdir -p \"$project\"\ncat > \"$project/fsharp-project.fsproj\" <<'EOF'\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n    <NuGetAudit>false</NuGetAudit>\n  </PropertyGroup>\n  <ItemGroup>\n    <Compile Include=\"Program.fs\" />\n  </ItemGroup>\n</Project>\nEOF\ncp \"$entrypoint\" \"$project/Program.fs\"\ndotnet restore \"$project\" --ignore-failed-sources --disable-parallel -p:NuGetAudit=false\ndotnet build \"$project\" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -p:NuGetAudit=false -o .laeufer-bin\n", "_", "main.fs")
+	case "fortran":
+		return phase("gfortran", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.f90")
 	case "gdscript":
 		return phase("godot3-server", "--no-window", "--disable-crash-handler", "--check-only", "--path", ".", "-s", "main.gd")
+	case "gleam":
+		return phase("bash", "--noprofile", "--norc", "-c", gleamBuildScript, "_", "src/main.gleam")
 	case "haskell":
 		return phase("ghc", "-O2", "-threaded", "-outputdir", ".laeufer-cache/haskell", "-tmpdir", ".laeufer-tmp", "-i.", "-o", ".laeufer-bin/main", "Main.hs")
 	case "html":
@@ -850,6 +917,14 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("nextflow", "lint", "main.nf")
 	case "nim":
 		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache:.laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
+	case "octave":
+		return phase("octave-cli", "--no-gui", "--no-history", "--norc", "--silent", "--eval", "parse('main.m', false);")
+	case "ocaml":
+		return phase("ocamlopt", "-o", ".laeufer-bin/main", "main.ml")
+	case "pascal":
+		return phase("fpc", "-O2", "-FE.laeufer-bin", "-omain", "main.pas")
+	case "assembly":
+		return phase("gcc", "-x", "assembler", "-no-pie", "-o", ".laeufer-bin/main", "main.s")
 	case "perl":
 		return phase("perl", "-c", "main.pl")
 	case "php":
@@ -882,6 +957,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
 	case "tsx":
 		return phase("bash", "--noprofile", "--norc", "-c", tsxBuildScript, "_", "main.tsx")
+	case "vlang":
+		return phase("v", "-prod", "-o", ".laeufer-bin/main", "main.vv")
 	case "vue3":
 		return phase("bash", "--noprofile", "--norc", "-c", "node - \"$1\" && esbuild .laeufer-cache/vue/entry.mjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/vue.cjs >/dev/null", "_", "main.vue")
 	case "wdl":
@@ -895,7 +972,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 
 func runtimeRunPhase(language string) *pb.RuntimePhase {
 	switch normalizeLanguage(language) {
-	case "go", "c", "cangjie", "cpp", "crystal", "dart", "haskell", "mojo", "nim", "rust":
+	case "go", "assembly", "c", "cangjie", "cpp", "crystal", "dart", "fortran", "haskell", "mojo", "nim", "ocaml", "pascal", "rust", "vlang":
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")
@@ -915,6 +992,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("dotnet", ".laeufer-bin/fsharp-project.dll")
 	case "gdscript":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/gdscript .laeufer-tmp/godot-home .laeufer-tmp/godot-tmp\nexport HOME=\"$PWD/.laeufer-tmp/godot-home\"\nexport TMPDIR=\"$PWD/.laeufer-tmp/godot-tmp\"\nstdout=.laeufer-cache/gdscript/stdout\nstderr=.laeufer-cache/gdscript/stderr\nif ! godot3-server --no-window --disable-crash-handler --path . -s \"$entrypoint\" >\"$stdout\" 2>\"$stderr\"; then\n    cat \"$stdout\" >&2\n    cat \"$stderr\" >&2\n    exit 1\nfi\npython3 - \"$stdout\" <<'PY'\nimport sys\n\nskip_banner_spacing = False\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    if line.startswith(\"Godot Engine v\"):\n        skip_banner_spacing = True\n        continue\n    if skip_banner_spacing and not line.strip():\n        skip_banner_spacing = False\n        continue\n    skip_banner_spacing = False\n    print(line, end=\"\")\nPY\n", "_", "main.gd")
+	case "gleam":
+		return phase("erl", "-noshell", "-pa", ".laeufer-cache/gleam-project/build/dev/erlang/*/ebin", "-s", "main", "main", "-s", "init", "stop")
 	case "html":
 		return phase("cat", "index.html")
 	case "java":
@@ -933,6 +1012,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("node", ".laeufer-bin/next.cjs")
 	case "nextflow":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/nextflow .laeufer-cache/nextflow-work\nnextflow run \"$entrypoint\" -ansi-log false -offline -without-docker -without-podman -without-conda -without-spack -work-dir .laeufer-cache/nextflow-work > .laeufer-cache/nextflow/stdout 2> .laeufer-cache/nextflow/stderr\npython3 - .laeufer-cache/nextflow/stdout <<'PY'\nimport sys\n\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    stripped = line.strip()\n    if not stripped:\n        continue\n    if stripped.startswith(\"N E X T F L O W\") or stripped.startswith(\"Launching `\"):\n        continue\n    print(line, end=\"\")\nPY\n", "_", "main.nf")
+	case "octave":
+		return phase("octave-cli", "--no-gui", "--no-history", "--norc", "--silent", "main.m")
 	case "perl":
 		return phase("perl", "main.pl")
 	case "php":
