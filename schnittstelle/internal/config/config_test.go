@@ -55,6 +55,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 		"cangjie":  false,
 		"clojure":  false,
 		"coq":      false,
+		"crystal":  false,
 		"dart":     false,
 		"elixir":   false,
 		"fsharp":   false,

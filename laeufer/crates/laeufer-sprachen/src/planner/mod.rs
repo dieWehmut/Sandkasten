@@ -86,6 +86,13 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "crystal" => Ok(languages::plan_crystal(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "dart" => Ok(languages::plan_dart(
             job,
             source_dir,

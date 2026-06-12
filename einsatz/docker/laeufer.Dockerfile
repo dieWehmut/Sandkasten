@@ -51,6 +51,7 @@ RUN apt-get update && \
       clojure \
       curl \
       coq \
+      crystal \
       elixir \
       g++ \
       gcc \

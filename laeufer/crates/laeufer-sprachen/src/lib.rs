@@ -414,6 +414,32 @@ mod tests {
     }
 
     #[test]
+    fn crystal_plan_builds_release_binary_with_private_cache() {
+        let job = job("cr", "main.cr");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "crystal");
+        assert_eq!(plan.compile.args[0], "build");
+        assert!(plan.compile.args.iter().any(|arg| arg == "--release"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "--no-debug"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+        assert!(plan
+            .compile
+            .env
+            .iter()
+            .any(|(key, value)| key == "CRYSTAL_CACHE_DIR"
+                && value.ends_with(".laeufer-cache/crystal")));
+    }
+
+    #[test]
     fn mojo_plan_compiles_executable_with_mojo_build() {
         let job = job("mojolang", "main.mojo");
         let plan =

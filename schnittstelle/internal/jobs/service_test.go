@@ -132,6 +132,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "cangjie", Version: "system"},
 			{Language: "clojure", Version: "system"},
 			{Language: "coq", Version: "system"},
+			{Language: "crystal", Version: "system"},
 			{Language: "dart", Version: "system"},
 			{Language: "elixir", Version: "system"},
 			{Language: "fsharp", Version: "system"},
@@ -189,6 +190,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.v",
 			compilePrefix: []string{"coqc", "-q"},
 			runPrefix:     []string{"test", "-f"},
+		},
+		{
+			language:      "crystal",
+			alias:         "cr",
+			entrypoint:    "main.cr",
+			compilePrefix: []string{"crystal", "build", "--release", "--no-debug"},
+			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
 			language:      "dart",

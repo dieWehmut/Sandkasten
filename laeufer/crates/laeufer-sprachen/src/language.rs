@@ -9,6 +9,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "cpp" | "c++" => "cpp",
         "csharp" | "cs" | "c#" => "csharp",
         "coq" | "coqtop" | "coqc" => "coq",
+        "crystal" | "cr" => "crystal",
         "dart" => "dart",
         "elixir" | "ex" | "exs" => "elixir",
         "fsharp" | "f#" | "fs" | "f-sharp" | "f_sharp" => "fsharp",

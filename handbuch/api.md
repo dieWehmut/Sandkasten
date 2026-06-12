@@ -64,6 +64,7 @@ Supported runtimes and default entrypoints:
 | `cpp` | `c++` | `main.cpp` |
 | `csharp` | `cs`, `c#` | `Program.cs` |
 | `coq` | `coqtop`, `coqc` | `main.v` |
+| `crystal` | `cr` | `main.cr` |
 | `dart` | - | `main.dart` |
 | `elixir` | `ex`, `exs` | `main.exs` |
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
