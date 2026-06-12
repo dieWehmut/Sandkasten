@@ -395,10 +395,23 @@ func TestRuntimesReturnHTMLForBrowsers(t *testing.T) {
 		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Sandkasten Runtimes", "<h2>go</h2>", "1.26", "active"} {
+	for _, want := range []string{
+		"Sandkasten Runtimes",
+		"<summary class=\"runtime-summary\">",
+		"<h2>go</h2>",
+		"1.26",
+		"active",
+		"<details class=\"runtime-card",
+		"<div class=\"runtime-detail",
+		"border-color: rgba(31, 196, 31, 0.45)",
+		"background: rgba(31, 196, 31, 0.04)",
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("HTML body missing %q: %s", want, body)
 		}
+	}
+	if strings.Contains(body, "<article") {
+		t.Fatalf("HTML should use compact details cards instead of always-open articles: %s", body)
 	}
 }
 

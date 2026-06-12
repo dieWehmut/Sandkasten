@@ -1106,109 +1106,92 @@ const runtimesPageHTML = `<!doctype html>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b0d10;
-      --surface: #15181e;
-      --surface-strong: #1b1f27;
-      --line: #313640;
-      --line-soft: rgba(255, 255, 255, 0.08);
-      --text: #f2f0e8;
-      --muted: #a8afba;
-      --dim: #747d8b;
-      --green: #57d68d;
-      --cyan: #64c7e8;
+      --site-bg: #000;
+      --site-panel: rgba(255, 255, 255, 0.02);
+      --site-text: #e0e0e0;
+      --site-muted: #999;
+      --site-border: rgba(255, 255, 255, 0.1);
+      --site-accent: #1fc41f;
+      --site-tag-color: rgba(190, 190, 190, 0.82);
+      --code-bg: rgba(255, 255, 255, 0.035);
       --amber: #f0ba63;
-      --rose: #ee7390;
-      --code: #0f1116;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      color: var(--text);
-      background:
-        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        var(--bg);
-      background-size: 36px 36px;
-      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--site-text);
+      background: var(--site-bg);
+      font-family: "LXGW WenKai", "LXGW WenKai Screen", "Noto Serif SC", "Microsoft YaHei", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
     }
     main {
-      width: min(1220px, calc(100vw - 36px));
+      width: min(1120px, calc(100vw - 36px));
       margin: 0 auto;
-      padding: 36px 0 52px;
+      padding: 28px 0 44px;
     }
     .page-head {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      gap: 28px;
-      min-height: 178px;
-      padding: 30px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background:
-        linear-gradient(135deg, rgba(87, 214, 141, 0.18), transparent 28%),
-        linear-gradient(90deg, rgba(100, 199, 232, 0.12), transparent 42%),
-        var(--surface-strong);
-      box-shadow: 0 22px 80px rgba(0, 0, 0, 0.28);
+      gap: 24px;
+      padding: 22px 0 24px;
+      border-bottom: 1px solid var(--site-border);
     }
+    .page-copy { min-width: 0; }
     .eyebrow {
-      margin: 0 0 10px;
-      color: var(--green);
-      font-size: 12px;
-      font-weight: 850;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      margin: 0 0 8px;
+      color: var(--site-accent);
+      font-size: 13px;
+      font-weight: 800;
     }
     h1 {
       margin: 0;
-      max-width: 780px;
-      font-size: clamp(34px, 5vw, 64px);
-      line-height: 0.95;
+      color: var(--site-text);
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1;
       letter-spacing: 0;
     }
     .subtitle {
-      max-width: 650px;
-      margin: 14px 0 0;
-      color: var(--muted);
-      font-size: 15px;
+      max-width: 680px;
+      margin: 12px 0 0;
+      color: var(--site-muted);
+      font-size: 16px;
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(2, minmax(116px, 1fr));
+      grid-template-columns: repeat(2, minmax(92px, 1fr));
       gap: 10px;
-      width: min(100%, 330px);
+      width: min(100%, 300px);
       flex: 0 0 auto;
     }
     .stat {
       min-width: 0;
-      padding: 14px;
-      border: 1px solid var(--line-soft);
+      padding: 13px 14px;
+      border: 1px solid var(--site-border);
       border-radius: 8px;
-      background: rgba(11, 13, 16, 0.38);
+      background: var(--site-panel);
     }
     .stat span {
       display: block;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 830;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      color: var(--site-muted);
+      font-size: 12px;
+      font-weight: 800;
     }
     .stat strong {
       display: block;
       margin-top: 6px;
-      color: var(--text);
-      font-size: 30px;
+      color: var(--site-accent);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 32px;
       line-height: 1;
     }
-    .stat-wide {
-      grid-column: 1 / -1;
-    }
+    .stat-wide { grid-column: 1 / -1; }
     .stat-wide strong {
-      color: var(--muted);
+      color: var(--site-muted);
+      font-family: inherit;
       font-size: 13px;
-      font-weight: 720;
       line-height: 1.35;
     }
     .toolbar {
@@ -1216,49 +1199,52 @@ const runtimesPageHTML = `<!doctype html>
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      margin: 28px 0 14px;
-      color: var(--muted);
+      margin: 24px 0 12px;
+      color: var(--site-muted);
     }
     .toolbar-title {
       margin: 0;
-      color: var(--text);
+      color: var(--site-text);
       font-size: 18px;
       line-height: 1.1;
     }
     .toolbar-note {
-      color: var(--dim);
+      color: var(--site-muted);
       font-size: 12px;
       text-align: right;
     }
-    .grid {
+    .runtime-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(305px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 10px;
     }
-    article {
+    .runtime-card {
       min-width: 0;
-      position: relative;
-      overflow: hidden;
-      padding: 18px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--site-border);
       border-radius: 8px;
-      background: rgba(21, 24, 30, 0.94);
-      box-shadow: 0 14px 45px rgba(0, 0, 0, 0.22);
+      background: var(--site-panel);
+      transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease;
     }
-    article::before {
-      content: "";
-      position: absolute;
-      inset: 0 0 auto;
-      height: 3px;
-      background: var(--accent, var(--green));
+    .runtime-card:hover,
+    .runtime-card:focus-within {
+      border-color: rgba(31, 196, 31, 0.45);
+      background: rgba(31, 196, 31, 0.04);
+      transform: translateY(-2px);
     }
-    .runtime-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+    .runtime-card[open] {
+      border-color: rgba(31, 196, 31, 0.45);
+      background: rgba(31, 196, 31, 0.04);
+    }
+    .runtime-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: 12px;
-      margin-bottom: 16px;
+      min-height: 92px;
+      padding: 16px 18px;
+      cursor: pointer;
+      list-style: none;
     }
+    .runtime-summary::-webkit-details-marker { display: none; }
     .runtime-id {
       display: flex;
       min-width: 0;
@@ -1268,14 +1254,14 @@ const runtimesPageHTML = `<!doctype html>
     .runtime-id > div { min-width: 0; }
     .runtime-mark {
       display: inline-grid;
-      width: 46px;
-      height: 46px;
+      width: 42px;
+      height: 42px;
       flex: 0 0 auto;
       place-items: center;
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(31, 196, 31, 0.28);
       border-radius: 8px;
-      background: color-mix(in srgb, var(--accent, var(--green)) 18%, #11141a);
-      color: var(--text);
+      background: rgba(31, 196, 31, 0.1);
+      color: var(--site-accent);
       font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.02em;
@@ -1283,33 +1269,44 @@ const runtimesPageHTML = `<!doctype html>
     h2 {
       margin: 0;
       overflow: hidden;
-      font-size: 25px;
+      color: var(--site-text);
+      font-size: 20px;
       line-height: 1.1;
       letter-spacing: 0;
       text-overflow: ellipsis;
       white-space: nowrap;
+      transition: color 160ms ease;
     }
+    .runtime-card:hover h2,
+    .runtime-card:focus-within h2 { color: var(--site-accent); }
     .version {
       margin-top: 5px;
-      color: var(--muted);
+      color: var(--site-muted);
       font-size: 13px;
+    }
+    .runtime-snapshot {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 7px;
     }
     .status {
       display: inline-flex;
       align-items: center;
       gap: 7px;
       flex: 0 0 auto;
-      min-height: 28px;
-      padding: 0 9px;
+      min-height: 26px;
+      padding: 0 8px;
       border-radius: 999px;
       color: var(--amber);
       background: rgba(240, 186, 99, 0.11);
       font-size: 12px;
-      font-weight: 820;
+      font-weight: 800;
     }
     .is-active .status {
-      color: #bff6d4;
-      background: rgba(87, 214, 141, 0.13);
+      color: var(--site-accent);
+      background: rgba(31, 196, 31, 0.1);
     }
     .status-dot {
       width: 7px;
@@ -1317,6 +1314,35 @@ const runtimesPageHTML = `<!doctype html>
       border-radius: 999px;
       background: currentColor;
       box-shadow: 0 0 18px currentColor;
+    }
+    .summary-chip,
+    .runtime-toggle {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      max-width: 180px;
+      padding: 0 8px;
+      border: 1px solid var(--site-border);
+      border-radius: 999px;
+      color: var(--site-tag-color);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .summary-chip {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .runtime-toggle {
+      color: var(--site-accent);
+      border-color: rgba(31, 196, 31, 0.28);
+      background: rgba(31, 196, 31, 0.06);
+    }
+    .runtime-toggle::after { content: "details"; }
+    .runtime-card[open] .runtime-toggle::after { content: "hide"; }
+    .runtime-detail {
+      display: grid;
+      gap: 14px;
+      padding: 0 18px 18px;
     }
     dl {
       display: grid;
@@ -1326,18 +1352,17 @@ const runtimesPageHTML = `<!doctype html>
     .runtime-meta {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       padding: 12px;
-      border: 1px solid var(--line-soft);
+      border: 1px solid var(--site-border);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.025);
+      background: rgba(255, 255, 255, 0.02);
     }
     .runtime-limits {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-top: 16px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
     dt, .command-label {
-      color: var(--muted);
+      color: var(--site-muted);
       font-size: 11px;
-      font-weight: 820;
+      font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
@@ -1345,67 +1370,58 @@ const runtimesPageHTML = `<!doctype html>
       min-width: 0;
       margin: 4px 0 0;
       overflow: hidden;
-      color: var(--text);
+      color: var(--site-text);
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
     .command {
       display: grid;
       gap: 6px;
-      margin-top: 14px;
     }
     code {
       display: block;
-      min-height: 38px;
+      min-height: 36px;
       overflow-wrap: anywhere;
       padding: 9px 10px;
-      border: 1px solid var(--line-soft);
+      border: 1px solid var(--site-border);
       border-radius: 6px;
-      background: var(--code);
-      color: var(--text);
+      background: var(--code-bg);
+      color: var(--site-text);
       font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       white-space: pre-wrap;
     }
-    .lang-c { --accent: #64c7e8; }
-    .lang-cpp { --accent: #6f9cff; }
-    .lang-csharp { --accent: #b984ff; }
-    .lang-go { --accent: #57d6c7; }
-    .lang-java { --accent: #f0ba63; }
-    .lang-javascript { --accent: #f4d35e; }
-    .lang-python { --accent: #7ab8ff; }
-    .lang-r { --accent: #78a7ff; }
-    .lang-rust { --accent: #ee8f73; }
-    .lang-typescript { --accent: #69a7ff; }
-    .lang-csharp .runtime-mark,
-    .lang-javascript .runtime-mark,
-    .lang-rust .runtime-mark {
-      color: #fff8ea;
-    }
     footer {
       margin-top: 18px;
-      color: var(--muted);
+      color: var(--site-muted);
       font-size: 12px;
       text-align: right;
     }
-    @media (max-width: 700px) {
-      main { width: min(100vw - 20px, 1220px); padding: 18px 0 34px; }
-      .page-head { align-items: flex-start; flex-direction: column; min-height: 0; padding: 20px; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    @media (max-width: 820px) {
+      main { width: min(100vw - 20px, 1120px); padding: 18px 0 34px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .stats { width: 100%; }
       .toolbar { align-items: flex-start; flex-direction: column; gap: 5px; }
       .toolbar-note { text-align: left; }
-      .grid { grid-template-columns: 1fr; }
-      .runtime-head { align-items: flex-start; }
-      .runtime-limits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .runtime-list { grid-template-columns: 1fr; }
+      .runtime-summary { min-height: 0; }
+      .runtime-limits,
+      .runtime-meta,
+      .command-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <main>
     <header class="page-head">
-      <div>
+      <div class="page-copy">
         <p class="eyebrow">run.diesw.tech</p>
         <h1>Sandkasten Runtimes</h1>
-        <p class="subtitle">Live language runtimes, entry files, command phases, and default execution limits.</p>
+        <p class="subtitle">Compact runtime index. Open a runtime to inspect commands and full default limits.</p>
       </div>
       <section class="stats" aria-label="Runtime summary">
         <div class="stat"><span>active</span><strong>{{.ActiveCount}}</strong></div>
@@ -1415,12 +1431,12 @@ const runtimesPageHTML = `<!doctype html>
     </header>
     <div class="toolbar">
       <h2 class="toolbar-title">Available runtimes</h2>
-      <div class="toolbar-note">Default limits shown per job phase</div>
+      <div class="toolbar-note">Collapsed by default; expand only what you need</div>
     </div>
-    <section class="grid" aria-label="Runtime languages">
+    <section class="runtime-list" aria-label="Runtime languages">
       {{range .Runtimes}}
-      <article class="lang-{{.LanguageClass}} {{if .Active}}is-active{{end}}">
-        <div class="runtime-head">
+      <details class="runtime-card lang-{{.LanguageClass}} {{if .Active}}is-active{{end}}">
+        <summary class="runtime-summary">
           <div class="runtime-id">
             <span class="runtime-mark">{{.Badge}}</span>
             <div>
@@ -1428,28 +1444,38 @@ const runtimesPageHTML = `<!doctype html>
               <div class="version">{{.Version}}</div>
             </div>
           </div>
-          <span class="status"><span class="status-dot"></span>{{.Status}}</span>
+          <div class="runtime-snapshot" aria-label="Runtime summary">
+            <span class="status"><span class="status-dot"></span>{{.Status}}</span>
+            <span class="summary-chip">entry {{.DefaultEntrypoint}}</span>
+            <span class="summary-chip">run {{.RunTimeout}}</span>
+            <span class="summary-chip">mem {{.MemoryLimit}}</span>
+            <span class="runtime-toggle" aria-hidden="true"></span>
+          </div>
+        </summary>
+        <div class="runtime-detail">
+          <dl class="runtime-meta">
+            <div><dt>entry</dt><dd>{{.DefaultEntrypoint}}</dd></div>
+            <div><dt>aliases</dt><dd>{{.Aliases}}</dd></div>
+          </dl>
+          <div class="command-grid">
+            <div class="command">
+              <span class="command-label">compile</span>
+              <code>{{.CompileCommand}}</code>
+            </div>
+            <div class="command">
+              <span class="command-label">run</span>
+              <code>{{.RunCommand}}</code>
+            </div>
+          </div>
+          <dl class="runtime-limits">
+            <div><dt>compile</dt><dd>{{.CompileTimeout}}</dd></div>
+            <div><dt>run</dt><dd>{{.RunTimeout}}</dd></div>
+            <div><dt>memory</dt><dd>{{.MemoryLimit}}</dd></div>
+            <div><dt>cpu</dt><dd>{{.CPUMillis}}</dd></div>
+            <div><dt>output</dt><dd>{{.OutputLimit}}</dd></div>
+          </dl>
         </div>
-        <dl class="runtime-meta">
-          <div><dt>entry</dt><dd>{{.DefaultEntrypoint}}</dd></div>
-          <div><dt>aliases</dt><dd>{{.Aliases}}</dd></div>
-        </dl>
-        <div class="command">
-          <span class="command-label">compile</span>
-          <code>{{.CompileCommand}}</code>
-        </div>
-        <div class="command">
-          <span class="command-label">run</span>
-          <code>{{.RunCommand}}</code>
-        </div>
-        <dl class="runtime-limits">
-          <div><dt>compile</dt><dd>{{.CompileTimeout}}</dd></div>
-          <div><dt>run</dt><dd>{{.RunTimeout}}</dd></div>
-          <div><dt>memory</dt><dd>{{.MemoryLimit}}</dd></div>
-          <div><dt>cpu</dt><dd>{{.CPUMillis}}</dd></div>
-          <div><dt>output</dt><dd>{{.OutputLimit}}</dd></div>
-        </dl>
-      </article>
+      </details>
       {{end}}
     </section>
     <footer>generated {{.GeneratedAt}}</footer>
