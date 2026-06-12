@@ -1135,6 +1135,174 @@ mod tests {
     }
 
     #[test]
+    fn fortran_plan_compiles_with_gfortran() {
+        let job = job("f90", "main.f90");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "gfortran");
+        assert_eq!(plan.compile.args[0], "-O2");
+        assert_eq!(plan.compile.args[1], "-pipe");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.f90")
+        );
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
+    fn pascal_plan_compiles_with_fpc() {
+        let job = job("freepascal", "main.pas");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "fpc");
+        assert_eq!(plan.compile.args[0], "-O2");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-FE.laeufer-bin"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-omain"));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.pas")
+        );
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
+    fn assembly_plan_uses_gcc_assembler_mode() {
+        let job = job("asm", "main.s");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "gcc");
+        assert_eq!(plan.compile.args[0], "-x");
+        assert_eq!(plan.compile.args[1], "assembler");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-no-pie"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(plan.compile.args.last().map(String::as_str), Some("main.s"));
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
+    fn ocaml_plan_compiles_native_binary() {
+        let job = job("ml", "main.ml");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "ocamlopt");
+        assert_eq!(plan.compile.args[0], "-o");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.ml")
+        );
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
+    fn vlang_plan_uses_vv_entrypoint_to_avoid_coq_conflict() {
+        let job = job("v", "main.vv");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "v");
+        assert_eq!(plan.compile.args[0], "-prod");
+        assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.vv")
+        );
+        assert_eq!(plan.compile.memory_limit_bytes, 128 * 1024 * 1024);
+        assert!(plan.run.program.ends_with(".laeufer-bin/main"));
+    }
+
+    #[test]
+    fn octave_plan_disables_startup_files() {
+        let job = job("gnu-octave", "main.m");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "octave-cli");
+        for flag in ["--no-gui", "--no-history", "--norc", "--silent"] {
+            assert!(plan.compile.args.iter().any(|arg| arg == flag));
+            assert!(plan.run.args.iter().any(|arg| arg == flag));
+        }
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("parse") && arg.contains("main.m")));
+        assert_eq!(plan.run.program, "octave-cli");
+        assert_eq!(plan.run.args.last().map(String::as_str), Some("main.m"));
+    }
+
+    #[test]
+    fn gleam_plan_builds_private_erlang_project() {
+        let job = job("gleamlang", "src/main.gleam");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains(".laeufer-cache/gleam-project")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("manifest.toml") && arg.contains("packages = [")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("gleam build --target erlang")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("src/main.gleam")
+        );
+        assert_eq!(plan.run.program, "erl");
+        assert!(plan.run.args.iter().any(|arg| arg == "-noshell"));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains(".laeufer-cache/gleam-project/build/dev/erlang")));
+        assert!(plan.run.args.iter().any(|arg| arg == "main"));
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 
@@ -1158,6 +1326,11 @@ mod tests {
 
         assert_eq!(layout.file_count, 1);
         assert!(dir.path().join("src/main.py").is_file());
+    }
+
+    fn assert_compile_run_seccomp(plan: &BuildPlan) {
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
     }
 
     fn job(language: &str, entrypoint: &str) -> Job {

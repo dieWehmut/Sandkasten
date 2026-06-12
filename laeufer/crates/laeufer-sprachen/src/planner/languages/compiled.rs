@@ -389,6 +389,27 @@ pub(in crate::planner) fn plan_fsharp(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_fortran(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    plan_native(
+        job,
+        source_dir,
+        env,
+        NativeCompiler {
+            program: "gfortran",
+            args: vec!["-O2", "-pipe"],
+            output_name: "main",
+        },
+        entrypoint,
+        compile_memory_limit_bytes,
+    )
+}
+
 pub(in crate::planner) fn plan_haskell(
     job: &Job,
     source_dir: PathBuf,
@@ -409,6 +430,130 @@ pub(in crate::planner) fn plan_haskell(
             "-tmpdir".to_owned(),
             tmp_dir.to_string_lossy().into_owned(),
             "-i.".to_owned(),
+            "-o".to_owned(),
+            binary_path.to_string_lossy().into_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        binary_path.to_string_lossy().into_owned(),
+        job.args.clone(),
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_pascal(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
+    let compile = compile_command_plan(
+        "fpc",
+        vec![
+            "-O2".to_owned(),
+            format!("-FE{RUNNER_BIN_DIR}"),
+            "-omain".to_owned(),
+            entrypoint.to_string_lossy().into_owned(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        binary_path.to_string_lossy().into_owned(),
+        job.args.clone(),
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_assembly(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    plan_native(
+        job,
+        source_dir,
+        env,
+        NativeCompiler {
+            program: "gcc",
+            args: vec!["-x", "assembler", "-no-pie"],
+            output_name: "main",
+        },
+        entrypoint,
+        compile_memory_limit_bytes,
+    )
+}
+
+pub(in crate::planner) fn plan_ocaml(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    plan_native(
+        job,
+        source_dir,
+        env,
+        NativeCompiler {
+            program: "ocamlopt",
+            args: Vec::new(),
+            output_name: "main",
+        },
+        entrypoint,
+        compile_memory_limit_bytes,
+    )
+}
+
+pub(in crate::planner) fn plan_vlang(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let binary_path = source_dir.join(RUNNER_BIN_DIR).join("main");
+    let compile = compile_command_plan(
+        "v",
+        vec![
+            "-prod".to_owned(),
             "-o".to_owned(),
             binary_path.to_string_lossy().into_owned(),
             entrypoint.to_string_lossy().into_owned(),

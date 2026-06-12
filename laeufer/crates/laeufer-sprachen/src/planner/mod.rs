@@ -51,6 +51,13 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "fortran" => Ok(languages::plan_fortran(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "rust" => Ok(languages::plan_rust(
             job,
             source_dir,
@@ -116,6 +123,13 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "gdscript" => Ok(languages::plan_gdscript(job, source_dir, env, entrypoint)),
+        "gleam" => Ok(languages::plan_gleam(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "haskell" => Ok(languages::plan_haskell(
             job,
             source_dir,
@@ -144,6 +158,28 @@ pub(crate) fn plan(
         "nextjs" => Ok(languages::plan_nextjs(job, source_dir, env, entrypoint)),
         "nextflow" => Ok(languages::plan_nextflow(job, source_dir, env, entrypoint)),
         "nim" => Ok(languages::plan_nim(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
+        "octave" => Ok(languages::plan_octave(job, source_dir, env, entrypoint)),
+        "ocaml" => Ok(languages::plan_ocaml(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
+        "pascal" => Ok(languages::plan_pascal(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
+        "assembly" => Ok(languages::plan_assembly(
             job,
             source_dir,
             env,
@@ -179,6 +215,13 @@ pub(crate) fn plan(
         )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
         "tsx" => Ok(languages::plan_tsx(job, source_dir, env, entrypoint)),
+        "vlang" => Ok(languages::plan_vlang(
+            job,
+            source_dir,
+            env,
+            entrypoint,
+            compile_memory_limit_bytes,
+        )),
         "vue3" => Ok(languages::plan_vue3(job, source_dir, env, entrypoint)),
         "wdl" => Ok(languages::plan_wdl(job, source_dir, env, entrypoint)),
         "zig" => Ok(languages::plan_zig(

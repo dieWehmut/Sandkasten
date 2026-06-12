@@ -1,7 +1,7 @@
 use laeufer_core::{BuildPlan, Job};
 use std::path::PathBuf;
 
-use crate::constants::{RUNNER_BIN_DIR, RUNNER_TMP_DIR};
+use crate::constants::{RUNNER_BIN_DIR, RUNNER_CACHE_DIR, RUNNER_TMP_DIR};
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
@@ -16,6 +16,27 @@ const TAILWIND_BUILD_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
 mkdir -p .laeufer-bin
 tailwindcss -i "$entrypoint" -o .laeufer-bin/main.css --content "./**/*.{html,js,jsx,ts,tsx,vue,css}" --minify >/dev/null
+"#;
+const GLEAM_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+project=".laeufer-cache/gleam-project"
+rm -rf "$project"
+mkdir -p "$project/src"
+cat > "$project/gleam.toml" <<'EOF'
+name = "sandkasten_job"
+version = "1.0.0"
+target = "erlang"
+description = "Sandkasten generated Gleam project"
+licences = ["Apache-2.0"]
+EOF
+cat > "$project/manifest.toml" <<'EOF'
+packages = [
+]
+
+[requirements]
+EOF
+cp "$entrypoint" "$project/src/main.gleam"
+gleam build --target erlang --root "$project"
 "#;
 const TSX_BUILD_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
@@ -466,6 +487,104 @@ pub(in crate::planner) fn plan_tailwindcss(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_octave(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let mut compile_args = octave_base_args();
+    compile_args.extend([
+        "--eval".to_owned(),
+        format!("parse({}, false);", octave_string_literal(&entrypoint)),
+    ]);
+    let compile = compile_command_plan(
+        "octave-cli",
+        compile_args,
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = octave_base_args();
+    run_args.push(entrypoint);
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "octave-cli",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_gleam(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+    compile_memory_limit_bytes: u64,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            GLEAM_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: compile_memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![
+        "-noshell".to_owned(),
+        "-pa".to_owned(),
+        format!("{RUNNER_CACHE_DIR}/gleam-project/build/dev/erlang/*/ebin"),
+        "-s".to_owned(),
+        "main".to_owned(),
+        "main".to_owned(),
+        "-s".to_owned(),
+        "init".to_owned(),
+        "stop".to_owned(),
+    ];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "erl",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(in crate::planner) fn plan_tsx(
     job: &Job,
     source_dir: PathBuf,
@@ -705,6 +824,26 @@ fn clojure_string_literal(value: &str) -> String {
         }
     }
     output.push('"');
+    output
+}
+
+fn octave_base_args() -> Vec<String> {
+    ["--no-gui", "--no-history", "--norc", "--silent"]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
+fn octave_string_literal(value: &str) -> String {
+    let mut output = String::with_capacity(value.len() + 2);
+    output.push('\'');
+    for char in value.chars() {
+        match char {
+            '\'' => output.push_str("''"),
+            char => output.push(char),
+        }
+    }
+    output.push('\'');
     output
 }
 
