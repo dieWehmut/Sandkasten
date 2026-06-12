@@ -306,6 +306,139 @@ mod tests {
     }
 
     #[test]
+    fn frontend_markup_and_style_plans_emit_text_outputs() {
+        let html =
+            SprachenRuntime::plan(&job("html", "index.html"), PathBuf::from("/tmp/job/src"), 1)
+                .unwrap();
+        assert_eq!(html.compile.program, "node");
+        assert!(html
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("HTML source")));
+        assert_eq!(html.run.program, "cat");
+        assert_eq!(html.run.args, vec!["index.html"]);
+
+        let css = SprachenRuntime::plan(&job("css", "main.css"), PathBuf::from("/tmp/job/src"), 1)
+            .unwrap();
+        assert_eq!(css.compile.program, "node");
+        assert!(css
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("postcss.parse")));
+        assert_eq!(css.run.program, "cat");
+        assert_eq!(css.run.args, vec!["main.css"]);
+
+        let scss =
+            SprachenRuntime::plan(&job("sass", "main.scss"), PathBuf::from("/tmp/job/src"), 1)
+                .unwrap();
+        assert_eq!(scss.compile.program, "sass");
+        assert!(scss.compile.args.iter().any(|arg| arg == "--no-source-map"));
+        assert!(scss
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.css")));
+    }
+
+    #[test]
+    fn frontend_framework_plans_use_offline_node_tooling() {
+        let tsx =
+            SprachenRuntime::plan(&job("react", "main.tsx"), PathBuf::from("/tmp/job/src"), 1)
+                .unwrap();
+        assert_eq!(tsx.compile.program, "bash");
+        assert!(tsx
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("react-dom/server")));
+        assert!(tsx
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("esbuild .laeufer-cache/tsx/entry.cjs")));
+        assert_eq!(tsx.run.program, "node");
+        assert!(tsx
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.cjs")));
+        assert!(tsx
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "NODE_PATH" && value == "/usr/local/lib/node_modules"));
+
+        let vue = SprachenRuntime::plan(&job("vue", "main.vue"), PathBuf::from("/tmp/job/src"), 1)
+            .unwrap();
+        assert_eq!(vue.compile.program, "bash");
+        assert!(vue
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("@vue/compiler-sfc")));
+        assert_eq!(vue.run.program, "node");
+        assert!(vue
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/vue.cjs")));
+
+        let next = SprachenRuntime::plan(
+            &job("next", "app/page.tsx"),
+            PathBuf::from("/tmp/job/src"),
+            1,
+        )
+        .unwrap();
+        assert_eq!(next.compile.program, "bash");
+        assert!(next
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("react-dom/server")));
+        assert!(next
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("esbuild .laeufer-cache/next/entry.cjs")));
+        assert_eq!(next.run.program, "node");
+        assert!(next
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/next.cjs")));
+    }
+
+    #[test]
+    fn tailwind_plan_builds_css_with_content_scan() {
+        let plan = SprachenRuntime::plan(
+            &job("tailwind", "main.css"),
+            PathBuf::from("/tmp/job/src"),
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("tailwindcss -i \"$entrypoint\"")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("./**/*.{html,js,jsx,ts,tsx,vue,css}")));
+        assert_eq!(plan.run.program, "cat");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.ends_with(".laeufer-bin/main.css")));
+    }
+
+    #[test]
     fn zig_plan_builds_release_safe_binary_with_private_cache() {
         let job = job("zig", "main.zig");
         let plan =

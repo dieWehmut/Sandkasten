@@ -17,6 +17,67 @@ var (
 	ErrResourceExhausted = errors.New("resource exhausted")
 )
 
+const tsxBuildScript = `set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/tsx .laeufer-bin
+esbuild "$entrypoint" --bundle --platform=node --format=cjs --jsx=automatic --outfile=.laeufer-cache/tsx/component.cjs >/dev/null
+cat > .laeufer-cache/tsx/entry.cjs <<'NODE'
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const componentModule = require('./component.cjs');
+
+const Component = componentModule.default || componentModule.App || componentModule.Component;
+if (typeof Component === 'function') {
+  const props = {};
+  let rendered = Component(props);
+  if (rendered && typeof rendered.then === 'function') {
+    rendered
+      .then((element) => process.stdout.write(renderToStaticMarkup(element) + '\n'))
+      .catch((error) => { console.error(error && error.stack ? error.stack : error); process.exit(1); });
+  } else {
+    const element = React.isValidElement(rendered) ? rendered : React.createElement(Component, props);
+    process.stdout.write(renderToStaticMarkup(element) + '\n');
+  }
+}
+NODE
+esbuild .laeufer-cache/tsx/entry.cjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/main.cjs >/dev/null`
+
+const nextjsBuildScript = `set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/next .laeufer-bin
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const entrypoint = process.argv[2];
+let importPath = path.relative('.laeufer-cache/next', entrypoint).replace(/\\/g, '/');
+if (!importPath.startsWith('.')) importPath = './' + importPath;
+
+const output = [
+  "const React = require('react');",
+  "const { renderToStaticMarkup } = require('react-dom/server');",
+  "const page = require(" + JSON.stringify(importPath) + ");",
+  "",
+  "(async () => {",
+  "  const Page = page.default || page.Page || page;",
+  "  if (typeof Page !== 'function') {",
+  "    throw new Error('Next.js page module must export a default component function');",
+  "  }",
+  "  const props = { params: {}, searchParams: {} };",
+  "  let rendered = Page(props);",
+  "  if (rendered && typeof rendered.then === 'function') rendered = await rendered;",
+  "  const body = React.isValidElement(rendered)",
+  "    ? renderToStaticMarkup(rendered)",
+  "    : renderToStaticMarkup(React.createElement(Page, props));",
+  "  process.stdout.write('<!DOCTYPE html><html><body>' + body + '</body></html>\\n');",
+  "})().catch((error) => { console.error(error && error.stack ? error.stack : error); process.exit(1); });",
+  "",
+].join('\n');
+
+fs.writeFileSync('.laeufer-cache/next/entry.cjs', output);
+NODE
+esbuild .laeufer-cache/next/entry.cjs --bundle --platform=node --format=cjs --jsx=automatic --outfile=.laeufer-bin/next.cjs >/dev/null`
+
 type Repository interface {
 	CreateJob(ctx context.Context, job CreateJob) (*pb.SubmitGoProjectResponse, error)
 	GetJob(ctx context.Context, jobID string) (*pb.Job, error)
@@ -434,6 +495,8 @@ func NormalizeLanguage(language string) string {
 		return "clojure"
 	case "c++":
 		return "cpp"
+	case "css":
+		return "css"
 	case "cs", "c#":
 		return "csharp"
 	case "coqtop", "coqc":
@@ -452,6 +515,8 @@ func NormalizeLanguage(language string) string {
 		return "gdscript"
 	case "hs", "ghc":
 		return "haskell"
+	case "htm":
+		return "html"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -464,6 +529,8 @@ func NormalizeLanguage(language string) string {
 		return "lua"
 	case "mojolang":
 		return "mojo"
+	case "next", "next.js":
+		return "nextjs"
 	case "nf":
 		return "nextflow"
 	case "nimrod":
@@ -488,12 +555,20 @@ func NormalizeLanguage(language string) string {
 		return "rust"
 	case "sc":
 		return "scala"
+	case "sass":
+		return "scss"
 	case "sqlite", "sqlite3":
 		return "sql"
 	case "swift":
 		return "swift"
+	case "tailwind", "tailwind-css":
+		return "tailwindcss"
 	case "ts":
 		return "typescript"
+	case "jsx", "react", "react-tsx":
+		return "tsx"
+	case "vue", "vuejs":
+		return "vue3"
 	case "workflow-description-language":
 		return "wdl"
 	case "zig":
@@ -537,6 +612,8 @@ func defaultEntrypoint(language string) string {
 		return "main.cj"
 	case "clojure":
 		return "main.clj"
+	case "css":
+		return "main.css"
 	case "cpp":
 		return "main.cpp"
 	case "csharp":
@@ -557,6 +634,8 @@ func defaultEntrypoint(language string) string {
 		return "main.gd"
 	case "haskell":
 		return "Main.hs"
+	case "html":
+		return "index.html"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -571,6 +650,8 @@ func defaultEntrypoint(language string) string {
 		return "main.lua"
 	case "mojo":
 		return "main.mojo"
+	case "nextjs":
+		return "app/page.tsx"
 	case "nextflow":
 		return "main.nf"
 	case "nim":
@@ -595,12 +676,20 @@ func defaultEntrypoint(language string) string {
 		return "main.rs"
 	case "scala":
 		return "Main.scala"
+	case "scss":
+		return "main.scss"
 	case "sql":
 		return "main.sql"
 	case "swift":
 		return "main.swift"
+	case "tailwindcss":
+		return "main.css"
 	case "typescript":
 		return "main.ts"
+	case "tsx":
+		return "main.tsx"
+	case "vue3":
+		return "main.vue"
 	case "wdl":
 		return "main.wdl"
 	case "zig":
@@ -618,6 +707,8 @@ func runtimeAliases(language string) []string {
 		return []string{"cj", "cjc", "仓颉"}
 	case "clojure":
 		return []string{"clj"}
+	case "css":
+		return nil
 	case "go":
 		return []string{"golang"}
 	case "cpp":
@@ -640,6 +731,8 @@ func runtimeAliases(language string) []string {
 		return []string{"gd", "godot", "godot3"}
 	case "haskell":
 		return []string{"hs", "ghc"}
+	case "html":
+		return []string{"htm"}
 	case "javascript":
 		return []string{"js", "node"}
 	case "julia":
@@ -652,6 +745,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lua5.4"}
 	case "mojo":
 		return []string{"mojolang"}
+	case "nextjs":
+		return []string{"next", "next.js"}
 	case "nextflow":
 		return []string{"nf"}
 	case "nim":
@@ -676,12 +771,20 @@ func runtimeAliases(language string) []string {
 		return []string{"rs"}
 	case "scala":
 		return []string{"sc"}
+	case "scss":
+		return []string{"sass"}
 	case "sql":
 		return []string{"sqlite", "sqlite3"}
 	case "swift":
 		return nil
+	case "tailwindcss":
+		return []string{"tailwind", "tailwind-css"}
 	case "typescript":
 		return []string{"ts"}
+	case "tsx":
+		return []string{"jsx", "react", "react-tsx"}
+	case "vue3":
+		return []string{"vue", "vuejs"}
 	case "wdl":
 		return []string{"workflow-description-language"}
 	case "zig":
@@ -703,6 +806,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("cjc", "-O", "--jobs", "1", "--set-runtime-rpath", "-o", ".laeufer-bin/main", "main.cj")
 	case "clojure":
 		return phase("clojure", "-e", "(let [path \"main.clj\"] (binding [*read-eval* false] (with-open [r (java.io.PushbackReader. (clojure.java.io/reader path))] (loop [] (let [x (read r false ::eof)] (when-not (= x ::eof) (recur)))))))")
+	case "css":
+		return phase("node", "-e", "const fs = require('fs'); const postcss = require('postcss'); postcss.parse(fs.readFileSync(process.argv[1], 'utf8'), { from: process.argv[1] });", "main.css")
 	case "cpp":
 		return phase("g++", "-std=c++20", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.cpp")
 	case "csharp":
@@ -723,6 +828,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("godot3-server", "--no-window", "--disable-crash-handler", "--check-only", "--path", ".", "-s", "main.gd")
 	case "haskell":
 		return phase("ghc", "-O2", "-threaded", "-outputdir", ".laeufer-cache/haskell", "-tmpdir", ".laeufer-tmp", "-i.", "-o", ".laeufer-bin/main", "Main.hs")
+	case "html":
+		return phase("node", "-e", "const fs = require('fs'); const source = fs.readFileSync(process.argv[1], 'utf8'); if (!/<[a-zA-Z][\\s\\S]*>/.test(source)) { console.error('HTML source must contain at least one element tag'); process.exit(1); }", "index.html")
 	case "java":
 		return phase("javac", "-encoding", "UTF-8", "-d", ".laeufer-bin", "Main.java")
 	case "javascript":
@@ -737,6 +844,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("luac", "-p", "main.lua")
 	case "mojo":
 		return phase("mojo", "build", "main.mojo", "-o", ".laeufer-bin/main")
+	case "nextjs":
+		return phase("bash", "--noprofile", "--norc", "-c", nextjsBuildScript, "_", "app/page.tsx")
 	case "nextflow":
 		return phase("nextflow", "lint", "main.nf")
 	case "nim":
@@ -761,12 +870,20 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("rustc", "--edition=2021", "-O", "-o", ".laeufer-bin/main", "main.rs")
 	case "scala":
 		return phase("scalac", "-J-XX:ActiveProcessorCount=1", "-J-Djava.io.tmpdir=.laeufer-tmp", "-d", ".laeufer-bin", "Main.scala")
+	case "scss":
+		return phase("sass", "--no-source-map", "main.scss", ".laeufer-bin/main.css")
 	case "sql":
 		return phase("bash", "--noprofile", "--norc", "-c", "test -r \"$1\"", "_", "main.sql")
 	case "swift":
 		return phase("swiftc", "-O", "-o", ".laeufer-bin/main", "main.swift")
+	case "tailwindcss":
+		return phase("bash", "--noprofile", "--norc", "-c", "tailwindcss -i \"$1\" -o .laeufer-bin/main.css --content \"./**/*.{html,js,jsx,ts,tsx,vue,css}\" --minify >/dev/null", "_", "main.css")
 	case "typescript":
 		return phase("tsc", "--target", "ES2022", "--module", "commonjs", "--outDir", ".laeufer-bin", "main.ts")
+	case "tsx":
+		return phase("bash", "--noprofile", "--norc", "-c", tsxBuildScript, "_", "main.tsx")
+	case "vue3":
+		return phase("bash", "--noprofile", "--norc", "-c", "node - \"$1\" && esbuild .laeufer-cache/vue/entry.mjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/vue.cjs >/dev/null", "_", "main.vue")
 	case "wdl":
 		return phase("miniwdl", "check", "--no-outside-imports", "main.wdl")
 	case "zig":
@@ -784,6 +901,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("bash", "--noprofile", "--norc", "main.sh")
 	case "clojure":
 		return phase("clojure", "main.clj")
+	case "css":
+		return phase("cat", "main.css")
 	case "csharp":
 		return phase("mono", ".laeufer-bin/main.exe")
 	case "coq":
@@ -796,6 +915,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("dotnet", ".laeufer-bin/fsharp-project.dll")
 	case "gdscript":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/gdscript .laeufer-tmp/godot-home .laeufer-tmp/godot-tmp\nexport HOME=\"$PWD/.laeufer-tmp/godot-home\"\nexport TMPDIR=\"$PWD/.laeufer-tmp/godot-tmp\"\nstdout=.laeufer-cache/gdscript/stdout\nstderr=.laeufer-cache/gdscript/stderr\nif ! godot3-server --no-window --disable-crash-handler --path . -s \"$entrypoint\" >\"$stdout\" 2>\"$stderr\"; then\n    cat \"$stdout\" >&2\n    cat \"$stderr\" >&2\n    exit 1\nfi\npython3 - \"$stdout\" <<'PY'\nimport sys\n\nskip_banner_spacing = False\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    if line.startswith(\"Godot Engine v\"):\n        skip_banner_spacing = True\n        continue\n    if skip_banner_spacing and not line.strip():\n        skip_banner_spacing = False\n        continue\n    skip_banner_spacing = False\n    print(line, end=\"\")\nPY\n", "_", "main.gd")
+	case "html":
+		return phase("cat", "index.html")
 	case "java":
 		return phase("java", "-cp", ".laeufer-bin", "Main")
 	case "javascript":
@@ -808,6 +929,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("lean", "--run", "Main.lean")
 	case "lua":
 		return phase("lua", "main.lua")
+	case "nextjs":
+		return phase("node", ".laeufer-bin/next.cjs")
 	case "nextflow":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/nextflow .laeufer-cache/nextflow-work\nnextflow run \"$entrypoint\" -ansi-log false -offline -without-docker -without-podman -without-conda -without-spack -work-dir .laeufer-cache/nextflow-work > .laeufer-cache/nextflow/stdout 2> .laeufer-cache/nextflow/stderr\npython3 - .laeufer-cache/nextflow/stdout <<'PY'\nimport sys\n\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    stripped = line.strip()\n    if not stripped:\n        continue\n    if stripped.startswith(\"N E X T F L O W\") or stripped.startswith(\"Launching `\"):\n        continue\n    print(line, end=\"\")\nPY\n", "_", "main.nf")
 	case "perl":
@@ -828,12 +951,20 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("ruby", "--disable=gems", "main.rb")
 	case "scala":
 		return phase("scala", "-J-XX:ActiveProcessorCount=1", "-Dscala.usejavacp=true", "-cp", ".laeufer-bin", "Main")
+	case "scss":
+		return phase("cat", ".laeufer-bin/main.css")
 	case "sql":
 		return phase("bash", "--noprofile", "--norc", "-c", "exec sqlite3 -batch -bail -safe :memory: < \"$1\"", "_", "main.sql")
 	case "swift":
 		return phase(".laeufer-bin/main")
+	case "tailwindcss":
+		return phase("cat", ".laeufer-bin/main.css")
 	case "typescript":
 		return phase("node", ".laeufer-bin/main.js")
+	case "tsx":
+		return phase("node", ".laeufer-bin/main.cjs")
+	case "vue3":
+		return phase("node", ".laeufer-bin/vue.cjs")
 	case "wdl":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache\nrm -rf .laeufer-cache/wdl-run .laeufer-cache/wdl-output.json\nminiwdl run --no-color --no-outside-imports --dir .laeufer-cache/wdl-run -o .laeufer-cache/wdl-output.json \"$entrypoint\" >/dev/null\npython3 - .laeufer-cache/wdl-output.json <<'PY'\nimport json\nimport sys\n\nwith open(sys.argv[1], encoding=\"utf-8\") as handle:\n    outputs = json.load(handle).get(\"outputs\", {})\n\nfor key in sorted(outputs):\n    value = outputs[key]\n    if isinstance(value, str):\n        print(value)\nPY\n", "_", "main.wdl")
 	case "zig":

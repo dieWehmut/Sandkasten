@@ -74,6 +74,7 @@ RUN apt-get update && \
       nim \
       node-typescript \
       nodejs \
+      npm \
       perl \
       php-cli \
       openjdk-17-jdk-headless \
@@ -107,6 +108,22 @@ RUN apt-get update && \
       tzdata \
       xz-utils \
       zstd && \
+    npm install -g --prefix /usr/local \
+      sass@1.99.0 \
+      esbuild@0.24.2 \
+      react@18.3.1 \
+      react-dom@18.3.1 \
+      vue@3.5.38 \
+      @vue/compiler-sfc@3.5.38 \
+      @vue/server-renderer@3.5.38 \
+      next@14.2.35 \
+      tailwindcss@3.4.19 \
+      postcss@8.4.49 \
+      autoprefixer@10.4.20 \
+      typescript@5.8.3 \
+      @types/react@18.3.23 \
+      @types/react-dom@18.3.7 \
+      @types/node@20.19.1 && \
     curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
     ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
@@ -191,5 +208,8 @@ ENV CANGJIE_HOME=/opt/cangjie
 ENV LAEUFER_WORK_DIR=/var/lib/sandkasten/laeufer
 ENV PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
 ENV LAEUFER_RUNTIME_PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
+ENV NODE_PATH=/usr/local/lib/node_modules
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/laeufer"]

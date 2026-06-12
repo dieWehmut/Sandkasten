@@ -95,6 +95,12 @@ pub(crate) fn runner_env(job_dir: &Path) -> Vec<(String, String)> {
         ("QT_QPA_PLATFORM".to_owned(), "offscreen".to_owned()),
         ("QT_QUICK_BACKEND".to_owned(), "software".to_owned()),
         ("QML_DISABLE_DISK_CACHE".to_owned(), "1".to_owned()),
+        (
+            "NODE_PATH".to_owned(),
+            "/usr/local/lib/node_modules".to_owned(),
+        ),
+        ("NEXT_TELEMETRY_DISABLED".to_owned(), "1".to_owned()),
+        ("BROWSERSLIST_IGNORE_OLD_DATA".to_owned(), "1".to_owned()),
         ("PYTHONDONTWRITEBYTECODE".to_owned(), "1".to_owned()),
         ("PLTUSERHOME".to_owned(), racket_user_home),
         ("PLTCOMPILEDROOTS".to_owned(), racket_compiled_roots),

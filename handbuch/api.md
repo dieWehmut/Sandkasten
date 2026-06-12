@@ -61,6 +61,7 @@ Supported runtimes and default entrypoints:
 | `c` | - | `main.c` |
 | `cangjie` | `cj`, `cjc`, `仓颉` | `main.cj` |
 | `clojure` | `clj` | `main.clj` |
+| `css` | - | `main.css` |
 | `cpp` | `c++` | `main.cpp` |
 | `csharp` | `cs`, `c#` | `Program.cs` |
 | `coq` | `coqtop`, `coqc` | `main.v` |
@@ -71,6 +72,7 @@ Supported runtimes and default entrypoints:
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
 | `gdscript` | `gd`, `godot`, `godot3` | `main.gd` |
 | `haskell` | `hs`, `ghc` | `Main.hs` |
+| `html` | `htm` | `index.html` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |
 | `julia` | `jl` | `main.jl` |
@@ -78,6 +80,7 @@ Supported runtimes and default entrypoints:
 | `lean4` | `lean` | `Main.lean` |
 | `lua` | `lua5.4` | `main.lua` |
 | `mojo` | `mojolang` | `main.mojo` |
+| `nextjs` | `next`, `next.js` | `app/page.tsx` |
 | `nextflow` | `nf` | `main.nf` |
 | `nim` | `nimrod` | `main.nim` |
 | `perl` | `perl5` | `main.pl` |
@@ -90,13 +93,19 @@ Supported runtimes and default entrypoints:
 | `ruby` | `rb` | `main.rb` |
 | `rust` | `rs` | `main.rs` |
 | `scala` | `sc` | `Main.scala` |
+| `scss` | `sass` | `main.scss` |
 | `sql` | `sqlite`, `sqlite3` | `main.sql` |
 | `swift` | - | `main.swift` |
+| `tailwindcss` | `tailwind`, `tailwind-css` | `main.css` |
 | `typescript` | `ts` | `main.ts` |
+| `tsx` | `jsx`, `react`, `react-tsx` | `main.tsx` |
+| `vue3` | `vue`, `vuejs` | `main.vue` |
 | `wdl` | `workflow-description-language` | `main.wdl` |
 | `zig` | - | `main.zig` |
 
-The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file.
+The frontend runtimes are still sandboxed batch jobs. `html` and `css` validate and return source text, `scss` and `tailwindcss` return compiled CSS, `tsx` and `vue3` run server-side rendering through the bundled Node toolchain, and `nextjs` renders the default `app/page.tsx` component to static HTML.
+
+The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file. `nextjs` uses `app/page.tsx` as its generated source path when submitted through the HTTP source shortcut.
 
 ## Submit Limits
 

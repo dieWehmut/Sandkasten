@@ -355,6 +355,8 @@ func normalizeLanguage(language string) string {
 		return "clojure"
 	case "c++":
 		return "cpp"
+	case "css":
+		return "css"
 	case "cs", "c#":
 		return "csharp"
 	case "coqtop", "coqc":
@@ -373,6 +375,8 @@ func normalizeLanguage(language string) string {
 		return "gdscript"
 	case "hs", "ghc":
 		return "haskell"
+	case "htm":
+		return "html"
 	case "js", "node":
 		return "javascript"
 	case "jl":
@@ -385,6 +389,8 @@ func normalizeLanguage(language string) string {
 		return "lua"
 	case "mojolang":
 		return "mojo"
+	case "next", "next.js":
+		return "nextjs"
 	case "nf":
 		return "nextflow"
 	case "nimrod":
@@ -409,12 +415,20 @@ func normalizeLanguage(language string) string {
 		return "rust"
 	case "sc":
 		return "scala"
+	case "sass":
+		return "scss"
 	case "sqlite", "sqlite3":
 		return "sql"
 	case "swift":
 		return "swift"
+	case "tailwind", "tailwind-css":
+		return "tailwindcss"
 	case "ts":
 		return "typescript"
+	case "jsx", "react", "react-tsx":
+		return "tsx"
+	case "vue", "vuejs":
+		return "vue3"
 	case "workflow-description-language":
 		return "wdl"
 	case "zig":
@@ -436,6 +450,8 @@ func defaultEntrypoint(language string) string {
 		return "main.cj"
 	case "clojure":
 		return "main.clj"
+	case "css":
+		return "main.css"
 	case "cpp":
 		return "main.cpp"
 	case "csharp":
@@ -456,6 +472,8 @@ func defaultEntrypoint(language string) string {
 		return "main.gd"
 	case "haskell":
 		return "Main.hs"
+	case "html":
+		return "index.html"
 	case "java":
 		return "Main.java"
 	case "javascript":
@@ -470,6 +488,8 @@ func defaultEntrypoint(language string) string {
 		return "main.lua"
 	case "mojo":
 		return "main.mojo"
+	case "nextjs":
+		return "app/page.tsx"
 	case "nextflow":
 		return "main.nf"
 	case "nim":
@@ -494,12 +514,20 @@ func defaultEntrypoint(language string) string {
 		return "main.rs"
 	case "scala":
 		return "Main.scala"
+	case "scss":
+		return "main.scss"
 	case "sql":
 		return "main.sql"
 	case "swift":
 		return "main.swift"
+	case "tailwindcss":
+		return "main.css"
 	case "typescript":
 		return "main.ts"
+	case "tsx":
+		return "main.tsx"
+	case "vue3":
+		return "main.vue"
 	case "wdl":
 		return "main.wdl"
 	case "zig":
@@ -513,7 +541,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "gdscript", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
+	case "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "gdscript", "haskell", "html", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextjs", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typescript", "tsx", "vue3", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

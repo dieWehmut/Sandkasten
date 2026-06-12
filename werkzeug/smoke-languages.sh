@@ -84,6 +84,41 @@ run_language() {
   printf '  ok %s: %s\n' "$language" "$stdout"
 }
 
+run_language_contains() {
+  local language="$1"
+  local expected_fragment="$2"
+  local source="$3"
+  local memory="${4:-805306368}"
+  local source_json
+  source_json="$(printf '%s' "$source" | json_string)"
+
+  printf 'Submitting %s example...\n' "$language"
+  local response
+  response="$(
+    curl -fsS \
+      -H "authorization: Bearer ${API_TOKEN}" \
+      -H 'content-type: application/json' \
+      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
+      "http://${HTTP_ADDR}/v1/${language}/run"
+  )"
+  local status stdout got_language compile_stderr stderr job_id
+  status="$(jq -r '.status' <<<"$response")"
+  stdout="$(jq -r '.stdout' <<<"$response")"
+  got_language="$(jq -r '.language' <<<"$response")"
+  compile_stderr="$(jq -r '.compileStderr' <<<"$response")"
+  stderr="$(jq -r '.stderr' <<<"$response")"
+  job_id="$(jq -r '.jobId' <<<"$response")"
+
+  if [[ "$status" != "JOB_STATUS_SUCCEEDED" || "$got_language" != "$language" || "$stdout" != *"$expected_fragment"* ]]; then
+    printf '%s smoke failed\njob: %s\nstatus: %s\nlanguage: %s\nexpected fragment: %q\nstdout: %q\nstderr: %q\ncompileStderr: %q\nresponse: %s\n' \
+      "$language" "$job_id" "$status" "$got_language" "$expected_fragment" "$stdout" "$stderr" "$compile_stderr" "$response" >&2
+    printf 'runner log:\n' >&2
+    cat /tmp/sandkasten-runner-smoke-languages.log >&2
+    exit 1
+  fi
+  printf '  ok %s contains: %s\n' "$language" "$expected_fragment"
+}
+
 need_tool go "Install Go 1.25+ for the API module."
 need_tool cargo "Install Rust/Cargo for the runner."
 need_tool grpcurl "Install grpcurl or run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest"
@@ -118,6 +153,9 @@ need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool nextflow "Install Nextflow for Nextflow jobs."
 need_runtime_tool nim "Install Nim for Nim jobs."
 need_runtime_tool node "Install Node.js for JavaScript jobs."
+need_runtime_tool sass "Install Sass for SCSS jobs."
+need_runtime_tool esbuild "Install esbuild for TSX/Vue jobs."
+need_runtime_tool tailwindcss "Install Tailwind CSS CLI for Tailwind CSS jobs."
 need_runtime_tool perl "Install Perl for Perl jobs."
 need_runtime_tool php "Install PHP CLI for PHP jobs."
 need_runtime_tool swipl "Install SWI-Prolog for Prolog jobs."
@@ -222,6 +260,8 @@ run_language cangjie "hello, cangjie" 'main() {
 
 run_language clojure "hello, clojure" '(println "hello, clojure")'
 
+run_language css "main { color: #0f766e; }" 'main { color: #0f766e; }'
+
 run_language c "hello, c" '#include <stdio.h>
 int main(void){puts("hello, c");return 0;}'
 
@@ -255,6 +295,8 @@ func _init():
 run_language haskell "hello, haskell" 'main :: IO ()
 main = putStrLn "hello, haskell"' 1073741824
 
+run_language html "<main>Hello, HTML</main>" '<main>Hello, HTML</main>'
+
 run_language java "hello, java" 'public class Main {
   public static void main(String[] args) { System.out.println("hello, java"); }
 }'
@@ -273,6 +315,10 @@ run_language lua "hello, lua" 'print("hello, lua")'
 
 run_language mojo "hello, mojo" 'def main():
     print("hello, mojo")' 1073741824
+
+run_language_contains nextjs "<main>Hello, Next</main>" 'export default function Page() {
+  return <main>Hello, Next</main>;
+}' 1073741824
 
 run_language nextflow "hello, nextflow" 'workflow {
   println "hello, nextflow"
@@ -309,12 +355,27 @@ run_language scala "hello, scala" 'object Main extends App {
   println("hello, scala")
 }' 1073741824
 
+run_language scss ".button {
+  color: #0f766e;
+}" '$color: #0f766e;
+.button { color: $color; }'
+
 run_language sql "hello, sql" "select 'hello, sql';"
 
 run_language swift "hello, swift" 'print("hello, swift")' 1073741824
 
+run_language_contains tailwindcss ".text-red-500{" '/* text-red-500 font-bold */
+@tailwind utilities;'
+
 run_language typescript "hello, typescript" 'const msg: string = "hello, typescript";
 console.log(msg);'
+
+run_language tsx "<main>Hello, TSX</main>" 'export default function App() {
+  return <main>Hello, TSX</main>;
+}'
+
+run_language vue3 "<style>.greeting { color: teal; }</style><main class=\"greeting\">Hello, Vue</main>" '<template><main class="greeting">Hello, Vue</main></template>
+<style>.greeting { color: teal; }</style>'
 
 run_language wdl "hello, wdl" 'version 1.0
 workflow hello {

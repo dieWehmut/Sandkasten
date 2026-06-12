@@ -6,10 +6,134 @@ use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
 const CHECK_READABLE_SCRIPT: &str = "test -r \"$1\"";
+const HTML_SYNTAX_CHECK: &str = r#"const fs = require('fs'); const source = fs.readFileSync(process.argv[1], 'utf8'); if (!/<[a-zA-Z][\s\S]*>/.test(source)) { console.error('HTML source must contain at least one element tag'); process.exit(1); }"#;
+const CSS_SYNTAX_CHECK: &str = r#"const fs = require('fs'); const postcss = require('postcss'); postcss.parse(fs.readFileSync(process.argv[1], 'utf8'), { from: process.argv[1] });"#;
 const ELIXIR_SYNTAX_CHECK: &str =
     "path = List.first(System.argv()); Code.string_to_quoted!(File.read!(path), file: path)";
 const PROLOG_SYNTAX_CHECK: &str = "current_prolog_flag(argv, [Path|_]), setup_call_cleanup(open(Path, read, S, [encoding(utf8)]), (repeat, read_term(S, Term, [syntax_errors(error)]), (Term == end_of_file -> ! ; fail)), close(S)), halt.";
 const SQLITE_RUN_SCRIPT: &str = "exec sqlite3 -batch -bail -safe :memory: < \"$1\"";
+const TAILWIND_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-bin
+tailwindcss -i "$entrypoint" -o .laeufer-bin/main.css --content "./**/*.{html,js,jsx,ts,tsx,vue,css}" --minify >/dev/null
+"#;
+const TSX_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/tsx .laeufer-bin
+esbuild "$entrypoint" --bundle --platform=node --format=cjs --jsx=automatic --outfile=.laeufer-cache/tsx/component.cjs >/dev/null
+cat > .laeufer-cache/tsx/entry.cjs <<'NODE'
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const componentModule = require('./component.cjs');
+
+const Component = componentModule.default || componentModule.App || componentModule.Component;
+if (typeof Component === 'function') {
+  const props = {};
+  let rendered = Component(props);
+  if (rendered && typeof rendered.then === 'function') {
+    rendered
+      .then((element) => process.stdout.write(renderToStaticMarkup(element) + '\n'))
+      .catch((error) => { console.error(error && error.stack ? error.stack : error); process.exit(1); });
+  } else {
+    const element = React.isValidElement(rendered) ? rendered : React.createElement(Component, props);
+    process.stdout.write(renderToStaticMarkup(element) + '\n');
+  }
+}
+NODE
+esbuild .laeufer-cache/tsx/entry.cjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/main.cjs >/dev/null
+"#;
+const VUE_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/vue .laeufer-bin
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const { parse, compileScript, compileTemplate, rewriteDefault } = require('@vue/compiler-sfc');
+
+const entry = process.argv[2];
+const parsed = parse(fs.readFileSync(entry, 'utf8'), { filename: entry });
+if (parsed.errors && parsed.errors.length) {
+  for (const error of parsed.errors) console.error(error.message || String(error));
+  process.exit(1);
+}
+
+const descriptor = parsed.descriptor;
+let script = 'const __sfc__ = {};';
+if (descriptor.script || descriptor.scriptSetup) {
+  const compiled = compileScript(descriptor, {
+    id: 'sandkasten-vue',
+    inlineTemplate: true,
+    templateOptions: { ssr: true },
+  });
+  script = rewriteDefault(compiled.content, '__sfc__');
+} else if (descriptor.template) {
+  const compiledTemplate = compileTemplate({
+    source: descriptor.template.content,
+    filename: entry,
+    id: 'sandkasten-vue',
+    ssr: true,
+    cssVars: [],
+    compilerOptions: { scopeId: descriptor.styles.some((style) => style.scoped) ? 'data-v-sandkasten-vue' : undefined },
+  });
+  if (compiledTemplate.errors && compiledTemplate.errors.length) {
+    for (const error of compiledTemplate.errors) console.error(error.message || String(error));
+    process.exit(1);
+  }
+  const templateCode = compiledTemplate.code.replace('export function ssrRender', 'function ssrRender');
+  script = `${templateCode}
+const __sfc__ = { ssrRender };`;
+}
+const style = descriptor.styles.map((block) => block.content).join('\n');
+const output = `
+import { createSSRApp } from 'vue';
+import { renderToString } from '@vue/server-renderer';
+${script}
+;
+(async () => {
+  const html = await renderToString(createSSRApp(__sfc__));
+  const style = ${JSON.stringify(style)};
+  process.stdout.write((style ? '<style>' + style + '</style>' : '') + html + ${JSON.stringify('\n')});
+})().catch((error) => { console.error(error && error.stack ? error.stack : error); process.exit(1); });
+`;
+fs.writeFileSync('.laeufer-cache/vue/entry.mjs', output);
+NODE
+esbuild .laeufer-cache/vue/entry.mjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/vue.cjs >/dev/null
+"#;
+const NEXTJS_BUILD_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/next .laeufer-bin
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const entrypoint = process.argv[2];
+let importPath = path.relative('.laeufer-cache/next', entrypoint).replace(/\\/g, '/');
+if (!importPath.startsWith('.')) importPath = './' + importPath;
+
+const output = [
+  "const React = require('react');",
+  "const { renderToStaticMarkup } = require('react-dom/server');",
+  "const page = require(" + JSON.stringify(importPath) + ");",
+  "",
+  "(async () => {",
+  "  const Page = page.default || page.Page || page;",
+  "  if (typeof Page !== 'function') {",
+  "    throw new Error('Next.js page module must export a default component function');",
+  "  }",
+  "  const props = { params: {}, searchParams: {} };",
+  "  let rendered = Page(props);",
+  "  if (rendered && typeof rendered.then === 'function') rendered = await rendered;",
+  "  const body = React.isValidElement(rendered)",
+  "    ? renderToStaticMarkup(rendered)",
+  "    : renderToStaticMarkup(React.createElement(Page, props));",
+  "  process.stdout.write('<!DOCTYPE html><html><body>' + body + '</body></html>\\n');",
+  "})().catch((error) => { console.error(error && error.stack ? error.stack : error); process.exit(1); });",
+  "",
+].join('\n');
+
+fs.writeFileSync('.laeufer-cache/next/entry.cjs', output);
+NODE
+esbuild .laeufer-cache/next/entry.cjs --bundle --platform=node --format=cjs --jsx=automatic --outfile=.laeufer-bin/next.cjs >/dev/null
+"#;
 const WDL_RUN_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
 mkdir -p .laeufer-cache
@@ -172,6 +296,291 @@ pub(in crate::planner) fn plan_javascript(
     let run = run_command_plan(
         "node",
         run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_html(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "node",
+        vec![
+            "-e".to_owned(),
+            HTML_SYNTAX_CHECK.to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![entrypoint],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_css(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "node",
+        vec![
+            "-e".to_owned(),
+            CSS_SYNTAX_CHECK.to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![entrypoint],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_scss(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.css");
+    let compile = compile_command_plan(
+        "sass",
+        vec!["--no-source-map".to_owned(), entrypoint, output.clone()],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_tailwindcss(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.css");
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            TAILWIND_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_tsx(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            TSX_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![format!("{RUNNER_BIN_DIR}/main.cjs")];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "node",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_vue3(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            VUE_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "node",
+        vec![format!("{RUNNER_BIN_DIR}/vue.cjs")],
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_nextjs(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            NEXTJS_BUILD_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "node",
+        vec![format!("{RUNNER_BIN_DIR}/next.cjs")],
         env,
         source_dir,
         job.stdin.clone(),

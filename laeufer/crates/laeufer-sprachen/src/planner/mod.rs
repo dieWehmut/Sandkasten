@@ -43,6 +43,7 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "clojure" => Ok(languages::plan_clojure(job, source_dir, env, entrypoint)),
+        "css" => Ok(languages::plan_css(job, source_dir, env, entrypoint)),
         "cpp" => Ok(languages::plan_cpp(
             job,
             source_dir,
@@ -122,6 +123,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "html" => Ok(languages::plan_html(job, source_dir, env, entrypoint)),
         "javascript" => Ok(languages::plan_javascript(job, source_dir, env, entrypoint)),
         "julia" => Ok(languages::plan_julia(job, source_dir, env, entrypoint)),
         "lean4" => Ok(languages::plan_lean4(
@@ -139,6 +141,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "nextjs" => Ok(languages::plan_nextjs(job, source_dir, env, entrypoint)),
         "nextflow" => Ok(languages::plan_nextflow(job, source_dir, env, entrypoint)),
         "nim" => Ok(languages::plan_nim(
             job,
@@ -162,6 +165,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "scss" => Ok(languages::plan_scss(job, source_dir, env, entrypoint)),
         "sql" => Ok(languages::plan_sql(job, source_dir, env, entrypoint)),
         "swift" => Ok(languages::plan_swift(
             job,
@@ -170,7 +174,12 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "tailwindcss" => Ok(languages::plan_tailwindcss(
+            job, source_dir, env, entrypoint,
+        )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
+        "tsx" => Ok(languages::plan_tsx(job, source_dir, env, entrypoint)),
+        "vue3" => Ok(languages::plan_vue3(job, source_dir, env, entrypoint)),
         "wdl" => Ok(languages::plan_wdl(job, source_dir, env, entrypoint)),
         "zig" => Ok(languages::plan_zig(
             job,
