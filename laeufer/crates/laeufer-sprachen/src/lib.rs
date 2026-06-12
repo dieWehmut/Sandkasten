@@ -374,12 +374,11 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg == "--parallelBuild:1"));
-        assert!(plan.compile.args.iter().any(|arg| arg == "--nimcache"));
         assert!(plan
             .compile
             .args
             .iter()
-            .any(|arg| arg.ends_with(".laeufer-cache/nim")));
+            .any(|arg| arg.ends_with(".laeufer-cache/nim") && arg.starts_with("--nimcache:")));
         assert!(plan
             .compile
             .args

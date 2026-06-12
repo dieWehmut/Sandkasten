@@ -702,7 +702,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "nextflow":
 		return phase("nextflow", "lint", "main.nf")
 	case "nim":
-		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache", ".laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
+		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache:.laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
 	case "perl":
 		return phase("perl", "-c", "main.pl")
 	case "php":
