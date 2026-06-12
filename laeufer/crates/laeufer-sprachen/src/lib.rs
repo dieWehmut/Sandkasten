@@ -1303,6 +1303,115 @@ mod tests {
     }
 
     #[test]
+    fn markdown_plan_renders_safe_html_with_mermaid() {
+        let job = job("md", "main.md");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("markdown-it") && arg.contains("html: false")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("mmdc") && arg.contains("securityLevel")));
+        assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
+        assert_eq!(plan.run.program, "cat");
+        assert_eq!(plan.run.args, vec![".laeufer-bin/main.html"]);
+    }
+
+    #[test]
+    fn mdx_plan_compiles_to_static_html() {
+        let job = job("mdx", "main.mdx");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("@mdx-js/mdx") && arg.contains("renderToStaticMarkup")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("import/export statements are not supported")));
+        assert_eq!(
+            plan.compile.args.last().map(String::as_str),
+            Some("main.mdx")
+        );
+        assert_eq!(plan.run.program, "cat");
+        assert_eq!(plan.run.args, vec![".laeufer-bin/main.html"]);
+    }
+
+    #[test]
+    fn graphviz_plan_renders_svg_with_dot() {
+        let job = job("dot", "main.dot");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "dot");
+        assert_eq!(
+            plan.compile.args,
+            vec!["-Tsvg", "-o", ".laeufer-bin/main.svg", "main.dot"]
+        );
+        assert_eq!(plan.run.program, "cat");
+        assert_eq!(plan.run.args, vec![".laeufer-bin/main.svg"]);
+    }
+
+    #[test]
+    fn typst_plan_emits_svg() {
+        let job = job("typ", "main.typ");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "typst");
+        assert_eq!(
+            plan.compile.args,
+            vec![
+                "compile",
+                "--root",
+                ".",
+                "main.typ",
+                ".laeufer-bin/main.svg"
+            ]
+        );
+        assert_eq!(plan.run.program, "cat");
+        assert_eq!(plan.run.args, vec![".laeufer-bin/main.svg"]);
+    }
+
+    #[test]
+    fn latex_plan_checks_offline_with_tectonic() {
+        let job = job("tex", "main.tex");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_compile_run_seccomp(&plan);
+        assert_eq!(plan.compile.program, "tectonic");
+        assert_eq!(
+            plan.compile.args,
+            vec![
+                "--offline",
+                "--keep-logs",
+                "--outdir",
+                ".laeufer-bin",
+                "main.tex"
+            ]
+        );
+        assert_eq!(plan.run.program, "printf");
+        assert_eq!(plan.run.args, vec!["latex compiled\n"]);
+    }
+
+    #[test]
     fn entrypoint_rejects_traversal() {
         let job = job("python", "../main.py");
 

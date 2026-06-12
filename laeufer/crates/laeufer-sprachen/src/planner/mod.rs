@@ -130,6 +130,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "graphviz" => Ok(languages::plan_graphviz(job, source_dir, env, entrypoint)),
         "haskell" => Ok(languages::plan_haskell(
             job,
             source_dir,
@@ -147,7 +148,10 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "latex" => Ok(languages::plan_latex(job, source_dir, env, entrypoint)),
         "lua" => Ok(languages::plan_lua(job, source_dir, env, entrypoint)),
+        "markdown" => Ok(languages::plan_markdown(job, source_dir, env, entrypoint)),
+        "mdx" => Ok(languages::plan_mdx(job, source_dir, env, entrypoint)),
         "mojo" => Ok(languages::plan_mojo(
             job,
             source_dir,
@@ -215,6 +219,7 @@ pub(crate) fn plan(
         )),
         "typescript" => Ok(languages::plan_typescript(job, source_dir, env, entrypoint)),
         "tsx" => Ok(languages::plan_tsx(job, source_dir, env, entrypoint)),
+        "typst" => Ok(languages::plan_typst(job, source_dir, env, entrypoint)),
         "vlang" => Ok(languages::plan_vlang(
             job,
             source_dir,

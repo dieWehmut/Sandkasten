@@ -38,6 +38,72 @@ EOF
 cp "$entrypoint" "$project/src/main.gleam"
 gleam build --target erlang --root "$project"
 "#;
+const MARKDOWN_RENDER_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-bin .laeufer-cache/mermaid
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const childProcess = require('child_process');
+const MarkdownIt = require('markdown-it');
+
+const entrypoint = process.argv[2];
+const source = fs.readFileSync(entrypoint, 'utf8');
+const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
+const mermaidConfigPath = '.laeufer-cache/mermaid/config.json';
+fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
+
+const diagrams = [];
+const markdown = source.replace(/```mermaid[^\n]*\n([\s\S]*?)```/g, (_match, diagram) => {
+  const id = diagrams.length;
+  const placeholder = `SANDKASTEN_MERMAID_${id}`;
+  const input = `.laeufer-cache/mermaid/${id}.mmd`;
+  const output = `.laeufer-cache/mermaid/${id}.svg`;
+  fs.writeFileSync(input, diagram);
+  childProcess.execFileSync('mmdc', ['--quiet', '-i', input, '-o', output, '-c', mermaidConfigPath], { stdio: ['ignore', 'ignore', 'inherit'] });
+  diagrams.push({ placeholder, svg: fs.readFileSync(output, 'utf8') });
+  return placeholder;
+});
+
+let html = md.render(markdown);
+for (const diagram of diagrams) {
+  html = html.replace(`<p>${diagram.placeholder}</p>`, diagram.svg);
+  html = html.replace(diagram.placeholder, diagram.svg);
+}
+fs.writeFileSync('.laeufer-bin/main.html', html);
+NODE
+"#;
+const MDX_RENDER_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-bin .laeufer-cache/mdx
+node - "$entrypoint" <<'NODE'
+const fs = require('fs');
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+
+(async () => {
+  const entrypoint = process.argv[2];
+  const source = fs.readFileSync(entrypoint, 'utf8');
+  if (/^\s*(import|export)\s/m.test(source)) {
+    throw new Error('MDX import/export statements are not supported');
+  }
+  const { evaluate } = await import('@mdx-js/mdx');
+  const runtime = await import('react/jsx-runtime');
+  const module = await evaluate(source, {
+    ...runtime,
+    useMDXComponents: () => ({}),
+  });
+  const Component = module.default;
+  if (typeof Component !== 'function') {
+    throw new Error('MDX document must compile to a default component');
+  }
+  const html = renderToStaticMarkup(React.createElement(Component, {}));
+  fs.writeFileSync('.laeufer-bin/main.html', html + '\n');
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exit(1);
+});
+NODE
+"#;
 const TSX_BUILD_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
 mkdir -p .laeufer-cache/tsx .laeufer-bin
@@ -575,6 +641,216 @@ pub(in crate::planner) fn plan_gleam(
         env,
         source_dir,
         job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_markdown(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.html");
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            MARKDOWN_RENDER_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_mdx(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.html");
+    let compile = compile_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            MDX_RENDER_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_graphviz(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.svg");
+    let compile = compile_command_plan(
+        "dot",
+        vec![
+            "-Tsvg".to_owned(),
+            "-o".to_owned(),
+            output.clone(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_typst(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let output = format!("{RUNNER_BIN_DIR}/main.svg");
+    let compile = compile_command_plan(
+        "typst",
+        vec![
+            "compile".to_owned(),
+            "--root".to_owned(),
+            ".".to_owned(),
+            entrypoint,
+            output.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "cat",
+        vec![output],
+        env,
+        source_dir,
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_latex(
+    job: &Job,
+    source_dir: PathBuf,
+    env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "tectonic",
+        vec![
+            "--offline".to_owned(),
+            "--keep-logs".to_owned(),
+            "--outdir".to_owned(),
+            RUNNER_BIN_DIR.to_owned(),
+            entrypoint,
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "printf",
+        vec!["latex compiled\n".to_owned()],
+        env,
+        source_dir,
+        Default::default(),
         PhaseBudget {
             timeout: job.limits.run_timeout,
             memory_limit_bytes: job.limits.memory_limit_bytes,
