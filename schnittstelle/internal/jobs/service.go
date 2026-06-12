@@ -446,6 +446,8 @@ func NormalizeLanguage(language string) string {
 		return "lean4"
 	case "lua5.4":
 		return "lua"
+	case "perl5":
+		return "perl"
 	case "php8", "php8.2":
 		return "php"
 	case "pl", "swi-prolog", "swipl":
@@ -525,6 +527,8 @@ func defaultEntrypoint(language string) string {
 		return "Main.lean"
 	case "lua":
 		return "main.lua"
+	case "perl":
+		return "main.pl"
 	case "php":
 		return "main.php"
 	case "prolog":
@@ -578,6 +582,8 @@ func runtimeAliases(language string) []string {
 		return []string{"lean"}
 	case "lua":
 		return []string{"lua5.4"}
+	case "perl":
+		return []string{"perl5"}
 	case "php":
 		return []string{"php8", "php8.2"}
 	case "prolog":
@@ -635,6 +641,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
+	case "perl":
+		return phase("perl", "-c", "main.pl")
 	case "php":
 		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "-l", "main.php")
 	case "prolog":
@@ -686,6 +694,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("lean", "--run", "Main.lean")
 	case "lua":
 		return phase("lua", "main.lua")
+	case "perl":
+		return phase("perl", "main.pl")
 	case "php":
 		return phase("php", "-d", "variables_order=EGPCS", "-d", "opcache.enable_cli=0", "main.php")
 	case "prolog":

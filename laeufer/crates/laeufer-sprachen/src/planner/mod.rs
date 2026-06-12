@@ -94,6 +94,7 @@ pub(crate) fn plan(
             compile_memory_limit_bytes,
         )),
         "lua" => Ok(languages::plan_lua(job, source_dir, env, entrypoint)),
+        "perl" => Ok(languages::plan_perl(job, source_dir, env, entrypoint)),
         "php" => Ok(languages::plan_php(job, source_dir, env, entrypoint)),
         "prolog" => Ok(languages::plan_prolog(job, source_dir, env, entrypoint)),
         "python" => Ok(languages::plan_python(job, source_dir, env, entrypoint)),

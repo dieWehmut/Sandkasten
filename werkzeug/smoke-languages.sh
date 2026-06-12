@@ -106,6 +106,7 @@ need_runtime_tool luac "Install Lua compiler for Lua syntax checks."
 need_runtime_tool mcs "Install Mono mcs for C# jobs."
 need_runtime_tool mono "Install Mono runtime for C# jobs."
 need_runtime_tool node "Install Node.js for JavaScript jobs."
+need_runtime_tool perl "Install Perl for Perl jobs."
 need_runtime_tool php "Install PHP CLI for PHP jobs."
 need_runtime_tool swipl "Install SWI-Prolog for Prolog jobs."
 need_runtime_tool python3 "Install Python 3 for Python jobs."
@@ -230,6 +231,8 @@ run_language kotlin "hello, kotlin" 'fun main() {
 run_language lean4 "hello, lean4" 'def main : IO Unit := IO.println "hello, lean4"'
 
 run_language lua "hello, lua" 'print("hello, lua")'
+
+run_language perl "hello, perl" 'print "hello, perl\n";'
 
 run_language php "hello, php" '<?php echo "hello, php\n";'
 

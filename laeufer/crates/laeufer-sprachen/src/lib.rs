@@ -556,6 +556,20 @@ mod tests {
     }
 
     #[test]
+    fn perl_plan_checks_syntax_then_runs_with_perl() {
+        let job = job("perl5", "main.pl");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "perl");
+        assert_eq!(plan.compile.args, vec!["-c", "main.pl"]);
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
+        assert_eq!(plan.run.program, "perl");
+        assert_eq!(plan.run.args[0], "main.pl");
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
+    }
+
+    #[test]
     fn prolog_plan_parses_terms_without_consulting_then_runs_main() {
         let job = job("swipl", "main.pl");
         let plan =

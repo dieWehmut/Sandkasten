@@ -135,6 +135,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "kotlin", Version: "system"},
 			{Language: "lean4", Version: "system"},
 			{Language: "lua", Version: "system"},
+			{Language: "perl", Version: "system"},
 			{Language: "php", Version: "system"},
 			{Language: "prolog", Version: "system"},
 			{Language: "racket", Version: "system"},
@@ -208,6 +209,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.rb",
 			compilePrefix: []string{"ruby", "-c"},
 			runPrefix:     []string{"ruby", "--disable=gems"},
+		},
+		{
+			language:      "perl",
+			alias:         "perl5",
+			entrypoint:    "main.pl",
+			compilePrefix: []string{"perl", "-c"},
+			runPrefix:     []string{"perl", "main.pl"},
 		},
 		{
 			language:      "php",

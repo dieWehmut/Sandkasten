@@ -69,6 +69,7 @@ Supported runtimes and default entrypoints:
 | `kotlin` | `kt` | `Main.kt` |
 | `lean4` | `lean` | `Main.lean` |
 | `lua` | `lua5.4` | `main.lua` |
+| `perl` | `perl5` | `main.pl` |
 | `php` | `php8`, `php8.2` | `main.php` |
 | `prolog` | `pl`, `swi-prolog`, `swipl` | `main.pl` |
 | `python` | `py`, `python3` | `main.py` |

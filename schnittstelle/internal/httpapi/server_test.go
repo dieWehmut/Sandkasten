@@ -211,6 +211,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/kt/run", language: "kotlin", entrypoint: "Main.kt", source: `fun main(){ println("ok") }`},
 		{path: "/v1/lean/run", language: "lean4", entrypoint: "Main.lean", source: `def main : IO Unit := IO.println "ok"`},
 		{path: "/v1/lua5.4/run", language: "lua", entrypoint: "main.lua", source: `print("ok")`},
+		{path: "/v1/perl5/run", language: "perl", entrypoint: "main.pl", source: `print "ok\n";`},
 		{path: "/v1/php8.2/run", language: "php", entrypoint: "main.php", source: `<?php echo "ok\n";`},
 		{path: "/v1/swipl/run", language: "prolog", entrypoint: "main.pl", source: `main :- writeln(ok).`},
 		{path: "/v1/rkt/run", language: "racket", entrypoint: "main.rkt", source: "#lang racket/base\n(displayln \"ok\")"},

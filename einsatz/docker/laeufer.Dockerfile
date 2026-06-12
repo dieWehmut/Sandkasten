@@ -63,6 +63,7 @@ RUN apt-get update && \
       mono-runtime \
       node-typescript \
       nodejs \
+      perl \
       php-cli \
       openjdk-17-jdk-headless \
       python3 \
