@@ -369,6 +369,8 @@ func normalizeLanguage(language string) string {
 		return "erlang"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "gd", "godot", "godot3":
+		return "gdscript"
 	case "hs", "ghc":
 		return "haskell"
 	case "js", "node":
@@ -450,6 +452,8 @@ func defaultEntrypoint(language string) string {
 		return "main.erl"
 	case "fsharp":
 		return "main.fs"
+	case "gdscript":
+		return "main.gd"
 	case "haskell":
 		return "Main.hs"
 	case "java":
@@ -509,7 +513,7 @@ func sourceArchive(language, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
-	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
+	case "bash", "c", "cangjie", "clojure", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fsharp", "gdscript", "haskell", "java", "javascript", "julia", "kotlin", "lean4", "lua", "mojo", "nextflow", "nim", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "sql", "swift", "typescript", "wdl", "zig":
 		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)

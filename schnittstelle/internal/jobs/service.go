@@ -448,6 +448,8 @@ func NormalizeLanguage(language string) string {
 		return "erlang"
 	case "f#", "fs", "f-sharp", "f_sharp":
 		return "fsharp"
+	case "gd", "godot", "godot3":
+		return "gdscript"
 	case "hs", "ghc":
 		return "haskell"
 	case "js", "node":
@@ -551,6 +553,8 @@ func defaultEntrypoint(language string) string {
 		return "main.erl"
 	case "fsharp":
 		return "main.fs"
+	case "gdscript":
+		return "main.gd"
 	case "haskell":
 		return "Main.hs"
 	case "java":
@@ -632,6 +636,8 @@ func runtimeAliases(language string) []string {
 		return []string{"erl", "erts"}
 	case "fsharp":
 		return []string{"f#", "fs", "f-sharp", "f_sharp"}
+	case "gdscript":
+		return []string{"gd", "godot", "godot3"}
 	case "haskell":
 		return []string{"hs", "ghc"}
 	case "javascript":
@@ -713,6 +719,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("erlc", "+debug_info", "-o", ".laeufer-bin", "main.erl")
 	case "fsharp":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nproject=\".laeufer-cache/fsharp-project\"\nrm -rf \"$project\"\nmkdir -p \"$project\"\ncat > \"$project/fsharp-project.fsproj\" <<'EOF'\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n    <NuGetAudit>false</NuGetAudit>\n  </PropertyGroup>\n  <ItemGroup>\n    <Compile Include=\"Program.fs\" />\n  </ItemGroup>\n</Project>\nEOF\ncp \"$entrypoint\" \"$project/Program.fs\"\ndotnet restore \"$project\" --ignore-failed-sources --disable-parallel -p:NuGetAudit=false\ndotnet build \"$project\" --no-restore -c Release -p:UseSharedCompilation=false -p:RunAnalyzers=false -p:NuGetAudit=false -o .laeufer-bin\n", "_", "main.fs")
+	case "gdscript":
+		return phase("godot3-server", "--no-window", "--disable-crash-handler", "--check-only", "--path", ".", "-s", "main.gd")
 	case "haskell":
 		return phase("ghc", "-O2", "-threaded", "-outputdir", ".laeufer-cache/haskell", "-tmpdir", ".laeufer-tmp", "-i.", "-o", ".laeufer-bin/main", "Main.hs")
 	case "java":
@@ -786,6 +794,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase("erl", "-noshell", "-pa", ".laeufer-bin", "-s", "main", "main", "-s", "init", "stop")
 	case "fsharp":
 		return phase("dotnet", ".laeufer-bin/fsharp-project.dll")
+	case "gdscript":
+		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/gdscript .laeufer-tmp/godot-home .laeufer-tmp/godot-tmp\nexport HOME=\"$PWD/.laeufer-tmp/godot-home\"\nexport TMPDIR=\"$PWD/.laeufer-tmp/godot-tmp\"\nstdout=.laeufer-cache/gdscript/stdout\nstderr=.laeufer-cache/gdscript/stderr\nif ! godot3-server --no-window --disable-crash-handler --path . -s \"$entrypoint\" >\"$stdout\" 2>\"$stderr\"; then\n    cat \"$stdout\" >&2\n    cat \"$stderr\" >&2\n    exit 1\nfi\npython3 - \"$stdout\" <<'PY'\nimport sys\n\nskip_banner_spacing = False\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    if line.startswith(\"Godot Engine v\"):\n        skip_banner_spacing = True\n        continue\n    if skip_banner_spacing and not line.strip():\n        skip_banner_spacing = False\n        continue\n    skip_banner_spacing = False\n    print(line, end=\"\")\nPY\n", "_", "main.gd")
 	case "java":
 		return phase("java", "-cp", ".laeufer-bin", "Main")
 	case "javascript":

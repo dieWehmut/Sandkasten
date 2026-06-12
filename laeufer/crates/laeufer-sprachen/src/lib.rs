@@ -567,6 +567,51 @@ mod tests {
     }
 
     #[test]
+    fn gdscript_plan_checks_with_godot_server_and_filters_banner() {
+        let job = job("godot", "main.gd");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "godot3-server");
+        assert_eq!(
+            plan.compile.args,
+            vec![
+                "--no-window",
+                "--disable-crash-handler",
+                "--check-only",
+                "--path",
+                ".",
+                "-s",
+                "main.gd"
+            ]
+        );
+        assert_eq!(plan.compile.seccomp_profile, SeccompProfile::Compile);
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("godot3-server --no-window --disable-crash-handler")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("export HOME=\"$PWD/.laeufer-tmp/godot-home\"")));
+        assert!(plan
+            .run
+            .args
+            .iter()
+            .any(|arg| arg.contains("Godot Engine v")));
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "LANG" && value == "en_US"));
+        assert!(!plan.run.env.iter().any(|(key, _)| key == "LC_ALL"));
+        assert_eq!(plan.run.seccomp_profile, SeccompProfile::Run);
+    }
+
+    #[test]
     fn r_plan_parses_then_runs_with_rscript_vanilla() {
         let job = job("r", "main.R");
         let plan =

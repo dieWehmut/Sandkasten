@@ -103,6 +103,7 @@ need_runtime_tool elixir "Install Elixir for Elixir jobs."
 need_runtime_tool erlc "Install Erlang compiler for Erlang jobs."
 need_runtime_tool erl "Install Erlang runtime for Erlang jobs."
 need_runtime_tool dotnet "Install .NET SDK for F# jobs."
+need_runtime_tool godot3-server "Install Godot server for GDScript jobs."
 need_runtime_tool ghc "Install GHC for Haskell jobs."
 need_runtime_tool javac "Install OpenJDK for Java jobs."
 need_runtime_tool java "Install OpenJDK for Java jobs."
@@ -245,6 +246,11 @@ run_language erlang "hello, erlang" '-module(main).
 main() -> io:format("hello, erlang~n", []).'
 
 run_language fsharp "hello, fsharp" 'printfn "hello, fsharp"' 1073741824
+
+run_language gdscript "hello, gdscript" 'extends SceneTree
+func _init():
+    print("hello, gdscript")
+    quit()' 1073741824
 
 run_language haskell "hello, haskell" 'main :: IO ()
 main = putStrLn "hello, haskell"' 1073741824

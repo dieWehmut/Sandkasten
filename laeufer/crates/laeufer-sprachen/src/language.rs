@@ -14,6 +14,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "elixir" | "ex" | "exs" => "elixir",
         "erlang" | "erl" | "erts" => "erlang",
         "fsharp" | "f#" | "fs" | "f-sharp" | "f_sharp" => "fsharp",
+        "gdscript" | "gd" | "godot" | "godot3" => "gdscript",
         "haskell" | "hs" | "ghc" => "haskell",
         "java" => "java",
         "javascript" | "js" | "node" => "javascript",

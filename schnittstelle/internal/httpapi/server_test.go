@@ -213,6 +213,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 		{path: "/v1/exs/run", language: "elixir", entrypoint: "main.exs", source: `IO.puts("ok")`},
 		{path: "/v1/erl/run", language: "erlang", entrypoint: "main.erl", source: "-module(main).\n-export([main/0]).\nmain() -> io:format(\"ok~n\", []).\n"},
 		{path: "/v1/f%23/run", language: "fsharp", entrypoint: "main.fs", source: "printfn \"ok\"\n"},
+		{path: "/v1/godot/run", language: "gdscript", entrypoint: "main.gd", source: "extends SceneTree\nfunc _init():\n    print(\"ok\")\n    quit()\n"},
 		{path: "/v1/hs/run", language: "haskell", entrypoint: "Main.hs", source: "main :: IO ()\nmain = putStrLn \"ok\"\n"},
 		{path: "/v1/julia/run", language: "julia", entrypoint: "main.jl", source: `println("ok")`},
 		{path: "/v1/kt/run", language: "kotlin", entrypoint: "Main.kt", source: `fun main(){ println("ok") }`},

@@ -57,6 +57,7 @@ RUN apt-get update && \
       g++ \
       gcc \
       git \
+      godot3-server \
       ghc \
       kotlin \
       libcurl4-openssl-dev \

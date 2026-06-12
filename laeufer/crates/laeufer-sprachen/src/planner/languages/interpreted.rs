@@ -44,6 +44,33 @@ for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
     print(line, end="")
 PY
 "#;
+const GDSCRIPT_RUN_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+mkdir -p .laeufer-cache/gdscript .laeufer-tmp/godot-home .laeufer-tmp/godot-tmp
+export HOME="$PWD/.laeufer-tmp/godot-home"
+export TMPDIR="$PWD/.laeufer-tmp/godot-tmp"
+stdout=.laeufer-cache/gdscript/stdout
+stderr=.laeufer-cache/gdscript/stderr
+if ! godot3-server --no-window --disable-crash-handler --path . -s "$entrypoint" >"$stdout" 2>"$stderr"; then
+    cat "$stdout" >&2
+    cat "$stderr" >&2
+    exit 1
+fi
+python3 - "$stdout" <<'PY'
+import sys
+
+skip_banner_spacing = False
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    if line.startswith("Godot Engine v"):
+        skip_banner_spacing = True
+        continue
+    if skip_banner_spacing and not line.strip():
+        skip_banner_spacing = False
+        continue
+    skip_banner_spacing = False
+    print(line, end="")
+PY
+"#;
 const QML_RUN_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
 mkdir -p .laeufer-cache/qml .laeufer-tmp
@@ -428,6 +455,59 @@ pub(in crate::planner) fn plan_qml(
             "--norc".to_owned(),
             "-c".to_owned(),
             QML_RUN_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint,
+        ],
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
+pub(in crate::planner) fn plan_gdscript(
+    job: &Job,
+    source_dir: PathBuf,
+    mut env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    env.retain(|(key, _)| key != "LANG" && key != "LC_ALL");
+    env.push(("LANG".to_owned(), "en_US".to_owned()));
+
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "godot3-server",
+        vec![
+            "--no-window".to_owned(),
+            "--disable-crash-handler".to_owned(),
+            "--check-only".to_owned(),
+            "--path".to_owned(),
+            ".".to_owned(),
+            "-s".to_owned(),
+            entrypoint.clone(),
+        ],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let run = run_command_plan(
+        "bash",
+        vec![
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            GDSCRIPT_RUN_SCRIPT.to_owned(),
             "_".to_owned(),
             entrypoint,
         ],

@@ -137,6 +137,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			{Language: "elixir", Version: "system"},
 			{Language: "erlang", Version: "system"},
 			{Language: "fsharp", Version: "system"},
+			{Language: "gdscript", Version: "system"},
 			{Language: "haskell", Version: "system"},
 			{Language: "julia", Version: "system"},
 			{Language: "kotlin", Version: "system"},
@@ -228,6 +229,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.fs",
 			compilePrefix: []string{"bash", "--noprofile", "--norc", "-c"},
 			runPrefix:     []string{"dotnet", ".laeufer-bin/fsharp-project.dll"},
+		},
+		{
+			language:      "gdscript",
+			alias:         "godot",
+			entrypoint:    "main.gd",
+			compilePrefix: []string{"godot3-server", "--no-window", "--disable-crash-handler"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc", "-c"},
 		},
 		{
 			language:      "haskell",

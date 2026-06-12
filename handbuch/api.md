@@ -69,6 +69,7 @@ Supported runtimes and default entrypoints:
 | `elixir` | `ex`, `exs` | `main.exs` |
 | `erlang` | `erl`, `erts` | `main.erl` |
 | `fsharp` | `f#`, `fs`, `f-sharp`, `f_sharp` | `main.fs` |
+| `gdscript` | `gd`, `godot`, `godot3` | `main.gd` |
 | `haskell` | `hs`, `ghc` | `Main.hs` |
 | `java` | - | `Main.java` |
 | `javascript` | `js`, `node` | `main.js` |

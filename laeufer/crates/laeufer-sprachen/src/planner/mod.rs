@@ -114,6 +114,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "gdscript" => Ok(languages::plan_gdscript(job, source_dir, env, entrypoint)),
         "haskell" => Ok(languages::plan_haskell(
             job,
             source_dir,

@@ -192,6 +192,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"elixir",
 		"erlang",
 		"fsharp",
+		"gdscript",
 		"haskell",
 		"java",
 		"javascript",
