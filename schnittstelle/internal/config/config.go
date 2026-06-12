@@ -183,6 +183,7 @@ func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {
 		"bash",
 		"c",
 		"cangjie",
+		"clojure",
 		"cpp",
 		"csharp",
 		"coq",

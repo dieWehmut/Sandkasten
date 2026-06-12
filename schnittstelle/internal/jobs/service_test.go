@@ -130,6 +130,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 		[]*pb.Runtime{
 			{Language: "bash", Version: "system"},
 			{Language: "cangjie", Version: "system"},
+			{Language: "clojure", Version: "system"},
 			{Language: "coq", Version: "system"},
 			{Language: "elixir", Version: "system"},
 			{Language: "julia", Version: "system"},
@@ -169,6 +170,13 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			entrypoint:    "main.cj",
 			compilePrefix: []string{"cjc", "-O", "--jobs", "1"},
 			runPrefix:     []string{".laeufer-bin/main"},
+		},
+		{
+			language:      "clojure",
+			alias:         "clj",
+			entrypoint:    "main.clj",
+			compilePrefix: []string{"clojure", "-e"},
+			runPrefix:     []string{"clojure", "main.clj"},
 		},
 		{
 			language:      "coq",

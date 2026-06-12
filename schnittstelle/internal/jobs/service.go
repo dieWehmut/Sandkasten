@@ -430,6 +430,8 @@ func NormalizeLanguage(language string) string {
 		return "bash"
 	case "cj", "cjc", "仓颉":
 		return "cangjie"
+	case "clj":
+		return "clojure"
 	case "c++":
 		return "cpp"
 	case "cs", "c#":
@@ -513,6 +515,8 @@ func defaultEntrypoint(language string) string {
 		return "main.c"
 	case "cangjie":
 		return "main.cj"
+	case "clojure":
+		return "main.clj"
 	case "cpp":
 		return "main.cpp"
 	case "csharp":
@@ -572,6 +576,8 @@ func runtimeAliases(language string) []string {
 		return []string{"shell", "sh"}
 	case "cangjie":
 		return []string{"cj", "cjc", "仓颉"}
+	case "clojure":
+		return []string{"clj"}
 	case "go":
 		return []string{"golang"}
 	case "cpp":
@@ -635,6 +641,8 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 		return phase("gcc", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.c")
 	case "cangjie":
 		return phase("cjc", "-O", "--jobs", "1", "--set-runtime-rpath", "-o", ".laeufer-bin/main", "main.cj")
+	case "clojure":
+		return phase("clojure", "-e", "(let [path \"main.clj\"] (binding [*read-eval* false] (with-open [r (java.io.PushbackReader. (clojure.java.io/reader path))] (loop [] (let [x (read r false ::eof)] (when-not (= x ::eof) (recur)))))))")
 	case "cpp":
 		return phase("g++", "-std=c++20", "-O2", "-pipe", "-o", ".laeufer-bin/main", "main.cpp")
 	case "csharp":
@@ -694,6 +702,8 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 		return phase(".laeufer-bin/main")
 	case "bash":
 		return phase("bash", "--noprofile", "--norc", "main.sh")
+	case "clojure":
+		return phase("clojure", "main.clj")
 	case "csharp":
 		return phase("mono", ".laeufer-bin/main.exe")
 	case "coq":

@@ -53,6 +53,7 @@ func TestLoadIncludesExpectedRuntimesByDefault(t *testing.T) {
 	want := map[string]bool{
 		"bash":    false,
 		"cangjie": false,
+		"clojure": false,
 		"coq":     false,
 		"elixir":  false,
 		"julia":   false,

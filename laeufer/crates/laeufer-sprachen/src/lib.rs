@@ -239,6 +239,27 @@ mod tests {
     }
 
     #[test]
+    fn clojure_plan_reads_forms_without_executing_then_runs_with_private_jvm_tmp() {
+        let job = job("clj", "main.clj");
+        let plan =
+            SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
+
+        assert_eq!(plan.compile.program, "clojure");
+        assert_eq!(plan.compile.args[0], "-e");
+        assert!(plan.compile.args[1].contains("*read-eval* false"));
+        assert!(plan.compile.args[1].contains("main.clj"));
+        assert_eq!(plan.run.program, "clojure");
+        assert_eq!(plan.run.args[0], "main.clj");
+        assert!(plan
+            .run
+            .env
+            .iter()
+            .any(|(key, value)| key == "JAVA_TOOL_OPTIONS"
+                && value.contains("ActiveProcessorCount=1")
+                && value.ends_with(".laeufer-tmp")));
+    }
+
+    #[test]
     fn elixir_plan_parses_then_runs_with_private_mix_home() {
         let job = job("exs", "main.exs");
         let plan =

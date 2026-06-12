@@ -1,6 +1,6 @@
 # Sandkasten
 
-Sandkasten is a self-hosted code execution system. The v1 implementation runs Go, Bash/Shell, C, Cangjie, C++, C#, Coq, Elixir, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL, Swift, TypeScript, and Zig jobs:
+Sandkasten is a self-hosted code execution system. The v1 implementation runs Go, Bash/Shell, C, Cangjie, Clojure, C++, C#, Coq, Elixir, Java, JavaScript, Julia, Kotlin, Lean4, Lua, Nim, Perl, PHP, Prolog, Python, R, Racket, Ruby, Rust, Scala, SQL, Swift, TypeScript, and Zig jobs:
 
 - `schnittstelle/`: Go gRPC API service.
 - `laeufer/`: Rust runner and Linux sandbox controller.

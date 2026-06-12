@@ -206,6 +206,7 @@ func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 	}{
 		{path: "/v1/shell/run", language: "bash", entrypoint: "main.sh", source: `printf '%s\n' ok`},
 		{path: "/v1/cj/run", language: "cangjie", entrypoint: "main.cj", source: "main() {\n    println(\"ok\")\n}"},
+		{path: "/v1/clj/run", language: "clojure", entrypoint: "main.clj", source: `(println "ok")`},
 		{path: "/v1/coqc/run", language: "coq", entrypoint: "main.v", source: `Goal True. Proof. exact I. Qed.`},
 		{path: "/v1/exs/run", language: "elixir", entrypoint: "main.exs", source: `IO.puts("ok")`},
 		{path: "/v1/julia/run", language: "julia", entrypoint: "main.jl", source: `println("ok")`},

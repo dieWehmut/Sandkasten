@@ -5,6 +5,7 @@ pub(crate) fn normalize_language(language: &str) -> Option<String> {
         "bash" | "shell" | "sh" => "bash",
         "c" => "c",
         "cangjie" | "cj" | "cjc" | "仓颉" => "cangjie",
+        "clojure" | "clj" => "clojure",
         "cpp" | "c++" => "cpp",
         "csharp" | "cs" | "c#" => "csharp",
         "coq" | "coqtop" | "coqc" => "coq",

@@ -44,6 +44,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates \
       bash \
+      clojure \
       curl \
       coq \
       elixir \

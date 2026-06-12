@@ -42,6 +42,7 @@ pub(crate) fn plan(
             entrypoint,
             compile_memory_limit_bytes,
         )),
+        "clojure" => Ok(languages::plan_clojure(job, source_dir, env, entrypoint)),
         "cpp" => Ok(languages::plan_cpp(
             job,
             source_dir,

@@ -1,7 +1,7 @@
 use laeufer_core::{BuildPlan, Job};
 use std::path::PathBuf;
 
-use crate::constants::RUNNER_BIN_DIR;
+use crate::constants::{RUNNER_BIN_DIR, RUNNER_TMP_DIR};
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
@@ -85,6 +85,51 @@ pub(in crate::planner) fn plan_javascript(
     BuildPlan { compile, run }
 }
 
+pub(in crate::planner) fn plan_clojure(
+    job: &Job,
+    source_dir: PathBuf,
+    mut env: Vec<(String, String)>,
+    entrypoint: PathBuf,
+) -> BuildPlan {
+    env.push((
+        "JAVA_TOOL_OPTIONS".to_owned(),
+        format!(
+            "-XX:ActiveProcessorCount=1 -Djava.io.tmpdir={}",
+            source_dir.join(RUNNER_TMP_DIR).to_string_lossy()
+        ),
+    ));
+
+    let entrypoint = entrypoint.to_string_lossy().into_owned();
+    let compile = compile_command_plan(
+        "clojure",
+        vec!["-e".to_owned(), clojure_syntax_check_script(&entrypoint)],
+        env.clone(),
+        source_dir.clone(),
+        Default::default(),
+        PhaseBudget {
+            timeout: job.limits.compile_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+    let mut run_args = vec![entrypoint];
+    run_args.extend(job.args.clone());
+    let run = run_command_plan(
+        "clojure",
+        run_args,
+        env,
+        source_dir,
+        job.stdin.clone(),
+        PhaseBudget {
+            timeout: job.limits.run_timeout,
+            memory_limit_bytes: job.limits.memory_limit_bytes,
+        },
+        job,
+    );
+
+    BuildPlan { compile, run }
+}
+
 pub(in crate::planner) fn plan_elixir(
     job: &Job,
     source_dir: PathBuf,
@@ -127,6 +172,31 @@ pub(in crate::planner) fn plan_elixir(
     );
 
     BuildPlan { compile, run }
+}
+
+fn clojure_syntax_check_script(entrypoint: &str) -> String {
+    format!(
+        "(let [path {}] (binding [*read-eval* false] (with-open [r (java.io.PushbackReader. (clojure.java.io/reader path))] (loop [] (let [x (read r false ::eof)] (when-not (= x ::eof) (recur)))))))",
+        clojure_string_literal(entrypoint)
+    )
+}
+
+fn clojure_string_literal(value: &str) -> String {
+    let mut output = String::with_capacity(value.len() + 2);
+    output.push('"');
+    for char in value.chars() {
+        match char {
+            '"' => output.push_str("\\\""),
+            '\\' => output.push_str("\\\\"),
+            '\n' => output.push_str("\\n"),
+            '\r' => output.push_str("\\r"),
+            '\t' => output.push_str("\\t"),
+            char if char.is_control() => output.push_str(&format!("\\u{:04x}", char as u32)),
+            char => output.push(char),
+        }
+    }
+    output.push('"');
+    output
 }
 
 pub(in crate::planner) fn plan_julia(

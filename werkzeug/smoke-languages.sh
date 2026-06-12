@@ -93,6 +93,7 @@ need_tool psql "Install postgresql-client."
 need_runtime_tool go "Install Go 1.25+ where the runner child PATH can execute it."
 need_runtime_tool bash "Install bash for bash/shell jobs."
 need_runtime_tool cjc "Install the Cangjie SDK for Cangjie jobs."
+need_runtime_tool clojure "Install Clojure for Clojure jobs."
 need_runtime_tool gcc "Install gcc for C jobs."
 need_runtime_tool g++ "Install g++ for C++ jobs."
 need_runtime_tool coqc "Install Coq for Coq jobs."
@@ -206,6 +207,8 @@ run_language bash "hello, bash" 'printf "%s\n" "hello, bash"'
 run_language cangjie "hello, cangjie" 'main() {
     println("hello, cangjie")
 }' 1073741824
+
+run_language clojure "hello, clojure" '(println "hello, clojure")'
 
 run_language c "hello, c" '#include <stdio.h>
 int main(void){puts("hello, c");return 0;}'

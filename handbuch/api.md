@@ -60,6 +60,7 @@ Supported runtimes and default entrypoints:
 | `bash` | `shell`, `sh` | `main.sh` |
 | `c` | - | `main.c` |
 | `cangjie` | `cj`, `cjc`, `仓颉` | `main.cj` |
+| `clojure` | `clj` | `main.clj` |
 | `cpp` | `c++` | `main.cpp` |
 | `csharp` | `cs`, `c#` | `Program.cs` |
 | `coq` | `coqtop`, `coqc` | `main.v` |
