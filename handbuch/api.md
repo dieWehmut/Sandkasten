@@ -162,7 +162,7 @@ Backpressure returns gRPC `ResourceExhausted` and HTTP `503 resource_exhausted`.
 
 ## Runner Rlimits
 
-The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CPU_SECONDS=2`, `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=1024`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. `LAEUFER_RLIMIT_CPU_SECONDS` installs an `RLIMIT_CPU` soft limit with a one-second higher hard limit; unset or `0` keeps the safe default.
+The runner applies child-process rlimits before uid/gid drop and seccomp setup. Defaults are `LAEUFER_RLIMIT_CORE_BYTES=0`, `LAEUFER_RLIMIT_FSIZE_BYTES=67108864`, `LAEUFER_RLIMIT_NOFILE=1024`, `LAEUFER_RLIMIT_NPROC=64`, `LAEUFER_RLIMIT_STACK_BYTES=67108864`, and `LAEUFER_RLIMIT_MEMLOCK_BYTES=0`. When `LAEUFER_RLIMIT_CPU_SECONDS` is unset, the runner derives `RLIMIT_CPU` from each command's timeout and CPU budget; setting it installs that fixed soft limit with a one-second higher hard limit and overrides per-runtime budgets.
 
 Per-command cgroups also set `memory.oom.group=1`, `pids.max`, `memory.max`, `cpu.max`, and `memory.swap.max`. `LAEUFER_PIDS_MAX` defaults to `64`; set it to `0` to write `pids.max=max`. `LAEUFER_MEMORY_SWAP_MAX_BYTES` defaults to `0`, which disables swap for the command cgroup.
 

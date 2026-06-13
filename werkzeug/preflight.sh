@@ -131,13 +131,17 @@ need_cmd findmnt "install util-linux for mount diagnostics"
 
 : "${LAEUFER_PIDS_MAX:=64}"
 : "${LAEUFER_RLIMIT_NPROC:=64}"
-: "${LAEUFER_RLIMIT_CPU_SECONDS:=2}"
 : "${LAEUFER_RLIMIT_NOFILE:=1024}"
 : "${LAEUFER_MEMORY_SWAP_MAX_BYTES:=0}"
 
 need_env_u64_max LAEUFER_PIDS_MAX 256
 need_env_u64_max LAEUFER_RLIMIT_NPROC 256
-need_env_u64 LAEUFER_RLIMIT_CPU_SECONDS 1
+if [[ -n "${LAEUFER_RLIMIT_CPU_SECONDS:-}" ]]; then
+  need_env_u64 LAEUFER_RLIMIT_CPU_SECONDS 1
+  warn "LAEUFER_RLIMIT_CPU_SECONDS overrides per-command CPU budgets; unset it for mixed-language runners"
+else
+  pass "unset LAEUFER_RLIMIT_CPU_SECONDS lets the runner derive RLIMIT_CPU from each job budget"
+fi
 need_env_u64 LAEUFER_RLIMIT_NOFILE 64
 if [[ "$LAEUFER_MEMORY_SWAP_MAX_BYTES" == "0" ]]; then
   pass "memory.swap.max will be disabled"
