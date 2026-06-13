@@ -23,7 +23,7 @@ normalize_smoke_language() {
     go | bash | c | cangjie | clojure | css | cpp | csharp | coq | crystal | dart | elixir | erlang | fsharp | fortran | gdscript | gleam | graphviz | haskell | html | java | javascript | julia | kotlin | lean4 | latex | lua | markdown | mdx | mojo | nextjs | nextflow | nim | octave | ocaml | pascal | assembly | perl | php | prolog | python | qml | r | racket | ruby | rust | scala | scss | sql | swift | tailwindcss | typescript | tsx | typst | vue3 | vlang | wdl | zig)
       printf '%s\n' "$language"
       ;;
-    asm | gas | nasm) printf '%s\n' "assembly" ;;
+    asm | gas) printf '%s\n' "assembly" ;;
     shell | sh) printf '%s\n' "bash" ;;
     cj | cjc) printf '%s\n' "cangjie" ;;
     clj) printf '%s\n' "clojure" ;;
@@ -205,6 +205,28 @@ need_language_runtime_tool() {
   fi
 }
 
+need_node_package() {
+  local language="$1"
+  local package="$2"
+  if language_selected "$language"; then
+    if ! PATH="$RUNTIME_PATH" NODE_PATH="${NODE_PATH:-/usr/local/lib/node_modules}" node -e "require.resolve(process.argv[1])" "$package" >/dev/null 2>&1; then
+      printf 'missing Node package for %s smoke: %s\n' "$language" "$package" >&2
+      printf 'Install it where runner children can resolve it, for example under /usr/local/lib/node_modules.\n' >&2
+      exit 127
+    fi
+  fi
+}
+
+need_runtime_path() {
+  local language="$1"
+  local path="$2"
+  local hint="$3"
+  if language_selected "$language" && [[ ! -e "$path" ]]; then
+    printf 'missing runtime path for %s smoke: %s\n%s\n' "$language" "$path" "$hint" >&2
+    exit 127
+  fi
+}
+
 json_string() {
   jq -Rs .
 }
@@ -215,6 +237,7 @@ submit_language() {
   local memory="$3"
   local response_file response http_status curl_status
   response_file="$(mktemp)"
+  set +e
   http_status="$(
     curl -sS \
       -o "$response_file" \
@@ -225,6 +248,7 @@ submit_language() {
       "http://${HTTP_ADDR}/v1/${language}/run"
   )"
   curl_status="$?"
+  set -e
   if [[ "$curl_status" -ne 0 ]]; then
     response="$(cat "$response_file" 2>/dev/null || true)"
     rm -f "$response_file"
@@ -311,6 +335,42 @@ run_language_contains() {
   printf '  ok %s contains: %s\n' "$language" "$expected_fragment"
 }
 
+run_language_contains_all() {
+  local language="$1"
+  if ! language_selected "$language"; then
+    return 0
+  fi
+  local source="$2"
+  local memory="${3:-805306368}"
+  shift 3
+  local expected_fragments=("$@")
+  local source_json
+  source_json="$(printf '%s' "$source" | json_string)"
+
+  printf 'Submitting %s example...\n' "$language"
+  local response
+  response="$(submit_language "$language" "$source_json" "$memory")"
+  local status stdout got_language compile_stderr stderr job_id
+  status="$(jq -r '.status' <<<"$response")"
+  stdout="$(jq -r '.stdout' <<<"$response")"
+  got_language="$(jq -r '.language' <<<"$response")"
+  compile_stderr="$(jq -r '.compileStderr' <<<"$response")"
+  stderr="$(jq -r '.stderr' <<<"$response")"
+  job_id="$(jq -r '.jobId' <<<"$response")"
+
+  local expected_fragment
+  for expected_fragment in "${expected_fragments[@]}"; do
+    if [[ "$status" != "JOB_STATUS_SUCCEEDED" || "$got_language" != "$language" || "$stdout" != *"$expected_fragment"* ]]; then
+      printf '%s smoke failed\njob: %s\nstatus: %s\nlanguage: %s\nexpected fragment: %q\nstdout: %q\nstderr: %q\ncompileStderr: %q\nresponse: %s\n' \
+        "$language" "$job_id" "$status" "$got_language" "$expected_fragment" "$stdout" "$stderr" "$compile_stderr" "$response" >&2
+      printf 'runner log:\n' >&2
+      cat /tmp/sandkasten-runner-smoke-languages.log >&2
+      exit 1
+    fi
+  done
+  printf '  ok %s contains %s fragments\n' "$language" "${#expected_fragments[@]}"
+}
+
 need_tool go "Install Go 1.25+ for the API module."
 need_tool cargo "Install Rust/Cargo for the runner."
 need_tool grpcurl "Install grpcurl or run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest"
@@ -334,6 +394,7 @@ need_language_runtime_tool fortran gfortran "Install GNU Fortran for Fortran job
 need_language_runtime_tool gdscript godot3-server "Install Godot server for GDScript jobs."
 need_language_runtime_tool gleam gleam "Install Gleam for Gleam jobs."
 need_language_runtime_tool gleam erl "Install Erlang runtime for Gleam jobs."
+need_runtime_path gleam /opt/sandkasten/gleam-cache "Use the runner image or warm a Gleam Hex cache containing gleam_stdlib at /opt/sandkasten/gleam-cache."
 need_language_runtime_tool graphviz dot "Install Graphviz for Graphviz DOT jobs."
 need_language_runtime_tool haskell ghc "Install GHC for Haskell jobs."
 need_language_runtime_tool java javac "Install OpenJDK for Java jobs."
@@ -343,12 +404,18 @@ need_language_runtime_tool kotlin kotlinc "Install Kotlin compiler for Kotlin jo
 need_language_runtime_tool kotlin java "Install OpenJDK for Kotlin jobs."
 need_language_runtime_tool julia julia "Install Julia for Julia jobs."
 need_language_runtime_tool latex tectonic "Install Tectonic for LaTeX jobs."
+need_runtime_path latex /opt/sandkasten/tectonic-cache "Use the runner image or warm a Tectonic cache at /opt/sandkasten/tectonic-cache for --only-cached LaTeX jobs."
 need_language_runtime_tool lean4 lean "Install Lean 4 for Lean jobs."
 need_language_runtime_tool lua lua "Install Lua for Lua jobs."
 need_language_runtime_tool lua luac "Install Lua compiler for Lua syntax checks."
 need_language_runtime_tool markdown node "Install Node.js for Markdown jobs."
 need_language_runtime_tool markdown mmdc "Install Mermaid CLI for Markdown Mermaid jobs."
 need_language_runtime_tool mdx node "Install Node.js for MDX jobs."
+need_node_package markdown markdown-it
+need_node_package mdx @mdx-js/mdx
+need_node_package mdx react
+need_node_package mdx react-dom/server
+need_language_runtime_tool markdown chromium "Install Chromium for Mermaid CLI rendering."
 need_language_runtime_tool mojo mojo "Install Mojo for Mojo jobs."
 need_language_runtime_tool csharp mcs "Install Mono mcs for C# jobs."
 need_language_runtime_tool csharp mono "Install Mono runtime for C# jobs."
@@ -549,11 +616,11 @@ run_language lean4 "hello, lean4" 'def main : IO Unit := IO.println "hello, lean
 
 run_language lua "hello, lua" 'print("hello, lua")'
 
-run_language_contains markdown "<h1>hello, markdown</h1>" '# hello, markdown
+run_language_contains_all markdown '# hello, markdown
 
 ```mermaid
 graph TD; A-->B;
-```' 1073741824
+```' 1073741824 "<h1>hello, markdown</h1>" "<svg"
 
 run_language_contains mdx "<h1>hello, mdx</h1>" '# hello, mdx
 
