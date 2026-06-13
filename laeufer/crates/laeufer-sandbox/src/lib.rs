@@ -878,7 +878,7 @@ fn configure_child_process(options: ChildSetupOptions, paths: &ChildSetupPaths) 
         if options.enable_seccomp {
             install_seccomp_denylist(options.seccomp_profile)?;
         }
-        close_inherited_fds()?;
+        mark_inherited_fds_close_on_exec()?;
     }
     Ok(())
 }
@@ -1137,9 +1137,9 @@ fn mount(
     }
 }
 
-fn close_inherited_fds() -> io::Result<()> {
+fn mark_inherited_fds_close_on_exec() -> io::Result<()> {
     let result =
-        unsafe { libc::close_range(3, u32::MAX, libc::CLOSE_RANGE_UNSHARE as libc::c_int) };
+        unsafe { libc::close_range(3, u32::MAX, libc::CLOSE_RANGE_CLOEXEC as libc::c_int) };
     if result == 0 {
         return Ok(());
     }
@@ -1148,10 +1148,10 @@ fn close_inherited_fds() -> io::Result<()> {
     if !matches!(error.raw_os_error(), Some(libc::ENOSYS | libc::EINVAL)) {
         return Err(error);
     }
-    close_inherited_fds_via_proc()
+    mark_inherited_fds_close_on_exec_via_proc()
 }
 
-fn close_inherited_fds_via_proc() -> io::Result<()> {
+fn mark_inherited_fds_close_on_exec_via_proc() -> io::Result<()> {
     let mut fds = Vec::new();
     let entries = fs::read_dir("/proc/self/fd")?;
     for entry in entries {
@@ -1169,8 +1169,16 @@ fn close_inherited_fds_via_proc() -> io::Result<()> {
         fds.push(fd);
     }
     for fd in fds {
-        unsafe {
-            libc::close(fd);
+        let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+        if flags < 0 {
+            let error = io::Error::last_os_error();
+            if error.raw_os_error() == Some(libc::EBADF) {
+                continue;
+            }
+            return Err(error);
+        }
+        if unsafe { libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC) } != 0 {
+            return Err(io::Error::last_os_error());
         }
     }
     Ok(())
@@ -1816,6 +1824,22 @@ mod tests {
         assert!(
             !stdout.contains(&leaked_path),
             "child inherited fd for {leaked_path}: {stdout}"
+        );
+    }
+
+    #[tokio::test]
+    async fn reports_missing_command_as_spawn_error() {
+        let mut plan = shell_plan("", 1024);
+        plan.program = "/definitely-not-a-sandkasten-runtime-tool".to_owned();
+        plan.args = Vec::new();
+
+        let err = execute_command_without_cgroup(&plan)
+            .await
+            .expect_err("missing command should fail before execution");
+
+        assert!(
+            matches!(&err, RunnerError::System(message) if message.contains("failed to spawn") && message.contains("No such file")),
+            "unexpected error: {err:?}"
         );
     }
 
