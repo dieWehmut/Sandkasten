@@ -121,15 +121,14 @@ function installMermaidDom() {
   const markdown = source.replace(/```mermaid[^\n]*\n([\s\S]*?)```/g, (_match, diagram) => {
     const id = diagrams.length;
     const placeholder = `SANDKASTEN_MERMAID_${id}`;
-    diagrams.push({ placeholder, diagram });
+    diagrams.push({ id, placeholder, diagram });
     return placeholder;
   });
 
   let html = md.render(markdown);
   for (const diagram of diagrams) {
-    const { svg } = await mermaid.render(`sandkasten-mermaid-${diagram.placeholder}`, diagram.diagram, document.getElementById('container'));
+    const { svg } = await mermaid.render(`sandkasten-mermaid-${diagram.id}`, diagram.diagram, document.getElementById('container'));
     html = html.replace(`<p>${diagram.placeholder}</p>`, svg);
-    html = html.replace(diagram.placeholder, svg);
   }
   fs.writeFileSync('.laeufer-bin/main.html', html);
 })().catch((error) => {

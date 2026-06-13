@@ -553,6 +553,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "mermaid.initialize") || !commandContains(runtime.GetCompilePhase().GetCommand(), "securityLevel: 'strict'") {
 					t.Fatalf("CompilePhase.Command = %v, want strict Mermaid rendering", runtime.GetCompilePhase().GetCommand())
 				}
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "sandkasten-mermaid-' + diagram.id") {
+					t.Fatalf("CompilePhase.Command = %v, want stable Mermaid ids independent from placeholders", runtime.GetCompilePhase().GetCommand())
+				}
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "JSDOM") || !commandContains(runtime.GetCompilePhase().GetCommand(), "DOMPurify") {
 					t.Fatalf("CompilePhase.Command = %v, want in-process Mermaid DOM renderer", runtime.GetCompilePhase().GetCommand())
 				}

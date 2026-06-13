@@ -1351,6 +1351,11 @@ mod tests {
             .compile
             .args
             .iter()
+            .any(|arg| arg.contains("sandkasten-mermaid-${diagram.id}")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
             .any(|arg| arg.contains("JSDOM") && arg.contains("DOMPurify")));
         assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
