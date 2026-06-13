@@ -57,7 +57,7 @@ Supported runtimes and default entrypoints:
 | Language | Aliases | Default entrypoint |
 | --- | --- | --- |
 | `go` | `golang` | `.` |
-| `assembly` | `asm`, `gas`, `nasm` | `main.s` |
+| `assembly` | `asm`, `gas` | `main.s` |
 | `bash` | `shell`, `sh` | `main.sh` |
 | `c` | - | `main.c` |
 | `cangjie` | `cj`, `cjc`, `仓颉` | `main.cj` |

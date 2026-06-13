@@ -1205,6 +1205,17 @@ mod tests {
     }
 
     #[test]
+    fn assembly_plan_does_not_accept_nasm_alias() {
+        let job = job("nasm", "main.s");
+        let err = SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024)
+            .expect_err("nasm syntax is not supported by the GAS planner");
+
+        assert!(
+            matches!(err, RunnerError::Validation(message) if message.contains("unsupported language"))
+        );
+    }
+
+    #[test]
     fn ocaml_plan_compiles_native_binary() {
         let job = job("ml", "main.ml");
         let plan =
@@ -1288,24 +1299,26 @@ mod tests {
             .compile
             .args
             .iter()
-            .any(|arg| arg.contains("manifest.toml") && arg.contains("packages = [")));
+            .any(|arg| arg.contains("manifest.toml") && arg.contains("gleam_stdlib")));
         assert!(plan
             .compile
             .args
             .iter()
-            .any(|arg| arg.contains("gleam build --target erlang")));
+            .any(|arg| arg.contains("gleam build --target erlang --no-print-progress")));
         assert_eq!(
             plan.compile.args.last().map(String::as_str),
             Some("src/main.gleam")
         );
-        assert_eq!(plan.run.program, "erl");
-        assert!(plan.run.args.iter().any(|arg| arg == "-noshell"));
+        assert_eq!(plan.run.program, "bash");
+        assert!(plan.run.args.iter().any(|arg| arg == "--noprofile"));
         assert!(plan
             .run
             .args
             .iter()
-            .any(|arg| arg.contains(".laeufer-cache/gleam-project/build/dev/erlang")));
-        assert!(plan.run.args.iter().any(|arg| arg == "main"));
+            .any(|arg| arg.contains("ebin_args") && arg.contains("exec erl -noshell")));
+        assert!(plan.run.args.iter().any(|arg| arg.contains("for dir in")
+            && arg.contains(".laeufer-cache/gleam-project/build/dev/erlang/*/ebin")));
+        assert!(plan.run.args.iter().any(|arg| arg.contains("-s main main")));
     }
 
     #[test]
@@ -1411,16 +1424,21 @@ mod tests {
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
 
         assert_compile_run_seccomp(&plan);
-        assert_eq!(plan.compile.program, "tectonic");
+        assert_eq!(plan.compile.program, "bash");
+        assert!(plan.compile.args.iter().any(|arg| arg == "--noprofile"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("tectonic --only-cached --untrusted")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("/opt/sandkasten/tectonic-cache")));
         assert_eq!(
-            plan.compile.args,
-            vec![
-                "--offline",
-                "--keep-logs",
-                "--outdir",
-                ".laeufer-bin",
-                "main.tex"
-            ]
+            plan.compile.args.last().map(String::as_str),
+            Some("main.tex")
         );
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "printf");

@@ -147,6 +147,18 @@ RUN apt-get update && \
     echo "${GLEAM_SHA256}  /tmp/gleam.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/gleam.tar.gz -C /usr/local/bin gleam && \
     chmod 0755 /usr/local/bin/gleam && \
+    mkdir -p /tmp/gleam-warm/src && \
+    printf '%s\n' \
+      'name = "sandkasten_warm"' \
+      'version = "1.0.0"' \
+      'target = "erlang"' \
+      '' \
+      '[dependencies]' \
+      'gleam_stdlib = "1.0.3"' > /tmp/gleam-warm/gleam.toml && \
+    printf '%s\n' 'pub fn main() { Nil }' > /tmp/gleam-warm/src/main.gleam && \
+    XDG_CACHE_HOME=/tmp/gleam-cache gleam build --target erlang --no-print-progress --root /tmp/gleam-warm && \
+    mkdir -p /opt/sandkasten/gleam-cache && \
+    cp -R /tmp/gleam-cache/. /opt/sandkasten/gleam-cache/ && \
     curl ${CURL_RETRY_ARGS} -fL "https://github.com/vlang/v/releases/download/${V_VERSION}/v_linux.zip" -o /tmp/v_linux.zip && \
     echo "${V_SHA256}  /tmp/v_linux.zip" | sha256sum -c - && \
     unzip -q /tmp/v_linux.zip -d /opt && \
@@ -159,6 +171,15 @@ RUN apt-get update && \
     echo "${TECTONIC_SHA256}  /tmp/tectonic.tar.gz" | sha256sum -c - && \
     tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin tectonic && \
     chmod 0755 /usr/local/bin/tectonic && \
+    mkdir -p /tmp/tectonic-warm/out && \
+    printf '%s\n' \
+      '\documentclass{article}' \
+      '\begin{document}' \
+      'sandkasten latex warmup' \
+      '\end{document}' > /tmp/tectonic-warm/main.tex && \
+    XDG_CACHE_HOME=/tmp/tectonic-cache tectonic --keep-logs --outdir /tmp/tectonic-warm/out /tmp/tectonic-warm/main.tex && \
+    mkdir -p /opt/sandkasten/tectonic-cache && \
+    cp -R /tmp/tectonic-cache/. /opt/sandkasten/tectonic-cache/ && \
     curl ${CURL_RETRY_ARGS} -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
     ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
@@ -233,6 +254,7 @@ RUN apt-get update && \
     ln -sf /usr/bin/lua5.4 /usr/local/bin/lua && \
     ln -sf /usr/bin/luac5.4 /usr/local/bin/luac && \
     rm -f /tmp/gleam.tar.gz /tmp/v_linux.zip /tmp/typst.tar.xz /tmp/tectonic.tar.gz /tmp/zig.tar.xz /tmp/julia.tar.gz /tmp/dart-sdk.zip /tmp/dart.sha256sum /tmp/dotnet-install.sh /tmp/pixi-install.sh /tmp/lean.tar.zst /tmp/swift.tar.gz /tmp/cangjie.tar.gz && \
+    rm -rf /tmp/gleam-cache /tmp/gleam-warm /tmp/tectonic-cache /tmp/tectonic-warm && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/lib/sandkasten/laeufer /opt/sandkasten/wurzelwerk
 

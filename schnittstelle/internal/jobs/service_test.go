@@ -275,7 +275,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			alias:         "gleamlang",
 			entrypoint:    "src/main.gleam",
 			compilePrefix: []string{"bash", "--noprofile", "--norc", "-c"},
-			runPrefix:     []string{"erl", "-noshell", "-pa"},
+			runPrefix:     []string{"bash", "--noprofile", "--norc", "-c"},
 		},
 		{
 			language:      "graphviz",
@@ -323,7 +323,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			language:      "latex",
 			alias:         "tex",
 			entrypoint:    "main.tex",
-			compilePrefix: []string{"tectonic", "--offline", "--keep-logs", "--outdir", ".laeufer-bin", "main.tex"},
+			compilePrefix: []string{"bash", "--noprofile", "--norc", "-c"},
 			runPrefix:     []string{"printf", "latex compiled\n"},
 		},
 		{
@@ -400,7 +400,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			language:      "assembly",
 			alias:         "asm",
 			entrypoint:    "main.s",
-			compilePrefix: []string{"gcc", "-x", "assembler", "-no-pie", "-o", ".laeufer-bin/main", "main.s"},
+			compilePrefix: []string{"gcc", "-x", "assembler", "-no-pie", "-Wl,-z,noexecstack", "-o", ".laeufer-bin/main", "main.s"},
 			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
@@ -540,6 +540,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			if tt.alias != "" && !containsString(runtime.GetAliases(), tt.alias) {
 				t.Fatalf("Aliases = %v, want %s", runtime.GetAliases(), tt.alias)
 			}
+			if tt.language == "assembly" && containsString(runtime.GetAliases(), "nasm") {
+				t.Fatalf("Aliases = %v, nasm syntax is not supported by the GAS planner", runtime.GetAliases())
+			}
 			if !hasPrefix(runtime.GetCompilePhase().GetCommand(), tt.compilePrefix) {
 				t.Fatalf("CompilePhase.Command = %v", runtime.GetCompilePhase().GetCommand())
 			}
@@ -548,6 +551,17 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			}
 			if tt.language == "markdown" && !commandContains(runtime.GetCompilePhase().GetCommand(), "puppeteerConfig") {
 				t.Fatalf("CompilePhase.Command = %v, want puppeteerConfig for Mermaid CLI", runtime.GetCompilePhase().GetCommand())
+			}
+			if tt.language == "latex" && !commandContains(runtime.GetCompilePhase().GetCommand(), "--only-cached") {
+				t.Fatalf("CompilePhase.Command = %v, want Tectonic only-cached mode", runtime.GetCompilePhase().GetCommand())
+			}
+			if tt.language == "gleam" {
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "gleam_stdlib") {
+					t.Fatalf("CompilePhase.Command = %v, want pinned Gleam stdlib", runtime.GetCompilePhase().GetCommand())
+				}
+				if !commandContains(runtime.GetRunPhase().GetCommand(), "ebin_args") || !commandContains(runtime.GetRunPhase().GetCommand(), "exec erl -noshell") {
+					t.Fatalf("RunPhase.Command = %v, want expanded Gleam ebin paths", runtime.GetRunPhase().GetCommand())
+				}
 			}
 		})
 	}

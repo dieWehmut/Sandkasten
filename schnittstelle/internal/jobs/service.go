@@ -83,21 +83,44 @@ entrypoint="$1"
 project=".laeufer-cache/gleam-project"
 rm -rf "$project"
 mkdir -p "$project/src"
+if [ -d /opt/sandkasten/gleam-cache ]; then
+  mkdir -p "$XDG_CACHE_HOME"
+  cp -R /opt/sandkasten/gleam-cache/. "$XDG_CACHE_HOME/"
+fi
 cat > "$project/gleam.toml" <<'EOF'
 name = "sandkasten_job"
 version = "1.0.0"
 target = "erlang"
 description = "Sandkasten generated Gleam project"
 licences = ["Apache-2.0"]
+
+[dependencies]
+gleam_stdlib = "1.0.3"
 EOF
 cat > "$project/manifest.toml" <<'EOF'
+# Do not manually edit this file, it is managed by Gleam.
 packages = [
+  { name = "gleam_stdlib", version = "1.0.3", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "1F543AFBA5D33DA493E6087F4E4C4F20D899411343512686C98A8ABB2963CF22" },
 ]
 
 [requirements]
+gleam_stdlib = { version = "1.0.3" }
 EOF
 cp "$entrypoint" "$project/src/main.gleam"
-gleam build --target erlang --root "$project"`
+gleam build --target erlang --no-print-progress --root "$project"`
+
+const gleamRunScript = `set -eu
+ebin_args=
+for dir in .laeufer-cache/gleam-project/build/dev/erlang/*/ebin; do
+  [ -d "$dir" ] || continue
+  ebin_args="$ebin_args -pa $dir"
+done
+if [ -z "$ebin_args" ]; then
+  echo "Gleam build produced no Erlang ebin directories" >&2
+  exit 1
+fi
+# shellcheck disable=SC2086
+exec erl -noshell $ebin_args -s main main -s init stop "$@"`
 
 const markdownRenderScript = `set -eu
 entrypoint="$1"
@@ -163,6 +186,14 @@ const { renderToStaticMarkup } = require('react-dom/server');
   process.exit(1);
 });
 NODE`
+
+const latexCompileScript = `set -eu
+entrypoint="$1"
+if [ -d /opt/sandkasten/tectonic-cache ]; then
+  mkdir -p "$XDG_CACHE_HOME"
+  cp -R /opt/sandkasten/tectonic-cache/. "$XDG_CACHE_HOME/"
+fi
+tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"`
 
 type Repository interface {
 	CreateJob(ctx context.Context, job CreateJob) (*pb.SubmitGoProjectResponse, error)
@@ -571,7 +602,7 @@ func normalizeLanguage(language string) string {
 func NormalizeLanguage(language string) string {
 	language = strings.ToLower(strings.TrimSpace(language))
 	switch language {
-	case "asm", "gas", "nasm":
+	case "asm", "gas":
 		return "assembly"
 	case "golang":
 		return "go"
@@ -902,7 +933,7 @@ func runtimeAliases(language string) []string {
 	case "pascal":
 		return []string{"fpc", "freepascal"}
 	case "assembly":
-		return []string{"asm", "gas", "nasm"}
+		return []string{"asm", "gas"}
 	case "perl":
 		return []string{"perl5"}
 	case "php":
@@ -1001,7 +1032,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "lean4":
 		return phase("lean", "-o", ".laeufer-bin/main.olean", "Main.lean")
 	case "latex":
-		return phase("tectonic", "--offline", "--keep-logs", "--outdir", ".laeufer-bin", "main.tex")
+		return phase("bash", "--noprofile", "--norc", "-c", latexCompileScript, "_", "main.tex")
 	case "lua":
 		return phase("luac", "-p", "main.lua")
 	case "markdown":
@@ -1025,7 +1056,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "pascal":
 		return phase("fpc", "-O2", "-FE.laeufer-bin", "-omain", "main.pas")
 	case "assembly":
-		return phase("gcc", "-x", "assembler", "-no-pie", "-o", ".laeufer-bin/main", "main.s")
+		return phase("gcc", "-x", "assembler", "-no-pie", "-Wl,-z,noexecstack", "-o", ".laeufer-bin/main", "main.s")
 	case "perl":
 		return phase("perl", "-c", "main.pl")
 	case "php":
@@ -1096,7 +1127,7 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 	case "gdscript":
 		return phase("bash", "--noprofile", "--norc", "-c", "set -eu\nentrypoint=\"$1\"\nmkdir -p .laeufer-cache/gdscript .laeufer-tmp/godot-home .laeufer-tmp/godot-tmp\nexport HOME=\"$PWD/.laeufer-tmp/godot-home\"\nexport TMPDIR=\"$PWD/.laeufer-tmp/godot-tmp\"\nstdout=.laeufer-cache/gdscript/stdout\nstderr=.laeufer-cache/gdscript/stderr\nif ! godot3-server --no-window --disable-crash-handler --path . -s \"$entrypoint\" >\"$stdout\" 2>\"$stderr\"; then\n    cat \"$stdout\" >&2\n    cat \"$stderr\" >&2\n    exit 1\nfi\npython3 - \"$stdout\" <<'PY'\nimport sys\n\nskip_banner_spacing = False\nfor line in open(sys.argv[1], encoding=\"utf-8\", errors=\"replace\"):\n    if line.startswith(\"Godot Engine v\"):\n        skip_banner_spacing = True\n        continue\n    if skip_banner_spacing and not line.strip():\n        skip_banner_spacing = False\n        continue\n    skip_banner_spacing = False\n    print(line, end=\"\")\nPY\n", "_", "main.gd")
 	case "gleam":
-		return phase("erl", "-noshell", "-pa", ".laeufer-cache/gleam-project/build/dev/erlang/*/ebin", "-s", "main", "main", "-s", "init", "stop")
+		return phase("bash", "--noprofile", "--norc", "-c", gleamRunScript, "_")
 	case "html":
 		return phase("cat", "index.html")
 	case "java":

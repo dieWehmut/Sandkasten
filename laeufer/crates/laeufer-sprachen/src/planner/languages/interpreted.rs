@@ -1,7 +1,7 @@
 use laeufer_core::{BuildPlan, Job};
 use std::path::PathBuf;
 
-use crate::constants::{RUNNER_BIN_DIR, RUNNER_CACHE_DIR, RUNNER_TMP_DIR};
+use crate::constants::{RUNNER_BIN_DIR, RUNNER_TMP_DIR};
 use crate::planner::common::{compile_command_plan, run_command_plan, PhaseBudget};
 
 const JULIA_SYNTAX_CHECK: &str = "function has_parse_error(x); x isa Expr && (x.head in (:error, :incomplete) || any(has_parse_error, x.args)); end; ex = Meta.parseall(read(ARGS[1], String)); has_parse_error(ex) && (println(stderr, \"Julia syntax error\"); exit(1))";
@@ -22,21 +22,44 @@ entrypoint="$1"
 project=".laeufer-cache/gleam-project"
 rm -rf "$project"
 mkdir -p "$project/src"
+if [ -d /opt/sandkasten/gleam-cache ]; then
+  mkdir -p "$XDG_CACHE_HOME"
+  cp -R /opt/sandkasten/gleam-cache/. "$XDG_CACHE_HOME/"
+fi
 cat > "$project/gleam.toml" <<'EOF'
 name = "sandkasten_job"
 version = "1.0.0"
 target = "erlang"
 description = "Sandkasten generated Gleam project"
 licences = ["Apache-2.0"]
+
+[dependencies]
+gleam_stdlib = "1.0.3"
 EOF
 cat > "$project/manifest.toml" <<'EOF'
+# Do not manually edit this file, it is managed by Gleam.
 packages = [
+  { name = "gleam_stdlib", version = "1.0.3", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "1F543AFBA5D33DA493E6087F4E4C4F20D899411343512686C98A8ABB2963CF22" },
 ]
 
 [requirements]
+gleam_stdlib = { version = "1.0.3" }
 EOF
 cp "$entrypoint" "$project/src/main.gleam"
-gleam build --target erlang --root "$project"
+gleam build --target erlang --no-print-progress --root "$project"
+"#;
+const GLEAM_RUN_SCRIPT: &str = r#"set -eu
+ebin_args=
+for dir in .laeufer-cache/gleam-project/build/dev/erlang/*/ebin; do
+  [ -d "$dir" ] || continue
+  ebin_args="$ebin_args -pa $dir"
+done
+if [ -z "$ebin_args" ]; then
+  echo "Gleam build produced no Erlang ebin directories" >&2
+  exit 1
+fi
+# shellcheck disable=SC2086
+exec erl -noshell $ebin_args -s main main -s init stop "$@"
 "#;
 const MARKDOWN_RENDER_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
@@ -108,6 +131,14 @@ const { renderToStaticMarkup } = require('react-dom/server');
   process.exit(1);
 });
 NODE
+"#;
+const LATEX_COMPILE_SCRIPT: &str = r#"set -eu
+entrypoint="$1"
+if [ -d /opt/sandkasten/tectonic-cache ]; then
+  mkdir -p "$XDG_CACHE_HOME"
+  cp -R /opt/sandkasten/tectonic-cache/. "$XDG_CACHE_HOME/"
+fi
+tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"
 "#;
 const TSX_BUILD_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
@@ -630,19 +661,15 @@ pub(in crate::planner) fn plan_gleam(
         job,
     );
     let mut run_args = vec![
-        "-noshell".to_owned(),
-        "-pa".to_owned(),
-        format!("{RUNNER_CACHE_DIR}/gleam-project/build/dev/erlang/*/ebin"),
-        "-s".to_owned(),
-        "main".to_owned(),
-        "main".to_owned(),
-        "-s".to_owned(),
-        "init".to_owned(),
-        "stop".to_owned(),
+        "--noprofile".to_owned(),
+        "--norc".to_owned(),
+        "-c".to_owned(),
+        GLEAM_RUN_SCRIPT.to_owned(),
+        "_".to_owned(),
     ];
     run_args.extend(job.args.clone());
     let run = run_command_plan(
-        "erl",
+        "bash",
         run_args,
         env,
         source_dir,
@@ -837,15 +864,15 @@ pub(in crate::planner) fn plan_latex(
     entrypoint: PathBuf,
     compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
-    let entrypoint = entrypoint.to_string_lossy().into_owned();
     let compile = compile_command_plan(
-        "tectonic",
+        "bash",
         vec![
-            "--offline".to_owned(),
-            "--keep-logs".to_owned(),
-            "--outdir".to_owned(),
-            RUNNER_BIN_DIR.to_owned(),
-            entrypoint,
+            "--noprofile".to_owned(),
+            "--norc".to_owned(),
+            "-c".to_owned(),
+            LATEX_COMPILE_SCRIPT.to_owned(),
+            "_".to_owned(),
+            entrypoint.to_string_lossy().into_owned(),
         ],
         env.clone(),
         source_dir.clone(),
