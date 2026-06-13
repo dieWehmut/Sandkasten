@@ -1299,7 +1299,6 @@ const AUDIT_ARCH_AARCH64: u32 = 0xc00000b7;
 
 #[rustfmt::skip]
 const BASE_SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
-    libc::SYS_socket,
     libc::SYS_bind,
     libc::SYS_listen,
     libc::SYS_accept,
@@ -1842,7 +1841,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn denies_socket_syscall_with_seccomp() {
+    async fn denies_network_connect_with_seccomp() {
         let Some(python) = python3_path() else {
             return;
         };
@@ -1850,18 +1849,18 @@ mod tests {
         plan.program = python;
         plan.args = vec![
             "-c".to_owned(),
-            "import socket; socket.socket(socket.AF_INET, socket.SOCK_STREAM)".to_owned(),
+            "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('127.0.0.1', 9))".to_owned(),
         ];
 
         let result = execute_command_without_cgroup(&plan)
             .await
-            .expect("seccomp should deny socket and produce result");
+            .expect("seccomp should deny connect and produce result");
 
         assert_ne!(result.exit_code, Some(0));
         assert_eq!(result.signal, None);
         assert!(
             String::from_utf8_lossy(&result.stderr).contains("PermissionError"),
-            "socket denial should surface as EPERM: {:?}",
+            "connect denial should surface as EPERM: {:?}",
             String::from_utf8_lossy(&result.stderr)
         );
     }
@@ -1896,7 +1895,7 @@ mod tests {
     fn seccomp_denylist_blocks_network_and_kernel_escape_syscalls() {
         let denied = seccomp_denied_syscalls(SeccompProfile::Compile);
 
-        assert!(denied.contains(&libc::SYS_socket));
+        assert!(!denied.contains(&libc::SYS_socket));
         assert!(!denied.contains(&libc::SYS_socketpair));
         assert!(!denied.contains(&libc::SYS_setsockopt));
         assert!(!denied.contains(&libc::SYS_getsockopt));
