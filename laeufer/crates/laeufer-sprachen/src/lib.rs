@@ -1344,28 +1344,14 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("markdown-it") && arg.contains("html: false")));
+        assert!(plan.compile.args.iter().any(
+            |arg| arg.contains("mermaid.initialize") && arg.contains("securityLevel: 'strict'")
+        ));
         assert!(plan
             .compile
             .args
             .iter()
-            .any(|arg| arg.contains("mmdc") && arg.contains("securityLevel")));
-        assert!(plan
-            .compile
-            .args
-            .iter()
-            .any(|arg| arg.contains("puppeteerConfig") && arg.contains("/usr/bin/chromium")));
-        assert!(plan
-            .compile
-            .args
-            .iter()
-            .any(|arg| arg.contains("pipe: true")));
-        assert!(plan
-            .compile
-            .args
-            .iter()
-            .any(|arg| arg.contains("--disable-crashpad")
-                && arg.contains("--disable-breakpad")
-                && arg.contains("--disable-features=Crashpad")));
+            .any(|arg| arg.contains("JSDOM") && arg.contains("DOMPurify")));
         assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");

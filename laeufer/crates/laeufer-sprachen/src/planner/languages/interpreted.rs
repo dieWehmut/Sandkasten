@@ -69,47 +69,73 @@ entrypoint="$1"
 mkdir -p .laeufer-bin .laeufer-cache/mermaid
 node - "$entrypoint" <<'NODE'
 const fs = require('fs');
-const childProcess = require('child_process');
+const { createRequire } = require('module');
+const { pathToFileURL } = require('url');
 const MarkdownIt = require('markdown-it');
+const { JSDOM } = require('jsdom');
+const createDOMPurify = require('dompurify');
 
 const entrypoint = process.argv[2];
 const source = fs.readFileSync(entrypoint, 'utf8');
 const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
-const mermaidConfigPath = '.laeufer-cache/mermaid/config.json';
-const puppeteerConfigPath = '.laeufer-cache/mermaid/puppeteer.json';
-fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
-fs.writeFileSync(puppeteerConfigPath, JSON.stringify({
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-  pipe: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-crash-reporter',
-    '--disable-crashpad',
-    '--disable-breakpad',
-    '--disable-features=Crashpad',
-  ],
-}));
 
-const diagrams = [];
-const markdown = source.replace(/```mermaid[^\n]*\n([\s\S]*?)```/g, (_match, diagram) => {
-  const id = diagrams.length;
-  const placeholder = `SANDKASTEN_MERMAID_${id}`;
-  const input = `.laeufer-cache/mermaid/${id}.mmd`;
-  const output = `.laeufer-cache/mermaid/${id}.svg`;
-  fs.writeFileSync(input, diagram);
-  childProcess.execFileSync('mmdc', ['--quiet', '-i', input, '-o', output, '-c', mermaidConfigPath, '-p', puppeteerConfigPath], { stdio: ['ignore', 'ignore', 'inherit'] });
-  diagrams.push({ placeholder, svg: fs.readFileSync(output, 'utf8') });
-  return placeholder;
-});
-
-let html = md.render(markdown);
-for (const diagram of diagrams) {
-  html = html.replace(`<p>${diagram.placeholder}</p>`, diagram.svg);
-  html = html.replace(diagram.placeholder, diagram.svg);
+class SandkastenCSSStyleSheet {
+  constructor() { this.cssRules = []; }
+  replaceSync(text) { this.text = String(text); this.cssRules = []; }
 }
-fs.writeFileSync('.laeufer-bin/main.html', html);
+
+function installMermaidDom() {
+  const dom = new JSDOM('<!doctype html><html><body><div id="container"></div></body></html>', { pretendToBeVisual: true });
+  const { window } = dom;
+  globalThis.window = window;
+  globalThis.document = window.document;
+  globalThis.navigator = window.navigator;
+  globalThis.Element = window.Element;
+  globalThis.HTMLElement = window.HTMLElement;
+  globalThis.SVGElement = window.SVGElement;
+  globalThis.Node = window.Node;
+  globalThis.DOMPurify = createDOMPurify(window);
+  globalThis.CSSStyleSheet = window.CSSStyleSheet || SandkastenCSSStyleSheet;
+  window.CSSStyleSheet = globalThis.CSSStyleSheet;
+  if (!window.SVGElement.prototype.getBBox) {
+    window.SVGElement.prototype.getBBox = function () {
+      const text = this.textContent || '';
+      return { x: 0, y: 0, width: Math.max(1, text.length * 8), height: 16 };
+    };
+  }
+  if (!window.SVGElement.prototype.getComputedTextLength) {
+    window.SVGElement.prototype.getComputedTextLength = function () {
+      return Math.max(1, (this.textContent || '').length * 8);
+    };
+  }
+}
+
+(async () => {
+  installMermaidDom();
+  const requireFromNodePath = createRequire(process.cwd() + '/.laeufer-cache/mermaid/require.cjs');
+  const mermaidUrl = pathToFileURL(requireFromNodePath.resolve('mermaid')).href;
+  const { default: mermaid } = await import(mermaidUrl);
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+
+  const diagrams = [];
+  const markdown = source.replace(/```mermaid[^\n]*\n([\s\S]*?)```/g, (_match, diagram) => {
+    const id = diagrams.length;
+    const placeholder = `SANDKASTEN_MERMAID_${id}`;
+    diagrams.push({ placeholder, diagram });
+    return placeholder;
+  });
+
+  let html = md.render(markdown);
+  for (const diagram of diagrams) {
+    const { svg } = await mermaid.render(`sandkasten-mermaid-${diagram.placeholder}`, diagram.diagram, document.getElementById('container'));
+    html = html.replace(`<p>${diagram.placeholder}</p>`, svg);
+    html = html.replace(diagram.placeholder, svg);
+  }
+  fs.writeFileSync('.laeufer-bin/main.html', html);
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exit(1);
+});
 NODE
 "#;
 const MDX_RENDER_SCRIPT: &str = r#"set -eu

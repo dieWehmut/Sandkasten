@@ -22,7 +22,7 @@ Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
 - The runner image includes Go plus toolchains/interpreters for Assembly, Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript/Godot, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX/Tectonic, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal/Free Pascal, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig execution.
-- Bare-metal or systemd runners must provide the same runtime commands on `LAEUFER_RUNTIME_PATH`. Document renderers also need globally resolvable Node packages under `NODE_PATH`, Chromium at `/usr/bin/chromium` for Mermaid, a warmed Gleam Hex cache at `/opt/sandkasten/gleam-cache`, and a Tectonic bundle/cache usable with `tectonic --only-cached`.
+- Bare-metal or systemd runners must provide the same runtime commands on `LAEUFER_RUNTIME_PATH`. Document renderers also need globally resolvable Node packages under `NODE_PATH`, a warmed Gleam Hex cache at `/opt/sandkasten/gleam-cache`, and a Tectonic bundle/cache usable with `tectonic --only-cached`.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development

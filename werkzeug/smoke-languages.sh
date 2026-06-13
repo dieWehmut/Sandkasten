@@ -409,13 +409,14 @@ need_language_runtime_tool lean4 lean "Install Lean 4 for Lean jobs."
 need_language_runtime_tool lua lua "Install Lua for Lua jobs."
 need_language_runtime_tool lua luac "Install Lua compiler for Lua syntax checks."
 need_language_runtime_tool markdown node "Install Node.js for Markdown jobs."
-need_language_runtime_tool markdown mmdc "Install Mermaid CLI for Markdown Mermaid jobs."
 need_language_runtime_tool mdx node "Install Node.js for MDX jobs."
 need_node_package markdown markdown-it
+need_node_package markdown mermaid
+need_node_package markdown jsdom
+need_node_package markdown dompurify
 need_node_package mdx @mdx-js/mdx
 need_node_package mdx react
 need_node_package mdx react-dom/server
-need_language_runtime_tool markdown chromium "Install Chromium for Mermaid CLI rendering."
 need_language_runtime_tool mojo mojo "Install Mojo for Mojo jobs."
 need_language_runtime_tool csharp mcs "Install Mono mcs for C# jobs."
 need_language_runtime_tool csharp mono "Install Mono runtime for C# jobs."

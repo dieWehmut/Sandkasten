@@ -136,6 +136,9 @@ RUN apt-get update && \
       postcss@8.4.49 \
       autoprefixer@10.4.20 \
       markdown-it@14.2.0 \
+      mermaid@11.15.0 \
+      jsdom@26.1.0 \
+      dompurify@3.3.1 \
       @mdx-js/mdx@3.1.1 \
       @mermaid-js/mermaid-cli@11.15.0 \
       puppeteer@23.11.1 \
