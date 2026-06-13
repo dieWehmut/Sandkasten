@@ -1310,7 +1310,6 @@ const BASE_SECCOMP_DENIED_SYSCALLS: &[libc::c_long] = &[
     libc::SYS_sendmsg,
     libc::SYS_recvmsg,
     libc::SYS_shutdown,
-    libc::SYS_getsockopt,
     libc::SYS_recvmmsg,
     libc::SYS_sendmmsg,
     libc::SYS_mount,
@@ -1900,6 +1899,7 @@ mod tests {
         assert!(denied.contains(&libc::SYS_socket));
         assert!(!denied.contains(&libc::SYS_socketpair));
         assert!(!denied.contains(&libc::SYS_setsockopt));
+        assert!(!denied.contains(&libc::SYS_getsockopt));
         assert!(denied.contains(&libc::SYS_connect));
         assert!(denied.contains(&libc::SYS_mount));
         assert!(denied.contains(&libc::SYS_open_tree));
