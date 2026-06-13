@@ -1358,6 +1358,11 @@ mod tests {
             .compile
             .args
             .iter()
+            .any(|arg| arg.contains("pipe: true")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
             .any(|arg| arg.contains("--disable-crashpad")
                 && arg.contains("--disable-breakpad")
                 && arg.contains("--disable-features=Crashpad")));

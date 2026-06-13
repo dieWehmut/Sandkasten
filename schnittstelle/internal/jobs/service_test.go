@@ -553,6 +553,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "puppeteerConfig") {
 					t.Fatalf("CompilePhase.Command = %v, want puppeteerConfig for Mermaid CLI", runtime.GetCompilePhase().GetCommand())
 				}
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "pipe: true") {
+					t.Fatalf("CompilePhase.Command = %v, want Puppeteer pipe mode", runtime.GetCompilePhase().GetCommand())
+				}
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-crashpad") || !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-breakpad") || !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-features=Crashpad") {
 					t.Fatalf("CompilePhase.Command = %v, want Chromium crash reporting disabled", runtime.GetCompilePhase().GetCommand())
 				}

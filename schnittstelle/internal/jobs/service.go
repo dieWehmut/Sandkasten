@@ -141,6 +141,7 @@ const puppeteerConfigPath = '.laeufer-cache/mermaid/puppeteer.json';
 fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
 fs.writeFileSync(puppeteerConfigPath, JSON.stringify({
   executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+  pipe: true,
   args: [
     '--no-sandbox',
     '--disable-setuid-sandbox',
