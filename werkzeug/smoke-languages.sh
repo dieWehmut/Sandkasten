@@ -11,6 +11,158 @@ API_TOKEN="${SANDKASTEN_API_TOKEN:-dev-token}"
 RUNNER_WORK_DIR="${LAEUFER_WORK_DIR:-/tmp/sandkasten-laeufer-smoke-languages}"
 COMPILE_MEMORY_LIMIT_BYTES="${LAEUFER_COMPILE_MEMORY_LIMIT_BYTES:-1073741824}"
 RUNTIME_PATH="${LAEUFER_RUNTIME_PATH:-/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin}"
+SMOKE_LANGUAGES="${SMOKE_LANGUAGES:-}"
+SMOKE_LANGUAGE_FILTERED=0
+
+declare -A SELECTED_LANGUAGES=()
+
+normalize_smoke_language() {
+  local language="${1,,}"
+  case "$language" in
+    all) printf '%s\n' "all" ;;
+    go | bash | c | cangjie | clojure | css | cpp | csharp | coq | crystal | dart | elixir | erlang | fsharp | fortran | gdscript | gleam | graphviz | haskell | html | java | javascript | julia | kotlin | lean4 | latex | lua | markdown | mdx | mojo | nextjs | nextflow | nim | octave | ocaml | pascal | assembly | perl | php | prolog | python | qml | r | racket | ruby | rust | scala | scss | sql | swift | tailwindcss | typescript | tsx | typst | vue3 | vlang | wdl | zig)
+      printf '%s\n' "$language"
+      ;;
+    asm | gas | nasm) printf '%s\n' "assembly" ;;
+    shell | sh) printf '%s\n' "bash" ;;
+    cj | cjc) printf '%s\n' "cangjie" ;;
+    clj) printf '%s\n' "clojure" ;;
+    c++) printf '%s\n' "cpp" ;;
+    cs | c#) printf '%s\n' "csharp" ;;
+    coqtop | coqc) printf '%s\n' "coq" ;;
+    cr) printf '%s\n' "crystal" ;;
+    ex | exs) printf '%s\n' "elixir" ;;
+    erl | erts) printf '%s\n' "erlang" ;;
+    f# | fs | f-sharp | f_sharp) printf '%s\n' "fsharp" ;;
+    f90 | gfortran) printf '%s\n' "fortran" ;;
+    gd | godot | godot3) printf '%s\n' "gdscript" ;;
+    gleamlang) printf '%s\n' "gleam" ;;
+    dot | gv) printf '%s\n' "graphviz" ;;
+    hs | ghc) printf '%s\n' "haskell" ;;
+    htm) printf '%s\n' "html" ;;
+    js | node) printf '%s\n' "javascript" ;;
+    jl) printf '%s\n' "julia" ;;
+    kt) printf '%s\n' "kotlin" ;;
+    lean) printf '%s\n' "lean4" ;;
+    tex) printf '%s\n' "latex" ;;
+    lua5.4) printf '%s\n' "lua" ;;
+    md) printf '%s\n' "markdown" ;;
+    mojolang) printf '%s\n' "mojo" ;;
+    next | next.js) printf '%s\n' "nextjs" ;;
+    nf) printf '%s\n' "nextflow" ;;
+    nimrod) printf '%s\n' "nim" ;;
+    gnu-octave | m) printf '%s\n' "octave" ;;
+    ml | ocamlopt) printf '%s\n' "ocaml" ;;
+    fpc | freepascal) printf '%s\n' "pascal" ;;
+    perl5) printf '%s\n' "perl" ;;
+    php8 | php8.2) printf '%s\n' "php" ;;
+    pl | swi-prolog | swipl) printf '%s\n' "prolog" ;;
+    py | python3) printf '%s\n' "python" ;;
+    qtqml | qml5 | qml6) printf '%s\n' "qml" ;;
+    rscript) printf '%s\n' "r" ;;
+    rkt) printf '%s\n' "racket" ;;
+    rb) printf '%s\n' "ruby" ;;
+    rs) printf '%s\n' "rust" ;;
+    sc) printf '%s\n' "scala" ;;
+    sass) printf '%s\n' "scss" ;;
+    sqlite | sqlite3) printf '%s\n' "sql" ;;
+    tailwind | tailwind-css) printf '%s\n' "tailwindcss" ;;
+    ts) printf '%s\n' "typescript" ;;
+    jsx | react | react-tsx) printf '%s\n' "tsx" ;;
+    typ) printf '%s\n' "typst" ;;
+    v | v-language) printf '%s\n' "vlang" ;;
+    vue | vuejs) printf '%s\n' "vue3" ;;
+    workflow-description-language) printf '%s\n' "wdl" ;;
+    *)
+      printf 'unsupported SMOKE_LANGUAGES item: %s\n' "$1" >&2
+      return 1
+      ;;
+  esac
+}
+
+if [[ -n "$SMOKE_LANGUAGES" ]]; then
+  SMOKE_LANGUAGE_FILTERED=1
+  for raw_language in ${SMOKE_LANGUAGES//,/ }; do
+    [[ -n "$raw_language" ]] || continue
+    language="$(normalize_smoke_language "$raw_language")"
+    if [[ "$language" == "all" ]]; then
+      SELECTED_LANGUAGES=()
+      SMOKE_LANGUAGE_FILTERED=0
+      break
+    fi
+    SELECTED_LANGUAGES["$language"]=1
+  done
+  if [[ "$SMOKE_LANGUAGE_FILTERED" -eq 1 && "${#SELECTED_LANGUAGES[@]}" -eq 0 ]]; then
+    printf 'SMOKE_LANGUAGES did not select any runtime\n' >&2
+    exit 2
+  fi
+  if [[ "$SMOKE_LANGUAGE_FILTERED" -eq 1 ]]; then
+    printf 'Running filtered language smoke: %s\n' "$(IFS=,; printf '%s' "${!SELECTED_LANGUAGES[*]}")"
+  fi
+fi
+
+language_selected() {
+  local language="$1"
+  if [[ "$SMOKE_LANGUAGE_FILTERED" -eq 0 ]]; then
+    return 0
+  fi
+  [[ -n "${SELECTED_LANGUAGES[$language]:-}" ]]
+}
+
+split_listen_address() {
+  local address="$1"
+  local host port
+  if [[ "$address" == \[*\]:* ]]; then
+    host="${address%%]*}"
+    host="${host#[}"
+    port="${address##*:}"
+  elif [[ "$address" == :* ]]; then
+    host="127.0.0.1"
+    port="${address#:}"
+  else
+    host="${address%:*}"
+    port="${address##*:}"
+  fi
+  if [[ -z "$host" || "$host" == "0.0.0.0" || "$host" == "::" ]]; then
+    host="127.0.0.1"
+  fi
+  if [[ -z "$port" || "$port" == "$address" ]]; then
+    printf 'address %q must include a TCP port\n' "$address" >&2
+    return 2
+  fi
+  printf '%s %s\n' "$host" "$port"
+}
+
+listen_address_in_use() {
+  local host port
+  read -r host port < <(split_listen_address "$1")
+  # shellcheck disable=SC2016
+  timeout 1 bash -c ': >/dev/tcp/"$1"/"$2"' bash "$host" "$port" >/dev/null 2>&1
+}
+
+ensure_listen_address_free() {
+  local label="$1"
+  local address="$2"
+  if listen_address_in_use "$address"; then
+    printf '%s listen address is already in use: %s\n' "$label" "$address" >&2
+    printf 'Set SANDKASTEN_ADDR/SANDKASTEN_HTTP_ADDR to free ports or stop the existing service before running the smoke.\n' >&2
+    exit 98
+  fi
+}
+
+ensure_no_existing_runner() {
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    return 0
+  fi
+  local runners
+  runners="$(ps -eo pid=,comm=,args= | awk '$2 == "laeufer" { print }')"
+  if [[ -n "$runners" ]]; then
+    printf 'existing laeufer runner process detected; language smoke needs an isolated job queue\n' >&2
+    printf '%s\n' "$runners" >&2
+    printf 'Stop the existing runner or point DATABASE_URL at an isolated smoke database before running this script.\n' >&2
+    exit 99
+  fi
+}
 
 api_pid=""
 runner_pid=""
@@ -45,12 +197,61 @@ need_runtime_tool() {
   fi
 }
 
+need_language_runtime_tool() {
+  local language="$1"
+  shift
+  if language_selected "$language"; then
+    need_runtime_tool "$@"
+  fi
+}
+
 json_string() {
   jq -Rs .
 }
 
+submit_language() {
+  local language="$1"
+  local source_json="$2"
+  local memory="$3"
+  local response_file response http_status curl_status
+  response_file="$(mktemp)"
+  http_status="$(
+    curl -sS \
+      -o "$response_file" \
+      -w '%{http_code}' \
+      -H "authorization: Bearer ${API_TOKEN}" \
+      -H 'content-type: application/json' \
+      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
+      "http://${HTTP_ADDR}/v1/${language}/run"
+  )"
+  curl_status="$?"
+  if [[ "$curl_status" -ne 0 ]]; then
+    response="$(cat "$response_file" 2>/dev/null || true)"
+    rm -f "$response_file"
+    printf '%s smoke HTTP request failed with curl status %s\n' "$language" "$curl_status" >&2
+    if [[ -n "$response" ]]; then
+      printf 'response: %s\n' "$response" >&2
+    fi
+    exit "$curl_status"
+  fi
+  response="$(cat "$response_file")"
+  rm -f "$response_file"
+  if (( http_status < 200 || http_status >= 300 )); then
+    printf '%s smoke HTTP request failed with status %s\nresponse: %s\n' "$language" "$http_status" "$response" >&2
+    printf 'API log:\n' >&2
+    cat /tmp/sandkasten-api-smoke-languages.log >&2
+    printf 'runner log:\n' >&2
+    cat /tmp/sandkasten-runner-smoke-languages.log >&2
+    exit 1
+  fi
+  printf '%s' "$response"
+}
+
 run_language() {
   local language="$1"
+  if ! language_selected "$language"; then
+    return 0
+  fi
   local expected="$2"
   local source="$3"
   local memory="${4:-805306368}"
@@ -59,13 +260,7 @@ run_language() {
 
   printf 'Submitting %s example...\n' "$language"
   local response
-  response="$(
-    curl -fsS \
-      -H "authorization: Bearer ${API_TOKEN}" \
-      -H 'content-type: application/json' \
-      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
-      "http://${HTTP_ADDR}/v1/${language}/run"
-  )"
+  response="$(submit_language "$language" "$source_json" "$memory")"
   local status stdout got_language compile_stderr stderr job_id
   status="$(jq -r '.status' <<<"$response")"
   stdout="$(jq -r '.stdout' <<<"$response")"
@@ -86,6 +281,9 @@ run_language() {
 
 run_language_contains() {
   local language="$1"
+  if ! language_selected "$language"; then
+    return 0
+  fi
   local expected_fragment="$2"
   local source="$3"
   local memory="${4:-805306368}"
@@ -94,13 +292,7 @@ run_language_contains() {
 
   printf 'Submitting %s example...\n' "$language"
   local response
-  response="$(
-    curl -fsS \
-      -H "authorization: Bearer ${API_TOKEN}" \
-      -H 'content-type: application/json' \
-      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
-      "http://${HTTP_ADDR}/v1/${language}/run"
-  )"
+  response="$(submit_language "$language" "$source_json" "$memory")"
   local status stdout got_language compile_stderr stderr job_id
   status="$(jq -r '.status' <<<"$response")"
   stdout="$(jq -r '.stdout' <<<"$response")"
@@ -125,65 +317,78 @@ need_tool grpcurl "Install grpcurl or run: go install github.com/fullstorydev/gr
 need_tool curl "Install curl to exercise the HTTP API."
 need_tool jq "Install jq to parse smoke-test responses."
 need_tool psql "Install postgresql-client."
-need_runtime_tool go "Install Go 1.25+ where the runner child PATH can execute it."
-need_runtime_tool bash "Install bash for bash/shell jobs."
-need_runtime_tool cjc "Install the Cangjie SDK for Cangjie jobs."
-need_runtime_tool clojure "Install Clojure for Clojure jobs."
-need_runtime_tool gcc "Install gcc for C jobs."
-need_runtime_tool g++ "Install g++ for C++ jobs."
-need_runtime_tool coqc "Install Coq for Coq jobs."
-need_runtime_tool crystal "Install Crystal for Crystal jobs."
-need_runtime_tool dart "Install Dart SDK for Dart jobs."
-need_runtime_tool elixir "Install Elixir for Elixir jobs."
-need_runtime_tool erlc "Install Erlang compiler for Erlang jobs."
-need_runtime_tool erl "Install Erlang runtime for Erlang jobs."
-need_runtime_tool dotnet "Install .NET SDK for F# jobs."
-need_runtime_tool gfortran "Install GNU Fortran for Fortran jobs."
-need_runtime_tool godot3-server "Install Godot server for GDScript jobs."
-need_runtime_tool gleam "Install Gleam for Gleam jobs."
-need_runtime_tool ghc "Install GHC for Haskell jobs."
-need_runtime_tool dot "Install Graphviz for Graphviz DOT jobs."
-need_runtime_tool javac "Install OpenJDK for Java jobs."
-need_runtime_tool java "Install OpenJDK for Java jobs."
-need_runtime_tool kotlinc "Install Kotlin compiler for Kotlin jobs."
-need_runtime_tool julia "Install Julia for Julia jobs."
-need_runtime_tool tectonic "Install Tectonic for LaTeX jobs."
-need_runtime_tool lean "Install Lean 4 for Lean jobs."
-need_runtime_tool lua "Install Lua for Lua jobs."
-need_runtime_tool luac "Install Lua compiler for Lua syntax checks."
-need_runtime_tool mmdc "Install Mermaid CLI for Markdown Mermaid jobs."
-need_runtime_tool mojo "Install Mojo for Mojo jobs."
-need_runtime_tool mcs "Install Mono mcs for C# jobs."
-need_runtime_tool mono "Install Mono runtime for C# jobs."
-need_runtime_tool nextflow "Install Nextflow for Nextflow jobs."
-need_runtime_tool nim "Install Nim for Nim jobs."
-need_runtime_tool node "Install Node.js for JavaScript jobs."
-need_runtime_tool octave-cli "Install GNU Octave for Octave jobs."
-need_runtime_tool ocamlopt "Install OCaml native compiler for OCaml jobs."
-need_runtime_tool fpc "Install Free Pascal for Pascal jobs."
-need_runtime_tool sass "Install Sass for SCSS jobs."
-need_runtime_tool esbuild "Install esbuild for TSX/Vue jobs."
-need_runtime_tool tailwindcss "Install Tailwind CSS CLI for Tailwind CSS jobs."
-need_runtime_tool perl "Install Perl for Perl jobs."
-need_runtime_tool php "Install PHP CLI for PHP jobs."
-need_runtime_tool swipl "Install SWI-Prolog for Prolog jobs."
-need_runtime_tool python3 "Install Python 3 for Python jobs."
-need_runtime_tool qml "Install Qt QML runtime for QML jobs."
-need_runtime_tool /usr/lib/qt6/bin/qmllint "Install Qt 6 QML tooling for QML lint checks."
-need_runtime_tool Rscript "Install Rscript for R jobs."
-need_runtime_tool racket "Install Racket for Racket jobs."
-need_runtime_tool raco "Install Racket raco for Racket jobs."
-need_runtime_tool ruby "Install Ruby for Ruby jobs."
-need_runtime_tool rustc "Install rustc for Rust jobs."
-need_runtime_tool scala "Install Scala for Scala jobs."
-need_runtime_tool scalac "Install Scalac for Scala jobs."
-need_runtime_tool sqlite3 "Install SQLite CLI for SQL jobs."
-need_runtime_tool swiftc "Install Swift for Swift jobs."
-need_runtime_tool typst "Install Typst for Typst jobs."
-need_runtime_tool tsc "Install TypeScript compiler for TypeScript jobs."
-need_runtime_tool miniwdl "Install miniwdl for WDL jobs."
-need_runtime_tool v "Install V for V language jobs."
-need_runtime_tool zig "Install Zig for Zig jobs."
+need_language_runtime_tool go go "Install Go 1.25+ where the runner child PATH can execute it."
+need_language_runtime_tool bash bash "Install bash for bash/shell jobs."
+need_language_runtime_tool cangjie cjc "Install the Cangjie SDK for Cangjie jobs."
+need_language_runtime_tool clojure clojure "Install Clojure for Clojure jobs."
+need_language_runtime_tool c gcc "Install gcc for C jobs."
+need_language_runtime_tool cpp g++ "Install g++ for C++ jobs."
+need_language_runtime_tool coq coqc "Install Coq for Coq jobs."
+need_language_runtime_tool crystal crystal "Install Crystal for Crystal jobs."
+need_language_runtime_tool dart dart "Install Dart SDK for Dart jobs."
+need_language_runtime_tool elixir elixir "Install Elixir for Elixir jobs."
+need_language_runtime_tool erlang erlc "Install Erlang compiler for Erlang jobs."
+need_language_runtime_tool erlang erl "Install Erlang runtime for Erlang jobs."
+need_language_runtime_tool fsharp dotnet "Install .NET SDK for F# jobs."
+need_language_runtime_tool fortran gfortran "Install GNU Fortran for Fortran jobs."
+need_language_runtime_tool gdscript godot3-server "Install Godot server for GDScript jobs."
+need_language_runtime_tool gleam gleam "Install Gleam for Gleam jobs."
+need_language_runtime_tool gleam erl "Install Erlang runtime for Gleam jobs."
+need_language_runtime_tool graphviz dot "Install Graphviz for Graphviz DOT jobs."
+need_language_runtime_tool haskell ghc "Install GHC for Haskell jobs."
+need_language_runtime_tool java javac "Install OpenJDK for Java jobs."
+need_language_runtime_tool java java "Install OpenJDK for Java jobs."
+need_language_runtime_tool javascript node "Install Node.js for JavaScript jobs."
+need_language_runtime_tool kotlin kotlinc "Install Kotlin compiler for Kotlin jobs."
+need_language_runtime_tool kotlin java "Install OpenJDK for Kotlin jobs."
+need_language_runtime_tool julia julia "Install Julia for Julia jobs."
+need_language_runtime_tool latex tectonic "Install Tectonic for LaTeX jobs."
+need_language_runtime_tool lean4 lean "Install Lean 4 for Lean jobs."
+need_language_runtime_tool lua lua "Install Lua for Lua jobs."
+need_language_runtime_tool lua luac "Install Lua compiler for Lua syntax checks."
+need_language_runtime_tool markdown node "Install Node.js for Markdown jobs."
+need_language_runtime_tool markdown mmdc "Install Mermaid CLI for Markdown Mermaid jobs."
+need_language_runtime_tool mdx node "Install Node.js for MDX jobs."
+need_language_runtime_tool mojo mojo "Install Mojo for Mojo jobs."
+need_language_runtime_tool csharp mcs "Install Mono mcs for C# jobs."
+need_language_runtime_tool csharp mono "Install Mono runtime for C# jobs."
+need_language_runtime_tool nextflow nextflow "Install Nextflow for Nextflow jobs."
+need_language_runtime_tool nextjs node "Install Node.js for Next.js jobs."
+need_language_runtime_tool nim nim "Install Nim for Nim jobs."
+need_language_runtime_tool octave octave-cli "Install GNU Octave for Octave jobs."
+need_language_runtime_tool ocaml ocamlopt "Install OCaml native compiler for OCaml jobs."
+need_language_runtime_tool pascal fpc "Install Free Pascal for Pascal jobs."
+need_language_runtime_tool scss sass "Install Sass for SCSS jobs."
+need_language_runtime_tool tsx esbuild "Install esbuild for TSX jobs."
+need_language_runtime_tool tsx node "Install Node.js for TSX jobs."
+need_language_runtime_tool vue3 esbuild "Install esbuild for Vue jobs."
+need_language_runtime_tool vue3 node "Install Node.js for Vue jobs."
+need_language_runtime_tool tailwindcss tailwindcss "Install Tailwind CSS CLI for Tailwind CSS jobs."
+need_language_runtime_tool perl perl "Install Perl for Perl jobs."
+need_language_runtime_tool php php "Install PHP CLI for PHP jobs."
+need_language_runtime_tool prolog swipl "Install SWI-Prolog for Prolog jobs."
+need_language_runtime_tool python python3 "Install Python 3 for Python jobs."
+need_language_runtime_tool qml qml "Install Qt QML runtime for QML jobs."
+need_language_runtime_tool qml /usr/lib/qt6/bin/qmllint "Install Qt 6 QML tooling for QML lint checks."
+need_language_runtime_tool r Rscript "Install Rscript for R jobs."
+need_language_runtime_tool racket racket "Install Racket for Racket jobs."
+need_language_runtime_tool racket raco "Install Racket raco for Racket jobs."
+need_language_runtime_tool ruby ruby "Install Ruby for Ruby jobs."
+need_language_runtime_tool rust rustc "Install rustc for Rust jobs."
+need_language_runtime_tool scala scala "Install Scala for Scala jobs."
+need_language_runtime_tool scala scalac "Install Scalac for Scala jobs."
+need_language_runtime_tool sql sqlite3 "Install SQLite CLI for SQL jobs."
+need_language_runtime_tool swift swiftc "Install Swift for Swift jobs."
+need_language_runtime_tool typst typst "Install Typst for Typst jobs."
+need_language_runtime_tool typescript tsc "Install TypeScript compiler for TypeScript jobs."
+need_language_runtime_tool typescript node "Install Node.js for TypeScript jobs."
+need_language_runtime_tool wdl miniwdl "Install miniwdl for WDL jobs."
+need_language_runtime_tool vlang v "Install V for V language jobs."
+need_language_runtime_tool zig zig "Install Zig for Zig jobs."
+
+ensure_listen_address_free "gRPC" "$API_ADDR"
+ensure_listen_address_free "HTTP" "$HTTP_ADDR"
+ensure_no_existing_runner
 
 printf 'Checking database connectivity...\n'
 psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'select 1' >/dev/null
@@ -212,24 +417,26 @@ SANDKASTEN_API_CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https:/
   /tmp/sandkasten-api-smoke-languages >/tmp/sandkasten-api-smoke-languages.log 2>&1 &
 api_pid="$!"
 
+api_ready=0
 for _ in {1..50}; do
+  if ! kill -0 "$api_pid" >/dev/null 2>&1; then
+    printf 'API exited during startup; log follows:\n' >&2
+    cat /tmp/sandkasten-api-smoke-languages.log >&2
+    exit 1
+  fi
   if grpcurl -plaintext \
     -H "authorization: Bearer ${API_TOKEN}" \
     -import-path "$ROOT/vertrag" \
     -proto sandkasten/v1/runtime.proto \
     "$API_ADDR" \
     sandkasten.v1.RuntimeService/ListRuntimes >/dev/null 2>&1; then
+    api_ready=1
     break
   fi
   sleep 0.2
 done
 
-if ! grpcurl -plaintext \
-  -H "authorization: Bearer ${API_TOKEN}" \
-  -import-path "$ROOT/vertrag" \
-  -proto sandkasten/v1/runtime.proto \
-  "$API_ADDR" \
-  sandkasten.v1.RuntimeService/ListRuntimes >/dev/null 2>&1; then
+if [[ "$api_ready" -ne 1 ]]; then
   printf 'API did not become ready; log follows:\n' >&2
   cat /tmp/sandkasten-api-smoke-languages.log >&2
   exit 1
@@ -451,4 +658,4 @@ pub fn main() void {
     _ = write(1, msg.ptr, msg.len);
 }' 1073741824
 
-printf 'multi-language smoke passed\n'
+printf 'language smoke passed\n'

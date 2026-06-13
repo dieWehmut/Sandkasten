@@ -53,6 +53,16 @@ Run the full language smoke when all supported local toolchains are installed:
 ./werkzeug/smoke-languages.sh
 ```
 
+Run a single runtime or a small batch while adding toolchains incrementally:
+
+```sh
+SMOKE_LANGUAGES=ocaml ./werkzeug/smoke-languages.sh
+SMOKE_LANGUAGES="markdown graphviz typst" ./werkzeug/smoke-languages.sh
+createdb sandkasten_smoke
+DATABASE_URL=postgres://sandkasten:sandkasten@localhost:5432/sandkasten_smoke?sslmode=disable SANDKASTEN_ADDR=127.0.0.1:50052 SANDKASTEN_HTTP_ADDR=127.0.0.1:8081 SMOKE_LANGUAGES=ocaml ./werkzeug/smoke-languages.sh
+dropdb sandkasten_smoke
+```
+
 The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `css`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `fortran`, `gdscript`, `gleam`, `graphviz`, `haskell`, `html`, `java`, `javascript`, `julia`, `kotlin`, `latex`, `lean4`, `lua`, `markdown`, `mdx`, `mojo`, `nextjs`, `nextflow`, `nim`, `octave`, `ocaml`, `pascal`, `assembly`, `perl`, `php`, `prolog`, `python`, `qml`, `r`, `racket`, `ruby`, `rust`, `scala`, `scss`, `sql`, `swift`, `tailwindcss`, `typst`, `typescript`, `tsx`, `vlang`, `vue3`, `wdl`, and `zig`.
 
 ## Kubernetes

@@ -21,4 +21,4 @@ The runner does not silently fall back to Docker or ordinary host execution. If 
 
 ## Local Notes
 
-Run unit tests with `./werkzeug/test.sh`. Run the Go smoke with `./werkzeug/smoke-go.sh` and the full language smoke with `./werkzeug/smoke-languages.sh` after Postgres and the required toolchains are available.
+Run unit tests with `./werkzeug/test.sh`. Run the Go smoke with `./werkzeug/smoke-go.sh` and the language smoke with `./werkzeug/smoke-languages.sh` after Postgres and the required toolchains are available. Set `SMOKE_LANGUAGES=ocaml` or `SMOKE_LANGUAGES="markdown graphviz"` to verify a subset.
