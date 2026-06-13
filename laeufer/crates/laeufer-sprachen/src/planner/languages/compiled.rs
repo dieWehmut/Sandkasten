@@ -513,7 +513,7 @@ pub(in crate::planner) fn plan_assembly(
         env,
         NativeCompiler {
             program: "gcc",
-            args: vec!["-x", "assembler", "-no-pie"],
+            args: vec!["-x", "assembler", "-no-pie", "-Wl,-z,noexecstack"],
             output_name: "main",
         },
         entrypoint,

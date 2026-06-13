@@ -1188,6 +1188,11 @@ mod tests {
         assert_eq!(plan.compile.args[0], "-x");
         assert_eq!(plan.compile.args[1], "assembler");
         assert!(plan.compile.args.iter().any(|arg| arg == "-no-pie"));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg == "-Wl,-z,noexecstack"));
         assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
         assert!(plan
             .compile
