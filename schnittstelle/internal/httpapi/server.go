@@ -136,8 +136,14 @@ func (s *Server) handleRunWithLanguage(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	if req.Language == "" {
-		req.Language = pathLanguage
+	if pathLanguage != "" {
+		pathLanguage = normalizeLanguage(pathLanguage)
+		if req.Language == "" {
+			req.Language = pathLanguage
+		} else if normalizeLanguage(req.Language) != pathLanguage {
+			writeHTTPError(w, http.StatusBadRequest, "invalid_request", "language must match request path")
+			return
+		}
 	}
 	submit, err := req.toProto()
 	if err != nil {
@@ -316,14 +322,14 @@ func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 		}
 		archive = decoded
 	case strings.TrimSpace(r.Source) != "":
-		generated, err := sourceArchive(language, r.Source, r.Files)
+		if entrypoint == "" {
+			entrypoint = defaultEntrypoint(language)
+		}
+		generated, err := sourceArchive(language, entrypoint, r.Source, r.Files)
 		if err != nil {
 			return nil, err
 		}
 		archive = generated
-		if entrypoint == "" {
-			entrypoint = defaultEntrypoint(language)
-		}
 	default:
 		return nil, errors.New("source or archiveTargz is required")
 	}
@@ -345,7 +351,7 @@ func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 func normalizeLanguage(language string) string {
 	language = strings.ToLower(strings.TrimSpace(language))
 	switch language {
-	case "asm", "gas", "nasm":
+	case "asm", "gas":
 		return "assembly"
 	case "", "golang":
 		return "go"
@@ -583,12 +589,12 @@ func defaultEntrypoint(language string) string {
 	}
 }
 
-func sourceArchive(language, source string, files []runFile) ([]byte, error) {
+func sourceArchive(language, entrypoint, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
 		return goSourceArchive(source, files)
 	case "assembly", "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fortran", "fsharp", "gdscript", "gleam", "graphviz", "haskell", "html", "java", "javascript", "julia", "kotlin", "latex", "lean4", "lua", "markdown", "mdx", "mojo", "nextjs", "nextflow", "nim", "octave", "ocaml", "pascal", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typst", "typescript", "tsx", "vlang", "vue3", "wdl", "zig":
-		return singleFileArchive(defaultEntrypoint(language), []byte(source), files)
+		return singleFileArchive(entrypoint, []byte(source), files)
 	default:
 		return nil, fmt.Errorf("unsupported language %q", language)
 	}

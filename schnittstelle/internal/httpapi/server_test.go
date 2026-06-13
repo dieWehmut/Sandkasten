@@ -197,6 +197,60 @@ func TestRunRFromSourceSubmitsMainR(t *testing.T) {
 	}
 }
 
+func TestRunLanguagePathRejectsMismatchedBodyLanguage(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/fortran/run", strings.NewReader(`{"language":"python","source":"print('wrong')","wait":false}`))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.submitted != nil {
+		t.Fatalf("mismatched request was submitted: %+v", service.submitted)
+	}
+}
+
+func TestRunSourceUsesCustomEntrypointArchivePath(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/fortran/run", strings.NewReader(`{"source":"program alt\nend program alt\n","entrypoint":"alt.f90","wait":false}`))
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.submitted == nil {
+		t.Fatal("request was not submitted")
+	}
+	if service.submitted.GetEntrypoint() != "alt.f90" {
+		t.Fatalf("Entrypoint = %q", service.submitted.GetEntrypoint())
+	}
+	files := readArchiveFiles(t, service.submitted.GetArchiveTargz())
+	if _, ok := files["alt.f90"]; !ok {
+		t.Fatalf("archive files = %v, want alt.f90", mapKeys(files))
+	}
+	if _, ok := files["main.f90"]; ok {
+		t.Fatalf("archive unexpectedly contains default entrypoint: %v", mapKeys(files))
+	}
+}
+
+func TestNormalizeLanguageDoesNotMapNasmToAssembly(t *testing.T) {
+	if got := normalizeLanguage("asm"); got != "assembly" {
+		t.Fatalf("normalizeLanguage(asm) = %q", got)
+	}
+	if got := normalizeLanguage("gas"); got != "assembly" {
+		t.Fatalf("normalizeLanguage(gas) = %q", got)
+	}
+	if got := normalizeLanguage("nasm"); got != "nasm" {
+		t.Fatalf("normalizeLanguage(nasm) = %q", got)
+	}
+}
+
 func TestRunNewLanguagesFromSourceSubmitDefaultEntrypoints(t *testing.T) {
 	tests := []struct {
 		path       string
@@ -308,6 +362,14 @@ func readArchiveFiles(t *testing.T, archive []byte) map[string][]byte {
 		files[header.Name] = body
 	}
 	return files
+}
+
+func mapKeys[K comparable, V any](values map[K]V) []K {
+	keys := make([]K, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 func TestRunReturnsServiceUnavailableOnResourceExhaustion(t *testing.T) {
