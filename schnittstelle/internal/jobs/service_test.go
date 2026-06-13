@@ -549,8 +549,21 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			if !hasPrefix(runtime.GetRunPhase().GetCommand(), tt.runPrefix) {
 				t.Fatalf("RunPhase.Command = %v", runtime.GetRunPhase().GetCommand())
 			}
-			if tt.language == "markdown" && !commandContains(runtime.GetCompilePhase().GetCommand(), "puppeteerConfig") {
-				t.Fatalf("CompilePhase.Command = %v, want puppeteerConfig for Mermaid CLI", runtime.GetCompilePhase().GetCommand())
+			if tt.language == "markdown" {
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "puppeteerConfig") {
+					t.Fatalf("CompilePhase.Command = %v, want puppeteerConfig for Mermaid CLI", runtime.GetCompilePhase().GetCommand())
+				}
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-crashpad") || !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-breakpad") || !commandContains(runtime.GetCompilePhase().GetCommand(), "--disable-features=Crashpad") {
+					t.Fatalf("CompilePhase.Command = %v, want Chromium crash reporting disabled", runtime.GetCompilePhase().GetCommand())
+				}
+			}
+			if tt.language == "mdx" {
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "createRequire") || !commandContains(runtime.GetCompilePhase().GetCommand(), "pathToFileURL") || !commandContains(runtime.GetCompilePhase().GetCommand(), "requireFromNodePath('react/jsx-runtime')") {
+					t.Fatalf("CompilePhase.Command = %v, want MDX resolved from NODE_PATH before dynamic import", runtime.GetCompilePhase().GetCommand())
+				}
+			}
+			if tt.language == "octave" && commandContains(runtime.GetCompilePhase().GetCommand(), "parse(") {
+				t.Fatalf("CompilePhase.Command = %v, Octave parse() is unavailable", runtime.GetCompilePhase().GetCommand())
 			}
 			if tt.language == "latex" && !commandContains(runtime.GetCompilePhase().GetCommand(), "--only-cached") {
 				t.Fatalf("CompilePhase.Command = %v, want Tectonic only-cached mode", runtime.GetCompilePhase().GetCommand())

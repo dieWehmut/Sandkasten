@@ -1276,7 +1276,7 @@ mod tests {
             .compile
             .args
             .iter()
-            .any(|arg| arg.contains("parse") && arg.contains("main.m")));
+            .any(|arg| arg.contains("source") && arg.contains("main.m")));
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "octave-cli");
         assert_eq!(plan.run.args.last().map(String::as_str), Some("main.m"));
@@ -1354,6 +1354,13 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("puppeteerConfig") && arg.contains("/usr/bin/chromium")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("--disable-crashpad")
+                && arg.contains("--disable-breakpad")
+                && arg.contains("--disable-features=Crashpad")));
         assert!(plan.compile.args.iter().any(|arg| arg.ends_with("main.md")));
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
         assert_eq!(plan.run.program, "cat");
@@ -1373,6 +1380,16 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("@mdx-js/mdx") && arg.contains("renderToStaticMarkup")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("createRequire") && arg.contains("pathToFileURL")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("requireFromNodePath('react/jsx-runtime')")));
         assert!(plan
             .compile
             .args

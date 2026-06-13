@@ -141,7 +141,15 @@ const puppeteerConfigPath = '.laeufer-cache/mermaid/puppeteer.json';
 fs.writeFileSync(mermaidConfigPath, JSON.stringify({ securityLevel: 'strict', startOnLoad: false }));
 fs.writeFileSync(puppeteerConfigPath, JSON.stringify({
   executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-crash-reporter',
+    '--disable-crashpad',
+    '--disable-breakpad',
+    '--disable-features=Crashpad',
+  ],
 }));
 
 const diagrams = [];
@@ -171,6 +179,8 @@ entrypoint="$1"
 mkdir -p .laeufer-bin .laeufer-cache/mdx
 node - "$entrypoint" <<'NODE'
 const fs = require('fs');
+const { pathToFileURL } = require('url');
+const { createRequire } = require('module');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 
@@ -180,8 +190,10 @@ const { renderToStaticMarkup } = require('react-dom/server');
   if (/^\s*(import|export)\s/m.test(source)) {
     throw new Error('MDX import/export statements are not supported');
   }
-  const { evaluate } = await import('@mdx-js/mdx');
-  const runtime = await import('react/jsx-runtime');
+  const requireFromNodePath = createRequire(process.cwd() + '/.laeufer-cache/mdx/require.cjs');
+  const mdxUrl = pathToFileURL(requireFromNodePath.resolve('@mdx-js/mdx')).href;
+  const { evaluate } = await import(mdxUrl);
+  const runtime = requireFromNodePath('react/jsx-runtime');
   const mdxModule = await evaluate(source, { ...runtime, useMDXComponents: () => ({}) });
   fs.writeFileSync('.laeufer-bin/main.html', renderToStaticMarkup(React.createElement(mdxModule.default, {})) + '\n');
 })().catch((error) => {
@@ -1053,7 +1065,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "nim":
 		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache:.laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
 	case "octave":
-		return phase("octave-cli", "--no-gui", "--no-history", "--norc", "--silent", "--eval", "parse('main.m', false);")
+		return phase("octave-cli", "--no-gui", "--no-history", "--norc", "--silent", "--eval", "source('main.m');")
 	case "ocaml":
 		return phase("ocamlopt", "-o", ".laeufer-bin/main", "main.ml")
 	case "pascal":

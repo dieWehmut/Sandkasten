@@ -180,6 +180,7 @@ RUN apt-get update && \
     XDG_CACHE_HOME=/tmp/tectonic-cache tectonic --keep-logs --outdir /tmp/tectonic-warm/out /tmp/tectonic-warm/main.tex && \
     mkdir -p /opt/sandkasten/tectonic-cache && \
     cp -R /tmp/tectonic-cache/. /opt/sandkasten/tectonic-cache/ && \
+    chmod -R a+rX /opt/sandkasten/gleam-cache /opt/sandkasten/tectonic-cache && \
     curl ${CURL_RETRY_ARGS} -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz && \
     tar -xJf /tmp/zig.tar.xz -C /opt && \
     ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
