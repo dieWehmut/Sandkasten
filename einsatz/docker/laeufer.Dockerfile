@@ -156,7 +156,7 @@ RUN apt-get update && \
       '[dependencies]' \
       'gleam_stdlib = "1.0.3"' > /tmp/gleam-warm/gleam.toml && \
     printf '%s\n' 'pub fn main() { Nil }' > /tmp/gleam-warm/src/main.gleam && \
-    XDG_CACHE_HOME=/tmp/gleam-cache gleam build --target erlang --no-print-progress --root /tmp/gleam-warm && \
+    (cd /tmp/gleam-warm && XDG_CACHE_HOME=/tmp/gleam-cache gleam build --target erlang --no-print-progress) && \
     mkdir -p /opt/sandkasten/gleam-cache && \
     cp -R /tmp/gleam-cache/. /opt/sandkasten/gleam-cache/ && \
     curl ${CURL_RETRY_ARGS} -fL "https://github.com/vlang/v/releases/download/${V_VERSION}/v_linux.zip" -o /tmp/v_linux.zip && \

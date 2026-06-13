@@ -1305,6 +1305,16 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("gleam build --target erlang --no-print-progress")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("cd \"$project\"")));
+        assert!(!plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("--root \"$project\"")));
         assert_eq!(
             plan.compile.args.last().map(String::as_str),
             Some("src/main.gleam")

@@ -107,7 +107,10 @@ packages = [
 gleam_stdlib = { version = "1.0.3" }
 EOF
 cp "$entrypoint" "$project/src/main.gleam"
-gleam build --target erlang --no-print-progress --root "$project"`
+(
+  cd "$project"
+  gleam build --target erlang --no-print-progress
+)`
 
 const gleamRunScript = `set -eu
 ebin_args=

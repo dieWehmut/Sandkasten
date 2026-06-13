@@ -559,6 +559,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "gleam_stdlib") {
 					t.Fatalf("CompilePhase.Command = %v, want pinned Gleam stdlib", runtime.GetCompilePhase().GetCommand())
 				}
+				if !commandContains(runtime.GetCompilePhase().GetCommand(), "cd \"$project\"") || commandContains(runtime.GetCompilePhase().GetCommand(), "--root \"$project\"") {
+					t.Fatalf("CompilePhase.Command = %v, want Gleam build from project directory without --root", runtime.GetCompilePhase().GetCommand())
+				}
 				if !commandContains(runtime.GetRunPhase().GetCommand(), "ebin_args") || !commandContains(runtime.GetRunPhase().GetCommand(), "exec erl -noshell") {
 					t.Fatalf("RunPhase.Command = %v, want expanded Gleam ebin paths", runtime.GetRunPhase().GetCommand())
 				}
