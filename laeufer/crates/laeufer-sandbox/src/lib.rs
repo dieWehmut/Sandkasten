@@ -128,7 +128,7 @@ pub struct ChildRlimits {
 impl ChildRlimits {
     fn from_env() -> Result<Self, RunnerError> {
         Ok(Self {
-            cpu_seconds: optional_nonzero_env_u64("LAEUFER_RLIMIT_CPU_SECONDS")?.or(Some(2)),
+            cpu_seconds: optional_nonzero_env_u64("LAEUFER_RLIMIT_CPU_SECONDS")?,
             core_bytes: env_u64("LAEUFER_RLIMIT_CORE_BYTES", 0)?,
             file_size_bytes: env_u64("LAEUFER_RLIMIT_FSIZE_BYTES", 64 * 1024 * 1024)?,
             nofile: env_u64("LAEUFER_RLIMIT_NOFILE", 1024)?,
@@ -137,12 +137,21 @@ impl ChildRlimits {
             memlock_bytes: env_u64("LAEUFER_RLIMIT_MEMLOCK_BYTES", 0)?,
         })
     }
+
+    fn for_command(self, plan: &CommandPlan) -> Self {
+        Self {
+            cpu_seconds: self
+                .cpu_seconds
+                .or_else(|| cpu_rlimit_seconds_for_plan(plan.timeout, plan.cpu_millis)),
+            ..self
+        }
+    }
 }
 
 impl Default for ChildRlimits {
     fn default() -> Self {
         Self {
-            cpu_seconds: Some(2),
+            cpu_seconds: None,
             core_bytes: 0,
             file_size_bytes: 64 * 1024 * 1024,
             nofile: 1024,
@@ -256,7 +265,7 @@ async fn execute_command(
                 child_gid: config.child_gid,
                 require_private_namespaces: config.require_private_namespaces,
                 enable_seccomp: config.enable_seccomp,
-                child_rlimits: config.child_rlimits,
+                child_rlimits: config.child_rlimits.for_command(&execution_plan.plan),
                 seccomp_profile: execution_plan.plan.seccomp_profile,
             },
             cgroup_procs_path: cgroup.procs_path(),
@@ -770,6 +779,22 @@ fn cpu_max(cpu_millis: u32) -> String {
     }
     let quota = u64::from(cpu_millis).saturating_mul(100);
     format!("{} 100000", quota.max(1))
+}
+
+fn cpu_rlimit_seconds_for_plan(timeout: Duration, cpu_millis: u32) -> Option<u64> {
+    if timeout.is_zero() {
+        return None;
+    }
+    let wall_seconds = timeout
+        .as_secs()
+        .saturating_add(u64::from(timeout.subsec_nanos() > 0));
+    let cpu_shares = if cpu_millis == 0 {
+        1
+    } else {
+        u64::from(cpu_millis).saturating_add(999) / 1000
+    }
+    .max(1);
+    Some(wall_seconds.saturating_mul(cpu_shares).saturating_add(1))
 }
 
 fn memory_max(memory_limit_bytes: u64) -> String {
@@ -2253,7 +2278,7 @@ mod tests {
     fn default_child_rlimits_are_conservative() {
         let limits = ChildRlimits::default();
 
-        assert_eq!(limits.cpu_seconds, Some(2));
+        assert_eq!(limits.cpu_seconds, None);
         assert_eq!(limits.core_bytes, 0);
         assert_eq!(limits.file_size_bytes, 64 * 1024 * 1024);
         assert_eq!(limits.nofile, 1024);
@@ -2267,10 +2292,53 @@ mod tests {
 
         assert_eq!(config.pids_max, DEFAULT_PIDS_MAX);
         assert_eq!(config.memory_swap_max_bytes, Some(0));
-        assert_eq!(config.child_rlimits.cpu_seconds, Some(2));
+        assert_eq!(config.child_rlimits.cpu_seconds, None);
         assert_eq!(config.child_rlimits.nproc, DEFAULT_PIDS_MAX);
         assert!(config.require_private_namespaces);
         assert!(config.enable_seccomp);
+    }
+
+    #[test]
+    fn default_cpu_rlimit_tracks_command_budget() {
+        let plan = CommandPlan {
+            program: "/bin/sh".to_owned(),
+            args: vec!["-c".to_owned(), "true".to_owned()],
+            env: Vec::new(),
+            cwd: PathBuf::from("/"),
+            stdin: Default::default(),
+            timeout: Duration::from_millis(2500),
+            memory_limit_bytes: 128 * 1024 * 1024,
+            cpu_millis: 2500,
+            max_output_bytes: 1024,
+            seccomp_profile: SeccompProfile::Run,
+        };
+
+        let limits = ChildRlimits::default().for_command(&plan);
+
+        assert_eq!(limits.cpu_seconds, Some(10));
+    }
+
+    #[test]
+    fn explicit_cpu_rlimit_overrides_command_budget() {
+        let plan = CommandPlan {
+            program: "/bin/sh".to_owned(),
+            args: vec!["-c".to_owned(), "true".to_owned()],
+            env: Vec::new(),
+            cwd: PathBuf::from("/"),
+            stdin: Default::default(),
+            timeout: Duration::from_secs(30),
+            memory_limit_bytes: 128 * 1024 * 1024,
+            cpu_millis: 4000,
+            max_output_bytes: 1024,
+            seccomp_profile: SeccompProfile::Run,
+        };
+        let limits = ChildRlimits {
+            cpu_seconds: Some(3),
+            ..ChildRlimits::default()
+        }
+        .for_command(&plan);
+
+        assert_eq!(limits.cpu_seconds, Some(3));
     }
 
     fn shell_plan(script: &str, max_output_bytes: u64) -> CommandPlan {

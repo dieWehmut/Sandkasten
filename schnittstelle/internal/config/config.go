@@ -148,8 +148,7 @@ func runtimeResourceDefaults(runtimes []*pb.Runtime) map[string]jobs.ResourceDef
 		if prefix == "" {
 			continue
 		}
-		var current jobs.ResourceDefaults
-		configured := false
+		current, configured := builtInRuntimeResourceDefault(language)
 		if value, ok := lookupEnvUint32(prefix + "_DEFAULT_COMPILE_TIMEOUT_MS"); ok {
 			current.CompileTimeoutMS = value
 			configured = true
@@ -175,6 +174,33 @@ func runtimeResourceDefaults(runtimes []*pb.Runtime) map[string]jobs.ResourceDef
 		}
 	}
 	return defaults
+}
+
+func builtInRuntimeResourceDefault(language string) (jobs.ResourceDefaults, bool) {
+	const oneGiB = 1024 * 1024 * 1024
+
+	switch language {
+	case "cangjie", "crystal", "dart", "fsharp", "fortran", "gdscript", "gleam", "haskell",
+		"kotlin", "latex", "markdown", "mdx", "mojo", "nextflow", "qml", "racket",
+		"scala", "swift", "typescript", "typst", "wdl", "zig":
+		return jobs.ResourceDefaults{
+			CompileTimeoutMS: uint32((120 * time.Second).Milliseconds()),
+			RunTimeoutMS:     uint32((30 * time.Second).Milliseconds()),
+			MemoryLimitBytes: oneGiB,
+			CPUMillis:        4000,
+			MaxOutputBytes:   1024 * 1024,
+		}, true
+	case "nextjs", "tsx", "vue3":
+		return jobs.ResourceDefaults{
+			CompileTimeoutMS: uint32((60 * time.Second).Milliseconds()),
+			RunTimeoutMS:     uint32((15 * time.Second).Milliseconds()),
+			MemoryLimitBytes: oneGiB,
+			CPUMillis:        4000,
+			MaxOutputBytes:   1024 * 1024,
+		}, true
+	default:
+		return jobs.ResourceDefaults{}, false
+	}
 }
 
 func supportedRuntimes(defaultRuntime *pb.Runtime) []*pb.Runtime {

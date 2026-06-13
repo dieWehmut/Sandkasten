@@ -34,6 +34,44 @@ func TestLoadAppliesRuntimeLimitEnv(t *testing.T) {
 	}
 }
 
+func TestLoadAppliesBuiltInRuntimeResourceDefaults(t *testing.T) {
+	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go,typescript")
+
+	cfg := Load()
+
+	defaults, ok := cfg.RuntimeResourceDefaults["typescript"]
+	if !ok {
+		t.Fatal("RuntimeResourceDefaults[typescript] missing")
+	}
+	if defaults.CompileTimeoutMS != 120000 {
+		t.Fatalf("CompileTimeoutMS = %d", defaults.CompileTimeoutMS)
+	}
+	if defaults.RunTimeoutMS != 30000 {
+		t.Fatalf("RunTimeoutMS = %d", defaults.RunTimeoutMS)
+	}
+	if defaults.MemoryLimitBytes != 1024*1024*1024 {
+		t.Fatalf("MemoryLimitBytes = %d", defaults.MemoryLimitBytes)
+	}
+	if defaults.CPUMillis != 4000 {
+		t.Fatalf("CPUMillis = %d", defaults.CPUMillis)
+	}
+}
+
+func TestLoadRuntimeEnvOverridesBuiltInResourceDefaults(t *testing.T) {
+	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go,typescript")
+	t.Setenv("SANDKASTEN_TYPESCRIPT_DEFAULT_CPU_MILLIS", "2000")
+
+	cfg := Load()
+
+	defaults := cfg.RuntimeResourceDefaults["typescript"]
+	if defaults.CPUMillis != 2000 {
+		t.Fatalf("CPUMillis = %d", defaults.CPUMillis)
+	}
+	if defaults.MemoryLimitBytes != 1024*1024*1024 {
+		t.Fatalf("MemoryLimitBytes = %d", defaults.MemoryLimitBytes)
+	}
+}
+
 func TestLoadIgnoresRuntimeLimitEnvForDisabledLanguage(t *testing.T) {
 	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go")
 	t.Setenv("SANDKASTEN_PYTHON_MAX_RUN_TIMEOUT_MS", "9000")
