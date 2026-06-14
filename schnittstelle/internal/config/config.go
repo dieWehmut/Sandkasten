@@ -41,9 +41,16 @@ func Load() Config {
 	limits := submissionLimits()
 	resourceDefaults := submissionResourceDefaults()
 	return Config{
-		GRPCListenAddr:          envString("SANDKASTEN_API_GRPC_ADDR", ":50051"),
-		HTTPListenAddr:          envString("SANDKASTEN_API_HTTP_ADDR", "127.0.0.1:8080"),
-		HTTPCORSOrigins:         envList("SANDKASTEN_API_CORS_ORIGINS", []string{"http://localhost:5173", "http://127.0.0.1:5173"}),
+		GRPCListenAddr: envString("SANDKASTEN_API_GRPC_ADDR", ":50051"),
+		HTTPListenAddr: envString("SANDKASTEN_API_HTTP_ADDR", "127.0.0.1:8080"),
+		HTTPCORSOrigins: envList("SANDKASTEN_API_CORS_ORIGINS", []string{
+			"http://localhost:5173",
+			"http://127.0.0.1:5173",
+			"http://localhost:4173",
+			"http://127.0.0.1:4173",
+			"http://localhost:4174",
+			"http://127.0.0.1:4174",
+		}),
 		DatabaseURL:             envString("DATABASE_URL", "postgres://sandkasten:sandkasten@localhost:5432/sandkasten?sslmode=disable"),
 		AuthToken:               os.Getenv("SANDKASTEN_API_TOKEN"),
 		DBMaxOpenConns:          envInt("SANDKASTEN_DB_MAX_OPEN_CONNS", 10),

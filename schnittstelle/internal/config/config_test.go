@@ -1,10 +1,43 @@
 package config
 
 import (
+	"reflect"
 	"testing"
 
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
 )
+
+func TestLoadIncludesLocalFrontendCORSOriginsByDefault(t *testing.T) {
+	cfg := Load()
+	origins := map[string]bool{}
+	for _, origin := range cfg.HTTPCORSOrigins {
+		origins[origin] = true
+	}
+
+	for _, origin := range []string{
+		"http://localhost:5173",
+		"http://127.0.0.1:5173",
+		"http://localhost:4173",
+		"http://127.0.0.1:4173",
+		"http://localhost:4174",
+		"http://127.0.0.1:4174",
+	} {
+		if !origins[origin] {
+			t.Fatalf("HTTPCORSOrigins = %v, missing %s", cfg.HTTPCORSOrigins, origin)
+		}
+	}
+}
+
+func TestLoadCORSOriginsEnvOverridesDefaults(t *testing.T) {
+	t.Setenv("SANDKASTEN_API_CORS_ORIGINS", "https://example.test, http://localhost:9999")
+
+	cfg := Load()
+
+	want := []string{"https://example.test", "http://localhost:9999"}
+	if !reflect.DeepEqual(cfg.HTTPCORSOrigins, want) {
+		t.Fatalf("HTTPCORSOrigins = %v, want %v", cfg.HTTPCORSOrigins, want)
+	}
+}
 
 func TestLoadAppliesRuntimeLimitEnv(t *testing.T) {
 	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go,py")
