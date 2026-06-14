@@ -439,14 +439,14 @@ mod tests {
     }
 
     #[test]
-    fn zig_plan_builds_release_safe_binary_with_private_cache() {
+    fn zig_plan_builds_debug_binary_with_private_cache() {
         let job = job("zig", "main.zig");
         let plan =
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
 
         assert_eq!(plan.compile.program, "zig");
         assert_eq!(plan.compile.args[0], "build-exe");
-        assert!(plan.compile.args.iter().any(|arg| arg == "ReleaseSafe"));
+        assert!(plan.compile.args.iter().any(|arg| arg == "Debug"));
         assert!(plan.compile.args.iter().any(|arg| arg == "-lc"));
         assert!(plan.compile.args.iter().any(|arg| arg == "--cache-dir"));
         assert!(plan
@@ -495,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn nim_plan_compiles_release_binary_with_private_cache() {
+    fn nim_plan_compiles_binary_with_private_cache() {
         let job = job("nimrod", "main.nim");
         let plan =
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
@@ -512,6 +512,7 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.ends_with(".laeufer-cache/nim") && arg.starts_with("--nimcache:")));
+        assert!(!plan.compile.args.iter().any(|arg| arg == "-d:release"));
         assert!(plan
             .compile
             .args
@@ -547,15 +548,15 @@ mod tests {
     }
 
     #[test]
-    fn crystal_plan_builds_release_binary_with_private_cache() {
+    fn crystal_plan_builds_binary_with_private_cache() {
         let job = job("cr", "main.cr");
         let plan =
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
 
         assert_eq!(plan.compile.program, "crystal");
         assert_eq!(plan.compile.args[0], "build");
-        assert!(plan.compile.args.iter().any(|arg| arg == "--release"));
-        assert!(plan.compile.args.iter().any(|arg| arg == "--no-debug"));
+        assert!(!plan.compile.args.iter().any(|arg| arg == "--release"));
+        assert!(!plan.compile.args.iter().any(|arg| arg == "--no-debug"));
         assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
         assert!(plan
             .compile
@@ -760,13 +761,13 @@ mod tests {
     }
 
     #[test]
-    fn racket_plan_compiles_with_private_cache_then_runs() {
+    fn racket_plan_expands_with_private_cache_then_runs() {
         let job = job("rkt", "main.rkt");
         let plan =
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
 
         assert_eq!(plan.compile.program, "raco");
-        assert_eq!(plan.compile.args, vec!["make", "main.rkt"]);
+        assert_eq!(plan.compile.args, vec!["expand", "main.rkt"]);
         assert_eq!(plan.run.program, "racket");
         assert_eq!(plan.run.args, vec!["-t", "main.rkt"]);
         assert!(plan
@@ -1245,7 +1246,7 @@ mod tests {
 
         assert_compile_run_seccomp(&plan);
         assert_eq!(plan.compile.program, "v");
-        assert_eq!(plan.compile.args[0], "-prod");
+        assert!(!plan.compile.args.iter().any(|arg| arg == "-prod"));
         assert!(plan.compile.args.iter().any(|arg| arg == "-o"));
         assert!(plan
             .compile

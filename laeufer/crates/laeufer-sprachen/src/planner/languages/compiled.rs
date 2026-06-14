@@ -131,7 +131,6 @@ pub(in crate::planner) fn plan_nim(
             "--verbosity:0".to_owned(),
             "--parallelBuild:1".to_owned(),
             format!("--nimcache:{}", nim_cache.to_string_lossy()),
-            "-d:release".to_owned(),
             format!("--out:{}", binary_path.to_string_lossy()),
             entrypoint.to_string_lossy().into_owned(),
         ],
@@ -172,8 +171,6 @@ pub(in crate::planner) fn plan_crystal(
         "crystal",
         vec![
             "build".to_owned(),
-            "--release".to_owned(),
-            "--no-debug".to_owned(),
             entrypoint.to_string_lossy().into_owned(),
             "-o".to_owned(),
             binary_path.to_string_lossy().into_owned(),
@@ -553,7 +550,6 @@ pub(in crate::planner) fn plan_vlang(
     let compile = compile_command_plan(
         "v",
         vec![
-            "-prod".to_owned(),
             "-o".to_owned(),
             binary_path.to_string_lossy().into_owned(),
             entrypoint.to_string_lossy().into_owned(),
@@ -1033,7 +1029,7 @@ pub(in crate::planner) fn plan_zig(
         vec![
             "build-exe".to_owned(),
             "-O".to_owned(),
-            "ReleaseSafe".to_owned(),
+            "Debug".to_owned(),
             "-lc".to_owned(),
             "--cache-dir".to_owned(),
             local_cache.to_string_lossy().into_owned(),

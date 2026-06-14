@@ -1663,7 +1663,7 @@ pub(in crate::planner) fn plan_racket(
     let entrypoint = entrypoint.to_string_lossy().into_owned();
     let compile = compile_command_plan(
         "raco",
-        vec!["make".to_owned(), entrypoint.clone()],
+        vec!["expand".to_owned(), entrypoint.clone()],
         env.clone(),
         source_dir.clone(),
         Default::default(),

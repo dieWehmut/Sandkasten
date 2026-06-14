@@ -225,7 +225,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			language:      "crystal",
 			alias:         "cr",
 			entrypoint:    "main.cr",
-			compilePrefix: []string{"crystal", "build", "--release", "--no-debug"},
+			compilePrefix: []string{"crystal", "build", "main.cr", "-o"},
 			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
@@ -442,7 +442,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			language:      "racket",
 			alias:         "rkt",
 			entrypoint:    "main.rkt",
-			compilePrefix: []string{"raco", "make"},
+			compilePrefix: []string{"raco", "expand"},
 			runPrefix:     []string{"racket", "-t"},
 		},
 		{
@@ -498,7 +498,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			language:      "vlang",
 			alias:         "v",
 			entrypoint:    "main.vv",
-			compilePrefix: []string{"v", "-prod", "-o", ".laeufer-bin/main", "main.vv"},
+			compilePrefix: []string{"v", "-o", ".laeufer-bin/main", "main.vv"},
 			runPrefix:     []string{".laeufer-bin/main"},
 		},
 		{
@@ -581,6 +581,15 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 				if !commandContains(runtime.GetRunPhase().GetCommand(), "ebin_args") || !commandContains(runtime.GetRunPhase().GetCommand(), "exec erl -noshell") {
 					t.Fatalf("RunPhase.Command = %v, want expanded Gleam ebin paths", runtime.GetRunPhase().GetCommand())
 				}
+			}
+			if tt.language == "nim" && commandContains(runtime.GetCompilePhase().GetCommand(), "-d:release") {
+				t.Fatalf("CompilePhase.Command = %v, code-block Nim compiles should not force release mode", runtime.GetCompilePhase().GetCommand())
+			}
+			if tt.language == "vlang" && commandContains(runtime.GetCompilePhase().GetCommand(), "-prod") {
+				t.Fatalf("CompilePhase.Command = %v, code-block V compiles should not force prod mode", runtime.GetCompilePhase().GetCommand())
+			}
+			if tt.language == "zig" && !commandContains(runtime.GetCompilePhase().GetCommand(), "Debug") {
+				t.Fatalf("CompilePhase.Command = %v, want fast Debug build mode", runtime.GetCompilePhase().GetCommand())
 			}
 		})
 	}

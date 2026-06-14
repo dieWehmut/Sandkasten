@@ -181,8 +181,8 @@ func builtInRuntimeResourceDefault(language string) (jobs.ResourceDefaults, bool
 
 	switch language {
 	case "cangjie", "crystal", "dart", "fsharp", "fortran", "gdscript", "gleam", "haskell",
-		"kotlin", "latex", "markdown", "mdx", "mojo", "nextflow", "qml", "racket",
-		"scala", "swift", "typescript", "typst", "wdl", "zig":
+		"kotlin", "latex", "markdown", "mdx", "mojo", "nextflow", "nim", "qml", "racket",
+		"scala", "swift", "typescript", "typst", "vlang", "wdl", "zig":
 		return jobs.ResourceDefaults{
 			CompileTimeoutMS: uint32((120 * time.Second).Milliseconds()),
 			RunTimeoutMS:     uint32((30 * time.Second).Milliseconds()),

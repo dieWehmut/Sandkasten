@@ -1043,7 +1043,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "coq":
 		return phase("coqc", "-q", "-R", ".", "Sandbox", "main.v")
 	case "crystal":
-		return phase("crystal", "build", "--release", "--no-debug", "main.cr", "-o", ".laeufer-bin/main")
+		return phase("crystal", "build", "main.cr", "-o", ".laeufer-bin/main")
 	case "dart":
 		return phase("dart", "--disable-analytics", "compile", "exe", "main.dart", "-o", ".laeufer-bin/main")
 	case "elixir":
@@ -1089,7 +1089,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "nextflow":
 		return phase("nextflow", "lint", "main.nf")
 	case "nim":
-		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache:.laeufer-cache/nim", "-d:release", "--out:.laeufer-bin/main", "main.nim")
+		return phase("nim", "c", "--hints:off", "--warnings:off", "--verbosity:0", "--parallelBuild:1", "--nimcache:.laeufer-cache/nim", "--out:.laeufer-bin/main", "main.nim")
 	case "octave":
 		return phase("octave-cli", "--no-gui", "--no-history", "--norc", "--silent", "--eval", "source('main.m');")
 	case "ocaml":
@@ -1111,7 +1111,7 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "r":
 		return phase("Rscript", "--vanilla", "-e", "args <- commandArgs(trailingOnly = TRUE); parse(file = args[[1]])", "main.R")
 	case "racket":
-		return phase("raco", "make", "main.rkt")
+		return phase("raco", "expand", "main.rkt")
 	case "ruby":
 		return phase("ruby", "-c", "main.rb")
 	case "rust":
@@ -1133,13 +1133,13 @@ func runtimeCompilePhase(language string) *pb.RuntimePhase {
 	case "typst":
 		return phase("typst", "compile", "--root", ".", "main.typ", ".laeufer-bin/main.svg")
 	case "vlang":
-		return phase("v", "-prod", "-o", ".laeufer-bin/main", "main.vv")
+		return phase("v", "-o", ".laeufer-bin/main", "main.vv")
 	case "vue3":
 		return phase("bash", "--noprofile", "--norc", "-c", "node - \"$1\" && esbuild .laeufer-cache/vue/entry.mjs --bundle --platform=node --format=cjs --outfile=.laeufer-bin/vue.cjs >/dev/null", "_", "main.vue")
 	case "wdl":
 		return phase("miniwdl", "check", "--no-outside-imports", "main.wdl")
 	case "zig":
-		return phase("zig", "build-exe", "-O", "ReleaseSafe", "-lc", "--cache-dir", ".laeufer-cache/zig-cache", "--global-cache-dir", ".laeufer-cache/zig-global-cache", "-femit-bin=.laeufer-bin/main", "main.zig")
+		return phase("zig", "build-exe", "-O", "Debug", "-lc", "--cache-dir", ".laeufer-cache/zig-cache", "--global-cache-dir", ".laeufer-cache/zig-global-cache", "-femit-bin=.laeufer-bin/main", "main.zig")
 	default:
 		return &pb.RuntimePhase{}
 	}

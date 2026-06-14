@@ -35,7 +35,7 @@ func TestLoadAppliesRuntimeLimitEnv(t *testing.T) {
 }
 
 func TestLoadAppliesBuiltInRuntimeResourceDefaults(t *testing.T) {
-	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go,typescript")
+	t.Setenv("SANDKASTEN_RUNTIME_LANGUAGES", "go,typescript,nim,v")
 
 	cfg := Load()
 
@@ -54,6 +54,15 @@ func TestLoadAppliesBuiltInRuntimeResourceDefaults(t *testing.T) {
 	}
 	if defaults.CPUMillis != 4000 {
 		t.Fatalf("CPUMillis = %d", defaults.CPUMillis)
+	}
+	for _, language := range []string{"nim", "vlang"} {
+		defaults, ok := cfg.RuntimeResourceDefaults[language]
+		if !ok {
+			t.Fatalf("RuntimeResourceDefaults[%s] missing", language)
+		}
+		if defaults.CompileTimeoutMS != 120000 || defaults.MemoryLimitBytes != 1024*1024*1024 {
+			t.Fatalf("RuntimeResourceDefaults[%s] = %+v", language, defaults)
+		}
 	}
 }
 

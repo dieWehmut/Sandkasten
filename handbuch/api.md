@@ -158,6 +158,8 @@ Backpressure returns gRPC `ResourceExhausted` and HTTP `503 resource_exhausted`.
 
 ## Runner Retry Budget
 
+`LAEUFER_MAX_CONCURRENT_JOBS` defaults to `4`. A runner leases and executes up to that many jobs concurrently, with independent lease heartbeats and cancel watchers for each active attempt. `LAEUFER_DATABASE_MAX_CONNECTIONS` defaults to `max(5, LAEUFER_MAX_CONCURRENT_JOBS*3+2)` so concurrent jobs, heartbeats, cancel watchers, and notification listeners do not starve the Postgres pool.
+
 `LAEUFER_MAX_ATTEMPTS` defaults to `3`. Every successful lease increments `jobs.attempt_count` and records a `job_attempts` row with `attempt_id`, `attempt_number`, runner id, status, phase, timestamps, terminal reason, command cgroup path, host child PID, and terminal result counters. When an active job lease expires at or above that limit, the runner marks it `SYSTEM_ERROR`, updates the latest attempt to `DEAD_LETTER` with `terminal_reason='dead_letter'`, and writes a job event instead of retrying forever.
 
 ## Runner Rlimits

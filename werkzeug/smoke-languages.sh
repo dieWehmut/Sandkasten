@@ -11,6 +11,10 @@ API_TOKEN="${SANDKASTEN_API_TOKEN:-dev-token}"
 RUNNER_WORK_DIR="${LAEUFER_WORK_DIR:-/tmp/sandkasten-laeufer-smoke-languages}"
 COMPILE_MEMORY_LIMIT_BYTES="${LAEUFER_COMPILE_MEMORY_LIMIT_BYTES:-1073741824}"
 RUNTIME_PATH="${LAEUFER_RUNTIME_PATH:-/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin}"
+SMOKE_WAIT_TIMEOUT_MS="${SMOKE_WAIT_TIMEOUT_MS:-180000}"
+SMOKE_COMPILE_TIMEOUT_MS="${SMOKE_COMPILE_TIMEOUT_MS:-120000}"
+SMOKE_RUN_TIMEOUT_MS="${SMOKE_RUN_TIMEOUT_MS:-30000}"
+SMOKE_RUNNER_CONCURRENCY="${LAEUFER_MAX_CONCURRENT_JOBS:-4}"
 SMOKE_LANGUAGES="${SMOKE_LANGUAGES:-}"
 SMOKE_LANGUAGE_FILTERED=0
 
@@ -244,7 +248,7 @@ submit_language() {
       -w '%{http_code}' \
       -H "authorization: Bearer ${API_TOKEN}" \
       -H 'content-type: application/json' \
-      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":60000,\"compileTimeoutMs\":60000,\"runTimeoutMs\":10000,\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
+      -d "{\"source\":${source_json},\"wait\":true,\"waitTimeoutMs\":${SMOKE_WAIT_TIMEOUT_MS},\"compileTimeoutMs\":${SMOKE_COMPILE_TIMEOUT_MS},\"runTimeoutMs\":${SMOKE_RUN_TIMEOUT_MS},\"memoryLimitBytes\":${memory},\"maxOutputBytes\":1048576}" \
       "http://${HTTP_ADDR}/v1/${language}/run"
   )"
   curl_status="$?"
@@ -517,6 +521,7 @@ LAEUFER_RUNNER_ID=smoke-languages \
 LAEUFER_WORK_DIR="$RUNNER_WORK_DIR" \
 LAEUFER_POLL_INTERVAL_MS=200 \
 LAEUFER_LEASE_TTL_MS=60000 \
+LAEUFER_MAX_CONCURRENT_JOBS="$SMOKE_RUNNER_CONCURRENCY" \
 LAEUFER_CGROUP_ROOT="${LAEUFER_CGROUP_ROOT:-/sys/fs/cgroup}" \
 LAEUFER_REQUIRE_PRIVATE_NAMESPACES="${LAEUFER_REQUIRE_PRIVATE_NAMESPACES:-1}" \
 LAEUFER_COMPILE_MEMORY_LIMIT_BYTES="$COMPILE_MEMORY_LIMIT_BYTES" \

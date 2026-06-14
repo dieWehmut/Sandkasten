@@ -205,8 +205,15 @@ pub struct PgJobStore {
 
 impl PgJobStore {
     pub async fn connect(database_url: &str) -> Result<Self, RunnerError> {
+        Self::connect_with_max_connections(database_url, 5).await
+    }
+
+    pub async fn connect_with_max_connections(
+        database_url: &str,
+        max_connections: u32,
+    ) -> Result<Self, RunnerError> {
         let pool = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(max_connections.max(1))
             .connect(database_url)
             .await
             .map_err(store_error)?;

@@ -4,7 +4,9 @@ use laeufer_sandbox::LinuxSandbox;
 use laeufer_sprachen::{ArchiveLimits, SprachenRuntime, SprachenRuntimeOptions};
 use laeufer_store::PgJobStore;
 use std::fs;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::task::JoinSet;
 use tokio::time;
 
 #[tokio::main]
@@ -12,9 +14,12 @@ async fn main() -> Result<()> {
     let config = RunnerConfig::from_env().context("load runner config")?;
     fs::create_dir_all(&config.work_dir).context("create runner work directory")?;
 
-    let store = PgJobStore::connect(&config.database_url)
-        .await
-        .context("connect to postgres")?;
+    let store = PgJobStore::connect_with_max_connections(
+        &config.database_url,
+        config.database_max_connections,
+    )
+    .await
+    .context("connect to postgres")?;
     let mut queue_notifications = match store.subscribe_job_queue().await {
         Ok(receiver) => Some(receiver),
         Err(error) => {
@@ -22,7 +27,7 @@ async fn main() -> Result<()> {
             None
         }
     };
-    let runtime = SprachenRuntime::with_options(
+    let runtime = Arc::new(SprachenRuntime::with_options(
         &config.work_dir,
         SprachenRuntimeOptions {
             archive_limits: ArchiveLimits {
@@ -31,86 +36,133 @@ async fn main() -> Result<()> {
             },
             compile_memory_limit_bytes: config.compile_memory_limit_bytes,
         },
-    );
-    let sandbox = LinuxSandbox::from_env().context("load sandbox config")?;
+    ));
+    let sandbox = Arc::new(LinuxSandbox::from_env().context("load sandbox config")?);
     sandbox.preflight().await.context("sandbox preflight")?;
 
     eprintln!(
-        "laeufer runner {} started; polling every {} ms",
+        "laeufer runner {} started; polling every {} ms; concurrency {}; database max connections {}",
         config.runner_id,
-        config.poll_interval.as_millis()
+        config.poll_interval.as_millis(),
+        config.max_concurrent_jobs,
+        config.database_max_connections
     );
 
     let mut shutdown = Box::pin(shutdown_signal());
+    let max_concurrent_jobs = config.max_concurrent_jobs as usize;
+    let mut running = JoinSet::new();
     loop {
-        let lease = tokio::select! {
+        while running.len() < max_concurrent_jobs {
+            match store
+                .lease_next(&config.runner_id, config.lease_ttl, config.max_attempts)
+                .await
+            {
+                Ok(Some(job)) => {
+                    let store = store.clone();
+                    let runner_id = config.runner_id.clone();
+                    let lease_ttl = config.lease_ttl;
+                    let poll_interval = config.poll_interval;
+                    let runtime = Arc::clone(&runtime);
+                    let sandbox = Arc::clone(&sandbox);
+                    running.spawn(async move {
+                        run_leased_job(
+                            store,
+                            runner_id,
+                            runtime,
+                            sandbox,
+                            job,
+                            lease_ttl,
+                            poll_interval,
+                        )
+                        .await;
+                    });
+                }
+                Ok(None) => break,
+                Err(error) => {
+                    eprintln!("lease failed: {error}");
+                    break;
+                }
+            }
+        }
+
+        if running.is_empty() {
+            tokio::select! {
+                _ = &mut shutdown => {
+                    eprintln!("shutdown requested");
+                    break;
+                }
+                _ = wait_for_queue_notification(&mut queue_notifications) => {}
+                _ = time::sleep(config.poll_interval) => {}
+            }
+            continue;
+        }
+
+        tokio::select! {
             _ = &mut shutdown => {
                 eprintln!("shutdown requested");
                 break;
             }
-            lease = store.lease_next(&config.runner_id, config.lease_ttl, config.max_attempts) => lease,
-        };
+            joined = running.join_next() => {
+                if let Some(joined) = joined {
+                    if let Err(error) = joined {
+                        eprintln!("job task failed: {error}");
+                    }
+                }
+            }
+            _ = wait_for_queue_notification(&mut queue_notifications), if running.len() < max_concurrent_jobs => {}
+            _ = time::sleep(config.poll_interval), if running.len() < max_concurrent_jobs => {}
+        }
+    }
 
-        match lease {
-            Ok(Some(job)) => {
-                let job_id = job.job_id;
-                let attempt_id = job.attempt_id;
-                let heartbeat = LeaseHeartbeat::spawn(
-                    store.clone(),
-                    config.runner_id.clone(),
-                    attempt_id,
-                    job_id,
-                    config.lease_ttl,
-                );
-                let cancel_watcher =
-                    CancelWatcher::spawn(store.clone(), job_id, config.poll_interval);
-                let mut cancel_rx = cancel_watcher.receiver();
-                match execute_job(
-                    &store,
-                    &config.runner_id,
-                    &runtime,
-                    &sandbox,
-                    job,
-                    &mut cancel_rx,
-                )
-                .await
-                {
-                    Ok(status) => {
-                        eprintln!("job {job_id} finished with {status}");
-                    }
-                    Err(error) => {
-                        eprintln!("job {job_id} failed in runner: {error}");
-                    }
-                }
-                cancel_watcher.stop().await;
-                heartbeat.stop().await;
-            }
-            Ok(None) => {
-                tokio::select! {
-                    _ = &mut shutdown => {
-                        eprintln!("shutdown requested");
-                        break;
-                    }
-                    _ = wait_for_queue_notification(&mut queue_notifications) => {}
-                    _ = time::sleep(config.poll_interval) => {}
-                }
-            }
-            Err(error) => {
-                eprintln!("lease failed: {error}");
-                tokio::select! {
-                    _ = &mut shutdown => {
-                        eprintln!("shutdown requested");
-                        break;
-                    }
-                    _ = wait_for_queue_notification(&mut queue_notifications) => {}
-                    _ = time::sleep(config.poll_interval) => {}
-                }
-            }
+    while let Some(joined) = running.join_next().await {
+        if let Err(error) = joined {
+            eprintln!("job task failed during shutdown drain: {error}");
         }
     }
 
     eprintln!("laeufer runner stopped");
     Ok(())
+}
+
+async fn run_leased_job(
+    store: PgJobStore,
+    runner_id: String,
+    runtime: Arc<SprachenRuntime>,
+    sandbox: Arc<LinuxSandbox>,
+    job: laeufer_core::Job,
+    lease_ttl: Duration,
+    poll_interval: Duration,
+) {
+    let job_id = job.job_id;
+    let attempt_id = job.attempt_id;
+    let heartbeat = LeaseHeartbeat::spawn(
+        store.clone(),
+        runner_id.clone(),
+        attempt_id,
+        job_id,
+        lease_ttl,
+    );
+    let cancel_watcher = CancelWatcher::spawn(store.clone(), job_id, poll_interval);
+    let mut cancel_rx = cancel_watcher.receiver();
+    match execute_job(
+        &store,
+        &runner_id,
+        runtime.as_ref(),
+        sandbox.as_ref(),
+        job,
+        &mut cancel_rx,
+    )
+    .await
+    {
+        Ok(status) => {
+            eprintln!("job {job_id} finished with {status}");
+        }
+        Err(error) => {
+            eprintln!("job {job_id} failed in runner: {error}");
+        }
+    }
+    cancel_watcher.stop().await;
+    heartbeat.stop().await;
 }
 
 struct CancelWatcher {

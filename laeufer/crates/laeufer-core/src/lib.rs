@@ -18,6 +18,7 @@ pub type CancellationReceiver = watch::Receiver<bool>;
 pub struct RunnerConfig {
     pub runner_id: String,
     pub database_url: String,
+    pub database_max_connections: u32,
     pub poll_interval: Duration,
     pub lease_ttl: Duration,
     pub work_dir: PathBuf,
@@ -25,6 +26,7 @@ pub struct RunnerConfig {
     pub max_archive_files: usize,
     pub compile_memory_limit_bytes: u64,
     pub max_attempts: u32,
+    pub max_concurrent_jobs: u32,
 }
 
 impl RunnerConfig {
@@ -34,6 +36,11 @@ impl RunnerConfig {
             .unwrap_or_else(|_| format!("laeufer-{}", std::process::id()));
         let database_url =
             std::env::var("DATABASE_URL").map_err(|_| ConfigError::MissingDatabaseUrl)?;
+        let max_concurrent_jobs = positive_u32_env("LAEUFER_MAX_CONCURRENT_JOBS", 4)?;
+        let database_max_connections = positive_u32_env(
+            "LAEUFER_DATABASE_MAX_CONNECTIONS",
+            default_database_max_connections(max_concurrent_jobs),
+        )?;
         let poll_interval = millis_env("LAEUFER_POLL_INTERVAL_MS", 1_000)?;
         let lease_ttl = millis_env("LAEUFER_LEASE_TTL_MS", 60_000)?;
         let work_dir = std::env::var("LAEUFER_WORK_DIR")
@@ -48,6 +55,7 @@ impl RunnerConfig {
         Ok(Self {
             runner_id,
             database_url,
+            database_max_connections,
             poll_interval,
             lease_ttl,
             work_dir,
@@ -55,8 +63,16 @@ impl RunnerConfig {
             max_archive_files,
             compile_memory_limit_bytes,
             max_attempts,
+            max_concurrent_jobs,
         })
     }
+}
+
+fn default_database_max_connections(max_concurrent_jobs: u32) -> u32 {
+    max_concurrent_jobs
+        .saturating_mul(3)
+        .saturating_add(2)
+        .max(5)
 }
 
 fn millis_env(name: &'static str, default_ms: u64) -> Result<Duration, ConfigError> {
@@ -1070,6 +1086,25 @@ mod tests {
             positive_u32_value("LAEUFER_MAX_ATTEMPTS", "abc".to_owned()),
             Err(ConfigError::InvalidInteger { .. })
         ));
+    }
+
+    #[test]
+    fn concurrent_jobs_must_be_positive() {
+        assert_eq!(
+            positive_u32_value("LAEUFER_MAX_CONCURRENT_JOBS", "4".to_owned()),
+            Ok(4)
+        );
+        assert!(matches!(
+            positive_u32_value("LAEUFER_MAX_CONCURRENT_JOBS", "0".to_owned()),
+            Err(ConfigError::InvalidPositiveInteger { .. })
+        ));
+    }
+
+    #[test]
+    fn database_pool_default_scales_with_concurrency() {
+        assert_eq!(default_database_max_connections(1), 5);
+        assert_eq!(default_database_max_connections(4), 14);
+        assert_eq!(default_database_max_connections(16), 50);
     }
 
     #[derive(Default)]
