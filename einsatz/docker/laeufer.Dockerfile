@@ -92,6 +92,7 @@ RUN apt-get update && \
       octave \
       perl \
       php-cli \
+      poppler-utils \
       openjdk-17-jdk-headless \
       python3 \
       python3-pip \

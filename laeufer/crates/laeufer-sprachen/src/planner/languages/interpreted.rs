@@ -175,11 +175,30 @@ NODE
 "#;
 const LATEX_COMPILE_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
+mkdir -p .laeufer-bin
 if [ -d /opt/sandkasten/tectonic-cache ]; then
   mkdir -p "$XDG_CACHE_HOME"
   cp -R /opt/sandkasten/tectonic-cache/. "$XDG_CACHE_HOME/"
 fi
 tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"
+entry_base="$(basename "$entrypoint")"
+pdf=".laeufer-bin/${entry_base%.*}.pdf"
+if [ ! -s "$pdf" ]; then
+  pdf="$(find .laeufer-bin -maxdepth 1 -type f -name '*.pdf' -print -quit)"
+fi
+if [ -z "$pdf" ] || [ ! -s "$pdf" ]; then
+  echo "LaTeX did not produce a PDF" >&2
+  exit 1
+fi
+rm -f .laeufer-bin/main.svg .laeufer-bin/main-*.svg
+pdftocairo -svg "$pdf" .laeufer-bin/main.svg
+if [ ! -s .laeufer-bin/main.svg ]; then
+  svg="$(find .laeufer-bin -maxdepth 1 -type f -name 'main-*.svg' -print | sort | head -n 1)"
+  if [ -n "$svg" ]; then
+    cp "$svg" .laeufer-bin/main.svg
+  fi
+fi
+test -s .laeufer-bin/main.svg
 "#;
 const TSX_BUILD_SCRIPT: &str = r#"set -eu
 entrypoint="$1"
@@ -905,6 +924,7 @@ pub(in crate::planner) fn plan_latex(
     entrypoint: PathBuf,
     compile_memory_limit_bytes: u64,
 ) -> BuildPlan {
+    let output = format!("{RUNNER_BIN_DIR}/main.svg");
     let compile = compile_command_plan(
         "bash",
         vec![
@@ -925,8 +945,8 @@ pub(in crate::planner) fn plan_latex(
         job,
     );
     let run = run_command_plan(
-        "printf",
-        vec!["latex compiled\n".to_owned()],
+        "cat",
+        vec![output],
         env,
         source_dir,
         Default::default(),

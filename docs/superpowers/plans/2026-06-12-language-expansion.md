@@ -310,7 +310,7 @@ Implement scripts as constants in `interpreted.rs`:
 - `MDX_RENDER_SCRIPT`: Node script using fixed MDX compiler and React static renderer.
 - `GRAPHVIZ_RENDER_SCRIPT`: `dot -Tsvg "$entrypoint"`.
 - `TYPST_RENDER_SCRIPT`: `typst compile --root . "$entrypoint" .laeufer-bin/main.svg` then `cat`.
-- `LATEX_CHECK_SCRIPT`: `tectonic --offline --keep-logs --outdir .laeufer-bin "$entrypoint"` then run phase emits `latex compiled\n`.
+- `LATEX_CHECK_SCRIPT`: `tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"` then convert the PDF with `pdftocairo -svg` and emit `.laeufer-bin/main.svg`.
 
 - [ ] **Step 3: Verify GREEN**
 

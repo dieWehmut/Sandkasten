@@ -324,7 +324,7 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			alias:         "tex",
 			entrypoint:    "main.tex",
 			compilePrefix: []string{"bash", "--noprofile", "--norc", "-c"},
-			runPrefix:     []string{"printf", "latex compiled\n"},
+			runPrefix:     []string{"cat", ".laeufer-bin/main.svg"},
 		},
 		{
 			language:      "lua",
@@ -570,6 +570,9 @@ func TestNewLanguageRuntimeManifests(t *testing.T) {
 			}
 			if tt.language == "latex" && !commandContains(runtime.GetCompilePhase().GetCommand(), "--only-cached") {
 				t.Fatalf("CompilePhase.Command = %v, want Tectonic only-cached mode", runtime.GetCompilePhase().GetCommand())
+			}
+			if tt.language == "latex" && !commandContains(runtime.GetCompilePhase().GetCommand(), "pdftocairo -svg") {
+				t.Fatalf("CompilePhase.Command = %v, want LaTeX PDF-to-SVG render step", runtime.GetCompilePhase().GetCommand())
 			}
 			if tt.language == "gleam" {
 				if !commandContains(runtime.GetCompilePhase().GetCommand(), "gleam_stdlib") {

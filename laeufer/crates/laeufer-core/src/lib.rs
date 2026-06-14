@@ -41,6 +41,14 @@ impl RunnerConfig {
             "LAEUFER_DATABASE_MAX_CONNECTIONS",
             default_database_max_connections(max_concurrent_jobs),
         )?;
+        let min_database_max_connections = min_database_max_connections(max_concurrent_jobs);
+        if database_max_connections < min_database_max_connections {
+            return Err(ConfigError::InsufficientDatabaseConnections {
+                max_concurrent_jobs,
+                database_max_connections,
+                min_database_max_connections,
+            });
+        }
         let poll_interval = millis_env("LAEUFER_POLL_INTERVAL_MS", 1_000)?;
         let lease_ttl = millis_env("LAEUFER_LEASE_TTL_MS", 60_000)?;
         let work_dir = std::env::var("LAEUFER_WORK_DIR")
@@ -73,6 +81,10 @@ fn default_database_max_connections(max_concurrent_jobs: u32) -> u32 {
         .saturating_mul(3)
         .saturating_add(2)
         .max(5)
+}
+
+fn min_database_max_connections(max_concurrent_jobs: u32) -> u32 {
+    max_concurrent_jobs.saturating_add(2).max(5)
 }
 
 fn millis_env(name: &'static str, default_ms: u64) -> Result<Duration, ConfigError> {
@@ -134,6 +146,12 @@ pub enum ConfigError {
     InvalidInteger { name: &'static str, value: String },
     #[error("{name} must be a positive integer, got {value:?}")]
     InvalidPositiveInteger { name: &'static str, value: String },
+    #[error("LAEUFER_DATABASE_MAX_CONNECTIONS={database_max_connections} is too low for LAEUFER_MAX_CONCURRENT_JOBS={max_concurrent_jobs}; use at least {min_database_max_connections}")]
+    InsufficientDatabaseConnections {
+        max_concurrent_jobs: u32,
+        database_max_connections: u32,
+        min_database_max_connections: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -1105,6 +1123,13 @@ mod tests {
         assert_eq!(default_database_max_connections(1), 5);
         assert_eq!(default_database_max_connections(4), 14);
         assert_eq!(default_database_max_connections(16), 50);
+    }
+
+    #[test]
+    fn database_pool_minimum_keeps_room_for_concurrent_jobs() {
+        assert_eq!(min_database_max_connections(1), 5);
+        assert_eq!(min_database_max_connections(4), 6);
+        assert_eq!(min_database_max_connections(16), 18);
     }
 
     #[derive(Default)]

@@ -21,8 +21,8 @@ PRUNE_BUILDKIT_ALL=1 make docker-clean
 Current assumptions:
 
 - Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
-- The runner image includes Go plus toolchains/interpreters for Assembly, Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript/Godot, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX/Tectonic, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal/Free Pascal, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig execution.
-- Bare-metal or systemd runners must provide the same runtime commands on `LAEUFER_RUNTIME_PATH`. Document renderers also need globally resolvable Node packages under `NODE_PATH`, a warmed Gleam Hex cache at `/opt/sandkasten/gleam-cache`, and a Tectonic bundle/cache usable with `tectonic --only-cached`.
+- The runner image includes Go plus toolchains/interpreters for Assembly, Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript/Godot, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX/Tectonic plus Poppler SVG conversion, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal/Free Pascal, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig execution.
+- Bare-metal or systemd runners must provide the same runtime commands on `LAEUFER_RUNTIME_PATH`. Document renderers also need globally resolvable Node packages under `NODE_PATH`, a warmed Gleam Hex cache at `/opt/sandkasten/gleam-cache`, a Tectonic bundle/cache usable with `tectonic --only-cached`, and `pdftocairo` from Poppler for LaTeX SVG output.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
 
 ## Local Development
@@ -65,6 +65,14 @@ dropdb sandkasten_smoke
 ```
 
 The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, `clojure`, `css`, `c`, `cpp`, `csharp`, `coq`, `crystal`, `dart`, `elixir`, `erlang`, `fsharp`, `fortran`, `gdscript`, `gleam`, `graphviz`, `haskell`, `html`, `java`, `javascript`, `julia`, `kotlin`, `latex`, `lean4`, `lua`, `markdown`, `mdx`, `mojo`, `nextjs`, `nextflow`, `nim`, `octave`, `ocaml`, `pascal`, `assembly`, `perl`, `php`, `prolog`, `python`, `qml`, `r`, `racket`, `ruby`, `rust`, `scala`, `scss`, `sql`, `swift`, `tailwindcss`, `typst`, `typescript`, `tsx`, `vlang`, `vue3`, `wdl`, and `zig`.
+
+Verify runner parallelism against a live HTTP API with:
+
+```sh
+node ./werkzeug/smoke-concurrency.mjs
+```
+
+The smoke submits four Bash jobs that each sleep for three seconds. It fails if wall time looks serialized or if fewer than two active jobs are observed at once.
 
 ## Kubernetes
 

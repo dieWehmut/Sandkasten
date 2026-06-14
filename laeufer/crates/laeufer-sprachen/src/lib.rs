@@ -1442,7 +1442,7 @@ mod tests {
     }
 
     #[test]
-    fn latex_plan_checks_offline_with_tectonic() {
+    fn latex_plan_renders_svg_offline_with_tectonic() {
         let job = job("tex", "main.tex");
         let plan =
             SprachenRuntime::plan(&job, PathBuf::from("/tmp/job/src"), 128 * 1024 * 1024).unwrap();
@@ -1460,13 +1460,18 @@ mod tests {
             .args
             .iter()
             .any(|arg| arg.contains("/opt/sandkasten/tectonic-cache")));
+        assert!(plan
+            .compile
+            .args
+            .iter()
+            .any(|arg| arg.contains("pdftocairo -svg") && arg.contains(".laeufer-bin/main.svg")));
         assert_eq!(
             plan.compile.args.last().map(String::as_str),
             Some("main.tex")
         );
         assert_compile_uses_compile_memory_and_run_uses_job_memory(&plan);
-        assert_eq!(plan.run.program, "printf");
-        assert_eq!(plan.run.args, vec!["latex compiled\n"]);
+        assert_eq!(plan.run.program, "cat");
+        assert_eq!(plan.run.args, vec![".laeufer-bin/main.svg"]);
     }
 
     #[test]

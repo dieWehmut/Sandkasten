@@ -15,7 +15,7 @@ Sandkasten is a self-hosted code execution system. The v1 implementation runs Go
 
 ## v1 Contract
 
-Clients upload a `tar.gz` archive or submit single-file source through the HTTP API. Go archives must include `go.mod` and a `vendor/` directory; non-Go runtimes use language-specific entrypoints such as `main.sh`, `main.f90`, `main.md`, `main.dot`, `index.html`, `app/page.tsx`, `main.py`, `main.vue`, or `main.zig`. Frontend and document runtimes emit source, compiled CSS, static HTML, SVG, or text markers to stdout; clients should treat HTML/SVG output as untrusted preview content. Sandkasten stores the job in Postgres, a Rust runner leases it asynchronously, then compiles and runs it inside a Linux sandbox with cgroup, namespace, filesystem, and network restrictions.
+Clients upload a `tar.gz` archive or submit single-file source through the HTTP API. Go archives must include `go.mod` and a `vendor/` directory; non-Go runtimes use language-specific entrypoints such as `main.sh`, `main.f90`, `main.md`, `main.dot`, `index.html`, `app/page.tsx`, `main.py`, `main.tex`, `main.vue`, or `main.zig`. Frontend and document runtimes emit source, compiled CSS, static HTML, or SVG to stdout; clients should treat HTML/SVG output as untrusted preview content. Sandkasten stores the job in Postgres, a Rust runner leases it asynchronously, then compiles and runs it inside a Linux sandbox with cgroup, namespace, filesystem, and network restrictions.
 
 The runner does not silently fall back to Docker or ordinary host execution. If required kernel or permission features are missing, it fails preflight and refuses to execute jobs.
 

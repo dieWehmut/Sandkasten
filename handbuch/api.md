@@ -115,7 +115,7 @@ Supported runtimes and default entrypoints:
 | `wdl` | `workflow-description-language` | `main.wdl` |
 | `zig` | - | `main.zig` |
 
-The frontend and document runtimes are still sandboxed batch jobs. `html` and `css` validate and return source text, `scss` and `tailwindcss` return compiled CSS, `tsx` and `vue3` run server-side rendering through the bundled Node toolchain, `nextjs` renders the default `app/page.tsx` component to static HTML, `markdown`/`mdx` return static HTML, `graphviz` and `typst` return SVG, and `latex` returns a deterministic success marker after offline compilation. `markdown` Mermaid fences render inside the child sandbox and the resulting HTML/SVG must be treated as untrusted output.
+The frontend and document runtimes are still sandboxed batch jobs. `html` and `css` validate and return source text, `scss` and `tailwindcss` return compiled CSS, `tsx` and `vue3` run server-side rendering through the bundled Node toolchain, `nextjs` renders the default `app/page.tsx` component to static HTML, `markdown`/`mdx` return static HTML, and `graphviz`, `latex`, and `typst` return SVG. `markdown` Mermaid fences render inside the child sandbox and the resulting HTML/SVG must be treated as untrusted output.
 
 The `archive_targz` field is required for gRPC archive submission. Go archives must contain `go.mod` and `vendor/`; non-Go language archives may contain a single entrypoint source file. `nextjs` uses `app/page.tsx` as its generated source path when submitted through the HTTP source shortcut.
 

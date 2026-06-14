@@ -613,7 +613,7 @@ run_language kotlin "hello, kotlin" 'fun main() {
     println("hello, kotlin")
 }'
 
-run_language latex "latex compiled" '\documentclass{article}
+run_language_contains latex "<svg" '\documentclass{article}
 \begin{document}
 hello, latex
 \end{document}' 1073741824

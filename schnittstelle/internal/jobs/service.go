@@ -230,11 +230,30 @@ NODE`
 
 const latexCompileScript = `set -eu
 entrypoint="$1"
+mkdir -p .laeufer-bin
 if [ -d /opt/sandkasten/tectonic-cache ]; then
   mkdir -p "$XDG_CACHE_HOME"
   cp -R /opt/sandkasten/tectonic-cache/. "$XDG_CACHE_HOME/"
 fi
-tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"`
+tectonic --only-cached --untrusted --keep-logs --outdir .laeufer-bin "$entrypoint"
+entry_base="$(basename "$entrypoint")"
+pdf=".laeufer-bin/${entry_base%.*}.pdf"
+if [ ! -s "$pdf" ]; then
+  pdf="$(find .laeufer-bin -maxdepth 1 -type f -name '*.pdf' -print -quit)"
+fi
+if [ -z "$pdf" ] || [ ! -s "$pdf" ]; then
+  echo "LaTeX did not produce a PDF" >&2
+  exit 1
+fi
+rm -f .laeufer-bin/main.svg .laeufer-bin/main-*.svg
+pdftocairo -svg "$pdf" .laeufer-bin/main.svg
+if [ ! -s .laeufer-bin/main.svg ]; then
+  svg="$(find .laeufer-bin -maxdepth 1 -type f -name 'main-*.svg' -print | sort | head -n 1)"
+  if [ -n "$svg" ]; then
+    cp "$svg" .laeufer-bin/main.svg
+  fi
+fi
+test -s .laeufer-bin/main.svg`
 
 type Repository interface {
 	CreateJob(ctx context.Context, job CreateJob) (*pb.SubmitGoProjectResponse, error)
@@ -1182,7 +1201,7 @@ func runtimeRunPhase(language string) *pb.RuntimePhase {
 	case "lean4":
 		return phase("lean", "--run", "Main.lean")
 	case "latex":
-		return phase("printf", "latex compiled\n")
+		return phase("cat", ".laeufer-bin/main.svg")
 	case "lua":
 		return phase("lua", "main.lua")
 	case "markdown", "mdx":
