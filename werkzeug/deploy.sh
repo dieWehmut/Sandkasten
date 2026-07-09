@@ -9,7 +9,13 @@
 #   - 可选:Nginx 反向代理 + Let's Encrypt HTTPS 证书,并自动配置 CORS
 #
 # 风格参照 nezha 的 install 脚本:彩色输出、菜单驱动、地理镜像探测。
-# 用法: sudo ./werkzeug/deploy.sh
+#
+# 免克隆一键安装(推荐):
+#   curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh \
+#     && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+# 脚本单独运行时会自动安装 git 并克隆源码到 /opt/sandkasten/src。
+#
+# 或在已克隆的仓库内运行: sudo ./werkzeug/deploy.sh
 #========================================================
 set -Eeuo pipefail
 
@@ -18,6 +24,10 @@ set -Eeuo pipefail
 #--------------------------------------------------------
 SCRIPT_VERSION="1.0.0"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# 源码获取(支持免克隆一键安装:脚本被单独下载运行时自动克隆仓库)
+GIT_REPO_URL="${SANDKASTEN_GIT_URL:-https://github.com/dieWehmut/sandkasten.git}"
+SRC_DIR="${SANDKASTEN_SRC_DIR:-/opt/sandkasten/src}"
 
 # 安装目标路径(与仓库现有 systemd 单元约定保持一致)
 BIN_DIR="/usr/local/bin"
@@ -469,6 +479,29 @@ install_base_deps() {
   title "安装基础依赖"
   apt_install ca-certificates curl wget git xz-utils zstd unzip tar \
     build-essential pkg-config postgresql-client
+}
+
+# 免克隆一键安装:若脚本被单独下载运行(不在仓库内),自动克隆源码。
+# 通过是否存在 schnittstelle/go.mod 与 laeufer/Cargo.toml 判断是否已在仓库内。
+ensure_source() {
+  if [[ -f "${REPO_ROOT}/schnittstelle/go.mod" && -f "${REPO_ROOT}/laeufer/Cargo.toml" ]]; then
+    info "在仓库内运行,使用源码目录: ${REPO_ROOT}"
+    return 0
+  fi
+  title "获取源码(免克隆一键安装)"
+  command -v git >/dev/null 2>&1 || apt_install git
+  if [[ -d "${SRC_DIR}/.git" ]]; then
+    info "更新已存在的源码: ${SRC_DIR}"
+    git -C "${SRC_DIR}" pull --ff-only 2>/dev/null || warn "git pull 失败,使用现有副本继续。"
+  else
+    mkdir -p "$(dirname "${SRC_DIR}")"
+    info "克隆源码到 ${SRC_DIR} (${GIT_REPO_URL})"
+    git clone --depth 1 "${GIT_REPO_URL}" "${SRC_DIR}" \
+      || die "克隆失败。可设置 SANDKASTEN_GIT_URL 指向镜像后重试。"
+  fi
+  REPO_ROOT="${SRC_DIR}"
+  [[ -f "${REPO_ROOT}/schnittstelle/go.mod" ]] || die "源码不完整: 未找到 ${REPO_ROOT}/schnittstelle/go.mod"
+  ok "源码就绪: ${REPO_ROOT}"
 }
 
 # Node.js:多个前端语言依赖。若无 node 则安装。
@@ -1117,6 +1150,7 @@ run_install() {
   HTTP_PORT="$(ask "API HTTP 端口" "${HTTP_PORT}")"
 
   install_base_deps
+  ensure_source
   ensure_go
   install_selected_toolchains
   ensure_postgres
@@ -1176,6 +1210,10 @@ usage() {
   cat <<EOF
 Sandkasten 交互式部署脚本 v${SCRIPT_VERSION}
 
+免克隆一键安装:
+  curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh \\
+    && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+
 用法:
   sudo ./werkzeug/deploy.sh              # 进入交互菜单
   sudo ./werkzeug/deploy.sh install      # 直接执行全新安装
@@ -1183,7 +1221,9 @@ Sandkasten 交互式部署脚本 v${SCRIPT_VERSION}
   sudo ./werkzeug/deploy.sh uninstall    # 卸载
 
 环境变量:
-  CORS_ORIGINS   额外的 CORS 允许来源(逗号分隔)
+  CORS_ORIGINS       额外的 CORS 允许来源(逗号分隔)
+  SANDKASTEN_GIT_URL 源码仓库地址(默认 GitHub;可指向镜像)
+  SANDKASTEN_SRC_DIR 克隆目标目录(默认 /opt/sandkasten/src)
 EOF
 }
 

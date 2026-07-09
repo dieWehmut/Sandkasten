@@ -14,7 +14,13 @@
 #
 # 默认交互式逐项确认;`--purge` 一键全清(仍会二次确认);`--dry-run` 只打印不删除。
 # apt 系统包(gcc/python3/nodejs 等)默认保留,仅列出,避免影响系统其它组件。
-# 用法: sudo ./werkzeug/uninstall.sh [--purge] [--dry-run] [--yes]
+#
+# 免克隆一键卸载(推荐):
+#   curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/uninstall.sh -o sk-uninstall.sh \
+#     && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+# 本脚本所有路径均为硬编码,无需仓库即可运行。
+#
+# 或在仓库内运行: sudo ./werkzeug/uninstall.sh [--purge] [--dry-run] [--yes]
 #========================================================
 set -Eeuo pipefail
 
@@ -307,6 +313,8 @@ remove_build_artifacts() {
   if [[ -d "${REPO_ROOT:-}" ]]; then repo="$REPO_ROOT"
   elif [[ -d /root/sandkasten ]]; then repo="/root/sandkasten"; fi
   [[ -n "$repo" ]] && caches+=("$repo/laeufer/target")
+  # 免克隆一键安装时源码克隆到 /opt/sandkasten/src(其 target 亦在此)
+  caches+=("/opt/sandkasten/src/laeufer/target")
 
   local present=()
   local c
@@ -468,6 +476,10 @@ run_all() {
 usage() {
   cat <<EOF
 Sandkasten 卸载脚本
+
+免克隆一键卸载:
+  curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/uninstall.sh -o sk-uninstall.sh \\
+    && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 
 用法:
   sudo ./werkzeug/uninstall.sh            # 交互式,逐项确认
