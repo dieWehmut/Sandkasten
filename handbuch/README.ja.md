@@ -83,7 +83,7 @@
 Debian / Ubuntu (x86_64) ホスト上で、root として 1 行のコマンドを実行するだけです(スクリプトが git をインストールし、ソースを `/opt/sandkasten/src` へ自動的にクローンします):
 
 ```bash
-curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
 ```
 
 または、先にクローンしてから実行します:
@@ -125,7 +125,7 @@ Postgres のみを起動しスキーマを読み込みます(Docker が必要):
 クローン不要のワンライナーでアンインストール:
 
 ```bash
-curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 ```
 
 またはリポジトリ内から実行:

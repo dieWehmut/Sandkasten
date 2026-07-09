@@ -11,7 +11,7 @@
 # 风格参照 nezha 的 install 脚本:彩色输出、菜单驱动、地理镜像探测。
 #
 # 免克隆一键安装(推荐):
-#   curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh \
+#   curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \
 #     && chmod +x sandkasten.sh && sudo ./sandkasten.sh
 # 脚本单独运行时会自动安装 git 并克隆源码到 /opt/sandkasten/src。
 #
@@ -1211,7 +1211,7 @@ usage() {
 Sandkasten 交互式部署脚本 v${SCRIPT_VERSION}
 
 免克隆一键安装:
-  curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh \\
+  curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \\
     && chmod +x sandkasten.sh && sudo ./sandkasten.sh
 
 用法:
