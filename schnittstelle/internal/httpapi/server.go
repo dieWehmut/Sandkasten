@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"path"
 	"regexp"
@@ -22,6 +24,14 @@ import (
 	pb "github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1"
 	"github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs"
 )
+
+// runtimeIconFS holds the self-hosted official logos for the handful of
+// languages that no icon CDN publishes (assembly, cangjie, coq, graphviz,
+// lean4, mojo, pascal, wdl). Bundling them keeps the page complete and free of
+// fragile external dependencies for exactly the icons that are hardest to find.
+//
+//go:embed icons/*.svg icons/*.png
+var runtimeIconFS embed.FS
 
 const (
 	defaultHTTPPollInterval = 200 * time.Millisecond
@@ -80,6 +90,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /v1/runtimes", s.handleRuntimes)
+	mux.Handle("GET /v1/runtime-icons/", http.StripPrefix("/v1/runtime-icons/", http.FileServer(http.FS(runtimeIconAssets()))))
 	mux.HandleFunc("POST /v1/go/run", s.handleRunGo)
 	mux.HandleFunc("POST /v1/{language}/run", s.handleRunLanguage)
 	mux.HandleFunc("POST /v1/run", s.handleRun)
@@ -977,19 +988,23 @@ func runtimeBadge(language string) string {
 	}
 }
 
-// runtimeIconURL returns the CDN URL of the official language logo for the
-// given language, or an empty string when no official icon is published for it.
-// Colored logos come from the Devicon project; a handful of languages Devicon
-// does not ship (typst, v, mdx, nextflow, octave) fall back to the monochrome
-// brand marks from Simple Icons. Languages with no official icon anywhere
-// (assembly, cangjie, coq, graphviz, lean4, mojo, pascal, wdl) return "" and the
-// runtimes page shows the text badge instead. Every path here was verified
-// against the upstream manifests to exist. The template also guards each image
-// with onerror so a removed or renamed asset degrades to the text badge.
+// runtimeIconURL returns the URL of the official language logo for the given
+// language. Every one of the 58 runtimes is covered:
+//   - colored logos from the Devicon project (icons/<dir>/<file>.svg);
+//   - monochrome brand marks from Simple Icons for languages Devicon does not
+//     ship (mdx, nextflow, octave, typst, v);
+//   - self-hosted official logos, served from /v1/runtime-icons/, for the eight
+//     languages no icon CDN publishes (assembly, cangjie, coq, graphviz, lean4,
+//     mojo, pascal, wdl).
+//
+// Every remote path was verified against the upstream manifests to exist, and
+// the template still guards each image with onerror so a removed or renamed
+// asset degrades to the text badge.
 func runtimeIconURL(language string) string {
 	const (
 		devicon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/"
 		simple  = "https://cdn.jsdelivr.net/npm/simple-icons@14/icons/"
+		hosted  = "/v1/runtime-icons/"
 	)
 	// Colored official logos from Devicon (icons/<dir>/<file>.svg).
 	deviconIcons := map[string]string{
@@ -1047,6 +1062,18 @@ func runtimeIconURL(language string) string {
 		"typst":    "typst",
 		"vlang":    "v",
 	}
+	// Self-hosted official logos for languages no icon CDN publishes; served
+	// from the embedded icons/ directory via /v1/runtime-icons/.
+	hostedIcons := map[string]string{
+		"assembly": "assembly.svg",
+		"cangjie":  "cangjie.svg",
+		"coq":      "coq.png",
+		"graphviz": "graphviz.svg",
+		"lean4":    "lean4.svg",
+		"mojo":     "mojo.svg",
+		"pascal":   "pascal.svg",
+		"wdl":      "wdl.png",
+	}
 	key := strings.ToLower(strings.TrimSpace(language))
 	if path, ok := deviconIcons[key]; ok {
 		return devicon + path + ".svg"
@@ -1054,7 +1081,20 @@ func runtimeIconURL(language string) string {
 	if slug, ok := simpleIcons[key]; ok {
 		return simple + slug + ".svg"
 	}
+	if file, ok := hostedIcons[key]; ok {
+		return hosted + file
+	}
 	return ""
+}
+
+// runtimeIconAssets exposes the embedded runtime logos rooted at the icons/
+// directory so the file server serves them at /v1/runtime-icons/<file>.
+func runtimeIconAssets() fs.FS {
+	sub, err := fs.Sub(runtimeIconFS, "icons")
+	if err != nil {
+		return runtimeIconFS
+	}
+	return sub
 }
 
 func runtimeLanguageClass(language string) string {
@@ -1441,6 +1481,10 @@ const runtimesPageHTML = `<!doctype html>
       background: #f4f4f5;
     }
     .runtime-mark-text { line-height: 1; }
+    /* When a logo image is present, hide the letter fallback so the two never
+       overlap. If the image fails to load, onerror removes it, :has() stops
+       matching, and the text badge reappears automatically. */
+    .runtime-mark:has(.runtime-logo) .runtime-mark-text { display: none; }
     .runtime-logo {
       position: absolute;
       inset: 6px;
