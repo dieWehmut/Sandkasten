@@ -21,6 +21,7 @@ set -Eeuo pipefail
 #--------------------------------------------------------
 # 常量(与 deploy.sh 保持一致)
 #--------------------------------------------------------
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd || echo "")"
 BIN_DIR="/usr/local/bin"
 ETC_DIR="/etc/sandkasten"
 STATE_DIR="/var/lib/sandkasten"
@@ -87,18 +88,51 @@ rm_path() {
 # 避免误删同名的第三方二进制。
 rm_symlink_if_points() {
   local link="$1" want="$2" tgt
-  [[ -L "$link" ]] || { [[ -e "$link" ]] && warn "$link 不是符号链接,保留(可能非本脚本安装)。"; return; }
-  tgt="$(readlink -f "$link" 2>/dev/null || readlink "$link")"
+  [[ -L "$link" ]] || { [[ -e "$link" ]] && warn "$link 不是符号链接,保留(可能非本脚本安装)。"; return 0; }
+  # 用单层 readlink 读取"链接文本",不做 -f 全解析:否则当目标 /opt/... 已被
+  # 先删除时,readlink -f 返回空字符串,会把我们自己的悬空链接误判为"非本脚本"
+  # 而保留,留下死链接。比对链接文本前缀即可,目标是否仍存在都不影响判断。
+  tgt="$(readlink "$link")"
   if [[ "$tgt" == "$want"* ]]; then
     if [[ "$DRY_RUN" == true ]]; then info "[dry-run] 将删除符号链接: $link -> $tgt"
     else rm -f "$link" && ok "已删除符号链接: $link"; fi
   else
     warn "$link -> $tgt 不指向本脚本安装目录($want*),保留。"
   fi
+  return 0
+}
+
+# scan_dead_symlinks_into <目录> <目标前缀>
+# 兜底:删除 <目录> 下所有指向 <目标前缀> 的符号链接(含已悬空者)。
+# 用于清理 npm 全局 bin 等由脚本间接创建、难以逐一枚举的链接。
+scan_dead_symlinks_into() {
+  local dir="$1" want="$2" link tgt
+  [[ -d "$dir" ]] || return 0
+  for link in "$dir"/*; do
+    [[ -L "$link" ]] || continue
+    tgt="$(readlink "$link")"
+    case "$tgt" in
+      "$want"*|*/"$want"*)
+        if [[ "$DRY_RUN" == true ]]; then info "[dry-run] 将删除链接: $link -> $tgt"
+        else rm -f "$link" && ok "已删除链接: $link"; fi
+        ;;
+    esac
+  done
 }
 
 require_root() {
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "请以 root 运行(sudo ./werkzeug/uninstall.sh)。"
+}
+
+# 以 postgres 超级用户身份执行(优先 runuser,回退 sudo/su;最小化 Debian 无 sudo)
+pg_super() {
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u postgres -- "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -u postgres "$@"
+  else
+    su postgres -s /bin/sh -c "$(printf '%q ' "$@")"
+  fi
 }
 
 #========================================================
@@ -109,8 +143,12 @@ remove_services() {
   if confirm_step "停止/禁用/删除 sandkasten-api 与 sandkasten-laeufer 服务及二进制?"; then
     if [[ "$DRY_RUN" != true ]]; then
       systemctl disable --now sandkasten-api.service sandkasten-laeufer.service 2>/dev/null || true
+      systemctl reset-failed sandkasten-api.service sandkasten-laeufer.service 2>/dev/null || true
     fi
     rm_path "${SYSTEMD_DIR}/sandkasten-api.service" "${SYSTEMD_DIR}/sandkasten-laeufer.service"
+    # 清理 enable 时生成的 .wants 符号链接(disable 通常已处理,兜底)
+    rm_path "${SYSTEMD_DIR}/multi-user.target.wants/sandkasten-api.service" \
+            "${SYSTEMD_DIR}/multi-user.target.wants/sandkasten-laeufer.service"
     [[ "$DRY_RUN" != true ]] && systemctl daemon-reload || true
     rm_path "${BIN_DIR}/sandkasten-api" "${BIN_DIR}/laeufer"
     ok "服务与主二进制处理完成。"
@@ -143,8 +181,8 @@ remove_database() {
     if [[ "$DRY_RUN" == true ]]; then
       info "[dry-run] 将执行 dropdb ${DB_NAME}; dropuser ${DB_USER}"
     else
-      sudo -u postgres dropdb --if-exists "${DB_NAME}" 2>/dev/null && ok "已删除数据库 ${DB_NAME}" || warn "删除数据库失败或不存在。"
-      sudo -u postgres dropuser --if-exists "${DB_USER}" 2>/dev/null && ok "已删除角色 ${DB_USER}" || warn "删除角色失败或不存在。"
+      pg_super dropdb --if-exists "${DB_NAME}" 2>/dev/null && ok "已删除数据库 ${DB_NAME}" || warn "删除数据库失败或不存在。"
+      pg_super dropuser --if-exists "${DB_USER}" 2>/dev/null && ok "已删除角色 ${DB_USER}" || warn "删除角色失败或不存在。"
     fi
   else
     info "跳过(保留数据库)。"
@@ -223,7 +261,20 @@ remove_npm_globals() {
   elif [[ "$DRY_RUN" == true ]]; then
     info "[dry-run] 将 npm remove -g: ${pkgs[*]}"
   else
-    warn "未找到 npm,无法移除全局包。"
+    warn "未找到 npm(可能已先被卸载),改用直接删除包目录兜底。"
+  fi
+  # 兜底:清理 /usr/local/bin 中仍指向 node_modules 的悬空/残留链接
+  scan_dead_symlinks_into "$BIN_DIR" "../lib/node_modules"
+  # 兜底:npm 缺失时直接删除我们安装过的包目录
+  if [[ -d "$NODE_MODULES" ]]; then
+    local pkg
+    for pkg in "${pkgs[@]}"; do rm_path "${NODE_MODULES}/${pkg}"; done
+    # 若目录已空则一并删除
+    if [[ "$DRY_RUN" != true ]] && [[ -d "$NODE_MODULES" ]] && [[ -z "$(ls -A "$NODE_MODULES" 2>/dev/null)" ]]; then
+      rm_path "$NODE_MODULES"
+    elif [[ -d "$NODE_MODULES" ]]; then
+      info "${NODE_MODULES} 仍有其它包,保留(仅删除本脚本安装的包)。"
+    fi
   fi
 }
 
@@ -242,8 +293,34 @@ remove_go() {
 }
 
 #========================================================
-# 7) Nginx 站点与 Let's Encrypt 证书
+# 6.5) 构建副产物(Rust/Go 缓存与仓库 target)
 #========================================================
+remove_build_artifacts() {
+  title "6.5) 删除构建副产物与工具链缓存"
+  local caches=(
+    "$HOME/.cargo" "$HOME/.rustup"
+    "$HOME/.cache/go-build" "$HOME/go"
+    "$HOME/.pixi"
+  )
+  # 仓库内的 Rust/Go 构建产物(若能定位到仓库)
+  local repo=""
+  if [[ -d "${REPO_ROOT:-}" ]]; then repo="$REPO_ROOT"
+  elif [[ -d /root/sandkasten ]]; then repo="/root/sandkasten"; fi
+  [[ -n "$repo" ]] && caches+=("$repo/laeufer/target")
+
+  local present=()
+  local c
+  for c in "${caches[@]}"; do [[ -e "$c" ]] && present+=("$c"); done
+  if [[ ${#present[@]} -eq 0 ]]; then info "未发现构建缓存,跳过。"; return; fi
+  info "检测到构建缓存: ${present[*]}"
+  if confirm_step "删除以上 Rust/Go/pixi 构建缓存(可释放数 GB,不影响运行的服务)?"; then
+    rm_path "${present[@]}"
+  else
+    info "跳过(保留构建缓存)。"
+  fi
+}
+
+
 remove_nginx() {
   title "7) 删除 Nginx 站点与 HTTPS 证书"
   local site_avail="/etc/nginx/sites-available/sandkasten.conf"
@@ -309,6 +386,49 @@ EOF
 }
 
 #========================================================
+# 残留自检 / Residual scan
+#========================================================
+verify_clean() {
+  title "残留自检"
+  local residual=()
+  local paths=(
+    "${SYSTEMD_DIR}/sandkasten-api.service" "${SYSTEMD_DIR}/sandkasten-laeufer.service"
+    "${BIN_DIR}/sandkasten-api" "${BIN_DIR}/laeufer"
+    "$ETC_DIR" "$STATE_DIR" "$OPT_DIR"
+  )
+  local p
+  for p in "${paths[@]}"; do [[ -e "$p" || -L "$p" ]] && residual+=("$p"); done
+  # /opt 版本化目录
+  for p in /opt/zig-* /opt/julia-* /opt/dart-sdk* /opt/dotnet /opt/swift-* \
+           /opt/lean-* /opt/v /opt/typst-* /opt/pixi /opt/mojo /opt/miniwdl /opt/cangjie; do
+    [[ -e "$p" ]] && residual+=("$p")
+  done
+  # 悬空的语言链接
+  local b
+  for b in zig julia dart dotnet swift swiftc lean lake v pixi miniwdl mojo cjc \
+           gleam tectonic nextflow nextflow-launcher; do
+    [[ -L "${BIN_DIR}/$b" && ! -e "${BIN_DIR}/$b" ]] && residual+=("${BIN_DIR}/$b(悬空链接)")
+  done
+  # systemd 仍知晓的单元
+  local unit_state
+  unit_state="$(systemctl list-unit-files 'sandkasten-*' --no-legend 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+  [[ -n "$unit_state" ]] && residual+=("systemd 仍列出: $unit_state")
+  # 服务账户与数据库
+  id "$API_USER" >/dev/null 2>&1 && residual+=("用户 ${API_USER} 仍存在")
+  if command -v psql >/dev/null 2>&1; then
+    pg_super psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null | grep -q 1 \
+      && residual+=("数据库 ${DB_NAME} 仍存在")
+  fi
+
+  if [[ ${#residual[@]} -eq 0 ]]; then
+    ok "自检通过:未发现 Sandkasten 残留(apt 语言包除外,见上)。"
+  else
+    warn "以下项目仍存在(可能是你选择保留的步骤):"
+    for p in "${residual[@]}"; do printf '    - %s\n' "$p"; done
+  fi
+}
+
+#========================================================
 # 主流程
 #========================================================
 run_all() {
@@ -323,15 +443,18 @@ run_all() {
     fi
   fi
 
-  remove_services
-  remove_config_state
-  remove_database
-  remove_toolchains
-  remove_npm_globals
-  remove_go
-  remove_nginx
-  remove_user
-  list_apt_packages
+  # 每步都以最好努力执行:任何一步失败都不得中断后续清理,否则"卸载不干净"。
+  remove_services          || warn "步骤 1 出现问题,继续。"
+  remove_config_state      || warn "步骤 2 出现问题,继续。"
+  remove_database          || warn "步骤 3 出现问题,继续。"
+  remove_toolchains        || warn "步骤 4 出现问题,继续。"
+  remove_npm_globals       || warn "步骤 5 出现问题,继续。"
+  remove_go                || warn "步骤 6 出现问题,继续。"
+  remove_build_artifacts   || warn "步骤 6.5 出现问题,继续。"
+  remove_nginx             || warn "步骤 7 出现问题,继续。"
+  remove_user              || warn "步骤 8 出现问题,继续。"
+  list_apt_packages        || true
+  verify_clean             || true
 
   title "完成"
   if [[ "$DRY_RUN" == true ]]; then
