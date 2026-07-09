@@ -977,13 +977,22 @@ func runtimeBadge(language string) string {
 	}
 }
 
-// runtimeIconURL returns the CDN URL of the official language logo (served by
-// the Devicon project) for the given language, or an empty string when no
-// official icon is mapped. The runtimes page falls back to the text badge from
-// runtimeBadge when this is empty or the remote image fails to load.
+// runtimeIconURL returns the CDN URL of the official language logo for the
+// given language, or an empty string when no official icon is published for it.
+// Colored logos come from the Devicon project; a handful of languages Devicon
+// does not ship (typst, v, mdx, nextflow, octave) fall back to the monochrome
+// brand marks from Simple Icons. Languages with no official icon anywhere
+// (assembly, cangjie, coq, graphviz, lean4, mojo, pascal, wdl) return "" and the
+// runtimes page shows the text badge instead. Every path here was verified
+// against the upstream manifests to exist. The template also guards each image
+// with onerror so a removed or renamed asset degrades to the text badge.
 func runtimeIconURL(language string) string {
-	const base = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/"
-	icons := map[string]string{
+	const (
+		devicon = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/"
+		simple  = "https://cdn.jsdelivr.net/npm/simple-icons@14/icons/"
+	)
+	// Colored official logos from Devicon (icons/<dir>/<file>.svg).
+	deviconIcons := map[string]string{
 		"bash":        "bash/bash-original",
 		"c":           "c/c-original",
 		"clojure":     "clojure/clojure-original",
@@ -997,6 +1006,7 @@ func runtimeIconURL(language string) string {
 		"fortran":     "fortran/fortran-original",
 		"fsharp":      "fsharp/fsharp-original",
 		"gdscript":    "godot/godot-original",
+		"gleam":       "gleam/gleam-original",
 		"go":          "go/go-original",
 		"haskell":     "haskell/haskell-original",
 		"html":        "html5/html5-original",
@@ -1012,13 +1022,16 @@ func runtimeIconURL(language string) string {
 		"ocaml":       "ocaml/ocaml-original",
 		"perl":        "perl/perl-original",
 		"php":         "php/php-original",
+		"prolog":      "prolog/prolog-original",
 		"python":      "python/python-original",
 		"qml":         "qt/qt-original",
 		"r":           "r/r-original",
+		"racket":      "racket/racket-original",
 		"ruby":        "ruby/ruby-original",
 		"rust":        "rust/rust-original",
 		"scala":       "scala/scala-original",
 		"scss":        "sass/sass-original",
+		"sql":         "sqlite/sqlite-original",
 		"swift":       "swift/swift-original",
 		"tailwindcss": "tailwindcss/tailwindcss-original",
 		"tsx":         "react/react-original",
@@ -1026,8 +1039,20 @@ func runtimeIconURL(language string) string {
 		"vue3":        "vuejs/vuejs-original",
 		"zig":         "zig/zig-original",
 	}
-	if path, ok := icons[strings.ToLower(strings.TrimSpace(language))]; ok {
-		return base + path + ".svg"
+	// Monochrome official brand marks from Simple Icons (icons/<slug>.svg).
+	simpleIcons := map[string]string{
+		"mdx":      "mdx",
+		"nextflow": "nextflow",
+		"octave":   "octave",
+		"typst":    "typst",
+		"vlang":    "v",
+	}
+	key := strings.ToLower(strings.TrimSpace(language))
+	if path, ok := deviconIcons[key]; ok {
+		return devicon + path + ".svg"
+	}
+	if slug, ok := simpleIcons[key]; ok {
+		return simple + slug + ".svg"
 	}
 	return ""
 }
@@ -1398,16 +1423,16 @@ const runtimesPageHTML = `<!doctype html>
     .runtime-mark {
       position: relative;
       display: inline-grid;
-      width: 42px;
-      height: 42px;
+      width: 56px;
+      height: 56px;
       flex: 0 0 auto;
       place-items: center;
       overflow: hidden;
       border: 1px solid rgba(31, 196, 31, 0.28);
-      border-radius: 8px;
+      border-radius: 10px;
       background: rgba(31, 196, 31, 0.1);
       color: var(--site-accent);
-      font-size: 13px;
+      font-size: 16px;
       font-weight: 900;
       letter-spacing: 0.02em;
     }
@@ -1418,9 +1443,9 @@ const runtimesPageHTML = `<!doctype html>
     .runtime-mark-text { line-height: 1; }
     .runtime-logo {
       position: absolute;
-      inset: 7px;
-      width: calc(100% - 14px);
-      height: calc(100% - 14px);
+      inset: 6px;
+      width: calc(100% - 12px);
+      height: calc(100% - 12px);
       object-fit: contain;
     }
     h2 {
