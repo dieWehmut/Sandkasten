@@ -777,6 +777,18 @@ install_selected_toolchains() {
 #========================================================
 # Postgres provisioning
 #========================================================
+# 以 postgres 超级用户身份执行命令。优先用 runuser(root 下始终可用),
+# 回退到 sudo;最小化 Debian 常常没有 sudo,故不能依赖它。
+pg_super() {
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u postgres -- "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -u postgres "$@"
+  else
+    su postgres -s /bin/sh -c "$(printf '%q ' "$@")"
+  fi
+}
+
 ensure_postgres() {
   title "配置 PostgreSQL"
   if ! command -v psql >/dev/null 2>&1 && ! command -v pg_isready >/dev/null 2>&1; then
@@ -791,7 +803,7 @@ ensure_postgres() {
 
   # 使用 postgres 超级用户创建角色与数据库(幂等)
   info "创建数据库角色与库 (${DB_USER}/${DB_NAME}) ..."
-  sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL || warn "数据库角色/库可能已存在,继续。"
+  pg_super psql -v ON_ERROR_STOP=1 <<SQL || warn "数据库角色/库可能已存在,继续。"
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${DB_USER}') THEN
@@ -800,8 +812,8 @@ BEGIN
 END
 \$\$;
 SQL
-  if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
-    sudo -u postgres createdb -O "${DB_USER}" "${DB_NAME}"
+  if ! pg_super psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
+    pg_super createdb -O "${DB_USER}" "${DB_NAME}"
   fi
 
   # 载入 schema
@@ -1085,8 +1097,8 @@ uninstall_all() {
     ok "配置与状态目录已删除。"
   fi
   if confirm "是否删除数据库 ${DB_NAME} 与角色 ${DB_USER}?" "n"; then
-    sudo -u postgres dropdb "${DB_NAME}" 2>/dev/null || true
-    sudo -u postgres dropuser "${DB_USER}" 2>/dev/null || true
+    pg_super dropdb "${DB_NAME}" 2>/dev/null || true
+    pg_super dropuser "${DB_USER}" 2>/dev/null || true
     ok "数据库对象已删除。"
   fi
 }
