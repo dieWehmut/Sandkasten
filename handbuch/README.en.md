@@ -78,9 +78,15 @@ The runtime index page is server-rendered by the API and lists every enabled lan
 
 ## Quick Start
 
-### One-shot interactive deploy (recommended)
+### One-line install, no clone (recommended)
 
-On a Debian / Ubuntu (x86_64) host, run as root:
+On a Debian / Ubuntu (x86_64) host, run a single command as root (the script installs git and clones the source to `/opt/sandkasten/src` automatically):
+
+```bash
+curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+```
+
+Or clone first, then run:
 
 ```bash
 git clone https://github.com/dieWehmut/sandkasten.git
@@ -115,6 +121,14 @@ Start only Postgres and load the schema (requires Docker):
 ```
 
 ## Uninstall
+
+One-line uninstall, no clone:
+
+```bash
+curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+```
+
+Or from within the repo:
 
 ```bash
 sudo ./werkzeug/uninstall.sh              # interactive, per-step confirmation

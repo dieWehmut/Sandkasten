@@ -78,9 +78,15 @@
 
 ## 快速开始
 
-### 一键交互式部署(推荐)
+### 免克隆一键部署(推荐)
 
-在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行:
+在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行一行命令即可(脚本会自动安装 git 并克隆源码到 `/opt/sandkasten/src`):
+
+```bash
+curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+```
+
+或先克隆再运行:
 
 ```bash
 git clone https://github.com/dieWehmut/sandkasten.git
@@ -115,6 +121,14 @@ sudo ./werkzeug/deploy.sh domain      # 仅配置域名 / Nginx / HTTPS
 ```
 
 ## 卸载
+
+免克隆一键卸载:
+
+```bash
+curl -L https://raw.githubusercontent.com/dieWehmut/sandkasten/main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+```
+
+或在仓库内运行:
 
 ```bash
 sudo ./werkzeug/uninstall.sh              # 交互式逐项确认
