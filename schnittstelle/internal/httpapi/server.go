@@ -36,6 +36,7 @@ const (
 var (
 	runnerExecutablePathPattern = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src/\.laeufer-bin/main(?:\.exe)?`)
 	runnerSourcePathPattern     = regexp.MustCompile(`/(?:var/lib/sandkasten/laeufer|tmp/sandkasten-laeufer[^/\s"']*)/[0-9a-fA-F-]{36}/src`)
+	runnerInternalPathPattern   = regexp.MustCompile(`(?:^|[\s"'(:])(?:\./)?\.laeufer-(?:bin|cache|tmp)/[^\s"'<>:),]+(?::\d+(?::\d+)?)?(?:\s+\d+(?:\.\d+)?\s*(?i:b|kb|kib|mb|mib|gb|gib))?`)
 	runtimesPageTemplate        = template.Must(template.New("runtimes").Parse(runtimesPageHTML))
 )
 
@@ -791,6 +792,7 @@ type runtimePageRuntime struct {
 	Language          string
 	LanguageClass     string
 	Badge             string
+	Icon              string
 	Version           string
 	Status            string
 	DefaultEntrypoint string
@@ -895,6 +897,7 @@ func runtimesPageDataFromProto(resp *pb.ListRuntimesResponse) runtimesPageData {
 			Language:          language,
 			LanguageClass:     runtimeLanguageClass(language),
 			Badge:             runtimeBadge(language),
+			Icon:              runtimeIconURL(language),
 			Version:           fallback(runtime.GetVersion(), "system"),
 			Status:            fallback(status, "unknown"),
 			DefaultEntrypoint: fallback(runtime.GetDefaultEntrypoint(), "-"),
@@ -972,6 +975,61 @@ func runtimeBadge(language string) string {
 		}
 		return string(runes[:3])
 	}
+}
+
+// runtimeIconURL returns the CDN URL of the official language logo (served by
+// the Devicon project) for the given language, or an empty string when no
+// official icon is mapped. The runtimes page falls back to the text badge from
+// runtimeBadge when this is empty or the remote image fails to load.
+func runtimeIconURL(language string) string {
+	const base = "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/"
+	icons := map[string]string{
+		"bash":        "bash/bash-original",
+		"c":           "c/c-original",
+		"clojure":     "clojure/clojure-original",
+		"cpp":         "cplusplus/cplusplus-original",
+		"crystal":     "crystal/crystal-original",
+		"csharp":      "csharp/csharp-original",
+		"css":         "css3/css3-original",
+		"dart":        "dart/dart-original",
+		"elixir":      "elixir/elixir-original",
+		"erlang":      "erlang/erlang-original",
+		"fortran":     "fortran/fortran-original",
+		"fsharp":      "fsharp/fsharp-original",
+		"gdscript":    "godot/godot-original",
+		"go":          "go/go-original",
+		"haskell":     "haskell/haskell-original",
+		"html":        "html5/html5-original",
+		"java":        "java/java-original",
+		"javascript":  "javascript/javascript-original",
+		"julia":       "julia/julia-original",
+		"kotlin":      "kotlin/kotlin-original",
+		"latex":       "latex/latex-original",
+		"lua":         "lua/lua-original",
+		"markdown":    "markdown/markdown-original",
+		"nextjs":      "nextjs/nextjs-original",
+		"nim":         "nim/nim-original",
+		"ocaml":       "ocaml/ocaml-original",
+		"perl":        "perl/perl-original",
+		"php":         "php/php-original",
+		"python":      "python/python-original",
+		"qml":         "qt/qt-original",
+		"r":           "r/r-original",
+		"ruby":        "ruby/ruby-original",
+		"rust":        "rust/rust-original",
+		"scala":       "scala/scala-original",
+		"scss":        "sass/sass-original",
+		"swift":       "swift/swift-original",
+		"tailwindcss": "tailwindcss/tailwindcss-original",
+		"tsx":         "react/react-original",
+		"typescript":  "typescript/typescript-original",
+		"vue3":        "vuejs/vuejs-original",
+		"zig":         "zig/zig-original",
+	}
+	if path, ok := icons[strings.ToLower(strings.TrimSpace(language))]; ok {
+		return base + path + ".svg"
+	}
+	return ""
 }
 
 func runtimeLanguageClass(language string) string {
@@ -1096,7 +1154,18 @@ func redactRunnerPaths(value string) string {
 		return value
 	}
 	value = runnerExecutablePathPattern.ReplaceAllString(value, "./main")
-	return runnerSourcePathPattern.ReplaceAllString(value, "/workspace")
+	value = runnerSourcePathPattern.ReplaceAllString(value, "/workspace")
+	return runnerInternalPathPattern.ReplaceAllStringFunc(value, func(match string) string {
+		if match == "" {
+			return match
+		}
+		prefix := ""
+		first := match[0]
+		if first == ' ' || first == '\n' || first == '\t' || first == '"' || first == '\'' || first == '(' || first == ':' {
+			prefix = string(first)
+		}
+		return prefix + "[runner internal file]"
+	})
 }
 
 func normalizeOutputEncoding(value string) (string, error) {
@@ -1169,6 +1238,28 @@ const runtimesPageHTML = `<!doctype html>
       --amber: #f0ba63;
     }
     * { box-sizing: border-box; }
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--site-accent) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      border: 3px solid var(--site-bg);
+      border-radius: 999px;
+      background: var(--site-accent);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2ee02e;
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -1305,11 +1396,13 @@ const runtimesPageHTML = `<!doctype html>
     }
     .runtime-id > div { min-width: 0; }
     .runtime-mark {
+      position: relative;
       display: inline-grid;
       width: 42px;
       height: 42px;
       flex: 0 0 auto;
       place-items: center;
+      overflow: hidden;
       border: 1px solid rgba(31, 196, 31, 0.28);
       border-radius: 8px;
       background: rgba(31, 196, 31, 0.1);
@@ -1317,6 +1410,18 @@ const runtimesPageHTML = `<!doctype html>
       font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.02em;
+    }
+    .runtime-mark:has(.runtime-logo) {
+      border-color: var(--site-border);
+      background: #f4f4f5;
+    }
+    .runtime-mark-text { line-height: 1; }
+    .runtime-logo {
+      position: absolute;
+      inset: 7px;
+      width: calc(100% - 14px);
+      height: calc(100% - 14px);
+      object-fit: contain;
     }
     h2 {
       margin: 0;
@@ -1490,7 +1595,10 @@ const runtimesPageHTML = `<!doctype html>
       <details class="runtime-card lang-{{.LanguageClass}} {{if .Active}}is-active{{end}}">
         <summary class="runtime-summary">
           <div class="runtime-id">
-            <span class="runtime-mark">{{.Badge}}</span>
+            <span class="runtime-mark">
+              <span class="runtime-mark-text">{{.Badge}}</span>
+              {{if .Icon}}<img class="runtime-logo" src="{{.Icon}}" alt="{{.Language}} logo" loading="lazy" decoding="async" onerror="this.remove()">{{end}}
+            </span>
             <div>
               <h2>{{.Language}}</h2>
               <div class="version">{{.Version}}</div>
