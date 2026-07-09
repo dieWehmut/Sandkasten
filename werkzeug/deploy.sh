@@ -46,12 +46,17 @@ HTTP_PORT="8080"
 GRPC_ADDR="127.0.0.1:50051"
 
 # 工具链版本(与 einsatz/docker/laeufer.Dockerfile 保持一致)
+# 带 *_SHA256 的条目会在解包/执行前用 sha256sum 校验(离线固定摘要)。
 GO_VERSION="1.26.0"
+GO_SHA256="aac1b08a0fb0c4e0a7c1555beb7b59180b05dfc5a3d62e40e9de90cd42f88235"
 JULIA_VERSION="1.10.10"; JULIA_MINOR="1.10"
+JULIA_SHA256="6a78a03a71c7ab792e8673dc5cedb918e037f081ceb58b50971dfb7c64c5bf81"
 LEAN_VERSION="4.23.0"
 SWIFT_VERSION="6.3.2"
 ZIG_VERSION="0.16.0"
+ZIG_SHA256="70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00"
 DART_VERSION="3.12.2"
+DART_SHA256="28e47b44cf075f36771046c068bb0d174201cf9c7608744aed1cc23204299c2d"
 DOTNET_SDK_VERSION="10.0.301"
 PIXI_VERSION="0.70.2"
 NEXTFLOW_VERSION="26.04.3"
@@ -70,7 +75,6 @@ CURL_RETRY=(--retry 5 --retry-delay 2 --retry-connrefused --retry-all-errors --h
 
 USE_CN_MIRROR=false
 NONINTERACTIVE=false
-
 #--------------------------------------------------------
 # 彩色输出 / Colored output helpers
 #--------------------------------------------------------
@@ -88,6 +92,34 @@ err()   { printf '%s[x]%s %s\n' "$C_RED"   "$C_RESET" "$*" >&2; }
 die()   { err "$*"; exit 1; }
 hr()    { printf '%s────────────────────────────────────────────────────────%s\n' "$C_DIM" "$C_RESET"; }
 title() { printf '\n%s%s%s\n' "$C_BOLD" "$*" "$C_RESET"; hr; }
+
+#--------------------------------------------------------
+# 下载完整性校验 / Download integrity
+#--------------------------------------------------------
+# verify_sha256 <file> <expected_hex>
+# 用离线固定摘要校验已下载文件;不匹配则删除文件并终止(脚本以 root 运行,
+# 供应链完整性至关重要)。
+verify_sha256() {
+  local file="$1" expected="$2"
+  local actual
+  actual="$(sha256sum "$file" | awk '{print $1}')"
+  if [[ "$actual" != "$expected" ]]; then
+    rm -f "$file"
+    err "SHA256 校验失败: $file"
+    err "  期望: $expected"
+    err "  实际: $actual"
+    die "拒绝安装被篡改或版本不符的文件。"
+  fi
+  ok "SHA256 校验通过: $(basename "$file")"
+}
+
+# note_unverified <what> <source>
+# 对无官方摘要可固定、或本质为供应商引导脚本(rustup/dotnet/pixi/nextflow)的
+# 下载,显式提示 root 操作者:仅有 HTTPS/官方来源保证,无离线摘要校验。
+note_unverified() {
+  warn "无离线摘要校验: $1(来源 $2)。仅依赖 HTTPS 与官方来源;如需最高保障请预先固定其摘要。"
+}
+
 
 # ask "提示" "默认值" -> 回显用户输入(或默认)
 ask() {
@@ -476,6 +508,7 @@ ensure_go() {
   fi
   info "下载安装 Go ${GO_VERSION} ..."
   curl "${CURL_RETRY[@]}" -fsSL "$(go_dl_base)/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tgz
+  verify_sha256 /tmp/go.tgz "$GO_SHA256"
   rm -rf /usr/local/go
   tar -C /usr/local -xzf /tmp/go.tgz
   rm -f /tmp/go.tgz
@@ -550,6 +583,7 @@ install_lang_mdx() {
 install_lang_zig() {
   info "下载 Zig ${ZIG_VERSION} ..."
   curl "${CURL_RETRY[@]}" -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" -o /tmp/zig.tar.xz
+  verify_sha256 /tmp/zig.tar.xz "$ZIG_SHA256"
   tar -xJf /tmp/zig.tar.xz -C /opt && rm -f /tmp/zig.tar.xz
   ln -sf "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig
   ok "zig -> $(zig version 2>/dev/null || echo installed)"
@@ -558,6 +592,7 @@ install_lang_zig() {
 install_lang_julia() {
   info "下载 Julia ${JULIA_VERSION} ..."
   curl "${CURL_RETRY[@]}" -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_MINOR}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -o /tmp/julia.tgz
+  verify_sha256 /tmp/julia.tgz "$JULIA_SHA256"
   tar -xzf /tmp/julia.tgz -C /opt && rm -f /tmp/julia.tgz
   ln -sf "/opt/julia-${JULIA_VERSION}/bin/julia" /usr/local/bin/julia
   ok "julia installed"
@@ -565,10 +600,9 @@ install_lang_julia() {
 
 install_lang_dart() {
   info "下载 Dart SDK ${DART_VERSION} ..."
-  curl "${CURL_RETRY[@]}" -fsSL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip.sha256sum" -o /tmp/dart.sha
   curl "${CURL_RETRY[@]}" -fL "https://storage.googleapis.com/dart-archive/channels/stable/release/${DART_VERSION}/sdk/dartsdk-linux-x64-release.zip" -o /tmp/dart.zip
-  awk '{print $1 "  /tmp/dart.zip"}' /tmp/dart.sha | sha256sum -c -
-  unzip -q /tmp/dart.zip -d /opt && rm -f /tmp/dart.zip /tmp/dart.sha
+  verify_sha256 /tmp/dart.zip "$DART_SHA256"
+  unzip -q /tmp/dart.zip -d /opt && rm -f /tmp/dart.zip
   rm -rf "/opt/dart-sdk-${DART_VERSION}"; mv /opt/dart-sdk "/opt/dart-sdk-${DART_VERSION}"
   ln -sfn "/opt/dart-sdk-${DART_VERSION}" /opt/dart-sdk
   ln -sf /opt/dart-sdk/bin/dart /usr/local/bin/dart
@@ -577,6 +611,7 @@ install_lang_dart() {
 
 install_lang_fsharp() {
   info "安装 .NET SDK ${DOTNET_SDK_VERSION} (F#) ..."
+  note_unverified ".NET 安装脚本 dotnet-install.sh" "dot.net"
   curl "${CURL_RETRY[@]}" -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
   bash /tmp/dotnet-install.sh --version "${DOTNET_SDK_VERSION}" --install-dir /opt/dotnet --no-path
   rm -f /tmp/dotnet-install.sh
@@ -586,6 +621,7 @@ install_lang_fsharp() {
 
 install_lang_swift() {
   info "下载 Swift ${SWIFT_VERSION} ..."
+  note_unverified "Swift ${SWIFT_VERSION}" "download.swift.org"
   apt_install libcurl4-openssl-dev libedit2 libpython3.11 libxml2-dev libz3-dev libsqlite3-0
   curl "${CURL_RETRY[@]}" -fL "https://download.swift.org/swift-${SWIFT_VERSION}-release/debian12/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-debian12.tar.gz" -o /tmp/swift.tgz
   tar -xzf /tmp/swift.tgz -C /opt && rm -f /tmp/swift.tgz
@@ -596,6 +632,7 @@ install_lang_swift() {
 
 install_lang_lean4() {
   info "下载 Lean ${LEAN_VERSION} ..."
+  note_unverified "Lean ${LEAN_VERSION}" "github.com/leanprover"
   curl "${CURL_RETRY[@]}" -fsSL "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" -o /tmp/lean.tar.zst
   tar --zstd -xf /tmp/lean.tar.zst -C /opt && rm -f /tmp/lean.tar.zst
   ln -sf "/opt/lean-${LEAN_VERSION}-linux/bin/lean" /usr/local/bin/lean
@@ -661,6 +698,7 @@ install_lang_latex() {
 
 install_lang_nextflow() {
   info "安装 Nextflow ${NEXTFLOW_VERSION} ..."
+  note_unverified "Nextflow 安装脚本 get.nextflow.io" "get.nextflow.io"
   apt_install openjdk-17-jdk-headless
   mkdir -p "${OPT_DIR}/nextflow"
   curl "${CURL_RETRY[@]}" -fsSL https://get.nextflow.io -o /usr/local/bin/nextflow-launcher
@@ -687,6 +725,7 @@ install_lang_wdl() {
 
 install_lang_mojo() {
   info "安装 Mojo (via pixi ${PIXI_VERSION}) ..."
+  note_unverified "pixi 安装脚本 install.sh" "pixi.sh"
   curl "${CURL_RETRY[@]}" -fsSL https://pixi.sh/install.sh -o /tmp/pixi-install.sh
   PIXI_VERSION="${PIXI_VERSION}" PIXI_HOME=/opt/pixi PIXI_BIN_DIR=/opt/pixi/bin sh /tmp/pixi-install.sh
   rm -f /tmp/pixi-install.sh
@@ -789,6 +828,7 @@ build_binaries() {
 
   if ! command -v cargo >/dev/null 2>&1; then
     if confirm "未检测到 Rust/Cargo,是否通过 rustup 安装?" "y"; then
+      note_unverified "rustup 安装脚本 sh.rustup.rs" "sh.rustup.rs"
       curl "${CURL_RETRY[@]}" -fsSL https://sh.rustup.rs -o /tmp/rustup.sh
       sh /tmp/rustup.sh -y --profile minimal; rm -f /tmp/rustup.sh
       # shellcheck disable=SC1091
