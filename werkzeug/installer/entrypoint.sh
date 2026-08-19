@@ -88,7 +88,7 @@ run_legacy_command() {
   local deploy="${_INSTALLER_DIR}/../deploy.sh"
   local mode="$INSTALL_MODE" languages="$INSTALL_LANGUAGES" noninteractive="$NONINTERACTIVE" assume_yes="$ASSUME_YES"
   local uninstaller="${_INSTALLER_DIR}/../uninstall.sh"
-  if [[ "$INSTALL_COMMAND" == uninstall && -r "$uninstaller" ]]; then
+  if [[ "$INSTALL_COMMAND" == uninstall && "$mode" != webui && -r "$uninstaller" ]]; then
     local args=() cleaned status
     [[ "$PURGE" == true ]] && args+=(--purge)
     [[ "$DRY_RUN" == true ]] && args+=(--dry-run)
@@ -138,6 +138,7 @@ run_legacy_command() {
       if [[ "$mode" == webui ]] && declare -F remove_webui_assets >/dev/null 2>&1; then
         remove_webui_assets
         remove_webui_nginx_config
+        reload_webui_nginx
       fi
       # A WebUI dry-run is intentionally limited to marker-aware WebUI
       # cleanup. The legacy uninstaller has destructive operations without
@@ -176,6 +177,14 @@ activate_webui_nginx() {
     installer_error 'nginx is required to enable the WebUI site'
     return 1
   fi
+}
+
+reload_webui_nginx() {
+  [[ "${SANDKASTEN_INSTALL_MODE:-cli}" == webui ]] || return 0
+  [[ "${DRY_RUN:-false}" == true ]] && return 0
+  command -v nginx >/dev/null 2>&1 || return 0
+  nginx -t >/dev/null 2>&1 || return 0
+  systemctl reload nginx >/dev/null 2>&1 || return 0
 }
 
 installer_main() {

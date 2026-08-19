@@ -77,9 +77,22 @@ installer_main --mode cli --dry-run uninstall
 assert_eq "$(<"$EVENTS")" 'uninstaller:--dry-run' 'CLI uninstall dry-run dispatch'
 rm -f "$TMP_DIR/uninstall.sh"
 
+# A real checkout keeps WebUI uninstall on the entrypoint's marker-aware
+# cleanup path, even when a sibling standalone uninstaller exists.
+cat > "$TMP_DIR/uninstall.sh" <<'UNINSTALL'
+#!/usr/bin/env bash
+printf 'unexpected-standalone\n' >> "$EVENTS"
+UNINSTALL
+chmod +x "$TMP_DIR/uninstall.sh"
 : > "$EVENTS"
 installer_main --mode webui --dry-run uninstall
 assert_eq "$(<"$EVENTS")" $'remove-assets\nremove-nginx' \
   'WebUI uninstall dry-run must use marker-aware cleanup'
+
+: > "$EVENTS"
+installer_main --mode webui --yes uninstall
+assert_eq "$(<"$EVENTS")" $'remove-assets\nremove-nginx\nsystemctl:reload nginx\nbackend-uninstall' \
+  'WebUI uninstall must reload Nginx without standalone dispatch'
+rm -f "$TMP_DIR/uninstall.sh"
 
 printf 'webui mode integration tests: ok\n'
