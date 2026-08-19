@@ -42,6 +42,7 @@ bootstrap_file() {
 
 for bootstrap_file_name in \
   deploy.sh \
+  uninstall.sh \
   installer/entrypoint.sh \
   installer/lib.sh \
   installer/languages.sh \
@@ -54,6 +55,11 @@ done
 if [[ "${SANDKASTEN_BOOTSTRAP_TEST:-0}" == 1 ]]; then
   printf 'install.sh: bootstrap complete\n'
   exit 0
+fi
+
+if [[ "${1:-}" == uninstall ]]; then
+  shift
+  exec bash "${BOOTSTRAP_DIR}/uninstall.sh" "$@"
 fi
 
 exec bash "${BOOTSTRAP_DIR}/installer/entrypoint.sh" "$@"
