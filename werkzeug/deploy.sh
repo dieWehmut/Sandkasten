@@ -433,6 +433,10 @@ parse_lang_selection() {
 }
 
 select_languages() {
+  if [[ -n "${SANDKASTEN_LANGUAGES:-}" ]]; then
+    parse_lang_selection "${SANDKASTEN_LANGUAGES}"
+    return 0
+  fi
   print_lang_menu
   while :; do
     local input
@@ -926,6 +930,7 @@ SANDKASTEN_API_GRPC_ADDR=${GRPC_ADDR}
 SANDKASTEN_API_HTTP_ADDR=${http_listen}
 SANDKASTEN_API_CORS_ORIGINS=${cors}
 SANDKASTEN_RUNTIME_LANGUAGES=${langs_csv}
+SANDKASTEN_INSTALL_MODE=${SANDKASTEN_INSTALL_MODE:-cli}
 ENV
 
   info "写入 ${LAEUFER_ENV}"
@@ -1243,4 +1248,17 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${SANDKASTEN_SOURCE_ONLY:-0}" == 1 ]]; then
+  # Source boundary for the modular installer. Definitions above remain
+  # available to installer/entrypoint.sh without triggering host changes.
+  :
+else
+  # Keep the historical path compatible while making install.sh authoritative.
+  _DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "${_DEPLOY_DIR}/install.sh" ]]; then
+    exec bash "${_DEPLOY_DIR}/install.sh" "$@"
+  fi
+  # A downloaded legacy deploy.sh has no sibling modules, so retain its
+  # original standalone behavior instead of failing to find install.sh.
+  main "$@"
+fi
