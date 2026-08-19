@@ -37,6 +37,8 @@ run_install() {
   fi
 }
 uninstall_all() { printf 'backend-uninstall\n' >> "$EVENTS"; }
+confirm() { return 1; }
+info() { :; }
 DEPLOY
 
 export EVENTS
@@ -59,6 +61,13 @@ assert_eq "$(<"$EVENTS")" "$expected_webui_events" \
 [[ -L "$NGINX_SITE_ENABLED" ]] || fail 'WebUI Nginx site was not enabled'
 assert_eq "$(readlink "$NGINX_SITE_ENABLED")" "$NGINX_SITE_AVAIL" 'enabled WebUI site target'
 
+printf 'unmanaged\n' > "$TMP_DIR/nginx/unmanaged.conf"
+ln -sfn "$TMP_DIR/nginx/unmanaged.conf" "$NGINX_SITE_ENABLED"
+if activate_webui_nginx; then
+  fail 'activation replaced an unmanaged Nginx symlink'
+fi
+rm -f "$NGINX_SITE_ENABLED"
+
 : > "$EVENTS"
 export SANDKASTEN_INSTALL_MODE=cli
 installer_main --mode cli --languages python --non-interactive install
@@ -76,6 +85,11 @@ chmod +x "$TMP_DIR/uninstall.sh"
 installer_main --mode cli --dry-run uninstall
 assert_eq "$(<"$EVENTS")" 'uninstaller:--dry-run' 'CLI uninstall dry-run dispatch'
 rm -f "$TMP_DIR/uninstall.sh"
+
+# Interactive WebUI uninstall must confirm before removing marker-owned files.
+: > "$EVENTS"
+installer_main --mode webui uninstall
+assert_eq "$(<"$EVENTS")" '' 'WebUI uninstall confirmation'
 
 # A real checkout keeps WebUI uninstall on the entrypoint's marker-aware
 # cleanup path, even when a sibling standalone uninstaller exists.

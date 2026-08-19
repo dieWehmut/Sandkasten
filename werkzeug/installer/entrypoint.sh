@@ -88,6 +88,7 @@ run_legacy_command() {
   local deploy="${_INSTALLER_DIR}/../deploy.sh"
   local mode="$INSTALL_MODE" languages="$INSTALL_LANGUAGES" noninteractive="$NONINTERACTIVE" assume_yes="$ASSUME_YES"
   local uninstaller="${_INSTALLER_DIR}/../uninstall.sh"
+  [[ "$PURGE" == true ]] && assume_yes=true
   if [[ "$INSTALL_COMMAND" == uninstall && "$mode" != webui && -r "$uninstaller" ]]; then
     local args=() cleaned status
     [[ "$PURGE" == true ]] && args+=(--purge)
@@ -136,6 +137,14 @@ run_legacy_command() {
     restart) systemctl restart sandkasten-api.service sandkasten-laeufer.service ;;
     uninstall)
       if [[ "$mode" == webui ]] && declare -F remove_webui_assets >/dev/null 2>&1; then
+        if [[ "$DRY_RUN" != true && "$ASSUME_YES" != true ]]; then
+          if declare -F confirm >/dev/null 2>&1; then
+            confirm "确认删除 Sandkasten WebUI 资产与托管 Nginx 站点?" "n" || {
+              info "已取消 WebUI 卸载。"
+              return 0
+            }
+          fi
+        fi
         remove_webui_assets
         remove_webui_nginx_config
         reload_webui_nginx
@@ -165,6 +174,15 @@ activate_webui_nginx() {
   if [[ -e "$enabled" && ! -L "$enabled" ]]; then
     installer_error "refusing to replace unmanaged Nginx site: $enabled"
     return 1
+  fi
+  if [[ -L "$enabled" ]]; then
+    local existing_target available_target
+    existing_target="$(readlink -f "$enabled" 2>/dev/null || true)"
+    available_target="$(readlink -f "$available" 2>/dev/null || true)"
+    if [[ "$existing_target" != "$available_target" ]]; then
+      installer_error "refusing to replace unmanaged Nginx site link: $enabled"
+      return 1
+    fi
   fi
   if declare -F apt_install >/dev/null 2>&1; then
     apt_install nginx
