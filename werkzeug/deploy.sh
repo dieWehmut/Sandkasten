@@ -394,9 +394,11 @@ PRESET_WEB=(html css scss tailwindcss javascript typescript tsx vue3 nextjs mark
 parse_lang_selection() {
   local raw="$1"
   local -A picked=()
+  local invalid=false
   raw="${raw//,/ }"
   local token
   for token in $raw; do
+    [[ "$token" == *-* && ! "$token" =~ ^[0-9]+-[0-9]+$ ]] && invalid=true
     case "$token" in
       all|ALL) local l; for l in "${LANGS[@]}"; do picked["$l"]=1; done ;;
       core|CORE) local l; for l in "${PRESET_CORE[@]}"; do picked["$l"]=1; done ;;
@@ -404,8 +406,13 @@ parse_lang_selection() {
       *-*)
         local lo="${token%-*}" hi="${token#*-}" n
         if [[ "$lo" =~ ^[0-9]+$ && "$hi" =~ ^[0-9]+$ ]]; then
+          (( lo <= hi )) || invalid=true
           for (( n = lo; n <= hi; n++ )); do
-            (( n >= 1 && n <= ${#LANGS[@]} )) && picked["${LANGS[$((n - 1))]}"]=1
+            if (( n >= 1 && n <= ${#LANGS[@]} )); then
+              picked["${LANGS[$((n - 1))]}"]=1
+            else
+              invalid=true
+            fi
           done
         else
           warn "忽略无法识别的范围: $token"
@@ -415,6 +422,7 @@ parse_lang_selection() {
         if (( token >= 1 && token <= ${#LANGS[@]} )); then
           picked["${LANGS[$((token - 1))]}"]=1
         else
+          invalid=true
           warn "编号超出范围: $token"
         fi
         ;;
@@ -422,6 +430,7 @@ parse_lang_selection() {
         # 允许直接输入语言名
         local found=false l
         for l in "${LANGS[@]}"; do [[ "$l" == "${token,,}" ]] && { picked["$l"]=1; found=true; break; }; done
+        [[ "$found" == false ]] && invalid=true
         [[ "$found" == false ]] && warn "忽略未知语言: $token"
         ;;
     esac
@@ -431,19 +440,25 @@ parse_lang_selection() {
   for l in "${LANGS[@]}"; do
     [[ -n "${picked[$l]:-}" ]] && SELECTED_LANGS+=("$l")
   done
+  if [[ "$invalid" == true || ${#SELECTED_LANGS[@]} -eq 0 ]]; then
+    warn "鏈€夋嫨鏈夋晥璇█"
+    return 2
+  fi
   return 0
 }
 
 select_languages() {
   if [[ -n "${SANDKASTEN_LANGUAGES:-}" ]]; then
-    parse_lang_selection "${SANDKASTEN_LANGUAGES}"
+    parse_lang_selection "${SANDKASTEN_LANGUAGES}" || return
     return 0
   fi
   print_lang_menu
   while :; do
     local input
     input="$(ask "输入编号(可用空格分隔,支持区间如 1-10,或 core/web/all)" "core")"
-    parse_lang_selection "$input"
+    if ! parse_lang_selection "$input"; then
+      continue
+    fi
     if [[ ${#SELECTED_LANGS[@]} -eq 0 ]]; then
       warn "未选择任何语言,请重新输入。"; continue
     fi

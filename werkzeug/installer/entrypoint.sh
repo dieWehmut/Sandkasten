@@ -27,6 +27,8 @@ parse_args() {
   # Each invocation is independent. This matters when entrypoint.sh is
   # sourced by tests or by a process that dispatches multiple commands.
   INSTALL_MODE=cli
+  INSTALL_MODE_EXPLICIT=false
+  [[ -n "${SANDKASTEN_INSTALL_MODE:-}" ]] && INSTALL_MODE_EXPLICIT=true
   parse_mode "${SANDKASTEN_INSTALL_MODE:-cli}" || return
   INSTALL_LANGUAGES="${SANDKASTEN_LANGUAGES:-}"
   NONINTERACTIVE="${SANDKASTEN_NONINTERACTIVE:-false}"
@@ -41,8 +43,8 @@ parse_args() {
     case "$arg" in
       --mode)
         (($#)) || { installer_error '--mode requires cli or webui'; return 2; }
-        parse_mode "$1" || return; shift ;;
-      --mode=*) parse_mode "${arg#*=}" || return ;;
+        parse_mode "$1" || return; INSTALL_MODE_EXPLICIT=true; shift ;;
+      --mode=*) parse_mode "${arg#*=}" || return; INSTALL_MODE_EXPLICIT=true ;;
       --languages|-l)
         (($#)) || { installer_error '--languages requires a value'; return 2; }
         INSTALL_LANGUAGES="$1"; shift ;;
@@ -63,6 +65,22 @@ parse_args() {
   elif [[ "$NONINTERACTIVE" == true ]]; then
     parse_languages core || return
   fi
+}
+
+prompt_install_mode() {
+  local selected
+  while :; do
+    printf 'Deployment mode [cli/webui] (cli): '
+    if ! read -r selected; then
+      selected=cli
+    fi
+    selected="${selected:-cli}"
+    if parse_mode "$selected"; then
+      SANDKASTEN_INSTALL_MODE="$INSTALL_MODE"
+      export SANDKASTEN_INSTALL_MODE
+      return 0
+    fi
+  done
 }
 
 source_legacy_deploy() {
@@ -206,7 +224,12 @@ reload_webui_nginx() {
 }
 
 installer_main() {
+  local bare_invocation=false
+  (($# == 0)) && bare_invocation=true
   parse_args "$@" || return
+  if [[ "$bare_invocation" == true && "$INSTALL_MODE_EXPLICIT" != true && "$NONINTERACTIVE" != true ]]; then
+    prompt_install_mode || return
+  fi
   if [[ "$INSTALL_COMMAND" == help ]]; then installer_usage; return 0; fi
   if [[ "$DRY_RUN" == true ]]; then
     if [[ "$INSTALL_COMMAND" == uninstall ]]; then

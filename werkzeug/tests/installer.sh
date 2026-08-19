@@ -24,6 +24,10 @@ assert_status() {
   [[ "$actual" -eq "$expected" ]] || fail "status $* (expected $expected, got $actual)"
 }
 
+assert_contains() {
+  [[ "$1" == *"$2"* ]] || fail "$3 (missing '$2' in '$1')"
+}
+
 parse_mode cli
 assert_eq "$INSTALL_MODE" cli "cli mode"
 parse_mode webui
@@ -93,6 +97,65 @@ unset SANDKASTEN_INSTALL_MODE
 # Dry-run is side-effect free and prints the resolved invocation contract.
 dry_run_output="$(installer_main --dry-run --mode cli --languages python,typescript install)"
 assert_eq "$dry_run_output" $'mode=cli\nlanguages=python,typescript\ncommand=install' "dry-run output"
+
+# A bare interactive invocation asks for the deployment mode before handing
+# control to the legacy deployment flow.
+run_legacy_command() { printf '%s:%s\n' "$INSTALL_MODE" "$INSTALL_COMMAND"; }
+SANDKASTEN_INSTALLER_TEST=0
+mode_dispatch_file="$(mktemp)"
+printf 'webui\n' | installer_main >"$mode_dispatch_file"
+mode_dispatch_output="$(<"$mode_dispatch_file")"
+rm -f "$mode_dispatch_file"
+assert_contains "$mode_dispatch_output" "webui:menu" "bare invocation mode dispatch"
+assert_contains "$mode_dispatch_output" "Deployment mode" "bare invocation mode prompt"
+mode_eof_file="$(mktemp)"
+installer_main </dev/null >"$mode_eof_file"
+mode_eof_output="$(<"$mode_eof_file")"
+rm -f "$mode_eof_file"
+assert_contains "$mode_eof_output" "cli:menu" "EOF mode defaults to cli"
+unset -f run_legacy_command
+
+# Legacy environment-driven language selection rejects invalid and empty sets.
+source_legacy_deploy "$ROOT_DIR/werkzeug/deploy.sh"
+set +e
+SANDKASTEN_LANGUAGES='does-not-exist' select_languages >/dev/null 2>&1
+invalid_status=$?
+SANDKASTEN_LANGUAGES='1-999' select_languages >/dev/null 2>&1
+range_status=$?
+SANDKASTEN_LANGUAGES='   ' select_languages >/dev/null 2>&1
+empty_status=$?
+set -e
+assert_eq "$invalid_status" 2 "legacy invalid language selection"
+assert_eq "$range_status" 2 "legacy out-of-range language selection"
+assert_eq "$empty_status" 2 "legacy empty language selection"
+set +e
+SANDKASTEN_LANGUAGES='python,,go' select_languages >/dev/null 2>&1
+comma_status=$?
+SANDKASTEN_LANGUAGES='0008' select_languages >/dev/null 2>&1
+leading_zero_status=$?
+SANDKASTEN_LANGUAGES='1-999999999' select_languages >/dev/null 2>&1
+huge_range_status=$?
+set -e
+assert_eq "$comma_status" 2 "legacy empty CSV token"
+assert_eq "$leading_zero_status" 2 "legacy invalid leading-zero number"
+assert_eq "$huge_range_status" 2 "legacy huge language range"
+
+retry_file="$(mktemp)"
+printf '0\n' >"$retry_file"
+ask() {
+  local count
+  count="$(<"$retry_file")"
+  count=$((count + 1))
+  printf '%s\n' "$count" >"$retry_file"
+  if (( count == 1 )); then printf 'does-not-exist'; else printf 'core'; fi
+}
+confirm() { return 0; }
+unset SANDKASTEN_LANGUAGES
+select_languages >/dev/null
+retry_count="$(<"$retry_file")"
+rm -f "$retry_file"
+assert_eq "$retry_count" 2 "legacy interactive language retry"
+unset -f ask confirm
 
 # Sourcing the legacy file is a definition-only operation for the modular
 # entrypoint; its main dispatcher must not run at the source boundary.
