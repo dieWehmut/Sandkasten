@@ -1081,6 +1081,22 @@ render_domain_nginx_site() {
   local mode="${SANDKASTEN_INSTALL_MODE:-cli}"
   local webui_root="${WEBUI_ROOT:-/opt/sandkasten/webui}"
   if [[ "$mode" == webui ]]; then
+    [[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || {
+      warn "invalid domain name: $domain"
+      return 1
+    }
+    [[ "$webui_root" == /* && "$webui_root" != *$'\n'* && "$webui_root" != *$'\r'* ]] || {
+      warn "invalid WebUI root path"
+      return 1
+    }
+    if [[ -L "$site" ]]; then
+      warn "refusing to replace Nginx symlink: $site"
+      return 1
+    fi
+    if [[ -e "$site" ]] && ! grep -Fq -- '# sandkasten-webui-managed' "$site" 2>/dev/null; then
+      warn "refusing to replace unmanaged Nginx config: $site"
+      return 1
+    fi
     cat > "$site" <<NGINX
 # sandkasten-webui-managed
 server {
@@ -1145,9 +1161,16 @@ configure_domain() {
 
   apt_install nginx
   local site="/etc/nginx/sites-available/sandkasten.conf"
+  local enabled="/etc/nginx/sites-enabled/sandkasten.conf"
   info "写入 Nginx 配置 ${site}"
   render_domain_nginx_site "$site" "$domain"
-  ln -sf "$site" /etc/nginx/sites-enabled/sandkasten.conf
+  if [[ -e "$enabled" || -L "$enabled" ]]; then
+    if [[ ! -L "$enabled" || "$(readlink -f "$enabled" 2>/dev/null || true)" != "$(readlink -f "$site" 2>/dev/null || true)" ]]; then
+      warn "refusing to replace unmanaged enabled Nginx site: $enabled"
+      return 1
+    fi
+  fi
+  ln -sfn "$site" "$enabled"
   rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
   nginx -t && systemctl reload nginx
   ok "Nginx 已反代 ${domain} -> 127.0.0.1:${HTTP_PORT}"

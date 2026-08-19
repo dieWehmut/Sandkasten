@@ -40,4 +40,23 @@ if render_webui_nginx_config "$TMP_DIR/unmanaged-link.conf"; then
   fail 'renderer replaced an Nginx symlink'
 fi
 
+export SANDKASTEN_INSTALL_MODE=webui
+WEBUI_ROOT="$TMP_DIR/webui"
+printf 'unmanaged\n' > "$TMP_DIR/domain-unmanaged.conf"
+if render_domain_nginx_site "$TMP_DIR/domain-unmanaged.conf" valid.example.test; then
+  fail 'domain renderer replaced an unmanaged available site'
+fi
+ln -sfn "$TMP_DIR/domain-unmanaged.conf" "$TMP_DIR/domain-link.conf"
+if render_domain_nginx_site "$TMP_DIR/domain-link.conf" valid.example.test; then
+  fail 'domain renderer replaced an available symlink'
+fi
+if render_domain_nginx_site "$TMP_DIR/invalid.conf" 'bad domain'; then
+  fail 'domain validation accepted whitespace'
+fi
+WEBUI_ROOT="$TMP_DIR/unsafe
+root"
+if render_domain_nginx_site "$TMP_DIR/invalid-root.conf" valid.example.test; then
+  fail 'WebUI root validation accepted a newline'
+fi
+
 printf 'webui domain template tests: ok\n'
