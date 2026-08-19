@@ -108,7 +108,7 @@ Non-interactive options and subcommands are also available:
 
 ```bash
 sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
-sudo ./werkzeug/install.sh --mode webui --languages python,typescript
+sudo ./werkzeug/install.sh --mode webui --languages python,typescript --non-interactive
 sudo ./werkzeug/install.sh --dry-run --mode webui --languages web
 sudo ./werkzeug/install.sh status
 sudo ./werkzeug/install.sh languages   # reselect languages and hot-update

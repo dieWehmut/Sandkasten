@@ -21,7 +21,7 @@ passed non-interactively:
 
 ```sh
 sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
-sudo ./werkzeug/install.sh --mode webui --languages python,typescript
+sudo ./werkzeug/install.sh --mode webui --languages python,typescript --non-interactive
 ```
 
 `--mode cli|webui` selects backend-only or backend-plus-WebUI deployment.
