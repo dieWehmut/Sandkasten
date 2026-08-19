@@ -18,6 +18,10 @@ SELECTED_LANGS=()
 parse_languages() {
   local raw="${1:-}"
   [[ -n "$raw" ]] || { installer_error "languages cannot be empty"; return 2; }
+  [[ "$raw" =~ (^|,)[[:space:]]*(,|$) ]] && {
+    installer_error "languages contain an empty selection"
+    return 2
+  }
 
   local -A picked=()
   local token lo hi n lang
@@ -39,6 +43,9 @@ parse_languages() {
         [[ "$lo" =~ ^[0-9]+$ && "$hi" =~ ^[0-9]+$ ]] || {
           installer_error "invalid language range '$token'"; return 2;
         }
+        (( ${#lo} <= 3 && ${#hi} <= 3 )) || {
+          installer_error "language range '$token' is too large"; return 2;
+        }
         lo=$((10#$lo)); hi=$((10#$hi))
         (( lo >= 1 && hi >= lo && hi <= ${#LANGS[@]} )) || {
           installer_error "language range '$token' is outside 1-${#LANGS[@]}"; return 2;
@@ -46,6 +53,7 @@ parse_languages() {
         for ((n = lo; n <= hi; n++)); do picked["${LANGS[$((n - 1))]}"]=1; done ;;
       [0-9]*)
         [[ "$token" =~ ^[0-9]+$ ]] || { installer_error "invalid language '$token'"; return 2; }
+        (( ${#token} <= 3 )) || { installer_error "invalid language '$token'"; return 2; }
         n=$((10#$token))
         (( n >= 1 && n <= ${#LANGS[@]} )) || {
           installer_error "language '$token' is outside 1-${#LANGS[@]}"; return 2;
@@ -70,4 +78,3 @@ parse_languages() {
 
 # Legacy name retained for callers that source the old deployer.
 parse_lang_selection() { parse_languages "$@"; }
-

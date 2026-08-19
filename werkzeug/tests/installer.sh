@@ -82,6 +82,9 @@ assert_eq "$INSTALL_LANGUAGES" "" "parse_args clean default languages"
 assert_eq "$NONINTERACTIVE" false "parse_args clean default interactivity"
 assert_eq "$DRY_RUN" false "parse_args clean default dry-run"
 
+assert_status 2 parse_languages 'python,,go'
+assert_status 2 parse_languages '1-999999999'
+
 SANDKASTEN_INSTALL_MODE=webui SANDKASTEN_LANGUAGES='2,4-5' \
   SANDKASTEN_NONINTERACTIVE=true SANDKASTEN_DRY_RUN=true \
   parse_args status
