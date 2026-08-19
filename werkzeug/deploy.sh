@@ -395,6 +395,9 @@ parse_lang_selection() {
   local raw="$1"
   local -A picked=()
   local invalid=false
+  if [[ "$raw" =~ (^|,)[[:space:]]*(,|$) ]]; then
+    invalid=true
+  fi
   raw="${raw//,/ }"
   local token
   for token in $raw; do
@@ -406,24 +409,35 @@ parse_lang_selection() {
       *-*)
         local lo="${token%-*}" hi="${token#*-}" n
         if [[ "$lo" =~ ^[0-9]+$ && "$hi" =~ ^[0-9]+$ ]]; then
-          (( lo <= hi )) || invalid=true
+          if (( ${#lo} > 3 || ${#hi} > 3 )); then
+            invalid=true
+            continue
+          fi
+          lo=$((10#$lo)); hi=$((10#$hi))
+          if (( lo < 1 || hi > ${#LANGS[@]} || lo > hi )); then
+            invalid=true
+            continue
+          fi
           for (( n = lo; n <= hi; n++ )); do
-            if (( n >= 1 && n <= ${#LANGS[@]} )); then
-              picked["${LANGS[$((n - 1))]}"]=1
-            else
-              invalid=true
-            fi
+            picked["${LANGS[$((n - 1))]}"]=1
           done
         else
+          invalid=true
           warn "忽略无法识别的范围: $token"
         fi
         ;;
       [0-9]*)
-        if (( token >= 1 && token <= ${#LANGS[@]} )); then
-          picked["${LANGS[$((token - 1))]}"]=1
+        if [[ "$token" =~ ^[0-9]+$ && ${#token} -le 3 ]]; then
+          local n=$((10#$token))
+          if (( n >= 1 && n <= ${#LANGS[@]} )); then
+            picked["${LANGS[$((n - 1))]}"]=1
+          else
+            invalid=true
+            warn "编号超出范围: $token"
+          fi
         else
           invalid=true
-          warn "编号超出范围: $token"
+          warn "无效语言编号: $token"
         fi
         ;;
       *)

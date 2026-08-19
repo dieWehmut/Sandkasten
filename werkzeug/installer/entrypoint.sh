@@ -227,7 +227,8 @@ installer_main() {
   local bare_invocation=false
   (($# == 0)) && bare_invocation=true
   parse_args "$@" || return
-  if [[ "$bare_invocation" == true && "$INSTALL_MODE_EXPLICIT" != true && "$NONINTERACTIVE" != true ]]; then
+  if [[ "$INSTALL_MODE_EXPLICIT" != true && "$NONINTERACTIVE" != true && "$DRY_RUN" != true && \
+        ( "$INSTALL_COMMAND" == menu || "$INSTALL_COMMAND" == install ) ]]; then
     prompt_install_mode || return
   fi
   if [[ "$INSTALL_COMMAND" == help ]]; then installer_usage; return 0; fi
