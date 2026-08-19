@@ -34,6 +34,9 @@ STATE_DIR="/var/lib/sandkasten"
 OPT_DIR="/opt/sandkasten"
 SYSTEMD_DIR="/etc/systemd/system"
 NODE_MODULES="/usr/local/lib/node_modules"
+WEBUI_ROOT="${WEBUI_ROOT:-${OPT_DIR}/webui}"
+NGINX_SITE_AVAIL="${NGINX_SITE_AVAIL:-/etc/nginx/sites-available/sandkasten.conf}"
+NGINX_SITE_ENABLED="${NGINX_SITE_ENABLED:-/etc/nginx/sites-enabled/sandkasten.conf}"
 
 API_USER="sandkasten-api"
 API_GROUP="sandkasten-api"
@@ -43,6 +46,14 @@ DB_USER="sandkasten"
 PURGE=false
 DRY_RUN=false
 ASSUME_YES=false
+
+# Reuse marker-aware WebUI cleanup when this is a repository checkout. A
+# downloaded standalone uninstaller still uses the guarded fallback below.
+_WEBUI_MODULE="${REPO_ROOT}/werkzeug/installer/webui.sh"
+if [[ -r "$_WEBUI_MODULE" ]]; then
+  # shellcheck disable=SC1090
+  source "$_WEBUI_MODULE"
+fi
 
 #--------------------------------------------------------
 # 彩色输出
@@ -331,15 +342,24 @@ remove_build_artifacts() {
 
 remove_nginx() {
   title "7) 删除 Nginx 站点与 HTTPS 证书"
-  local site_avail="/etc/nginx/sites-available/sandkasten.conf"
-  local site_enabled="/etc/nginx/sites-enabled/sandkasten.conf"
+  local site_avail="$NGINX_SITE_AVAIL"
+  local site_enabled="$NGINX_SITE_ENABLED"
+  if declare -F remove_webui_assets >/dev/null 2>&1; then
+    remove_webui_assets || warn "WebUI assets could not be removed"
+  elif [[ -f "$WEBUI_ROOT/.sandkasten-webui-managed" ]]; then
+    rm_path "$WEBUI_ROOT"
+  fi
   if [[ ! -e "$site_avail" && ! -L "$site_enabled" ]]; then
     info "未发现 sandkasten 的 Nginx 站点,跳过。"; return
   fi
   local domain=""
   [[ -f "$site_avail" ]] && domain="$(grep -m1 'server_name' "$site_avail" 2>/dev/null | awk '{print $2}' | tr -d ';')"
   if confirm_step "删除 Nginx 站点 sandkasten.conf${domain:+(域名 $domain)}?"; then
-    rm_path "$site_enabled" "$site_avail"
+    if grep -Fq -- '# sandkasten-webui-managed' "$site_avail" 2>/dev/null; then
+      rm_path "$site_enabled" "$site_avail"
+    else
+      warn "Nginx site is not managed by Sandkasten WebUI; preserving $site_avail"
+    fi
     if [[ "$DRY_RUN" != true ]] && command -v nginx >/dev/null 2>&1; then
       nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || warn "nginx reload 失败,请手动检查。"
     fi
