@@ -34,7 +34,7 @@ STATE_DIR="/var/lib/sandkasten"
 OPT_DIR="/opt/sandkasten"
 SYSTEMD_DIR="/etc/systemd/system"
 NODE_MODULES="/usr/local/lib/node_modules"
-WEBUI_ROOT="${WEBUI_ROOT:-${OPT_DIR}/webui}"
+WEBUI_ROOT="${WEBUI_ROOT:-${SANDKASTEN_WEBUI_DIR:-${OPT_DIR}/webui}}"
 NGINX_SITE_AVAIL="${NGINX_SITE_AVAIL:-/etc/nginx/sites-available/sandkasten.conf}"
 NGINX_SITE_ENABLED="${NGINX_SITE_ENABLED:-/etc/nginx/sites-enabled/sandkasten.conf}"
 
@@ -210,6 +210,9 @@ remove_database() {
 # 4) 自定义下载的语言工具链 (/opt + 符号链接)
 #========================================================
 remove_toolchains() {
+  if declare -F remove_webui_assets >/dev/null 2>&1; then
+    remove_webui_assets || warn "WebUI assets could not be removed"
+  fi
   title "4) 删除自定义下载的语言工具链"
   if ! confirm_step "删除 /opt 下由 deploy.sh 安装的语言 SDK 及其 /usr/local/bin 符号链接?"; then
     info "跳过(保留工具链)。"; return
@@ -244,7 +247,7 @@ remove_toolchains() {
     "/opt/zig-x86_64-linux-"* "/opt/julia-"* "/opt/dart-sdk" "/opt/dart-sdk-"*
     "/opt/dotnet" "/opt/swift-"*"-debian12" "/opt/lean-"*"-linux" "/opt/v"
     "/opt/typst-x86_64-unknown-linux-musl" "/opt/pixi" "/opt/mojo"
-    "/opt/miniwdl" "/opt/cangjie" "/opt/sandkasten"
+    "/opt/miniwdl" "/opt/cangjie"
   )
   local g
   for g in "${opt_globs[@]}"; do

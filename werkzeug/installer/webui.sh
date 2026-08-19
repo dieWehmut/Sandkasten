@@ -3,7 +3,7 @@
 # WebUI deployment helpers. Functions are intentionally side-effect free when
 # DRY_RUN=true so they can be used by installer previews and tests.
 
-WEBUI_ROOT="${WEBUI_ROOT:-/opt/sandkasten/webui}"
+WEBUI_ROOT="${WEBUI_ROOT:-${SANDKASTEN_WEBUI_DIR:-/opt/sandkasten/webui}}"
 NGINX_SITE_AVAIL="${NGINX_SITE_AVAIL:-/etc/nginx/sites-available/sandkasten.conf}"
 NGINX_SITE_ENABLED="${NGINX_SITE_ENABLED:-/etc/nginx/sites-enabled/sandkasten.conf}"
 HTTP_PORT="${HTTP_PORT:-8080}"
