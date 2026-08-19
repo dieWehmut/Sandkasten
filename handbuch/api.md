@@ -218,6 +218,13 @@ curl -fsS \
 
 The HTTP API accepts `POST /v1/{language}/run` and `POST /v1/run` with a JSON `language` field.
 
+The checked-in `webui/` client uses this same-origin surface directly. When
+installed in WebUI mode, Nginx serves the client from
+`SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`) and forwards `/v1/`
+and `/healthz` to the API. It loads `GET /v1/runtimes`, submits source to
+`POST /v1/{language}/run`, and polls `GET /v1/jobs/{jobId}`; no cross-origin
+request or frontend package manager is required.
+
 Response artifacts use `outputEncoding=auto` by default. UTF-8 artifacts are returned as normal strings; non-UTF-8 artifacts are base64 encoded. Clients may set `outputEncoding` to `utf8`, `base64`, or `auto` in the POST body. `GET /v1/jobs/{job_id}` accepts the same value as a query parameter.
 
 ```json

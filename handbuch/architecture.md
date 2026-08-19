@@ -13,6 +13,14 @@ The repository uses German directory names for component ownership:
 - `pruefung/`: fixtures and integration/security test material.
 - `beispiele/`: sample projects and clients.
 
+The optional browser client lives in `webui/` (`index.html`, `app.js`, and
+`styles.css`). In WebUI installer mode it is installed under
+`SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`) and served by Nginx.
+Nginx keeps the client and API same-origin: static files are served from that
+directory, while `/v1/` and `/healthz` are reverse-proxied to the API. The
+client therefore uses relative API paths and treats returned job artifacts as
+untrusted text. CLI mode omits this static-site location.
+
 ## v1 Flow
 
 1. A client sends `SubmitGoProject` with a `tar.gz` archive, or uses the HTTP `/v1/{language}/run` endpoint for single-file source.

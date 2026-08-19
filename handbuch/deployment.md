@@ -2,6 +2,45 @@
 
 Deployment assets live in `einsatz/`.
 
+## Bare-metal installer
+
+For a Debian/Ubuntu x86_64 host, the supported clone-free entrypoint is
+`werkzeug/install.sh`:
+
+```sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh \
+  && chmod +x sandkasten-install.sh \
+  && sudo ./sandkasten-install.sh
+```
+
+With no arguments the installer is interactive: it asks for the deployment
+mode (`cli` or `webui`) and then the language selection. The language prompt
+accepts comma- or space-separated names, one-based menu numbers, ranges such
+as `1-10`, and the `core`, `web`, and `all` presets. The same choices can be
+passed non-interactively:
+
+```sh
+sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
+sudo ./werkzeug/install.sh --mode webui --languages python,typescript
+```
+
+`--mode cli|webui` selects backend-only or backend-plus-WebUI deployment.
+`--languages LIST` validates and selects runtimes; `--dry-run` parses these
+options and prints the selected mode, languages, and command without changing
+the host. Existing `deploy.sh` commands remain compatible and forward to this
+installer.
+
+In `webui` mode the checked-in `webui/` directory is copied to
+`/opt/sandkasten/webui` (override with `SANDKASTEN_WEBUI_DIR`). Nginx serves
+that directory and proxies `/v1/` and `/healthz` to the API, so the browser
+client uses same-origin relative URLs and does not require CORS configuration.
+`cli` mode installs no static files or WebUI Nginx location.
+
+The installer also supports `status`, `restart`, `languages`/`reconfigure`,
+`domain`, and `uninstall` subcommands. To remove a deployment, use
+`sudo ./werkzeug/install.sh uninstall` (or `werkzeug/uninstall.sh`); the
+uninstaller supports interactive confirmation, `--dry-run`, and `--purge`.
+
 ## Images
 
 Build the API and runner images from the repository root:

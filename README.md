@@ -83,7 +83,7 @@
 在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行一行命令即可(脚本会自动安装 git 并克隆源码到 `/opt/sandkasten/src`):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 或先克隆再运行:

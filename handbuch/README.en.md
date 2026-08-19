@@ -83,7 +83,7 @@ The runtime index page is server-rendered by the API and lists every enabled lan
 On a Debian / Ubuntu (x86_64) host, run a single command as root (the script installs git and clones the source to `/opt/sandkasten/src` automatically):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 Or clone first, then run:
@@ -94,7 +94,8 @@ cd sandkasten
 sudo ./werkzeug/deploy.sh
 ```
 
-The script is interactive and walks you through:
+The installer is interactive and first asks for a deployment mode (`cli` or
+`webui`), then walks you through:
 
 1. **Show server configuration** (CPU / memory / disk) and estimate the disk footprint of your selection
 2. **Pick languages by number** — a numbered menu of 58 runtimes; enter numbers (e.g. `1 5 12`), ranges (`1-10`), language names, or presets `core` / `web` / `all`; only the chosen toolchains are installed
@@ -103,14 +104,27 @@ The script is interactive and walks you through:
 5. **Write env files**, install systemd units, and **enable auto-start on boot**
 6. Optional: **Nginx reverse proxy + Let's Encrypt HTTPS**, with automatic CORS update
 
-Non-interactive subcommands are also available:
+Non-interactive options and subcommands are also available:
 
 ```bash
-sudo ./werkzeug/deploy.sh install     # fresh install directly
-sudo ./werkzeug/deploy.sh status      # show status
-sudo ./werkzeug/deploy.sh languages   # reselect languages and hot-update
-sudo ./werkzeug/deploy.sh domain      # configure domain / Nginx / HTTPS only
+sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
+sudo ./werkzeug/install.sh --mode webui --languages python,typescript
+sudo ./werkzeug/install.sh --dry-run --mode webui --languages web
+sudo ./werkzeug/install.sh status
+sudo ./werkzeug/install.sh languages   # reselect languages and hot-update
+sudo ./werkzeug/install.sh domain      # configure domain / Nginx / HTTPS only
 ```
+
+`--languages` accepts comma- or space-separated names, one-based menu numbers,
+ranges, and the `core`, `web`, and `all` presets. `--dry-run` only prints the
+parsed mode, languages, and command. `deploy.sh` remains a compatibility
+wrapper for existing invocations.
+
+In `webui` mode, Nginx serves the dependency-free `webui/` directory from
+`/opt/sandkasten/webui` (override with `SANDKASTEN_WEBUI_DIR`) and proxies
+`/v1/` and `/healthz` to the API. The browser client consequently uses
+same-origin relative URLs. CLI mode installs the backend without this static
+site.
 
 ### Local dev stack
 
@@ -135,6 +149,11 @@ sudo ./werkzeug/uninstall.sh              # interactive, per-step confirmation
 sudo ./werkzeug/uninstall.sh --dry-run    # preview only, no deletions
 sudo ./werkzeug/uninstall.sh --purge      # one-shot full removal (still confirms once)
 ```
+
+The installer also exposes `sudo ./werkzeug/install.sh uninstall`. Both
+uninstallers support interactive confirmation, `--dry-run`, and `--purge`;
+purge removes managed WebUI files and the Nginx site in addition to services,
+state, database objects, and managed toolchains.
 
 The uninstaller removes, in lock-step with the deployer: systemd services, binaries, `/etc/sandkasten` config, `/var/lib/sandkasten` state, the database and role, language toolchains under `/opt` and their `/usr/local/bin` symlinks, global npm packages, `/usr/local/go`, build caches, the Nginx site and certificate, and the service account — finishing with a **residual self-check**. System apt language packages are kept by default (they may be shared by the rest of the system).
 
