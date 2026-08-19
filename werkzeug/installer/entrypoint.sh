@@ -31,6 +31,8 @@ parse_args() {
   INSTALL_LANGUAGES="${SANDKASTEN_LANGUAGES:-}"
   NONINTERACTIVE="${SANDKASTEN_NONINTERACTIVE:-false}"
   DRY_RUN="${SANDKASTEN_DRY_RUN:-false}"
+  ASSUME_YES="${SANDKASTEN_ASSUME_YES:-false}"
+  PURGE="${SANDKASTEN_PURGE:-false}"
   INSTALL_COMMAND=menu
 
   local arg value
@@ -46,6 +48,8 @@ parse_args() {
         INSTALL_LANGUAGES="$1"; shift ;;
       --languages=*) INSTALL_LANGUAGES="${arg#*=}" ;;
       --non-interactive|--noninteractive|--dry-run) parse_bool_flag "$arg" ;;
+      --yes|-y) ASSUME_YES=true ;;
+      --purge) PURGE=true ;;
       -h|--help|help) INSTALL_COMMAND=help ;;
       install|status|restart|uninstall|languages|reconfigure|domain|menu)
         INSTALL_COMMAND="$arg" ;;
@@ -82,7 +86,26 @@ source_legacy_deploy() {
 
 run_legacy_command() {
   local deploy="${_INSTALLER_DIR}/../deploy.sh"
-  local mode="$INSTALL_MODE" languages="$INSTALL_LANGUAGES" noninteractive="$NONINTERACTIVE"
+  local mode="$INSTALL_MODE" languages="$INSTALL_LANGUAGES" noninteractive="$NONINTERACTIVE" assume_yes="$ASSUME_YES"
+  local uninstaller="${_INSTALLER_DIR}/../uninstall.sh"
+  if [[ "$INSTALL_COMMAND" == uninstall && -r "$uninstaller" ]]; then
+    local args=() cleaned status
+    [[ "$PURGE" == true ]] && args+=(--purge)
+    [[ "$DRY_RUN" == true ]] && args+=(--dry-run)
+    [[ "$ASSUME_YES" == true ]] && args+=(--yes)
+    # Repository scripts may be checked out with CRLF; normalize only this
+    # temporary execution copy so the standalone uninstaller remains intact.
+    cleaned="$(mktemp "${_INSTALLER_DIR}/../.uninstall-source.XXXXXX.sh")"
+    sed 's/\r$//' "$uninstaller" > "$cleaned"
+    if WEBUI_ROOT="${SANDKASTEN_WEBUI_DIR:-${WEBUI_ROOT:-}}" \
+      SANDKASTEN_INSTALL_MODE="$mode" bash "$cleaned" "${args[@]}"; then
+      status=0
+    else
+      status=$?
+    fi
+    rm -f "$cleaned"
+    return "$status"
+  fi
   [[ -r "$deploy" ]] || { installer_error "legacy deployer not found"; return 1; }
   source_legacy_deploy "$deploy"
   # deploy.sh initializes its own legacy globals while loading, so restore
@@ -90,7 +113,12 @@ run_legacy_command() {
   NONINTERACTIVE="$noninteractive"
   SANDKASTEN_INSTALL_MODE="$mode"
   SANDKASTEN_LANGUAGES="$languages"
-  export NONINTERACTIVE SANDKASTEN_INSTALL_MODE SANDKASTEN_LANGUAGES
+  ASSUME_YES="$assume_yes"
+  export NONINTERACTIVE SANDKASTEN_INSTALL_MODE SANDKASTEN_LANGUAGES ASSUME_YES
+  if [[ -n "${SANDKASTEN_WEBUI_DIR:-}" ]]; then
+    WEBUI_ROOT="$SANDKASTEN_WEBUI_DIR"
+    export WEBUI_ROOT
+  fi
   require_root
   detect_os
   case "$INSTALL_COMMAND" in
@@ -99,6 +127,7 @@ run_legacy_command() {
       if [[ "$mode" == webui && "$INSTALL_COMMAND" == install ]] && declare -F install_webui_assets >/dev/null 2>&1; then
         install_webui_assets
         render_webui_nginx_config
+        activate_webui_nginx
       fi
       ;;
     languages|reconfigure) reconfigure_languages ;;
@@ -110,15 +139,52 @@ run_legacy_command() {
         remove_webui_assets
         remove_webui_nginx_config
       fi
-      uninstall_all
+      # A WebUI dry-run is intentionally limited to marker-aware WebUI
+      # cleanup. The legacy uninstaller has destructive operations without
+      # dry-run guards, so do not dispatch it in this mode.
+      [[ "$DRY_RUN" == true ]] || uninstall_all
       ;;
   esac
+}
+
+activate_webui_nginx() {
+  [[ "${SANDKASTEN_INSTALL_MODE:-cli}" == webui ]] || return 0
+  if [[ "${DRY_RUN:-false}" == true ]]; then
+    printf '[dry-run] enable and reload managed Nginx site %s\n' "${NGINX_SITE_AVAIL:-/etc/nginx/sites-available/sandkasten.conf}"
+    return 0
+  fi
+  local available="${NGINX_SITE_AVAIL:-/etc/nginx/sites-available/sandkasten.conf}"
+  local enabled="${NGINX_SITE_ENABLED:-/etc/nginx/sites-enabled/sandkasten.conf}"
+  [[ -f "$available" ]] || { installer_error "managed WebUI Nginx config not found: $available"; return 1; }
+  grep -Fq -- '# sandkasten-webui-managed' "$available" || {
+    installer_error "refusing to enable unmanaged Nginx config: $available"
+    return 1
+  }
+  mkdir -p "$(dirname "$enabled")"
+  if [[ -e "$enabled" && ! -L "$enabled" ]]; then
+    installer_error "refusing to replace unmanaged Nginx site: $enabled"
+    return 1
+  fi
+  if declare -F apt_install >/dev/null 2>&1; then
+    apt_install nginx
+  fi
+  ln -sfn "$available" "$enabled"
+  if command -v nginx >/dev/null 2>&1; then
+    nginx -t >/dev/null 2>&1 || return 1
+    systemctl reload nginx
+  else
+    installer_error 'nginx is required to enable the WebUI site'
+    return 1
+  fi
 }
 
 installer_main() {
   parse_args "$@" || return
   if [[ "$INSTALL_COMMAND" == help ]]; then installer_usage; return 0; fi
   if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$INSTALL_COMMAND" == uninstall && "$INSTALL_MODE" == webui ]]; then
+      run_legacy_command || return
+    fi
     printf 'mode=%s\n' "$INSTALL_MODE"
     printf 'languages=%s\n' "${INSTALL_LANGUAGES:-${SELECTED_LANGS[*]:-core}}"
     printf 'command=%s\n' "$INSTALL_COMMAND"

@@ -85,6 +85,7 @@ CURL_RETRY=(--retry 5 --retry-delay 2 --retry-connrefused --retry-all-errors --h
 
 USE_CN_MIRROR=false
 NONINTERACTIVE=false
+ASSUME_YES=false
 #--------------------------------------------------------
 # 彩色输出 / Colored output helpers
 #--------------------------------------------------------
@@ -149,6 +150,7 @@ ask() {
 # confirm "问题" "y|n(默认)" -> 返回 0=yes 1=no
 confirm() {
   local prompt="$1" default="${2:-n}" reply
+  [[ "${ASSUME_YES:-false}" == true ]] && return 0
   if [[ "$NONINTERACTIVE" == true ]]; then
     [[ "$default" == "y" ]]; return
   fi
@@ -1163,7 +1165,14 @@ run_install() {
   build_binaries
   write_env_files
   install_systemd_units
-  configure_domain
+  # WebUI installs serve the staged frontend through the managed Nginx site
+  # wired by the modular entrypoint. Domain/HTTPS setup remains opt-in so a
+  # non-interactive WebUI install is deterministic.
+  if [[ "${SANDKASTEN_INSTALL_MODE:-cli}" == webui && "${SANDKASTEN_CONFIGURE_DOMAIN:-false}" != true ]]; then
+    info "WebUI mode: skipping interactive domain configuration"
+  else
+    configure_domain
+  fi
 
   title "部署完成"
   ok "Sandkasten 后端已部署并设置开机自启。"
