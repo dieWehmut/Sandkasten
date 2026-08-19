@@ -61,6 +61,14 @@ assert_eq "$(<"$EVENTS")" "$expected_webui_events" \
 [[ -L "$NGINX_SITE_ENABLED" ]] || fail 'WebUI Nginx site was not enabled'
 assert_eq "$(readlink "$NGINX_SITE_ENABLED")" "$NGINX_SITE_AVAIL" 'enabled WebUI site target'
 
+# The documented non-interactive invocation omits the optional install
+# subcommand; the default menu command must still deploy the WebUI assets.
+: > "$EVENTS"
+installer_main --mode webui --languages python --non-interactive
+expected_webui_default_events="$(printf 'backend:webui:python\nassets:%s\nrender\nsystemctl:reload nginx' "$TMP_DIR/custom-webui")"
+assert_eq "$(<"$EVENTS")" "$expected_webui_default_events" \
+  'default WebUI invocation must deploy assets'
+
 printf 'unmanaged\n' > "$TMP_DIR/nginx/unmanaged.conf"
 ln -sfn "$TMP_DIR/nginx/unmanaged.conf" "$NGINX_SITE_ENABLED"
 if activate_webui_nginx; then

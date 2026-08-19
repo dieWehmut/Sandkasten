@@ -143,7 +143,7 @@ run_legacy_command() {
   case "$INSTALL_COMMAND" in
     install|menu)
       run_install
-      if [[ "$mode" == webui && "$INSTALL_COMMAND" == install ]] && declare -F install_webui_assets >/dev/null 2>&1; then
+      if [[ "$mode" == webui ]] && declare -F install_webui_assets >/dev/null 2>&1; then
         install_webui_assets
         render_webui_nginx_config
         activate_webui_nginx
