@@ -62,5 +62,10 @@ WEBUI_ROOT="$TMP_DIR/unsafe;root"
 if render_domain_nginx_site "$TMP_DIR/invalid-root-chars.conf" valid.example.test; then
   fail 'WebUI root validation accepted Nginx metacharacters'
 fi
+ln -s / "$TMP_DIR/root-link"
+WEBUI_ROOT="$TMP_DIR/root-link"
+if render_domain_nginx_site "$TMP_DIR/invalid-root-link.conf" valid.example.test; then
+  fail 'WebUI root validation accepted a symlink to a protected path'
+fi
 
 printf 'webui domain template tests: ok\n'

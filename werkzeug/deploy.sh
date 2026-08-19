@@ -1079,7 +1079,7 @@ UNIT
 render_domain_nginx_site() {
   local site="$1" domain="$2"
   local mode="${SANDKASTEN_INSTALL_MODE:-cli}"
-  local webui_root="${WEBUI_ROOT:-/opt/sandkasten/webui}"
+  local webui_root="${WEBUI_ROOT:-/opt/sandkasten/webui}" canonical_root
   if [[ "$mode" == webui ]]; then
     [[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || {
       warn "invalid domain name: $domain"
@@ -1091,6 +1091,20 @@ render_domain_nginx_site() {
     }
     case "$webui_root" in
       */../*|*/..|/|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
+        warn "invalid WebUI root path"
+        return 1
+        ;;
+    esac
+    if command -v realpath >/dev/null 2>&1; then
+      canonical_root="$(realpath -m -- "$webui_root")" || {
+        warn "invalid WebUI root path"
+        return 1
+      }
+    else
+      canonical_root="$webui_root"
+    fi
+    case "$canonical_root" in
+      /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
         warn "invalid WebUI root path"
         return 1
         ;;
