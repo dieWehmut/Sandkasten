@@ -14,6 +14,28 @@ _webui_error() {
   printf 'webui: %s\n' "$*" >&2
 }
 
+validate_webui_root() {
+  local root="${WEBUI_ROOT:-}" canonical
+  [[ -n "$root" && "$root" == /* ]] || {
+    _webui_error "WEBUI_ROOT must be an absolute path"
+    return 1
+  }
+  case "$root" in
+    */../*|*/..|../*|..) _webui_error "WEBUI_ROOT contains traversal: $root"; return 1 ;;
+  esac
+  if command -v realpath >/dev/null 2>&1; then
+    canonical="$(realpath -m -- "$root")" || canonical="$root"
+  else
+    canonical="$root"
+  fi
+  case "$canonical" in
+    /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
+      _webui_error "WEBUI_ROOT is too broad or protected: $root"
+      return 1
+      ;;
+  esac
+}
+
 validate_webui_source() {
   local source="${REPO_ROOT:-}/webui"
   [[ -n "${REPO_ROOT:-}" && -d "$source" ]] || {
@@ -31,6 +53,7 @@ validate_webui_source() {
 }
 
 install_webui_assets() {
+  validate_webui_root || return
   validate_webui_source || return
   if [[ "${DRY_RUN:-false}" == true ]]; then
     printf '[dry-run] install WebUI assets from %s to %s\n' "${REPO_ROOT}/webui" "$WEBUI_ROOT"
@@ -74,6 +97,7 @@ install_webui_assets() {
 
 render_webui_nginx_config() {
   local output="${1:-$NGINX_SITE_AVAIL}" mode="${SANDKASTEN_INSTALL_MODE:-webui}"
+  [[ "$mode" != webui ]] || { validate_webui_root || return; }
   if [[ "${DRY_RUN:-false}" == true ]]; then
     printf '[dry-run] render Nginx config to %s\n' "$output"
     return 0
@@ -128,6 +152,7 @@ EOF
 }
 
 remove_webui_assets() {
+  validate_webui_root || return 1
   [[ -e "$WEBUI_ROOT" || -L "$WEBUI_ROOT" ]] || return 0
   [[ -f "$WEBUI_ROOT/.${WEBUI_MANAGED_MARKER}" ]] || {
     _webui_error "preserving unmanaged WebUI directory: $WEBUI_ROOT"
@@ -142,13 +167,27 @@ remove_webui_assets() {
 
 remove_managed_webui_nginx() {
   local avail="${1:-$NGINX_SITE_AVAIL}" enabled="${2:-$NGINX_SITE_ENABLED}"
+  local remove_enabled=false avail_real enabled_real
   [[ -f "$avail" ]] || return 0
   grep -Fq -- "$NGINX_MANAGED_MARKER" "$avail" || return 0
-  if [[ "${DRY_RUN:-false}" == true ]]; then
-    printf '[dry-run] remove managed Nginx config %s and %s\n' "$avail" "$enabled"
+  if [[ -L "$enabled" ]]; then
+    avail_real="$(readlink -f -- "$avail" 2>/dev/null || true)"
+    enabled_real="$(readlink -f -- "$enabled" 2>/dev/null || true)"
+    [[ -n "$avail_real" && "$avail_real" == "$enabled_real" ]] || return 0
+    remove_enabled=true
+  elif [[ -e "$enabled" ]]; then
+    # An unrelated regular enabled file must never be removed.
     return 0
   fi
-  rm -f "$enabled" "$avail"
+  if [[ "${DRY_RUN:-false}" == true ]]; then
+    printf '[dry-run] remove managed Nginx config %s%s\n' "$avail" "$([[ "$remove_enabled" == true ]] && printf ' and %s' "$enabled")"
+    return 0
+  fi
+  rm -f "$avail"
+  if [[ "$remove_enabled" == true ]]; then
+    rm -f "$enabled"
+  fi
+  return 0
 }
 
 remove_webui_nginx_config() { remove_managed_webui_nginx "$@"; }

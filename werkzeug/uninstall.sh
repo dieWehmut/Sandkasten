@@ -55,6 +55,32 @@ if [[ -r "$_WEBUI_MODULE" ]]; then
   source "$_WEBUI_MODULE"
 fi
 
+_uninstall_webui_root_safe() {
+  local root="${WEBUI_ROOT:-}" canonical
+  [[ -n "$root" && "$root" == /* ]] || return 1
+  case "$root" in */../*|*/..|../*|..|/|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten) return 1 ;; esac
+  if command -v realpath >/dev/null 2>&1; then
+    canonical="$(realpath -m -- "$root")" || canonical="$root"
+  else
+    canonical="$root"
+  fi
+  case "$canonical" in /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten) return 1 ;; esac
+}
+
+_confirm_remove_webui_assets() {
+  local marker=".${WEBUI_MANAGED_MARKER:-sandkasten-webui-managed}"
+  [[ -f "$WEBUI_ROOT/$marker" ]] || return 0
+  if confirm_step "delete managed WebUI assets at $WEBUI_ROOT?"; then
+    if declare -F remove_webui_assets >/dev/null 2>&1; then
+      remove_webui_assets || warn "WebUI assets could not be removed"
+    elif _uninstall_webui_root_safe; then
+      rm_path "$WEBUI_ROOT"
+    else
+      warn "refusing unsafe WebUI root: $WEBUI_ROOT"
+    fi
+  fi
+}
+
 #--------------------------------------------------------
 # 彩色输出
 #--------------------------------------------------------
@@ -210,9 +236,6 @@ remove_database() {
 # 4) 自定义下载的语言工具链 (/opt + 符号链接)
 #========================================================
 remove_toolchains() {
-  if declare -F remove_webui_assets >/dev/null 2>&1; then
-    remove_webui_assets || warn "WebUI assets could not be removed"
-  fi
   title "4) 删除自定义下载的语言工具链"
   if ! confirm_step "删除 /opt 下由 deploy.sh 安装的语言 SDK 及其 /usr/local/bin 符号链接?"; then
     info "跳过(保留工具链)。"; return
@@ -347,22 +370,27 @@ remove_nginx() {
   title "7) 删除 Nginx 站点与 HTTPS 证书"
   local site_avail="$NGINX_SITE_AVAIL"
   local site_enabled="$NGINX_SITE_ENABLED"
-  if declare -F remove_webui_assets >/dev/null 2>&1; then
-    remove_webui_assets || warn "WebUI assets could not be removed"
-  elif [[ -f "$WEBUI_ROOT/.sandkasten-webui-managed" ]]; then
-    rm_path "$WEBUI_ROOT"
-  fi
   if [[ ! -e "$site_avail" && ! -L "$site_enabled" ]]; then
+    _confirm_remove_webui_assets
     info "未发现 sandkasten 的 Nginx 站点,跳过。"; return
   fi
   local domain=""
   [[ -f "$site_avail" ]] && domain="$(grep -m1 'server_name' "$site_avail" 2>/dev/null | awk '{print $2}' | tr -d ';')"
   if confirm_step "删除 Nginx 站点 sandkasten.conf${domain:+(域名 $domain)}?"; then
-    if grep -Fq -- '# sandkasten-webui-managed' "$site_avail" 2>/dev/null; then
-      rm_path "$site_enabled" "$site_avail"
+    if declare -F remove_managed_webui_nginx >/dev/null 2>&1; then
+      remove_managed_webui_nginx "$site_avail" "$site_enabled" || warn "managed Nginx cleanup failed"
+    elif grep -Fq -- '# sandkasten-webui-managed' "$site_avail" 2>/dev/null; then
+      if [[ -L "$site_enabled" ]] && [[ "$(readlink -f -- "$site_enabled" 2>/dev/null || true)" == "$(readlink -f -- "$site_avail" 2>/dev/null || true)" ]]; then
+        rm_path "$site_enabled" "$site_avail"
+      elif [[ ! -e "$site_enabled" && ! -L "$site_enabled" ]]; then
+        rm_path "$site_avail"
+      else
+        warn "Nginx enabled path is not a managed symlink; preserving $site_enabled"
+      fi
     else
       warn "Nginx site is not managed by Sandkasten WebUI; preserving $site_avail"
     fi
+    _confirm_remove_webui_assets
     if [[ "$DRY_RUN" != true ]] && command -v nginx >/dev/null 2>&1; then
       nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || warn "nginx reload 失败,请手动检查。"
     fi
