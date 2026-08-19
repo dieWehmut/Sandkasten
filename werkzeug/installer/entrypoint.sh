@@ -224,8 +224,6 @@ reload_webui_nginx() {
 }
 
 installer_main() {
-  local bare_invocation=false
-  (($# == 0)) && bare_invocation=true
   parse_args "$@" || return
   if [[ "$INSTALL_MODE_EXPLICIT" != true && "$NONINTERACTIVE" != true && "$DRY_RUN" != true && \
         ( "$INSTALL_COMMAND" == menu || "$INSTALL_COMMAND" == install ) ]]; then

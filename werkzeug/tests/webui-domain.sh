@@ -58,5 +58,9 @@ root"
 if render_domain_nginx_site "$TMP_DIR/invalid-root.conf" valid.example.test; then
   fail 'WebUI root validation accepted a newline'
 fi
+WEBUI_ROOT="$TMP_DIR/unsafe;root"
+if render_domain_nginx_site "$TMP_DIR/invalid-root-chars.conf" valid.example.test; then
+  fail 'WebUI root validation accepted Nginx metacharacters'
+fi
 
 printf 'webui domain template tests: ok\n'

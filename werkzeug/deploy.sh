@@ -1085,10 +1085,16 @@ render_domain_nginx_site() {
       warn "invalid domain name: $domain"
       return 1
     }
-    [[ "$webui_root" == /* && "$webui_root" != *$'\n'* && "$webui_root" != *$'\r'* ]] || {
+    [[ "$webui_root" =~ ^/[A-Za-z0-9._/-]+$ ]] || {
       warn "invalid WebUI root path"
       return 1
     }
+    case "$webui_root" in
+      */../*|*/..|/|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
+        warn "invalid WebUI root path"
+        return 1
+        ;;
+    esac
     if [[ -L "$site" ]]; then
       warn "refusing to replace Nginx symlink: $site"
       return 1

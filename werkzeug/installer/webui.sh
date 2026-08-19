@@ -20,6 +20,10 @@ validate_webui_root() {
     _webui_error "WEBUI_ROOT must be an absolute path"
     return 1
   }
+  [[ "$root" =~ ^/[A-Za-z0-9._/-]+$ ]] || {
+    _webui_error "WEBUI_ROOT contains unsupported characters: $root"
+    return 1
+  }
   case "$root" in
     */../*|*/..|../*|..) _webui_error "WEBUI_ROOT contains traversal: $root"; return 1 ;;
   esac
