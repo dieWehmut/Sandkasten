@@ -65,6 +65,18 @@ installer_main --mode cli --languages python --non-interactive install
 assert_eq "$(<"$EVENTS")" 'backend:cli:python' 'CLI must not deploy WebUI assets'
 assert_not_file "$TMP_DIR/webui"
 
+# CLI uninstall dry-run must execute the standalone preview when available,
+# rather than stopping at the modular parser summary.
+cat > "$TMP_DIR/uninstall.sh" <<'UNINSTALL'
+#!/usr/bin/env bash
+printf 'uninstaller:%s\n' "$*" >> "$EVENTS"
+UNINSTALL
+chmod +x "$TMP_DIR/uninstall.sh"
+: > "$EVENTS"
+installer_main --mode cli --dry-run uninstall
+assert_eq "$(<"$EVENTS")" 'uninstaller:--dry-run' 'CLI uninstall dry-run dispatch'
+rm -f "$TMP_DIR/uninstall.sh"
+
 : > "$EVENTS"
 installer_main --mode webui --dry-run uninstall
 assert_eq "$(<"$EVENTS")" $'remove-assets\nremove-nginx' \

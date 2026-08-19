@@ -182,7 +182,7 @@ installer_main() {
   parse_args "$@" || return
   if [[ "$INSTALL_COMMAND" == help ]]; then installer_usage; return 0; fi
   if [[ "$DRY_RUN" == true ]]; then
-    if [[ "$INSTALL_COMMAND" == uninstall && "$INSTALL_MODE" == webui ]]; then
+    if [[ "$INSTALL_COMMAND" == uninstall ]]; then
       run_legacy_command || return
     fi
     printf 'mode=%s\n' "$INSTALL_MODE"
