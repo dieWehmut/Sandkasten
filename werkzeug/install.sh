@@ -57,9 +57,4 @@ if [[ "${SANDKASTEN_BOOTSTRAP_TEST:-0}" == 1 ]]; then
   exit 0
 fi
 
-if [[ "${1:-}" == uninstall ]]; then
-  shift
-  exec bash "${BOOTSTRAP_DIR}/uninstall.sh" "$@"
-fi
-
 exec bash "${BOOTSTRAP_DIR}/installer/entrypoint.sh" "$@"

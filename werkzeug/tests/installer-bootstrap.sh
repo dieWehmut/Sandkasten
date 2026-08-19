@@ -19,8 +19,17 @@ assert_eq "$local_output" $'mode=cli\nlanguages=go\ncommand=install' "local inst
 fixture="$TMP_DIR/fixture"
 mkdir -p "$fixture/installer" "$TMP_DIR/standalone"
 cp "$ROOT_DIR/werkzeug/install.sh" "$TMP_DIR/standalone/install.sh"
-cp "$ROOT_DIR/werkzeug/deploy.sh" "$fixture/deploy.sh"
-cp "$ROOT_DIR/werkzeug/uninstall.sh" "$fixture/uninstall.sh"
+cat > "$fixture/deploy.sh" <<'DEPLOY'
+require_root() { :; }
+detect_os() { :; }
+uninstall_all() { printf 'legacy-uninstall\n'; }
+confirm() { return 0; }
+info() { :; }
+DEPLOY
+cat > "$fixture/uninstall.sh" <<'UNINSTALL'
+#!/usr/bin/env bash
+printf 'standalone-uninstaller:%s\n' "$*"
+UNINSTALL
 cp "$ROOT_DIR/werkzeug/installer/entrypoint.sh" "$fixture/installer/entrypoint.sh"
 cp "$ROOT_DIR/werkzeug/installer/lib.sh" "$fixture/installer/lib.sh"
 cp "$ROOT_DIR/werkzeug/installer/languages.sh" "$fixture/installer/languages.sh"
@@ -38,5 +47,28 @@ bootstrap_only_output="$(
     bash "$TMP_DIR/standalone/install.sh" install
 )"
 assert_eq "$bootstrap_only_output" 'install.sh: bootstrap complete' "bootstrap-only test hook"
+
+# Standalone downloads must use the modular parser regardless of where the
+# uninstall command appears. In WebUI mode this keeps cleanup marker-aware and
+# prevents --mode from leaking into the standalone uninstaller.
+webui_root="$TMP_DIR/managed-webui"
+nginx_available="$TMP_DIR/nginx/sites-available/sandkasten.conf"
+nginx_enabled="$TMP_DIR/nginx/sites-enabled/sandkasten.conf"
+uninstall_command_first="$({
+  SANDKASTEN_INSTALL_BASE_URL="file://$fixture" \
+    SANDKASTEN_WEBUI_DIR="$webui_root" \
+    NGINX_SITE_AVAIL="$nginx_available" \
+    NGINX_SITE_ENABLED="$nginx_enabled" \
+    bash "$TMP_DIR/standalone/install.sh" uninstall --mode webui --dry-run
+})"
+uninstall_options_first="$({
+  SANDKASTEN_INSTALL_BASE_URL="file://$fixture" \
+    SANDKASTEN_WEBUI_DIR="$webui_root" \
+    NGINX_SITE_AVAIL="$nginx_available" \
+    NGINX_SITE_ENABLED="$nginx_enabled" \
+    bash "$TMP_DIR/standalone/install.sh" --mode webui --dry-run uninstall
+})"
+assert_eq "$uninstall_command_first" "$uninstall_options_first" \
+  "standalone WebUI uninstall argument order"
 
 printf 'installer bootstrap tests: ok\n'
