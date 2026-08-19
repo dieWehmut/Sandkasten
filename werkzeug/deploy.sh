@@ -1076,19 +1076,44 @@ UNIT
 #========================================================
 # 域名 / Nginx 反代 + Let's Encrypt
 #========================================================
-configure_domain() {
-  title "域名与 HTTPS 配置 (Nginx 反向代理 + Let's Encrypt)"
-  if ! confirm "是否现在配置域名与 Nginx 反向代理?" "y"; then
-    info "跳过域名配置。API 直接监听 0.0.0.0:${HTTP_PORT}。"
-    return
-  fi
-  local domain email
-  domain="$(ask "请输入域名(如 run.example.com)")"
-  [[ -z "$domain" ]] && { warn "未输入域名,跳过。"; return; }
+render_domain_nginx_site() {
+  local site="$1" domain="$2"
+  local mode="${SANDKASTEN_INSTALL_MODE:-cli}"
+  local webui_root="${WEBUI_ROOT:-/opt/sandkasten/webui}"
+  if [[ "$mode" == webui ]]; then
+    cat > "$site" <<NGINX
+# sandkasten-webui-managed
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${domain};
+    root ${webui_root};
+    index index.html;
 
-  apt_install nginx
-  local site="/etc/nginx/sites-available/sandkasten.conf"
-  info "写入 Nginx 配置 ${site}"
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /v1/ {
+        proxy_pass http://127.0.0.1:${HTTP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location = /healthz {
+        proxy_pass http://127.0.0.1:${HTTP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+NGINX
+    return 0
+  fi
   cat > "$site" <<NGINX
 server {
     listen 80;
@@ -1106,6 +1131,22 @@ server {
     }
 }
 NGINX
+}
+
+configure_domain() {
+  title "域名与 HTTPS 配置 (Nginx 反向代理 + Let's Encrypt)"
+  if ! confirm "是否现在配置域名与 Nginx 反向代理?" "y"; then
+    info "跳过域名配置。API 直接监听 0.0.0.0:${HTTP_PORT}。"
+    return
+  fi
+  local domain email
+  domain="$(ask "请输入域名(如 run.example.com)")"
+  [[ -z "$domain" ]] && { warn "未输入域名,跳过。"; return; }
+
+  apt_install nginx
+  local site="/etc/nginx/sites-available/sandkasten.conf"
+  info "写入 Nginx 配置 ${site}"
+  render_domain_nginx_site "$site" "$domain"
   ln -sf "$site" /etc/nginx/sites-enabled/sandkasten.conf
   rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
   nginx -t && systemctl reload nginx

@@ -98,6 +98,14 @@ install_webui_assets() {
 render_webui_nginx_config() {
   local output="${1:-$NGINX_SITE_AVAIL}" mode="${SANDKASTEN_INSTALL_MODE:-webui}"
   [[ "$mode" != webui ]] || { validate_webui_root || return; }
+  if [[ -L "$output" ]]; then
+    _webui_error "refusing to replace Nginx symlink: $output"
+    return 1
+  fi
+  if [[ -e "$output" ]] && ! grep -Fq -- "$NGINX_MANAGED_MARKER" "$output" 2>/dev/null; then
+    _webui_error "refusing to replace unmanaged Nginx config: $output"
+    return 1
+  fi
   if [[ "${DRY_RUN:-false}" == true ]]; then
     printf '[dry-run] render Nginx config to %s\n' "$output"
     return 0
