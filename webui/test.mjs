@@ -20,9 +20,12 @@ test('static WebUI client files exist and declare the same-origin job contract',
   assert.match(html, /runtime-select/);
   assert.match(html, /source/);
   assert.match(html, /output/);
+  assert.match(html, />Stop polling</);
+  assert.doesNotMatch(html, />Cancel job</);
   assert.match(app, /\/v1\/runtimes/);
   assert.match(app, /\/v1\//);
   assert.match(app, /\/v1\/jobs\//);
+  assert.match(app, /Polling stopped/);
   assert.match(app, /textContent/);
   assert.match(styles, /@media/);
 });

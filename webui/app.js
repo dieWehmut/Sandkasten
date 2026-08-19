@@ -158,7 +158,7 @@ function init() {
       elements.status.textContent = `Queued (${job.jobId})`;
       await pollJob(job.jobId, { signal: pollController.signal, onUpdate: (result) => renderResult(result, elements) });
     } catch (error) {
-      if (error?.name === 'AbortError') elements.status.textContent = 'Canceled';
+      if (error?.name === 'AbortError') elements.status.textContent = 'Polling stopped';
       else showError(error);
     } finally {
       elements.submit.disabled = false;
