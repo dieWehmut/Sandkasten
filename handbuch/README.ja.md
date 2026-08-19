@@ -83,7 +83,7 @@
 Debian / Ubuntu (x86_64) ホスト上で、root として 1 行のコマンドを実行するだけです(スクリプトが git をインストールし、ソースを `/opt/sandkasten/src` へ自動的にクローンします):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 または、先にクローンしてから実行します:
@@ -110,6 +110,8 @@ sudo ./werkzeug/deploy.sh install     # 直接、新規インストール
 sudo ./werkzeug/deploy.sh status      # ステータス表示
 sudo ./werkzeug/deploy.sh languages   # 言語を選び直してホット更新
 sudo ./werkzeug/deploy.sh domain      # ドメイン / Nginx / HTTPS のみ設定
+sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
+sudo ./werkzeug/install.sh --mode webui --languages web --non-interactive
 ```
 
 ### ローカル開発スタック

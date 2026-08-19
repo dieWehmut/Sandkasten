@@ -83,7 +83,7 @@
 在一台 Debian / Ubuntu (x86_64) 主機上,以 root 執行一行指令即可(指令稿會自動安裝 git 並克隆原始碼到 `/opt/sandkasten/src`):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh && chmod +x sandkasten.sh && sudo ./sandkasten.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 或先克隆再執行:
@@ -110,6 +110,8 @@ sudo ./werkzeug/deploy.sh install     # 直接全新安裝
 sudo ./werkzeug/deploy.sh status      # 檢視狀態
 sudo ./werkzeug/deploy.sh languages   # 重新選擇語言並熱更新
 sudo ./werkzeug/deploy.sh domain      # 僅設定網域 / Nginx / HTTPS
+sudo ./werkzeug/install.sh --mode cli --languages core --non-interactive
+sudo ./werkzeug/install.sh --mode webui --languages web --non-interactive
 ```
 
 ### 本地開發堆疊
