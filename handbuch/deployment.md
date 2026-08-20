@@ -8,7 +8,7 @@ For a Debian/Ubuntu x86_64 host, the supported clone-free entrypoint is
 `werkzeug/install.sh`:
 
 ```sh
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh \
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh \
   && chmod +x sandkasten-install.sh \
   && sudo ./sandkasten-install.sh
 ```

@@ -8,7 +8,7 @@
 <a href="https://run.diesw.tech/v1/runtimes" target="_blank">
   <img src="https://img.shields.io/badge/DEMO-Runtimes-1FC41F?style=flat-square&logo=googlechrome&logoColor=white&labelColor=555555" alt="Demo">
 </a>
-<a href="https://github.com/dieWehmut/sandkasten" target="_blank">
+<a href="https://github.com/dieWehmut/Sandkasten" target="_blank">
   <img src="https://img.shields.io/badge/Languages-58-F9D553?style=flat-square&logo=codeigniter&logoColor=white&labelColor=555555" alt="Languages">
 </a>
 </div>
@@ -92,14 +92,14 @@ origin，不包含 `/sandkasten/` 路径）。
 在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行一行命令即可(脚本会自动安装 git 并克隆源码到 `/opt/sandkasten/src`):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 或先克隆再运行:
 
 ```bash
-git clone https://github.com/dieWehmut/sandkasten.git
-cd sandkasten
+git clone https://github.com/dieWehmut/Sandkasten.git
+cd Sandkasten
 sudo ./werkzeug/deploy.sh
 ```
 
@@ -134,7 +134,7 @@ sudo ./werkzeug/deploy.sh domain      # 仅配置域名 / Nginx / HTTPS
 免克隆一键卸载:
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 ```
 
 或在仓库内运行:

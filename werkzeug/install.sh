@@ -99,7 +99,7 @@ if [[ -n "${SANDKASTEN_INSTALL_BASE_URL:-}" ]]; then
     bootstrap_file "$bootstrap_file_name"
   done
 else
-  BOOTSTRAP_ARCHIVE_URL="${SANDKASTEN_INSTALL_ARCHIVE_URL:-https://codeload.github.com/dieWehmut/sandkasten/tar.gz/refs/heads/main}"
+  BOOTSTRAP_ARCHIVE_URL="${SANDKASTEN_INSTALL_ARCHIVE_URL:-https://codeload.github.com/dieWehmut/Sandkasten/tar.gz/refs/heads/main}"
   bootstrap_archive "$BOOTSTRAP_ARCHIVE_URL"
 fi
 

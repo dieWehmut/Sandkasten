@@ -8,7 +8,7 @@
 <a href="https://run.diesw.tech/v1/runtimes" target="_blank">
   <img src="https://img.shields.io/badge/DEMO-Runtimes-1FC41F?style=flat-square&logo=googlechrome&logoColor=white&labelColor=555555" alt="Demo">
 </a>
-<a href="https://github.com/dieWehmut/sandkasten" target="_blank">
+<a href="https://github.com/dieWehmut/Sandkasten" target="_blank">
   <img src="https://img.shields.io/badge/Languages-58-F9D553?style=flat-square&logo=codeigniter&logoColor=white&labelColor=555555" alt="Languages">
 </a>
 </div>
@@ -95,14 +95,14 @@ The runtime index page is server-rendered by the API and lists every enabled lan
 On a Debian / Ubuntu (x86_64) host, run a single command as root (the script installs git and clones the source to `/opt/sandkasten/src` automatically):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
 Or clone first, then run:
 
 ```bash
-git clone https://github.com/dieWehmut/sandkasten.git
-cd sandkasten
+git clone https://github.com/dieWehmut/Sandkasten.git
+cd Sandkasten
 sudo ./werkzeug/deploy.sh
 ```
 
@@ -151,7 +151,7 @@ Start only Postgres and load the schema (requires Docker):
 One-line uninstall, no clone:
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
+curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 ```
 
 Or from within the repo:

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Keep this standalone checker runnable from WSL and GitHub's Linux runner.
 set -euo pipefail
 
 fail() {

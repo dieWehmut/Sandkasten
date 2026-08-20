@@ -16,7 +16,7 @@
 # apt 系统包(gcc/python3/nodejs 等)默认保留,仅列出,避免影响系统其它组件。
 #
 # 免克隆一键卸载(推荐):
-#   curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh \
+#   curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh \
 #     && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 # 本脚本所有路径均为硬编码,无需仓库即可运行。
 #
@@ -526,7 +526,7 @@ usage() {
 Sandkasten 卸载脚本
 
 免克隆一键卸载:
-  curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh \\
+  curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/uninstall.sh -o sk-uninstall.sh \\
     && chmod +x sk-uninstall.sh && sudo ./sk-uninstall.sh --purge
 
 用法:

@@ -11,7 +11,7 @@
 # 风格参照 nezha 的 install 脚本:彩色输出、菜单驱动、地理镜像探测。
 #
 # 免克隆一键安装(推荐):
-#   curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \
+#   curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \
 #     && chmod +x sandkasten.sh && sudo ./sandkasten.sh
 # 脚本单独运行时会自动安装 git 并克隆源码到 /opt/sandkasten/src。
 #
@@ -26,7 +26,7 @@ SCRIPT_VERSION="1.0.0"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # 源码获取(支持免克隆一键安装:脚本被单独下载运行时自动克隆仓库)
-GIT_REPO_URL="${SANDKASTEN_GIT_URL:-https://github.com/dieWehmut/sandkasten.git}"
+GIT_REPO_URL="${SANDKASTEN_GIT_URL:-https://github.com/dieWehmut/Sandkasten.git}"
 SRC_DIR="${SANDKASTEN_SRC_DIR:-/opt/sandkasten/src}"
 
 # 安装目标路径(与仓库现有 systemd 单元约定保持一致)
@@ -1338,7 +1338,7 @@ usage() {
 Sandkasten 交互式部署脚本 v${SCRIPT_VERSION}
 
 免克隆一键安装:
-  curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \\
+  curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/deploy.sh -o sandkasten.sh \\
     && chmod +x sandkasten.sh && sudo ./sandkasten.sh
 
 用法:
