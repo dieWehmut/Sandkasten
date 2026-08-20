@@ -1,152 +1,44 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
-import * as client from './app.js';
-
-const { loadRuntimes, pollJob, renderResult, submitJob } = client;
-
 const root = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.dirname(root);
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
-test('static WebUI client files exist and declare the same-origin job contract', () => {
-  for (const file of ['index.html', 'config.js', 'app.js', 'styles.css']) {
+test('Vue foundation source files and deployment entrypoint exist', () => {
+  for (const file of ['index.html', 'public/config.js', 'src/App.vue', 'src/main.ts', 'src/services/sandkastenApi.ts']) {
     assert.equal(fs.existsSync(path.join(root, file)), true, `${file} should exist`);
   }
-
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-  const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-
-  assert.match(html, /runtime-select/);
-  assert.match(html, /source/);
-  assert.match(html, /output/);
-  assert.match(html, />Stop polling</);
-  assert.doesNotMatch(html, />Cancel job</);
-  assert.match(app, /\/v1\/runtimes/);
-  assert.match(app, /\/v1\//);
-  assert.match(app, /\/v1\/jobs\//);
-  assert.match(app, /Polling stopped/);
-  assert.match(app, /textContent/);
-  assert.match(styles, /@media/);
+  const html = read('index.html');
+  assert.ok(html.indexOf('src="./config.js"') < html.indexOf('src="./src/main.ts"'));
+  assert.match(read('src/main.ts'), /createApp\(App\)\.mount\('#app'\)/);
+  assert.match(read('src/App.vue'), /data-testid="app-shell"/);
 });
 
-test('runtime config defaults to same-origin without replacing an existing config', () => {
-  const source = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
-  const defaultContext = {};
-  vm.runInNewContext(source, defaultContext);
-  assert.equal(defaultContext.SANDKASTEN_CONFIG.apiBaseUrl, '');
-
-  const configured = { apiBaseUrl: 'https://api.example.com/base/' };
-  const configuredContext = { SANDKASTEN_CONFIG: configured };
-  vm.runInNewContext(source, configuredContext);
-  assert.equal(configuredContext.SANDKASTEN_CONFIG, configured);
+test('runtime config preserves nullish assignment and same-origin default', () => {
+  const source = read('public/config.js');
+  assert.match(source, /globalThis\.SANDKASTEN_CONFIG \?\?= \{ apiBaseUrl: '' \};/);
+  const context = {};
+  vm.runInNewContext(source, context);
+  assert.equal(context.SANDKASTEN_CONFIG.apiBaseUrl, '');
+  const existing = { apiBaseUrl: 'https://api.example.test' };
+  vm.runInNewContext(source, { SANDKASTEN_CONFIG: existing });
+  assert.equal(existing.apiBaseUrl, 'https://api.example.test');
 });
 
-test('index loads runtime config before the WebUI module', () => {
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const configPosition = html.indexOf('src="./config.js"');
-  const appPosition = html.indexOf('src="./app.js"');
-  assert.notEqual(configPosition, -1);
-  assert.ok(configPosition < appPosition);
-});
-
-test('API URL resolver keeps API paths same-origin by default', () => {
-  assert.equal(client.resolveApiUrl('/v1/runtimes', { apiBaseUrl: '' }), '/v1/runtimes');
-});
-
-test('API URL resolver joins an absolute base without duplicate slashes', () => {
-  assert.equal(
-    client.resolveApiUrl('/v1/runtimes', { apiBaseUrl: 'https://api.example.com/base/' }),
-    'https://api.example.com/base/v1/runtimes',
-  );
-});
-
-test('runtime, submission, and polling requests honor the configured API base', async () => {
-  const previousConfig = globalThis.SANDKASTEN_CONFIG;
-  const hadConfig = Object.hasOwn(globalThis, 'SANDKASTEN_CONFIG');
-  globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: 'https://api.example.com/base/' };
-  const urls = [];
-  const responses = [
-    { runtimes: [{ language: 'go' }] },
-    { jobId: 'job-1' },
-    { jobId: 'job-1', status: 'JOB_STATUS_SUCCEEDED' },
-  ];
-  const fetchImpl = async (url) => {
-    urls.push(url);
-    return { ok: true, json: async () => responses.shift() };
-  };
-
-  try {
-    await loadRuntimes(fetchImpl);
-    await submitJob('go', 'package main', fetchImpl);
-    await pollJob('job-1', { fetchImpl, intervalMs: 0 });
-  } finally {
-    if (hadConfig) globalThis.SANDKASTEN_CONFIG = previousConfig;
-    else delete globalThis.SANDKASTEN_CONFIG;
-  }
-
-  assert.deepEqual(urls, [
-    'https://api.example.com/base/v1/runtimes',
-    'https://api.example.com/base/v1/go/run',
-    'https://api.example.com/base/v1/jobs/job-1',
-  ]);
-});
-
-test('polling stops for every terminal status exposed by the API', async () => {
-  const terminalStatuses = [
-    'JOB_STATUS_SUCCEEDED',
-    'JOB_STATUS_COMPILE_FAILED',
-    'JOB_STATUS_RUNTIME_FAILED',
-    'JOB_STATUS_TIME_LIMIT_EXCEEDED',
-    'JOB_STATUS_MEMORY_LIMIT_EXCEEDED',
-    'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED',
-    'JOB_STATUS_CANCELED',
-    'JOB_STATUS_SYSTEM_ERROR',
-  ];
-
-  for (const status of terminalStatuses) {
-    let requests = 0;
-    const result = await pollJob('job-1', {
-      intervalMs: 0,
-      fetchImpl: async () => {
-        requests += 1;
-        if (requests > 1) throw new Error(`polled again after terminal status ${status}`);
-        return { ok: true, json: async () => ({ jobId: 'job-1', status }) };
-      },
-    });
-    assert.equal(result.status, status);
-    assert.equal(requests, 1);
-  }
-});
-
-test('HTTP errors prefer the server message over its machine-readable code', async () => {
-  await assert.rejects(
-    submitJob('go', 'package main', async () => ({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: 'invalid_request', message: 'source archive is invalid' }),
-    })),
-    /source archive is invalid/,
-  );
-});
-
-test('job rendering surfaces the terminal error message', () => {
-  const elements = {
-    status: { textContent: '' },
-    stdout: { textContent: '' },
-    stderr: { textContent: '' },
-    diagnostics: { textContent: '' },
-  };
-  renderResult({
-    status: 'JOB_STATUS_RUNTIME_FAILED',
-    stdout: '',
-    stderr: '',
-    compileStderr: '',
-    errorMessage: 'process exited with status 1',
-    diagnostics: {},
-  }, elements);
-  assert.match(elements.diagnostics.textContent, /process exited with status 1/);
+test('API source preserves HTTP contract, polling semantics, and text-only output fallback', () => {
+  const source = read('src/services/sandkastenApi.ts');
+  assert.match(source, /Accept: 'application\/json'/);
+  assert.match(source, /JSON\.stringify\(\{ source, wait: false \}\)/);
+  assert.match(source, /JOB_STATUS_SUCCEEDED/);
+  assert.match(source, /JOB_STATUS_SYSTEM_ERROR/);
+  assert.match(source, /TextDecoder\('utf-8', \{ fatal: true \}\)/);
+  assert.match(source, /return \{ text: raw, raw, undecodable: true/);
+  const design = fs.readFileSync(path.join(repoRoot, 'docs/superpowers/specs/2026-08-20-vue-webui-redesign-design.md'), 'utf8');
+  assert.match(design, /\*\*Stop polling\*\*/);
+  assert.match(design, /The UI never claims[\s\S]*backend job was\s+canceled\./);
 });

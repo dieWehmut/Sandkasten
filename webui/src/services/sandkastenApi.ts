@@ -166,15 +166,28 @@ export async function getJob(jobId: string, fetchImpl: FetchLike = defaultFetch,
 
 function wait(milliseconds: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
+    const rejectAborted = () => reject(typeof DOMException === 'undefined' ? Object.assign(new Error('Polling aborted'), { name: 'AbortError' }) : new DOMException('Polling aborted', 'AbortError'));
     if (signal?.aborted) {
-      reject(typeof DOMException === 'undefined' ? Object.assign(new Error('Polling aborted'), { name: 'AbortError' }) : new DOMException('Polling aborted', 'AbortError'));
+      rejectAborted();
       return;
     }
-    const timer = setTimeout(resolve, milliseconds);
-    signal?.addEventListener('abort', () => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => signal?.removeEventListener('abort', onAbort);
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      reject(typeof DOMException === 'undefined' ? Object.assign(new Error('Polling aborted'), { name: 'AbortError' }) : new DOMException('Polling aborted', 'AbortError'));
-    }, { once: true });
+      cleanup();
+      rejectAborted();
+    };
+    timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener('abort', onAbort, { once: true });
   });
 }
 

@@ -28,6 +28,20 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+
+      - name: Test and build WebUI
+        working-directory: webui
+        run: |
+          npm ci
+          npm test
+          npm run build
+
       - name: Stage WebUI artifact
         shell: bash
         env:
@@ -36,7 +50,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir -p _site
-          cp webui/index.html webui/app.js webui/styles.css _site/
+          cp -R webui/dist/. _site/
           API_BASE_URL="$API_BASE_URL" python3 - <<'PY' > _site/config.js
           import json
           import os

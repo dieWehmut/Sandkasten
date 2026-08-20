@@ -65,4 +65,16 @@ describe('sandkasten API client', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  test('cleans the polling timer abort listener after the wait settles', async () => {
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({ jobId: 'job-1', status: 'queued' }))
+      .mockResolvedValueOnce(response({ jobId: 'job-1', status: 'JOB_STATUS_SUCCEEDED' }));
+    await pollJob('job-1', { fetchImpl, intervalMs: 0, signal: controller.signal });
+    expect(add).toHaveBeenCalledWith('abort', expect.any(Function), { once: true });
+    expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+  });
 });
