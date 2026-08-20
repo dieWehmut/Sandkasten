@@ -4,7 +4,7 @@ import type { JobResponse } from '../services/sandkastenApi';
 import type { OutputTab } from '../composables/useRunner';
 import OutputViewer from './OutputViewer.vue';
 
-const props = withDefaults(defineProps<{ result?: JobResponse; modelValue?: OutputTab }>(), { modelValue: 'output' });
+const props = withDefaults(defineProps<{ result?: JobResponse; error?: string; modelValue?: OutputTab }>(), { modelValue: 'output' });
 const emit = defineEmits<{ 'update:modelValue': [value: OutputTab] }>();
 const tabs: Array<{ id: OutputTab; label: string }> = [
   { id: 'output', label: 'Output' },
@@ -62,7 +62,7 @@ async function move(event: KeyboardEvent, index: number) {
       :aria-labelledby="`${instanceId}-${selected}-tab`"
       tabindex="0"
     >
-      <OutputViewer :result="result" :tab="selected" />
+      <OutputViewer :result="result" :error="error" :tab="selected" />
     </div>
   </section>
 </template>

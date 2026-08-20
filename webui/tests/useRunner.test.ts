@@ -199,4 +199,53 @@ describe('useRunner', () => {
     livePoll.resolve(succeeded('live-job'));
     await liveRun;
   });
+
+  test('keeps a history result selected while live updates and completion continue in the background', async () => {
+    const livePoll = deferred<JobResponse>();
+    let onUpdate!: (job: JobResponse) => void;
+    const submitJob = vi.fn()
+      .mockResolvedValueOnce({ jobId: 'history-job', status: 'JOB_STATUS_SUCCEEDED', stdout: 'history' })
+      .mockResolvedValueOnce({ jobId: 'live-job', status: 'JOB_STATUS_QUEUED' });
+    const pollJob = vi.fn((_jobId, options) => {
+      onUpdate = options.onUpdate;
+      return livePoll.promise;
+    });
+    const runner = useRunner({ loadRuntimes: vi.fn().mockResolvedValue(runtimes), submitJob, pollJob });
+    await runner.load();
+    runner.setSource('history source');
+    await runner.submit();
+    runner.setSource('live source');
+    const liveRun = runner.submit();
+    await nextTick();
+    runner.selectHistoryItem(runner.history.value[0]);
+
+    onUpdate({ jobId: 'live-job', status: 'JOB_STATUS_RUNNING', stdout: 'live update' });
+    expect(runner.result.value?.jobId).toBe('history-job');
+    livePoll.resolve(succeeded('live-job'));
+    await liveRun;
+    expect(runner.result.value?.jobId).toBe('history-job');
+
+    runner.selectHistoryItem(runner.history.value[0]);
+    expect(runner.result.value?.jobId).toBe('live-job');
+  });
+
+  test('exposes submission errors for Diagnostics while retaining the last result', async () => {
+    const submitJob = vi.fn()
+      .mockResolvedValueOnce(succeeded('old'))
+      .mockRejectedValueOnce(new Error('submit unavailable'));
+    const runner = useRunner({
+      loadRuntimes: vi.fn().mockResolvedValue(runtimes),
+      submitJob,
+      pollJob: vi.fn(),
+    });
+    await runner.load();
+    runner.setSource('old');
+    await runner.submit();
+    runner.setSource('new');
+    await runner.submit();
+
+    expect(runner.error.value).toBe('submit unavailable');
+    expect(runner.requestError.value).toBe('submit unavailable');
+    expect(runner.result.value?.jobId).toBe('old');
+  });
 });

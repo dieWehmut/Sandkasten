@@ -62,6 +62,18 @@ describe('output inspection', () => {
     expect(wrapper.html()).not.toContain('<server error></server>');
   });
 
+  test('renders request errors in Diagnostics and keeps a truncated empty channel visible', async () => {
+    const wrapper = mount(OutputTabs, {
+      props: {
+        result: { jobId: 'job-1', status: 'JOB_STATUS_SUCCEEDED', truncated: { stdout: true } },
+        error: 'request failed',
+      },
+    });
+    expect(wrapper.find('[role="tabpanel"]').text()).toContain('Truncated');
+    await wrapper.findAll('[role="tab"]')[3].trigger('click');
+    expect(wrapper.find('[role="tabpanel"]').text()).toContain('request failed');
+  });
+
   test('offers empty states and copies visible output', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });

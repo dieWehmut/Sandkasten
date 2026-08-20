@@ -62,9 +62,14 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
   let activeRun: ActiveRun | undefined;
   let pollingController: AbortController | undefined;
   let lastTerminalResult: JobResponse | undefined;
+  let selectedHistoryJobId: string | undefined;
 
   function isCurrent(owner: ActiveRun): boolean {
     return owner.generation === generation && activeRun === owner;
+  }
+
+  function isLiveView(owner: ActiveRun): boolean {
+    return !selectedHistoryJobId || selectedHistoryJobId === owner.jobId;
   }
 
   function recordCompletion(owner: ActiveRun, completed: JobResponse) {
@@ -82,7 +87,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
   function finish(owner: ActiveRun, completed: JobResponse) {
     if (!isCurrent(owner)) return;
     currentJob.value = completed;
-    result.value = completed;
+    if (isLiveView(owner)) result.value = completed;
     lastTerminalResult = completed;
     phase.value = 'completed';
     pollingStopped.value = false;
@@ -103,7 +108,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
         onUpdate(job) {
           if (!isCurrent(owner)) return;
           currentJob.value = job;
-          result.value = job;
+          if (isLiveView(owner)) result.value = job;
         },
       });
       finish(owner, completed);
@@ -113,7 +118,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
         phase.value = 'stopped';
         return;
       }
-      result.value = lastTerminalResult ?? result.value;
+      if (isLiveView(owner)) result.value = lastTerminalResult ?? result.value;
       error.value = messageFrom(cause);
       phase.value = 'error';
     } finally {
@@ -125,6 +130,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
     const loadGeneration = ++generation;
     pollingController?.abort();
     activeRun = undefined;
+    selectedHistoryJobId = undefined;
     phase.value = 'booting';
     connectionState.value = 'connecting';
     error.value = undefined;
@@ -155,6 +161,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
     pollingController?.abort();
     pollingController = undefined;
     activeRun = owner;
+    selectedHistoryJobId = undefined;
     currentJob.value = undefined;
     result.value = undefined;
     error.value = undefined;
@@ -185,6 +192,8 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
 
   async function resumePolling(): Promise<void> {
     if (!activeRun?.jobId || (phase.value !== 'stopped' && phase.value !== 'error')) return;
+    selectedHistoryJobId = undefined;
+    result.value = currentJob.value ?? lastTerminalResult;
     error.value = undefined;
     await monitor(activeRun);
   }
@@ -194,6 +203,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
     pollingController?.abort();
     pollingController = undefined;
     activeRun = undefined;
+    selectedHistoryJobId = undefined;
     currentJob.value = undefined;
     result.value = undefined;
     error.value = undefined;
@@ -202,6 +212,15 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
   }
 
   function selectHistoryItem(item: DeepReadonly<RunHistoryItem>): void {
+    if (activeRun?.jobId && item.jobId === activeRun.jobId) {
+      selectedHistoryJobId = undefined;
+      result.value = currentJob.value ?? item.result;
+      source.value = item.source;
+      selectedLanguage.value = item.language;
+      activeOutputTab.value = 'output';
+      return;
+    }
+    selectedHistoryJobId = item.jobId;
     source.value = item.source;
     selectedLanguage.value = item.language;
     result.value = item.result;
@@ -231,6 +250,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
     pollingStopped: readonly(pollingStopped),
     activeOutputTab: readonly(activeOutputTab),
     connectionState: readonly(connectionState),
+    requestError: readonly(error),
     history: runHistory.history,
     load,
     submit,
