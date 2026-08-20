@@ -33,7 +33,7 @@ else
   done
 fi
 
-run_or_fail "security config check" "$ROOT/werkzeug/check-security-config.sh"
+run_or_fail "security config check" "$ROOT/werkzeug/security/check-security-config.sh"
 
 if [[ -f "$ROOT/vertrag/buf.yaml" ]]; then
   if command -v buf >/dev/null 2>&1; then

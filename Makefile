@@ -23,7 +23,7 @@ lint:
 	./werkzeug/quality/lint.sh
 
 preflight:
-	./werkzeug/preflight.sh
+	./werkzeug/security/preflight.sh
 
 docker-build:
 	docker build -f einsatz/docker/api.Dockerfile -t sandkasten-api:dev .
@@ -36,7 +36,7 @@ dev-up:
 	./werkzeug/development/dev-up.sh
 
 smoke-go:
-	./werkzeug/smoke-go.sh
+	./werkzeug/smoke/smoke-go.sh
 
 smoke-languages:
-	./werkzeug/smoke-languages.sh
+	./werkzeug/smoke/smoke-languages.sh
