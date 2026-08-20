@@ -14,13 +14,13 @@ help:
 	@printf "  docker-clean  Remove unused Sandkasten build images and BuildKit cache\n"
 
 gen-proto:
-	./werkzeug/gen-proto.sh
+	./werkzeug/development/gen-proto.sh
 
 test:
-	./werkzeug/test.sh
+	./werkzeug/quality/test.sh
 
 lint:
-	./werkzeug/lint.sh
+	./werkzeug/quality/lint.sh
 
 preflight:
 	./werkzeug/preflight.sh
@@ -30,10 +30,10 @@ docker-build:
 	docker build -f einsatz/docker/laeufer.Dockerfile -t sandkasten-laeufer:dev .
 
 docker-clean:
-	./werkzeug/docker-clean.sh
+	./werkzeug/development/docker-clean.sh
 
 dev-up:
-	./werkzeug/dev-up.sh
+	./werkzeug/development/dev-up.sh
 
 smoke-go:
 	./werkzeug/smoke-go.sh
