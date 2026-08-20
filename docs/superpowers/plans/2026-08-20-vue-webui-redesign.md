@@ -22,7 +22,7 @@
 - [ ] Add a pinned package manifest with dev, build, test, and test:watch scripts. Use Vue/Vite/TypeScript, CodeMirror, Lucide, Vitest, Vue Test Utils, and jsdom. Run npm install in webui to create the lockfile; never commit node_modules.
 - [ ] Implement typed Runtime and JobResponse adapters matching the actual backend: runtime fields retain snake_case names such as default_entrypoint, while job fields retain jobId, compileStderr, errorMessage, and the four *Encoding fields. Do not invent a runtime.label contract.
 - [ ] Export resolveApiUrl, loadRuntimes, submitJob, getJob, pollJob, and decodeOutput. Preserve empty-base same-origin behavior, Accept: application/json, POST body { source, wait: false }, and server message over error precedence.
-- [ ] Keep webui/public/config.js before the Vue module in index.html. Its only statement is:
+- [ ] Keep webui/public/config.js before the Vue module in index.html and preserve its existing non-overwrite behavior. Its only statement is:
 
     globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: '' };
 
@@ -44,6 +44,7 @@
 - [ ] Preserve previous output on errors, clear it only on a deliberate new submission, and prevent old finally callbacks from changing the current generation.
 - [ ] Implement in-memory history capped at 20 entries. A history selection restores source/result without contacting the API; do not persist source or output in localStorage.
 - [ ] Implement four accessible output tabs: Output, Errors, Compile, Diagnostics. Decode base64 with TextDecoder({ fatal: true }); on invalid bytes retain the raw value, mark the channel undecodable, and never silently replace bytes. Show truncation only when the corresponding API flag is present.
+- [ ] Define task ownership explicitly: a new submission clears the current result only after it becomes the current generation; selecting history replaces the view without changing the active poll owner; an error keeps the last terminal result visible while exposing the new error in the timeline.
 - [ ] Run "cd webui && npm test", then commit:
 
     git add webui/src/composables webui/src/state webui/src/components/JobTimeline.vue webui/src/components/OutputTabs.vue webui/src/components/OutputViewer.vue webui/tests
@@ -94,7 +95,7 @@
 - Modify: webui/README.md
 
 - [ ] Write a build-contract test that runs npm ci and npm run build, requires exactly four regular files in dist, rejects nested assets/source maps/tests/lockfiles/symlinks, and checks config-before-app order.
-- [ ] Configure fixed Vite output and fail on extra files. Ensure config.js is copied from public and the generated index references relative fixed files.
+- [ ] Add explicit .gitignore exceptions for webui/dist because the root dist/ rule otherwise hides the installer payload. Configure fixed Vite output and fail on extra files. Preserve public/config.js nullish-assignment semantics in source while Pages replaces the deployed config with a JSON-safe direct assignment.
 - [ ] Update Pages to use pinned setup-node/cache, npm ci, unit tests, build, copy webui/dist, generate config from vars.SANDKASTEN_API_BASE_URL, run artifact checks, and deploy. Keep /Sandkasten/ and never embed secrets.
 - [ ] Run "npm ci && npm test && npm run build && bash scripts/webui-build-test.sh && bash scripts/pages-artifact-test.sh --test"; commit:
 
@@ -108,7 +109,7 @@
 - Modify: README.md, handbuch/deployment.md, handbuch/architecture.md, handbuch/api.md, docs/superpowers/specs/2026-08-19-installer-webui-design.md
 
 - [ ] Add red installer fixtures: source with webui/src but no webui/dist must fail; a four-file dist must succeed; extra files, symlinks, and unmanaged paths must remain rejected.
-- [ ] Make installation validate and atomically copy only webui/dist/index.html, app.js, styles.css, and config.js. Preserve marker ownership, Nginx templates, safe root guards, and unmanaged-file protection.
+- [ ] Make installation validate and atomically copy only webui/dist/index.html, app.js, styles.css, and config.js. Preserve marker ownership, Nginx templates, safe root guards, and unmanaged-file protection; reject a source that has webui/src but no valid dist.
 - [ ] Keep uninstall marker-gated and add WebUI unit/build/artifact tests to the quality path without invoking npm during server installation.
 - [ ] Update docs with Vue commands, Pages build flow, fixed dist payload, no-Node installer behavior, HTTPS/CORS/API-base restrictions, and Stop polling semantics. Run focused installer and docs checks; commit:
 

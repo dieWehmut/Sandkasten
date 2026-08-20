@@ -305,7 +305,8 @@ The UI respects `stdoutEncoding`, `stderrEncoding`, `compileStdoutEncoding`, and
 `compileStderrEncoding`:
 
 - Missing or `utf8`: render the field directly.
-- `base64`: decode bytes with `atob`, then decode UTF-8 with `TextDecoder`.
+- `base64`: decode bytes with `atob`, then decode UTF-8 with
+  `TextDecoder({ fatal: true })`.
 - Invalid or unsupported encoding: retain the original string, mark the channel
   as undecodable, and show a non-destructive warning.
 
@@ -332,7 +333,17 @@ Decoded and raw values are always assigned as text nodes.
 
 ### 8.1 Source and Distribution
 
-`webui/` becomes a conventional Vite project:
+`webui/` becomes a conventional Vite project. The repository keeps the
+prebuilt `webui/dist/` payload because the no-Node installer needs a ready
+artifact; root `dist/` ignore rules must explicitly unignore this subtree:
+
+```gitignore
+dist/
+!webui/dist/
+!webui/dist/**
+```
+
+The project then has this structure:
 
 ```text
 webui/
@@ -349,6 +360,12 @@ webui/
    |- app.js
    |- styles.css
    `- config.js
+```
+
+The source `public/config.js` preserves the existing non-overwrite behavior:
+
+```js
+globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: "" };
 ```
 
 Vite uses `base: "./"`, disables source maps, disables CSS splitting, and
