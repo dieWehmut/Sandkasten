@@ -45,7 +45,7 @@
 ## デモ
 
 - ランタイム一覧ページ：<https://run.diesw.tech/v1/runtimes>
-- GitHub Pages WebUI：<https://diewehmut.github.io/sandkasten/>
+- GitHub Pages WebUI：<https://diewehmut.github.io/Sandkasten/>
 
 GitHub Pages は `.github/workflows/pages.yml` が公開します。初回はリポジトリの
 **Settings -> Pages** で公開元に **GitHub Actions** を選択してください。その後は

@@ -45,7 +45,7 @@
 ## 示例
 
 - 运行时索引页：<https://run.diesw.tech/v1/runtimes>
-- GitHub Pages WebUI：<https://diewehmut.github.io/sandkasten/>
+- GitHub Pages WebUI：<https://diewehmut.github.io/Sandkasten/>
 
 GitHub Pages 由仓库中的 `.github/workflows/pages.yml` 自动发布。首次启用时，在
 GitHub 仓库的 **Settings → Pages** 将发布来源设为 **GitHub Actions**；之后推送到

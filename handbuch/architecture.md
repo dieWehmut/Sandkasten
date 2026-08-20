@@ -22,7 +22,7 @@ client therefore uses relative API paths and treats returned job artifacts as
 untrusted text. CLI mode omits this static-site location.
 
 The same client is also published as a static GitHub Pages artifact at
-<https://diewehmut.github.io/sandkasten/>. The Pages workflow generates a
+<https://diewehmut.github.io/Sandkasten/>. The Pages workflow generates a
 public `config.js` from the repository variable `SANDKASTEN_API_BASE_URL`; it
 contains only the API origin/path prefix and must never contain credentials.
 When Pages and the API are hosted on different origins, the API must use HTTPS

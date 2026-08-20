@@ -45,7 +45,7 @@
 ## 範例
 
 - 執行環境索引頁：<https://run.diesw.tech/v1/runtimes>
-- GitHub Pages WebUI：<https://diewehmut.github.io/sandkasten/>
+- GitHub Pages WebUI：<https://diewehmut.github.io/Sandkasten/>
 
 GitHub Pages 由 `.github/workflows/pages.yml` 自動發布。首次啟用時，請在儲存庫的
 **Settings -> Pages** 將發布來源設為 **GitHub Actions**；之後推送到 `main` 或手動

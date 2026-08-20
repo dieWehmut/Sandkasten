@@ -39,7 +39,7 @@ client uses same-origin relative URLs and does not require CORS configuration.
 ## GitHub Pages WebUI
 
 The repository publishes the dependency-free client at
-<https://diewehmut.github.io/sandkasten/> through
+<https://diewehmut.github.io/Sandkasten/> through
 `.github/workflows/pages.yml`. Enable **Settings -> Pages -> GitHub Actions**
 once; pushes to `main` and manual workflow dispatches then publish the four-file
 artifact. Before the first deployment, add the repository variable

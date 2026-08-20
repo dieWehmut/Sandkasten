@@ -36,7 +36,7 @@ Useful environment:
 ## GitHub Pages configuration checks
 
 The public WebUI is published at
-<https://diewehmut.github.io/sandkasten/>. Its repository variable
+<https://diewehmut.github.io/Sandkasten/>. Its repository variable
 `SANDKASTEN_API_BASE_URL` is embedded into the static artifact and is therefore
 not a secret; it must contain only a public HTTPS API origin or path prefix.
 Never place an API token or other credential in that variable. A separately

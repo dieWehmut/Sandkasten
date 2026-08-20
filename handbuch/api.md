@@ -209,7 +209,7 @@ Configure HTTP with:
 ### GitHub Pages clients
 
 The checked-in client is published at
-<https://diewehmut.github.io/sandkasten/> by `.github/workflows/pages.yml`.
+<https://diewehmut.github.io/Sandkasten/> by `.github/workflows/pages.yml`.
 Set the repository variable `SANDKASTEN_API_BASE_URL` to a public HTTPS API
 origin (optionally with a path prefix) so the generated Pages `config.js` can
 resolve `/v1/` requests. This variable is intentionally public static

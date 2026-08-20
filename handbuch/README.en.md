@@ -45,7 +45,7 @@ The runner does **not** silently fall back to Docker or ordinary host execution;
 ## Demo
 
 - Runtime index page: <https://run.diesw.tech/v1/runtimes>
-- GitHub Pages WebUI: <https://diewehmut.github.io/sandkasten/>
+- GitHub Pages WebUI: <https://diewehmut.github.io/Sandkasten/>
 
 GitHub Pages is published by `.github/workflows/pages.yml`. To enable it, open
 **Settings -> Pages** in the repository and select **GitHub Actions** as the

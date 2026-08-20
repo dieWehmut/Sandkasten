@@ -14,7 +14,7 @@ The preview needs an API proxy or same-origin API at `/v1/` to execute jobs.
 
 ## GitHub Pages
 
-The public site is <https://diewehmut.github.io/sandkasten/>. The `Deploy WebUI
+The public site is <https://diewehmut.github.io/Sandkasten/>. The `Deploy WebUI
 to GitHub Pages` workflow publishes only `index.html`, `app.js`, `styles.css`,
 and a generated `config.js` whenever `main` is pushed. It can also be started
 manually with `workflow_dispatch`; enable **Settings -> Pages -> GitHub
