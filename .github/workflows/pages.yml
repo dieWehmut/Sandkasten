@@ -1,0 +1,60 @@
+name: Deploy WebUI to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage WebUI artifact
+        shell: bash
+        env:
+          API_BASE_URL: ${{ vars.SANDKASTEN_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp webui/index.html webui/app.js webui/styles.css _site/
+          API_BASE_URL="$API_BASE_URL" python3 - <<'PY' > _site/config.js
+          import json
+          import os
+
+          api_base_url = os.environ.get("API_BASE_URL", "")
+          print(
+              "globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "
+              + json.dumps(api_base_url)
+              + " };"
+          )
+          PY
+          bash scripts/pages-artifact-test.sh --check _site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
