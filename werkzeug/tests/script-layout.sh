@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# This test is also executed directly from WSL on Windows checkouts.
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
