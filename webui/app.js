@@ -11,6 +11,12 @@ const TERMINAL_STATUSES = new Set([
 
 const defaultFetch = (...args) => fetch(...args);
 
+export function resolveApiUrl(pathname, config = globalThis.SANDKASTEN_CONFIG) {
+  const path = `/${String(pathname).replace(/^\/+/, '')}`;
+  const base = typeof config?.apiBaseUrl === 'string' ? config.apiBaseUrl.trim().replace(/\/+$/, '') : '';
+  return `${base}${path}`;
+}
+
 function asObject(value, context) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${context} returned an invalid JSON object`);
@@ -47,7 +53,7 @@ async function requestJson(url, options = {}, fetchImpl = defaultFetch) {
 }
 
 export async function loadRuntimes(fetchImpl = defaultFetch) {
-  const payload = await requestJson('/v1/runtimes', {}, fetchImpl);
+  const payload = await requestJson(resolveApiUrl('/v1/runtimes'), {}, fetchImpl);
   const runtimes = Array.isArray(payload.runtimes) ? payload.runtimes : payload;
   if (!Array.isArray(runtimes)) throw new Error('Runtime response has no runtimes list');
   return runtimes.map((runtime) => {
@@ -61,7 +67,7 @@ export async function loadRuntimes(fetchImpl = defaultFetch) {
 export async function submitJob(language, source, fetchImpl = defaultFetch) {
   if (typeof language !== 'string' || !language.trim()) throw new Error('Choose a runtime');
   if (typeof source !== 'string' || !source.trim()) throw new Error('Source is required');
-  const payload = await requestJson(`/v1/${encodeURIComponent(language)}/run`, {
+  const payload = await requestJson(resolveApiUrl(`/v1/${encodeURIComponent(language)}/run`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ source, wait: false }),
@@ -93,7 +99,7 @@ export async function pollJob(jobId, {
 } = {}) {
   if (typeof jobId !== 'string' || !jobId.trim()) throw new Error('A job ID is required');
   for (;;) {
-    const payload = await requestJson(`/v1/jobs/${encodeURIComponent(jobId)}`, { signal }, fetchImpl);
+    const payload = await requestJson(resolveApiUrl(`/v1/jobs/${encodeURIComponent(jobId)}`), { signal }, fetchImpl);
     if (typeof payload.status !== 'string' || !payload.status.trim()) throw new Error('Job response has no status');
     onUpdate?.(payload);
     if (TERMINAL_STATUSES.has(payload.status)) return payload;
