@@ -30,7 +30,8 @@ async function requestJson(url, options = {}, fetchImpl = defaultFetch) {
     let detail = '';
     try {
       const payload = await response.json();
-      if (payload && typeof payload.error === 'string') detail = `: ${payload.error}`;
+      if (payload && typeof payload.message === 'string') detail = `: ${payload.message}`;
+      else if (payload && typeof payload.error === 'string') detail = `: ${payload.error}`;
     } catch {
       // The status text is enough when an error body is not JSON.
     }
@@ -104,11 +105,15 @@ function textValue(value) {
   return value == null ? '' : typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
 
-function renderResult(result, elements) {
+export function renderResult(result, elements) {
   elements.status.textContent = result.status || 'Unknown';
   elements.stdout.textContent = textValue(result.stdout);
   elements.stderr.textContent = textValue(result.stderr);
-  elements.diagnostics.textContent = textValue(result.compileStderr || result.diagnostics || result.error);
+  elements.diagnostics.textContent = [
+    result.compileStderr,
+    result.errorMessage || result.error,
+    result.diagnostics && Object.keys(result.diagnostics).length ? textValue(result.diagnostics) : '',
+  ].filter(Boolean).join('\n\n');
 }
 
 function init() {

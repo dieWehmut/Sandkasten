@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-import { pollJob } from './app.js';
+import { pollJob, renderResult, submitJob } from './app.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,4 +55,33 @@ test('polling stops for every terminal status exposed by the API', async () => {
     assert.equal(result.status, status);
     assert.equal(requests, 1);
   }
+});
+
+test('HTTP errors prefer the server message over its machine-readable code', async () => {
+  await assert.rejects(
+    submitJob('go', 'package main', async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'invalid_request', message: 'source archive is invalid' }),
+    })),
+    /source archive is invalid/,
+  );
+});
+
+test('job rendering surfaces the terminal error message', () => {
+  const elements = {
+    status: { textContent: '' },
+    stdout: { textContent: '' },
+    stderr: { textContent: '' },
+    diagnostics: { textContent: '' },
+  };
+  renderResult({
+    status: 'JOB_STATUS_RUNTIME_FAILED',
+    stdout: '',
+    stderr: '',
+    compileStderr: '',
+    errorMessage: 'process exited with status 1',
+    diagnostics: {},
+  }, elements);
+  assert.match(elements.diagnostics.textContent, /process exited with status 1/);
 });
