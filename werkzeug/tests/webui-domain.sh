@@ -67,5 +67,19 @@ WEBUI_ROOT="$TMP_DIR/root-link"
 if render_domain_nginx_site "$TMP_DIR/invalid-root-link.conf" valid.example.test; then
   fail 'WebUI root validation accepted a symlink to a protected path'
 fi
+mkdir -p "$TMP_DIR/no-realpath"
+cat > "$TMP_DIR/no-realpath/realpath" <<'REALPATH'
+#!/usr/bin/env bash
+exit 1
+REALPATH
+chmod +x "$TMP_DIR/no-realpath/realpath"
+saved_path="$PATH"
+PATH="$TMP_DIR/no-realpath:$PATH"
+WEBUI_ROOT="$TMP_DIR/webui"
+if render_domain_nginx_site "$TMP_DIR/invalid-no-realpath.conf" valid.example.test; then
+  PATH="$saved_path"
+  fail 'domain renderer accepted WebUI root without realpath'
+fi
+PATH="$saved_path"
 
 printf 'webui domain template tests: ok\n'

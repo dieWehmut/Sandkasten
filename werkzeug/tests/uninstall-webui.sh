@@ -32,6 +32,21 @@ for unsafe_root in / /opt /opt/sandkasten /opt/../etc; do
     fail "unsafe WebUI root accepted: $unsafe_root"
   fi
 done
+mkdir -p "$tmp_dir/no-realpath"
+cat > "$tmp_dir/no-realpath/realpath" <<'REALPATH'
+#!/usr/bin/env bash
+exit 1
+REALPATH
+chmod +x "$tmp_dir/no-realpath/realpath"
+ln -s / "$tmp_dir/root-link"
+saved_path="$PATH"
+PATH="$tmp_dir/no-realpath:$PATH"
+WEBUI_ROOT="$tmp_dir/root-link"
+if validate_webui_root; then
+  PATH="$saved_path"
+  fail 'WebUI root validation accepted a protected alias without realpath'
+fi
+PATH="$saved_path"
 WEBUI_ROOT="$SANDKASTEN_WEBUI_DIR"
 mkdir -p "$WEBUI_ROOT"
 printf 'unmanaged\n' > "$WEBUI_ROOT/user-data.txt"

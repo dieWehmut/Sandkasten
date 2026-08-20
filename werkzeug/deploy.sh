@@ -1095,14 +1095,14 @@ render_domain_nginx_site() {
         return 1
         ;;
     esac
-    if command -v realpath >/dev/null 2>&1; then
-      canonical_root="$(realpath -m -- "$webui_root")" || {
-        warn "invalid WebUI root path"
-        return 1
-      }
-    else
-      canonical_root="$webui_root"
-    fi
+    command -v realpath >/dev/null 2>&1 || {
+      warn "realpath is required to validate WebUI root path"
+      return 1
+    }
+    canonical_root="$(realpath -m -- "$webui_root")" || {
+      warn "unable to canonicalize WebUI root path"
+      return 1
+    }
     case "$canonical_root" in
       /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
         warn "invalid WebUI root path"

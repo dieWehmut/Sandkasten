@@ -59,11 +59,8 @@ _uninstall_webui_root_safe() {
   local root="${WEBUI_ROOT:-}" canonical
   [[ -n "$root" && "$root" == /* ]] || return 1
   case "$root" in */../*|*/..|../*|..|/|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten) return 1 ;; esac
-  if command -v realpath >/dev/null 2>&1; then
-    canonical="$(realpath -m -- "$root")" || canonical="$root"
-  else
-    canonical="$root"
-  fi
+  command -v realpath >/dev/null 2>&1 || return 1
+  canonical="$(realpath -m -- "$root")" || return 1
   case "$canonical" in /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten) return 1 ;; esac
 }
 

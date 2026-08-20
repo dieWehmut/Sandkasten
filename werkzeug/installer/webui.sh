@@ -27,11 +27,14 @@ validate_webui_root() {
   case "$root" in
     */../*|*/..|../*|..) _webui_error "WEBUI_ROOT contains traversal: $root"; return 1 ;;
   esac
-  if command -v realpath >/dev/null 2>&1; then
-    canonical="$(realpath -m -- "$root")" || canonical="$root"
-  else
-    canonical="$root"
-  fi
+  command -v realpath >/dev/null 2>&1 || {
+    _webui_error "realpath is required to validate WEBUI_ROOT"
+    return 1
+  }
+  canonical="$(realpath -m -- "$root")" || {
+    _webui_error "unable to canonicalize WEBUI_ROOT"
+    return 1
+  }
   case "$canonical" in
     /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten)
       _webui_error "WEBUI_ROOT is too broad or protected: $root"
