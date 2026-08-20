@@ -45,7 +45,16 @@
 ## 範例
 
 - 執行環境索引頁：<https://run.diesw.tech/v1/runtimes>
-- 前端範例：<https://diewehmut.github.io/>
+- GitHub Pages WebUI：<https://diewehmut.github.io/sandkasten/>
+
+GitHub Pages 由 `.github/workflows/pages.yml` 自動發布。首次啟用時，請在儲存庫的
+**Settings -> Pages** 將發布來源設為 **GitHub Actions**；之後推送到 `main` 或手動
+執行 workflow 即可更新頁面。Pages 用戶端透過儲存庫變數
+`SANDKASTEN_API_BASE_URL` 連線到獨立部署的 HTTP API。此值會寫入公開的靜態網站，
+因此只能包含公開的 HTTPS API origin（例如 `https://run.example.com`），不可放入 token、
+密碼或其他憑證。當 API 與 Pages origin 不同時，API 必須使用 HTTPS，並在
+`SANDKASTEN_API_CORS_ORIGINS` 允許 `https://diewehmut.github.io`；CORS 使用 origin，
+不包含 `/sandkasten/` 路徑。
 
 執行環境索引頁由 API 直接於伺服端算繪,列出所有已啟用語言、版本、預設資源限制與編譯／執行指令。
 
@@ -119,7 +128,7 @@ sudo ./werkzeug/install.sh --mode webui --languages web --non-interactive
 僅啟動 Postgres 並載入 schema(需要 Docker):
 
 ```bash
-./werkzeug/dev-up.sh
+./werkzeug/development/dev-up.sh
 ```
 
 ## 解除安裝
@@ -163,12 +172,20 @@ Go、Assembly、Bash/Shell、C、Cangjie(倉頡)、Clojure、CSS、C++、C#、Co
 ## 本地測試
 
 ```bash
-./werkzeug/test.sh                 # 單元測試
-./werkzeug/smoke-go.sh             # 本地 API + 執行器 Go 執行冒煙
-./werkzeug/smoke-languages.sh      # 所有語言的 HTTP 冒煙
+./werkzeug/quality/test.sh          # 單元測試
+./werkzeug/smoke/smoke-go.sh        # 本地 API + 執行器 Go 執行冒煙
+./werkzeug/smoke/smoke-languages.sh # 所有語言的 HTTP 冒煙
 ```
 
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只驗證子集。
+
+## 工具目錄
+
+開發與品質指令稿依用途分置於 `werkzeug/development/`、`werkzeug/quality/`、
+`werkzeug/security/` 與 `werkzeug/smoke/`。根目錄的歷史 `werkzeug/*.sh` 名稱（以及
+`smoke-concurrency.mjs`）仍是轉發到 canonical path 的相容 wrapper，因此既有自動化
+不必立即修改。常用入口也可透過 `make test`、`make lint`、`make preflight`、
+`make smoke-go` 與 `make smoke-languages` 執行。
 
 ## 授權
 

@@ -14,19 +14,25 @@ The preview needs an API proxy or same-origin API at `/v1/` to execute jobs.
 
 ## GitHub Pages
 
-The `Deploy WebUI to GitHub Pages` workflow publishes only `index.html`,
-`app.js`, `styles.css`, and a generated `config.js` whenever `main` is pushed.
-It can also be started manually with `workflow_dispatch`.
+The public site is <https://diewehmut.github.io/sandkasten/>. The `Deploy WebUI
+to GitHub Pages` workflow publishes only `index.html`, `app.js`, `styles.css`,
+and a generated `config.js` whenever `main` is pushed. It can also be started
+manually with `workflow_dispatch`; enable **Settings -> Pages -> GitHub
+Actions** as the repository Pages source first.
 
 To connect the public Pages site to a separately deployed API, create the
 repository variable `SANDKASTEN_API_BASE_URL` under **Settings > Secrets and
-variables > Actions > Variables**. Set it to the API origin, or to an origin
-plus path prefix, for example `https://runner.example.com`. An unset or empty
-variable generates an empty `apiBaseUrl`, so requests remain same-origin.
+variables > Actions > Variables**. Set it to a public HTTPS API origin, or to
+an origin plus path prefix, for example `https://runner.example.com`. The value
+is embedded in the public artifact and must not contain tokens, passwords, or
+other secrets. An unset or empty variable generates an empty `apiBaseUrl`, so
+requests remain same-origin.
 
-The API must use HTTPS and allow the repository's GitHub Pages origin through
-CORS when the Pages and API origins differ. The value is published in the
-static site and must not contain credentials or other secrets.
+The API must use HTTPS and allow `https://diewehmut.github.io` through CORS when
+the Pages and API origins differ. Set
+`SANDKASTEN_API_CORS_ORIGINS=https://diewehmut.github.io` (plus any local origins
+you need). The CORS value is the origin only; do not include the `/sandkasten/`
+repository path.
 
 Repository maintainers must select **GitHub Actions** as the Pages source under
 **Settings → Pages**. The staged artifact can be checked locally on a

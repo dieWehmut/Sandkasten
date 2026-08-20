@@ -45,7 +45,19 @@ The runner does **not** silently fall back to Docker or ordinary host execution;
 ## Demo
 
 - Runtime index page: <https://run.diesw.tech/v1/runtimes>
-- Frontend example: <https://diewehmut.github.io/>
+- GitHub Pages WebUI: <https://diewehmut.github.io/sandkasten/>
+
+GitHub Pages is published by `.github/workflows/pages.yml`. To enable it, open
+**Settings -> Pages** in the repository and select **GitHub Actions** as the
+source; subsequent pushes to `main`, or a manual workflow dispatch, publish a
+new artifact. The Pages client reads the repository variable
+`SANDKASTEN_API_BASE_URL` to reach a separately deployed HTTP API. This value is
+embedded in the public static site, so it may contain only a public HTTPS API
+origin (for example, `https://run.example.com`) and must never contain a token,
+password, or other credential. When the API and Pages origins differ, the API
+must use HTTPS and allow `https://diewehmut.github.io` in
+`SANDKASTEN_API_CORS_ORIGINS`; CORS uses the origin and does not include the
+`/sandkasten/` path.
 
 The runtime index page is server-rendered by the API and lists every enabled language, its version, default resource limits, and compile/run commands.
 
@@ -131,7 +143,7 @@ site.
 Start only Postgres and load the schema (requires Docker):
 
 ```bash
-./werkzeug/dev-up.sh
+./werkzeug/development/dev-up.sh
 ```
 
 ## Uninstall
@@ -180,12 +192,22 @@ Go, Assembly, Bash/Shell, C, Cangjie, Clojure, CSS, C++, C#, Coq, Crystal, Dart,
 ## Local Testing
 
 ```bash
-./werkzeug/test.sh                 # unit tests
-./werkzeug/smoke-go.sh             # local API + runner Go execution smoke
-./werkzeug/smoke-languages.sh      # HTTP smoke for all languages
+./werkzeug/quality/test.sh          # unit tests
+./werkzeug/smoke/smoke-go.sh        # local API + runner Go execution smoke
+./werkzeug/smoke/smoke-languages.sh # HTTP smoke for all languages
 ```
 
 Set `SMOKE_LANGUAGES=ocaml` or `SMOKE_LANGUAGES="markdown graphviz"` to verify a subset.
+
+## Tooling Layout
+
+Development and quality scripts are grouped under `werkzeug/development/`,
+`werkzeug/quality/`, `werkzeug/security/`, and `werkzeug/smoke/`. The historical
+`werkzeug/*.sh` names (and `smoke-concurrency.mjs`) remain compatibility
+wrappers that forward to those canonical paths, so existing automation can
+continue to use them. The common entry points are also available as
+`make test`, `make lint`, `make preflight`, `make smoke-go`, and
+`make smoke-languages`.
 
 ## License
 

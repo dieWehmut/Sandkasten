@@ -3,7 +3,7 @@
 The gRPC contracts live under `vertrag/sandkasten/v1`. Generate client/server bindings with:
 
 ```sh
-./werkzeug/gen-proto.sh
+./werkzeug/development/gen-proto.sh
 ```
 
 ## Services
@@ -205,6 +205,19 @@ Configure HTTP with:
 - `SANDKASTEN_API_HTTP_ADDR`, default `127.0.0.1:8080`
 - `SANDKASTEN_API_CORS_ORIGINS`, comma-separated, default local Vite origins
 - `SANDKASTEN_API_TOKEN`, accepted as `authorization: Bearer <token>` or `x-sandkasten-token`
+
+### GitHub Pages clients
+
+The checked-in client is published at
+<https://diewehmut.github.io/sandkasten/> by `.github/workflows/pages.yml`.
+Set the repository variable `SANDKASTEN_API_BASE_URL` to a public HTTPS API
+origin (optionally with a path prefix) so the generated Pages `config.js` can
+resolve `/v1/` requests. This variable is intentionally public static
+configuration; never put `SANDKASTEN_API_TOKEN` or any other secret in it. The
+API must be served over HTTPS and its `SANDKASTEN_API_CORS_ORIGINS` list must
+include `https://diewehmut.github.io` when the API is hosted on another origin.
+The allowed CORS value is the origin only, not the `/sandkasten/` repository
+path. Same-origin WebUI installs behind Nginx do not need this CORS entry.
 
 Run a single-file program and wait for the result:
 

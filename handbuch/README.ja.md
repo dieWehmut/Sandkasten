@@ -45,7 +45,17 @@
 ## デモ
 
 - ランタイム一覧ページ：<https://run.diesw.tech/v1/runtimes>
-- フロントエンド例：<https://diewehmut.github.io/>
+- GitHub Pages WebUI：<https://diewehmut.github.io/sandkasten/>
+
+GitHub Pages は `.github/workflows/pages.yml` が公開します。初回はリポジトリの
+**Settings -> Pages** で公開元に **GitHub Actions** を選択してください。その後は
+`main` への push または workflow の手動実行でページを更新できます。Pages クライアント
+が別途デプロイした HTTP API に接続する URL は、リポジトリ変数
+`SANDKASTEN_API_BASE_URL` で設定します。この値は公開静的ファイルへ埋め込まれるため、
+公開 HTTPS API の origin（例: `https://run.example.com`）だけを指定し、token、パスワード、
+その他の認証情報は絶対に入れないでください。API と Pages の origin が異なる場合、API
+は HTTPS を使用し、`SANDKASTEN_API_CORS_ORIGINS` に `https://diewehmut.github.io` を
+許可する必要があります。CORS に指定するのは origin であり、`/sandkasten/` パスは含めません。
 
 ランタイム一覧ページは API がサーバーサイドでレンダリングし、有効なすべての言語・バージョン・デフォルトのリソース制限・コンパイル／実行コマンドを表示します。
 
@@ -119,7 +129,7 @@ sudo ./werkzeug/install.sh --mode webui --languages web --non-interactive
 Postgres のみを起動しスキーマを読み込みます(Docker が必要):
 
 ```bash
-./werkzeug/dev-up.sh
+./werkzeug/development/dev-up.sh
 ```
 
 ## アンインストール
@@ -163,12 +173,21 @@ Go、Assembly、Bash/Shell、C、Cangjie、Clojure、CSS、C++、C#、Coq、Crys
 ## ローカルテスト
 
 ```bash
-./werkzeug/test.sh                 # ユニットテスト
-./werkzeug/smoke-go.sh             # ローカル API + ランナーの Go 実行スモーク
-./werkzeug/smoke-languages.sh      # 全言語の HTTP スモーク
+./werkzeug/quality/test.sh          # ユニットテスト
+./werkzeug/smoke/smoke-go.sh        # ローカル API + ランナーの Go 実行スモーク
+./werkzeug/smoke/smoke-languages.sh # 全言語の HTTP スモーク
 ```
 
 `SMOKE_LANGUAGES=ocaml` または `SMOKE_LANGUAGES="markdown graphviz"` でサブセットのみを検証できます。
+
+## ツール配置
+
+開発・品質用スクリプトは `werkzeug/development/`、`werkzeug/quality/`、
+`werkzeug/security/`、`werkzeug/smoke/` に用途別に配置されています。従来の
+`werkzeug/*.sh` 名（および `smoke-concurrency.mjs`）は canonical path へ転送する
+互換 wrapper として残しているため、既存の自動化はそのまま利用できます。主な入口は
+`make test`、`make lint`、`make preflight`、`make smoke-go`、`make smoke-languages`
+からも実行できます。
 
 ## ライセンス
 

@@ -21,6 +21,19 @@ directory, while `/v1/` and `/healthz` are reverse-proxied to the API. The
 client therefore uses relative API paths and treats returned job artifacts as
 untrusted text. CLI mode omits this static-site location.
 
+The same client is also published as a static GitHub Pages artifact at
+<https://diewehmut.github.io/sandkasten/>. The Pages workflow generates a
+public `config.js` from the repository variable `SANDKASTEN_API_BASE_URL`; it
+contains only the API origin/path prefix and must never contain credentials.
+When Pages and the API are hosted on different origins, the API must use HTTPS
+and allow `https://diewehmut.github.io` in `SANDKASTEN_API_CORS_ORIGINS`. The
+Pages repository path is not part of the CORS origin.
+
+Developer tooling is organized by responsibility under
+`werkzeug/development/`, `werkzeug/quality/`, `werkzeug/security/`, and
+`werkzeug/smoke/`. Legacy root-level script names remain wrappers that forward
+to these canonical paths, preserving existing automation.
+
 ## v1 Flow
 
 1. A client sends `SubmitGoProject` with a `tar.gz` archive, or uses the HTTP `/v1/{language}/run` endpoint for single-file source.

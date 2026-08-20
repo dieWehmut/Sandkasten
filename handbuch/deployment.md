@@ -36,6 +36,24 @@ that directory and proxies `/v1/` and `/healthz` to the API, so the browser
 client uses same-origin relative URLs and does not require CORS configuration.
 `cli` mode installs no static files or WebUI Nginx location.
 
+## GitHub Pages WebUI
+
+The repository publishes the dependency-free client at
+<https://diewehmut.github.io/sandkasten/> through
+`.github/workflows/pages.yml`. Enable **Settings -> Pages -> GitHub Actions**
+once; pushes to `main` and manual workflow dispatches then publish the four-file
+artifact. Before the first deployment, add the repository variable
+`SANDKASTEN_API_BASE_URL` under **Settings -> Secrets and variables -> Actions ->
+Variables**. It is public runtime configuration and is embedded into
+`config.js`, so set only a public HTTPS API origin or path prefix, never a token
+or other credential.
+
+For a Pages site calling a separately hosted API, configure the API with
+`SANDKASTEN_API_CORS_ORIGINS=https://diewehmut.github.io` (plus any local origins
+you need). The API endpoint must be HTTPS; the CORS allow-list uses the Pages
+origin without the `/sandkasten/` path. If WebUI mode is installed behind the
+same Nginx origin instead, no cross-origin request is needed.
+
 The installer also supports `status`, `restart`, `languages`/`reconfigure`,
 `domain`, and `uninstall` subcommands. To remove a deployment, use
 `sudo ./werkzeug/install.sh uninstall` (or `werkzeug/uninstall.sh`); the
@@ -59,7 +77,7 @@ PRUNE_BUILDKIT_ALL=1 make docker-clean
 
 Current assumptions:
 
-- Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/gen-proto.sh` after contract changes.
+- Checked-in Go protobuf/gRPC bindings are generated from `vertrag/`; run `./werkzeug/development/gen-proto.sh` after contract changes.
 - The runner image includes Go plus toolchains/interpreters for Assembly, Bash/Shell, C, Cangjie, Clojure, CSS/PostCSS, C++, C#, Coq, Crystal, Dart, Elixir, Erlang, F#, Fortran, GDScript/Godot, Gleam, GNU Octave, Graphviz DOT, Haskell, HTML, Java, JavaScript, Julia, Kotlin, LaTeX/Tectonic plus Poppler SVG conversion, Lean4, Lua, Markdown/Mermaid, MDX, Mojo, Next.js, Nextflow, Nim, OCaml, Pascal/Free Pascal, Perl, PHP, Prolog, Python, QML/Qt, R, Racket, Ruby, Rust, Scala, SCSS/Sass, SQL/SQLite, Swift, Tailwind CSS, TypeScript, TSX/React, Typst, V, Vue 3, WDL, and Zig execution.
 - Bare-metal or systemd runners must provide the same runtime commands on `LAEUFER_RUNTIME_PATH`. Document renderers also need globally resolvable Node packages under `NODE_PATH`, a warmed Gleam Hex cache at `/opt/sandkasten/gleam-cache`, a Tectonic bundle/cache usable with `tectonic --only-cached`, and `pdftocairo` from Poppler for LaTeX SVG output.
 - Production tags should use the `ghcr.io/diewehmut/sandkasten-api` and `ghcr.io/diewehmut/sandkasten-laeufer` image names from the Kubernetes manifests.
@@ -69,20 +87,20 @@ Current assumptions:
 Start Postgres and load `speicher/schema.sql`:
 
 ```sh
-./werkzeug/dev-up.sh
+./werkzeug/development/dev-up.sh
 ```
 
 Start optional images when their build dependencies are available:
 
 ```sh
-./werkzeug/dev-up.sh --with-api
-./werkzeug/dev-up.sh --with-api --with-runner
+./werkzeug/development/dev-up.sh --with-api
+./werkzeug/development/dev-up.sh --with-api --with-runner
 ```
 
 Run the local end-to-end Go execution smoke test after Postgres is reachable:
 
 ```sh
-./werkzeug/smoke-go.sh
+./werkzeug/smoke/smoke-go.sh
 ```
 
 The smoke script builds the API and runner locally, starts both processes, submits `beispiele/go-hello`, and requires a `SUCCEEDED` job with `hello, Sandkasten` output.
@@ -90,16 +108,16 @@ The smoke script builds the API and runner locally, starts both processes, submi
 Run the full language smoke when all supported local toolchains are installed:
 
 ```sh
-./werkzeug/smoke-languages.sh
+./werkzeug/smoke/smoke-languages.sh
 ```
 
 Run a single runtime or a small batch while adding toolchains incrementally:
 
 ```sh
-SMOKE_LANGUAGES=ocaml ./werkzeug/smoke-languages.sh
-SMOKE_LANGUAGES="markdown graphviz typst" ./werkzeug/smoke-languages.sh
+SMOKE_LANGUAGES=ocaml ./werkzeug/smoke/smoke-languages.sh
+SMOKE_LANGUAGES="markdown graphviz typst" ./werkzeug/smoke/smoke-languages.sh
 createdb sandkasten_smoke
-DATABASE_URL=postgres://sandkasten:sandkasten@localhost:5432/sandkasten_smoke?sslmode=disable SANDKASTEN_ADDR=127.0.0.1:50052 SANDKASTEN_HTTP_ADDR=127.0.0.1:8081 SMOKE_LANGUAGES=ocaml ./werkzeug/smoke-languages.sh
+DATABASE_URL=postgres://sandkasten:sandkasten@localhost:5432/sandkasten_smoke?sslmode=disable SANDKASTEN_ADDR=127.0.0.1:50052 SANDKASTEN_HTTP_ADDR=127.0.0.1:8081 SMOKE_LANGUAGES=ocaml ./werkzeug/smoke/smoke-languages.sh
 dropdb sandkasten_smoke
 ```
 
@@ -108,7 +126,7 @@ The full smoke submits source through the HTTP API for `go`, `bash`, `cangjie`, 
 Verify runner parallelism against a live HTTP API with:
 
 ```sh
-node ./werkzeug/smoke-concurrency.mjs
+node ./werkzeug/smoke/smoke-concurrency.mjs
 ```
 
 The smoke submits four Bash jobs that each sleep for three seconds. It fails if wall time looks serialized or if fewer than two active jobs are observed at once.
@@ -143,3 +161,11 @@ kubectl apply -k einsatz/k8s
 - ServiceAccount for the runner with no Kubernetes API token mounted.
 
 The v1 manifests intentionally do not expose the API publicly. Add an internal load balancer, ingress, or port-forwarding layer according to the deployment environment.
+
+## Tooling compatibility paths
+
+Canonical scripts are grouped by purpose under `werkzeug/development/`,
+`werkzeug/quality/`, `werkzeug/security/`, and `werkzeug/smoke/`. Historical
+root-level names such as `werkzeug/dev-up.sh`, `werkzeug/test.sh`, and
+`werkzeug/smoke-go.sh` remain thin compatibility wrappers and forward to the
+canonical scripts, so existing automation continues to work.
