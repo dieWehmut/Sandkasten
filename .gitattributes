@@ -2,4 +2,5 @@
 *.mjs text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+webui/index.html text eol=lf
 webui/dist/** text eol=lf -whitespace
