@@ -14,15 +14,23 @@ const props = withDefaults(defineProps<{
 });
 
 const state = ref<'idle' | 'copied' | 'failed'>('idle');
+let copyGeneration = 0;
 
-watch(() => props.command, () => { state.value = 'idle'; });
+watch(() => props.command, () => {
+  copyGeneration += 1;
+  state.value = 'idle';
+});
 
 async function copyCommand(): Promise<void> {
+  const generation = copyGeneration;
+  const command = props.command;
   try {
     if (!navigator.clipboard?.writeText) throw new Error('Clipboard is unavailable');
-    await navigator.clipboard.writeText(props.command);
+    await navigator.clipboard.writeText(command);
+    if (generation !== copyGeneration) return;
     state.value = 'copied';
   } catch {
+    if (generation !== copyGeneration) return;
     state.value = 'failed';
   }
 }
