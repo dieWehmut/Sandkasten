@@ -24,6 +24,22 @@ cd webui
 npm test
 ```
 
+Run the real-browser responsive smoke against the committed distribution with
+the local mock API:
+
+```sh
+cd webui
+npm run build
+npm run test:browser
+```
+
+The smoke reuses an installed Chrome or Edge executable and never downloads a
+browser. It checks the desktop (1440x900), tablet (1024x768), and mobile
+(390x844) layouts, including overflow, compact panels, theme switching, run
+success, resume polling, and output/error text rendering. Screenshots are
+written to the ignored `tmp/webui-browser-smoke/` directory. Set
+`SANDKASTEN_BROWSER_PATH` to override executable discovery when needed.
+
 ## Production distribution
 
 Create the production payload with:
