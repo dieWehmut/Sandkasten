@@ -31,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.18.0
           cache: npm
           cache-dependency-path: webui/package-lock.json
 
@@ -41,6 +41,11 @@ jobs:
           npm ci
           npm test
           npm run build
+
+      - name: Validate WebUI distribution
+        shell: bash
+        run: |
+          SANDKASTEN_BUILD_ALREADY_RUN=1 bash scripts/webui-build-test.sh --test
 
       - name: Stage WebUI artifact
         shell: bash
