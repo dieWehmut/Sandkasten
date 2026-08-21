@@ -44,6 +44,48 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+describe('Setup welcome focus management', () => {
+  test('focuses the setup title on a first visit without an opening control', async () => {
+    window.localStorage.clear();
+    const wrapper = mount(App, { attachTo: document.body });
+    await nextTick();
+
+    const title = wrapper.get('[data-testid="setup-title"]');
+    expect(title.attributes('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(title.element);
+
+    wrapper.unmount();
+  });
+
+  test('focuses the setup title and restores the rebuilt opening control after dismissal', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    const opener = wrapper.get('[data-testid="open-setup-guide"]');
+    (opener.element as HTMLElement).focus();
+    expect(document.activeElement).toBe(opener.element);
+
+    await opener.trigger('click');
+    await nextTick();
+
+    const title = wrapper.get('[data-testid="setup-title"]');
+    expect(title.attributes('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(title.element);
+    expect(opener.element.isConnected).toBe(false);
+
+    const dismiss = wrapper.get('[data-testid="setup-dismiss"]');
+    (dismiss.element as HTMLElement).focus();
+    await dismiss.trigger('click');
+    await nextTick();
+
+    const restoredOpener = wrapper.get('[data-testid="open-setup-guide"]');
+    expect(restoredOpener.element).not.toBe(opener.element);
+    expect(document.activeElement).toBe(restoredOpener.element);
+
+    wrapper.unmount();
+  });
+});
+
 describe('EdgeSheet', () => {
   test('traps focus, closes with Escape, and restores the opening control', async () => {
     const trigger = document.createElement('button');
