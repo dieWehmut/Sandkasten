@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import { useRunner } from './composables/useRunner';
 import { useTheme } from './composables/useTheme';
+import { useMediaLayout } from './composables/useMediaLayout';
 
 const runner = useRunner();
 const theme = useTheme();
-const historyOpen = ref(true);
-const inspectorOpen = ref(true);
+const layout = useMediaLayout();
+const historyOpen = ref(layout.isDesktop.value);
+const inspectorOpen = ref(layout.isDesktop.value);
 
 const selectedRuntime = computed(() => runner.runtimes.value.find((runtime) => runtime.language === runner.selectedLanguage.value));
 const canRun = computed(() => runner.connectionState.value === 'connected'
@@ -20,8 +22,33 @@ function openGithub(): void {
   window.open('https://github.com/dieWehmut/Sandkasten', '_blank', 'noopener,noreferrer');
 }
 
+function toggleHistory(): void {
+  const nextOpen = !historyOpen.value;
+  historyOpen.value = nextOpen;
+  if (layout.isCompact.value && nextOpen) inspectorOpen.value = false;
+}
+
+function toggleInspector(): void {
+  const nextOpen = !inspectorOpen.value;
+  inspectorOpen.value = nextOpen;
+  if (layout.isCompact.value && nextOpen) historyOpen.value = false;
+}
+
+watch(layout.mode, (mode, previousMode) => {
+  if (mode === 'desktop') {
+    historyOpen.value = true;
+    inspectorOpen.value = true;
+  } else if (previousMode === 'desktop') {
+    historyOpen.value = false;
+    inspectorOpen.value = false;
+  }
+});
+
 onMounted(() => { void runner.load(); });
-onBeforeUnmount(theme.dispose);
+onBeforeUnmount(() => {
+  theme.dispose();
+  layout.dispose();
+});
 </script>
 
 <template>
@@ -31,8 +58,8 @@ onBeforeUnmount(theme.dispose);
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
-      @toggle-history="historyOpen = !historyOpen"
-      @toggle-inspector="inspectorOpen = !inspectorOpen"
+      @toggle-history="toggleHistory"
+      @toggle-inspector="toggleInspector"
       @toggle-theme="theme.toggleTheme"
       @open-github="openGithub"
     />
@@ -43,6 +70,7 @@ onBeforeUnmount(theme.dispose);
     <WorkbenchShell
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
+      :layout-mode="layout.mode.value"
       :history="runner.history.value"
       :runtimes="runner.runtimes.value"
       :runtime="selectedRuntime"
@@ -63,6 +91,8 @@ onBeforeUnmount(theme.dispose);
       @run="runner.submit"
       @stop="runner.stopPolling"
       @resume="runner.resumePolling"
+      @close-history="historyOpen = false"
+      @close-inspector="inspectorOpen = false"
     />
   </div>
 </template>

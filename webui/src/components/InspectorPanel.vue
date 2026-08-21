@@ -8,7 +8,7 @@ defineProps<{ runtime?: Runtime; job?: JobResponse; error?: string }>();
 </script>
 
 <template>
-  <aside class="inspector-panel" aria-labelledby="inspector-title">
+  <aside id="inspector-panel" class="inspector-panel" aria-labelledby="inspector-title">
     <header class="pane-heading">
       <p class="eyebrow">Context</p>
       <h2 id="inspector-title">Inspector</h2>
