@@ -25,4 +25,3 @@ const emit = defineEmits<{ toggleHistory: []; toggleInspector: []; toggleTheme: 
     />
   </header>
 </template>
-

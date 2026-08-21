@@ -25,4 +25,3 @@ const emit = defineEmits<{ select: [item: DeepReadonly<HistoryItem>] }>();
     </div>
   </aside>
 </template>
-

@@ -18,4 +18,3 @@ defineProps<{ runtime?: Runtime; job?: JobResponse; error?: string }>();
     <DiagnosticSummary :job="job" :error="error" />
   </aside>
 </template>
-

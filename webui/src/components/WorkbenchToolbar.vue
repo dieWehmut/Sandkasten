@@ -25,4 +25,3 @@ const emit = defineEmits<{
     <RunControls :phase="phase" :can-run="canRun" :can-resume="canResume" @run="emit('run')" @stop="emit('stop')" @resume="emit('resume')" />
   </header>
 </template>
-

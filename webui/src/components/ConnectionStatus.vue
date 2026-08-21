@@ -15,4 +15,3 @@ const label = computed(() => ({ connecting: 'Connecting', connected: 'Connected'
     <span>{{ label }}</span>
   </span>
 </template>
-

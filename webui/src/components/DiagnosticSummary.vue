@@ -16,4 +16,3 @@ const diagnosticText = computed(() => props.job?.diagnostics && Object.keys(prop
     <pre>{{ diagnosticText }}</pre>
   </section>
 </template>
-

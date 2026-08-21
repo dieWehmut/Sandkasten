@@ -18,4 +18,3 @@ function runtimeLabel(runtime: Runtime): string {
     </select>
   </label>
 </template>
-

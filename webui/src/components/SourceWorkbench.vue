@@ -51,4 +51,3 @@ const emit = defineEmits<{
     </section>
   </main>
 </template>
-

@@ -41,4 +41,3 @@ export function languageExtensionForRuntime(runtime: string | undefined | null):
       return null;
   }
 }
-

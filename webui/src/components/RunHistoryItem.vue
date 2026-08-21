@@ -37,4 +37,3 @@ function durationLabel(duration: number | undefined): string {
     </span>
   </button>
 </template>
-
