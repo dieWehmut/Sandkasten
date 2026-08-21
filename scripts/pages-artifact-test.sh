@@ -14,7 +14,7 @@ check_artifact() {
 
   local expected=(app.js config.js index.html styles.css)
   local actual=()
-  mapfile -t actual < <(find "$artifact_dir" -mindepth 1 -type f -printf '%P\n' | LC_ALL=C sort)
+  mapfile -t actual < <(find "$artifact_dir" -mindepth 1 -printf '%P\n' | LC_ALL=C sort)
   [[ "${#actual[@]}" -eq "${#expected[@]}" ]] || {
     printf 'expected files: %s\nactual files: %s\n' "${expected[*]}" "${actual[*]}" >&2
     fail 'artifact must contain exactly the four WebUI runtime files'
@@ -146,6 +146,12 @@ run_tests() {
     fail 'artifact checker accepted a symbolic link'
   fi
   rm -f "$tmp_dir/linked-app.js"
+
+  mkfifo "$tmp_dir/runtime-pipe"
+  if check_artifact "$tmp_dir" >/dev/null 2>&1; then
+    fail 'artifact checker accepted a non-regular filesystem entry'
+  fi
+  rm -f "$tmp_dir/runtime-pipe"
 
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: 42 };\n' > "$tmp_dir/config.js"
   if check_artifact "$tmp_dir" >/dev/null 2>&1; then
