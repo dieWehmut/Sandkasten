@@ -84,10 +84,3 @@ async function copyVisible() {
     </template>
   </div>
 </template>
-
-<style scoped>
-.output-viewer { min-width: 0; }
-.output-channel pre { margin: .5rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.badges { display: flex; gap: .35rem; }
-.badge { border: 1px solid currentColor; border-radius: 3px; padding: 0 .3rem; font-size: .75rem; }
-</style>

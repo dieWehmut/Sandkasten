@@ -85,10 +85,3 @@ async function move(event: KeyboardEvent, index: number) {
     </div>
   </section>
 </template>
-
-<style scoped>
-[role="tablist"] { display: flex; gap: .25rem; }
-[role="tab"][aria-selected="true"] { font-weight: 700; }
-.tab-indicator { display: inline-block; width: .4rem; height: .4rem; border-radius: 999px; background: currentColor; font-size: 0; vertical-align: middle; }
-[role="tabpanel"] { min-width: 0; padding-top: .5rem; }
-</style>

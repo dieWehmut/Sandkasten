@@ -8,7 +8,7 @@ const emit = defineEmits<{ select: [item: DeepReadonly<HistoryItem>] }>();
 </script>
 
 <template>
-  <aside class="run-history" aria-labelledby="history-title">
+  <aside id="history-panel" class="run-history" aria-labelledby="history-title">
     <header class="pane-heading">
       <p class="eyebrow">Session</p>
       <h2 id="history-title">Recent runs</h2>

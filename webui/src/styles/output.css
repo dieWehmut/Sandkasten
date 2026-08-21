@@ -1,0 +1,116 @@
+.output-tabs {
+  min-width: 0;
+}
+
+.output-tabs [role="tablist"] {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.output-tabs [role="tab"] {
+  position: relative;
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--text-muted);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.output-tabs [role="tab"]:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.output-tabs [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.tab-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 999px;
+  color: transparent;
+  background: var(--accent);
+  font-size: 0;
+}
+
+.output-tabs [role="tabpanel"] {
+  min-width: 0;
+  padding-top: 10px;
+}
+
+.output-viewer {
+  display: flow-root;
+  min-width: 0;
+}
+
+.output-viewer > button {
+  margin: 0 0 8px auto;
+}
+
+.output-viewer > [role="alert"],
+.output-channel > [role="status"] {
+  margin: 0 0 8px;
+  color: var(--danger);
+}
+
+.output-channel + .output-channel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.output-channel h3 {
+  margin: 0 0 7px;
+  font-size: 12px;
+}
+
+.output-channel pre {
+  max-width: 100%;
+  margin: 8px 0 0;
+  overflow: auto;
+  color: var(--text);
+  font: 12.5px/1.62 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.badge {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  font: 600 10px/1.3 var(--font-mono);
+  letter-spacing: 0;
+}
+
+.badge:nth-child(2) {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warning-soft);
+}

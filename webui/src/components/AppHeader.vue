@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Terminal } from '@lucide/vue';
 import type { ConnectionState } from '../composables/useRunner';
+import type { Theme } from '../composables/useTheme';
 import ConnectionStatus from './ConnectionStatus.vue';
 import HeaderActions from './HeaderActions.vue';
 
-defineProps<{ connectionState: ConnectionState; historyOpen?: boolean; inspectorOpen?: boolean }>();
+defineProps<{ connectionState: ConnectionState; historyOpen?: boolean; inspectorOpen?: boolean; theme?: Theme }>();
 const emit = defineEmits<{ toggleHistory: []; toggleInspector: []; toggleTheme: []; openGithub: [] }>();
 </script>
 
@@ -18,6 +19,7 @@ const emit = defineEmits<{ toggleHistory: []; toggleInspector: []; toggleTheme: 
     <HeaderActions
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
+      :theme="theme"
       @toggle-history="emit('toggleHistory')"
       @toggle-inspector="emit('toggleInspector')"
       @toggle-theme="emit('toggleTheme')"
