@@ -26,11 +26,14 @@ describe('workbench style boundaries', () => {
   });
 
   test('defines stable desktop, tablet, and mobile tracks without gradients', () => {
+    const combined = ['base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
+      .map(style)
+      .join('\n');
     const workbench = style('workbench.css');
     expect(workbench).toContain('grid-template-columns: 244px minmax(0, 1fr) 304px');
     expect(workbench).toContain('@media (max-width: 1199px)');
     expect(workbench).toContain('@media (max-width: 767px)');
-    expect(workbench).not.toMatch(/gradient\(/i);
+    expect(combined).not.toMatch(/gradient\(/i);
   });
 
   test('keeps letter spacing neutral across the operational interface', () => {
