@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { inflateSync } from 'node:zlib';
 
@@ -33,6 +34,14 @@ export function findBrowserExecutable({ env = process.env, platform = process.pl
 
   const candidates = platform === 'win32' ? WINDOWS_BROWSER_PATHS : UNIX_BROWSER_PATHS;
   return candidates.find((candidate) => exists(candidate));
+}
+
+export function loadPlaywrightChromium({ webuiDirectory, createRequireImpl = createRequire } = {}) {
+  if (!webuiDirectory) throw new Error('webuiDirectory is required to load Playwright Core');
+  const requireFromWebui = createRequireImpl(path.join(webuiDirectory, 'package.json'));
+  const playwright = requireFromWebui('playwright-core');
+  if (!playwright?.chromium?.launch) throw new Error('playwright-core did not provide Chromium');
+  return playwright.chromium;
 }
 
 function readUInt32(buffer, offset) {

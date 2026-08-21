@@ -9,6 +9,7 @@ import {
   createMockAppServer,
   findBrowserExecutable,
   inspectScreenshot,
+  loadPlaywrightChromium,
   measurePixelDifference,
 } from '../webui-browser-smoke-lib.mjs';
 
@@ -70,6 +71,24 @@ test('finds an explicit browser before platform defaults', () => {
 
   assert.equal(executable, 'D:/portable/chrome.exe');
   assert.deepEqual(seen, ['D:/portable/chrome.exe']);
+});
+
+test('loads Playwright Core relative to the WebUI package', () => {
+  const chromium = { launch() {} };
+  let anchor;
+  const loaded = loadPlaywrightChromium({
+    webuiDirectory: 'D:/Sandkasten/webui',
+    createRequireImpl(packagePath) {
+      anchor = packagePath;
+      return (specifier) => {
+        assert.equal(specifier, 'playwright-core');
+        return { chromium };
+      };
+    },
+  });
+
+  assert.equal(anchor, path.join('D:/Sandkasten/webui', 'package.json'));
+  assert.equal(loaded, chromium);
 });
 
 test('reports screenshot dimensions, color diversity, and real pixel differences', () => {
