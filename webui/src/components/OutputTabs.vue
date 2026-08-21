@@ -3,14 +3,16 @@ import { nextTick, ref, watch } from 'vue';
 import { decodeOutput, type JobResponse } from '../services/sandkastenApi';
 import type { OutputTab } from '../composables/useRunner';
 import OutputViewer from './OutputViewer.vue';
+import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{ result?: JobResponse; error?: string; modelValue?: OutputTab }>(), { modelValue: 'output' });
 const emit = defineEmits<{ 'update:modelValue': [value: OutputTab] }>();
-const tabs: Array<{ id: OutputTab; label: string }> = [
-  { id: 'output', label: 'Output' },
-  { id: 'errors', label: 'Errors' },
-  { id: 'compile', label: 'Compile' },
-  { id: 'diagnostics', label: 'Diagnostics' },
+const t = useTranslation();
+const tabs: Array<{ id: OutputTab; labelKey: Parameters<typeof t>[0] }> = [
+  { id: 'output', labelKey: 'output.output' },
+  { id: 'errors', labelKey: 'output.errors' },
+  { id: 'compile', labelKey: 'output.compile' },
+  { id: 'diagnostics', labelKey: 'output.diagnostics' },
 ];
 const selected = ref<OutputTab>(props.modelValue);
 const tabElements = ref<HTMLButtonElement[]>([]);
@@ -57,7 +59,7 @@ async function move(event: KeyboardEvent, index: number) {
 
 <template>
   <section class="output-tabs">
-    <div role="tablist" aria-label="Job output">
+    <div role="tablist" :aria-label="t('workbench.jobOutput')">
       <button
         v-for="(tab, index) in tabs"
         :id="`${instanceId}-${tab.id}-tab`"
@@ -71,8 +73,8 @@ async function move(event: KeyboardEvent, index: number) {
         @click="choose(tab.id)"
         @keydown="move($event, index)"
       >
-        {{ tab.label }}
-        <span v-if="hasChannelContent(tab.id)" class="tab-indicator" aria-label="Contains content">*</span>
+        {{ t(tab.labelKey) }}
+        <span v-if="hasChannelContent(tab.id)" class="tab-indicator" :aria-label="t('output.containsContent')">*</span>
       </button>
     </div>
     <div

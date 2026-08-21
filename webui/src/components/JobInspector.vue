@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { JobResponse } from '../services/sandkastenApi';
 import { statusLabel } from '../state/status';
+import { useTranslation } from '../i18n/useTranslation';
 
 defineProps<{ job?: JobResponse }>();
+const t = useTranslation();
 
 function durationLabel(value: number | undefined): string {
   if (value === undefined) return '-';
@@ -12,27 +14,27 @@ function durationLabel(value: number | undefined): string {
 
 <template>
   <section class="inspector-section" aria-labelledby="job-inspector-title">
-    <h3 id="job-inspector-title">Job</h3>
-    <p v-if="!job" class="empty-state">Run source to inspect a job.</p>
+    <h3 id="job-inspector-title">{{ t('inspector.job') }}</h3>
+    <p v-if="!job" class="empty-state">{{ t('inspector.jobEmpty') }}</p>
     <template v-else>
       <dl class="metadata-list">
-        <div><dt>Job ID</dt><dd>{{ job.jobId }}</dd></div>
-        <div><dt>Status</dt><dd>{{ statusLabel(job.status) }}</dd></div>
-        <div v-if="job.language"><dt>Language</dt><dd>{{ job.language }}</dd></div>
-        <div v-if="job.runtime"><dt>Runtime version</dt><dd>{{ job.runtime }}</dd></div>
-        <div><dt>Duration</dt><dd>{{ durationLabel(job.durationMs) }}</dd></div>
-        <div><dt>Exit code</dt><dd>{{ job.exitCode ?? 'Not reported' }}</dd></div>
-        <div><dt>Signal</dt><dd>{{ job.signal ?? 'Not reported' }}</dd></div>
+        <div><dt>{{ t('inspector.jobId') }}</dt><dd>{{ job.jobId }}</dd></div>
+        <div><dt>{{ t('inspector.status') }}</dt><dd>{{ statusLabel(job.status, t) }}</dd></div>
+        <div v-if="job.language"><dt>{{ t('inspector.language') }}</dt><dd>{{ job.language }}</dd></div>
+        <div v-if="job.runtime"><dt>{{ t('inspector.runtimeVersion') }}</dt><dd>{{ job.runtime }}</dd></div>
+        <div><dt>{{ t('inspector.duration') }}</dt><dd>{{ durationLabel(job.durationMs) }}</dd></div>
+        <div><dt>{{ t('inspector.exitCode') }}</dt><dd>{{ job.exitCode ?? t('inspector.notReported') }}</dd></div>
+        <div><dt>{{ t('inspector.signal') }}</dt><dd>{{ job.signal ?? t('inspector.notReported') }}</dd></div>
       </dl>
-      <h4>Encoding</h4>
+      <h4>{{ t('inspector.encoding') }}</h4>
       <dl class="metadata-list">
         <div><dt>stdout</dt><dd>{{ job.stdoutEncoding ?? 'utf8' }}</dd></div>
         <div><dt>stderr</dt><dd>{{ job.stderrEncoding ?? 'utf8' }}</dd></div>
-        <div><dt>Compile stdout</dt><dd>{{ job.compileStdoutEncoding ?? 'utf8' }}</dd></div>
-        <div><dt>Compile stderr</dt><dd>{{ job.compileStderrEncoding ?? 'utf8' }}</dd></div>
+        <div><dt>{{ t('inspector.compileStdout') }}</dt><dd>{{ job.compileStdoutEncoding ?? 'utf8' }}</dd></div>
+        <div><dt>{{ t('inspector.compileStderr') }}</dt><dd>{{ job.compileStderrEncoding ?? 'utf8' }}</dd></div>
       </dl>
-      <h4>Truncation</h4>
-      <p>{{ job.truncated?.stdout || job.truncated?.stderr ? [job.truncated?.stdout ? 'stdout' : '', job.truncated?.stderr ? 'stderr' : ''].filter(Boolean).join(', ') + ' Truncated' : 'No channels truncated' }}</p>
+      <h4>{{ t('inspector.truncation') }}</h4>
+      <p>{{ job.truncated?.stdout || job.truncated?.stderr ? [job.truncated?.stdout ? 'stdout' : '', job.truncated?.stderr ? 'stderr' : ''].filter(Boolean).join(', ') + ' ' + t('inspector.truncated') : t('inspector.noChannelsTruncated') }}</p>
     </template>
   </section>
 </template>

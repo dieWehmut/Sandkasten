@@ -3,9 +3,11 @@ import { Clock3 } from '@lucide/vue';
 import type { DeepReadonly } from 'vue';
 import type { RunHistoryItem } from '../composables/useRunHistory';
 import { statusLabel } from '../state/status';
+import { useTranslation } from '../i18n/useTranslation';
 
 defineProps<{ item: DeepReadonly<RunHistoryItem>; selected?: boolean }>();
 const emit = defineEmits<{ select: [] }>();
+const t = useTranslation();
 
 function completedTime(value: string): string {
   const date = new Date(value);
@@ -13,7 +15,7 @@ function completedTime(value: string): string {
 }
 
 function durationLabel(duration: number | undefined): string {
-  if (duration === undefined) return 'No duration';
+  if (duration === undefined) return t('history.noDuration');
   return duration < 1000 ? `${duration} ms` : `${(duration / 1000).toFixed(2)} s`;
 }
 </script>
@@ -28,7 +30,7 @@ function durationLabel(duration: number | undefined): string {
   >
     <span class="history-item__primary">
       <strong>{{ item.language }}</strong>
-      <span>{{ statusLabel(item.status) }}</span>
+      <span>{{ statusLabel(item.status, t) }}</span>
     </span>
     <span class="history-item__meta">
       <Clock3 :size="13" aria-hidden="true" />
