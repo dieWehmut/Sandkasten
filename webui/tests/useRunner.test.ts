@@ -134,6 +134,31 @@ describe('useRunner', () => {
     expect(runner.phase.value).toBe('completed');
   });
 
+  test('invalidates resumable state when a UI render reads it before the job ID arrives', async () => {
+    const firstPoll = deferred<JobResponse>();
+    const pollJob = vi.fn((_jobId, options) => {
+      options.signal.addEventListener('abort', () => firstPoll.reject(new DOMException('stopped', 'AbortError')), { once: true });
+      return firstPoll.promise;
+    });
+    const runner = useRunner({
+      loadRuntimes: vi.fn().mockResolvedValue(runtimes),
+      submitJob: vi.fn().mockResolvedValue({ jobId: 'job-ui-cache', status: 'JOB_STATUS_QUEUED' }),
+      pollJob,
+    });
+    await runner.load();
+    runner.setSource('work()');
+    expect(runner.canResumePolling.value).toBe(false);
+
+    const submitting = runner.submit();
+    await nextTick();
+    expect(runner.canResumePolling.value).toBe(false);
+
+    runner.stopPolling();
+    await submitting;
+    expect(runner.phase.value).toBe('stopped');
+    expect(runner.canResumePolling.value).toBe(true);
+  });
+
   test('keeps the last terminal output visible when a later run errors', async () => {
     const submitJob = vi.fn()
       .mockResolvedValueOnce({ jobId: 'old', status: 'JOB_STATUS_QUEUED' })
