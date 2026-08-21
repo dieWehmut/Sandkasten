@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { X } from '@lucide/vue';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { lockBodyScroll, unlockBodyScroll } from './edgeSheetState';
 
 const props = withDefaults(defineProps<{ open: boolean; side?: 'left' | 'right'; title: string }>(), { side: 'right' });
 const emit = defineEmits<{ close: [] }>();
 const panel = ref<HTMLElement>();
 const titleId = `edge-sheet-title-${Math.random().toString(36).slice(2)}`;
 let returnFocus: HTMLElement | null = null;
-let previousBodyOverflow = '';
 
 function focusableElements(): HTMLElement[] {
   if (!panel.value) return [];
@@ -17,14 +17,11 @@ function focusableElements(): HTMLElement[] {
 }
 
 function lockBody(): void {
-  if (typeof document === 'undefined') return;
-  previousBodyOverflow = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function unlockBody(): void {
-  if (typeof document === 'undefined') return;
-  document.body.style.overflow = previousBodyOverflow;
+  unlockBodyScroll();
 }
 
 function close(): void {
@@ -41,8 +38,11 @@ function activate(): void {
 
 function deactivate(): void {
   unlockBody();
-  returnFocus?.focus();
+  const focusTarget = returnFocus;
   returnFocus = null;
+  const anotherSheetOpen = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="edge-sheet-panel"]'))
+    .some((element) => element !== panel.value);
+  if (!anotherSheetOpen && focusTarget?.isConnected) focusTarget.focus();
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -81,8 +81,8 @@ watch(() => props.open, (open, wasOpen) => {
 }, { flush: 'post' });
 
 onBeforeUnmount(() => {
-  if (props.open) unlockBody();
-  returnFocus?.focus();
+  if (props.open) deactivate();
+  else returnFocus = null;
 });
 </script>
 

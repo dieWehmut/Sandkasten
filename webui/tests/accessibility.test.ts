@@ -100,4 +100,25 @@ describe('EdgeSheet', () => {
 
     wrapper.unmount();
   });
+
+  test('keeps the body locked and focus inside when switching inspector back to history', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Show inspector"]').trigger('click');
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Inspector');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await wrapper.get('button[aria-label="Show history"]').trigger('click');
+    await nextTick();
+    expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
+    const historySheet = wrapper.get('[role="dialog"]');
+    expect(historySheet.text()).toContain('Recent runs');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(historySheet.element.contains(document.activeElement)).toBe(true);
+
+    wrapper.unmount();
+    expect(document.body.style.overflow).toBe('');
+  });
 });
