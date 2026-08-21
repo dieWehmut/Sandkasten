@@ -128,6 +128,14 @@ describe('output inspection', () => {
     expect(wrapper.find('[role="tabpanel"]').text()).toContain('No output');
   });
 
+  test('keeps an encoding label visible for an empty output channel', () => {
+    const wrapper = mount(OutputTabs, {
+      props: { result: { jobId: 'job-empty', status: 'JOB_STATUS_SUCCEEDED', stdoutEncoding: 'base64' } },
+    });
+    expect(wrapper.get('.output-channel .badge').text()).toBe('base64');
+    expect(wrapper.get('.output-channel .empty-state').text()).toBe('No output');
+  });
+
   test('states that stopping monitoring does not cancel the backend job and exposes errors', () => {
     const wrapper = mount(JobTimeline, {
       props: { phase: 'stopped', pollingStopped: true, error: 'connection failed' },

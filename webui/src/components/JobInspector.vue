@@ -21,8 +21,8 @@ function durationLabel(value: number | undefined): string {
         <div v-if="job.language"><dt>Language</dt><dd>{{ job.language }}</dd></div>
         <div v-if="job.runtime"><dt>Runtime image</dt><dd>{{ job.runtime }}</dd></div>
         <div><dt>Duration</dt><dd>{{ durationLabel(job.durationMs) }}</dd></div>
-        <div v-if="job.exitCode !== undefined"><dt>Exit code</dt><dd>{{ job.exitCode }}</dd></div>
-        <div v-if="job.signal !== undefined"><dt>Signal</dt><dd>{{ job.signal }}</dd></div>
+        <div><dt>Exit code</dt><dd>{{ job.exitCode ?? 'Not reported' }}</dd></div>
+        <div><dt>Signal</dt><dd>{{ job.signal ?? 'Not reported' }}</dd></div>
       </dl>
       <h4>Encoding</h4>
       <dl class="metadata-list">

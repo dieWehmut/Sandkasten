@@ -32,7 +32,7 @@ const runtimes: Runtime[] = [
     default_entrypoint: 'main.py',
     requires_vendor: false,
     aliases: ['py', 'python3'],
-    compile_phase: { enabled: true, command: ['python', '-m', 'compileall'] },
+    compile_phase: { enabled: false, command: ['python', '-m', 'compileall'] },
     run_phase: { enabled: true, command: ['python', 'main.py'] },
     default_limits: { run_timeout_ms: 5000, memory_limit_bytes: 268435456, output_bytes: 1048576 },
     max_limits: { run_timeout_ms: 30000, memory_limit_bytes: 1073741824, output_bytes: 4194304 },
@@ -99,8 +99,17 @@ describe('workbench controls', () => {
     for (const expected of [
       'python', '3.13', 'main.py', 'python:3.13', 'job-inspect', 'Succeeded', '1.23 s',
       'Exit code', '0', 'Signal', 'stdout', 'utf8', 'base64', 'Truncated', '5 s', '256 MiB', 'memoryPeakBytes',
-      'python -m compileall', 'python main.py',
+      'Compile phase enabled', 'No', 'Run phase enabled', 'Yes', 'python -m compileall', 'python main.py',
     ]) expect(text).toContain(expected);
+  });
+
+  test('shows explicit placeholders when zero-valued exit metadata is omitted', () => {
+    const wrapper = mount(InspectorPanel, {
+      props: { runtime: runtimes[0], job: { jobId: 'job-omitted-zeroes', status: 'JOB_STATUS_SUCCEEDED' } },
+    });
+    expect(wrapper.text()).toContain('Exit code');
+    expect(wrapper.text()).toContain('Signal');
+    expect(wrapper.findAll('dd').filter((node) => node.text() === 'Not reported')).toHaveLength(2);
   });
 
   test('wires runtime, editing, running, text-only output, and history restoration through App', async () => {

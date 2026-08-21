@@ -56,16 +56,17 @@ async function copyVisible() {
       <Check v-if="copied" :size="16" aria-hidden="true" />
       <Copy v-else :size="16" aria-hidden="true" />
     </button>
-    <p v-if="!hasVisibleChannel" class="empty-state">{{ emptyLabel }}</p>
+    <p v-if="!hasVisibleChannel && !channels.length" class="empty-state">{{ emptyLabel }}</p>
     <template v-for="channel in channels" :key="channel.label">
-      <section v-if="channel.output.text || channel.output.warning || channel.truncated" class="output-channel">
+      <section v-if="channel.output.text || channel.output.warning || channel.truncated || channel.encoding" class="output-channel">
         <h3 v-if="channels.length > 1">{{ channel.label }}</h3>
         <div class="badges">
           <span v-if="channel.encoding" class="badge">{{ channel.encoding }}</span>
           <span v-if="channel.truncated" class="badge">Truncated</span>
         </div>
         <p v-if="channel.output.warning" role="status">{{ channel.output.warning }}</p>
-        <pre>{{ channel.output.text }}</pre>
+        <pre v-if="channel.output.text">{{ channel.output.text }}</pre>
+        <p v-else-if="!channel.output.warning && !channel.truncated" class="empty-state">{{ emptyLabel }}</p>
       </section>
     </template>
   </div>
