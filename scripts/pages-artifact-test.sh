@@ -43,6 +43,10 @@ check_artifact() {
 
   local config_source
   config_source="$(<"$artifact_dir/config.js")"
+  [[ "$config_source" != *$'\n'* && "$config_source" != *$'\r'* ]] || {
+    fail 'config.js must contain exactly one direct assignment'
+    return 1
+  }
   printf '%s\n' "$config_source" | grep -Eq \
     '^globalThis\.SANDKASTEN_CONFIG[[:space:]]*=[[:space:]]*\{[[:space:]]*apiBaseUrl:[[:space:]]*"([^"\\]|\\.)*"[[:space:]]*\};[[:space:]]*$' || \
     { fail 'config.js must define only the JSON-escaped apiBaseUrl field'; return 1; }
@@ -114,6 +118,14 @@ run_tests() {
 
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "https://example.test/a\\\"b" };\n' > "$tmp_dir/config.js"
   check_artifact "$tmp_dir"
+  printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
+
+  printf '%s\n' \
+    'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };' \
+    'alert("unexpected");' > "$tmp_dir/config.js"
+  if check_artifact "$tmp_dir" >/dev/null 2>&1; then
+    fail 'artifact checker accepted executable content after config assignment'
+  fi
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
 
   printf '%s\n' \
