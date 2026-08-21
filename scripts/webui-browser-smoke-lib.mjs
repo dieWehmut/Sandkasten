@@ -198,8 +198,9 @@ function staticResponse(response, filePath) {
   }
 }
 
-export async function createMockAppServer({ distDir, jobSequence = ['JOB_STATUS_RUNNING', 'JOB_STATUS_SUCCEEDED'] } = {}) {
+export async function createMockAppServer({ distDir, jobSequence = ['JOB_STATUS_RUNNING', 'JOB_STATUS_SUCCEEDED'], jobPollDelayMs = 0 } = {}) {
   if (!distDir) throw new Error('distDir is required');
+  if (!Number.isFinite(jobPollDelayMs) || jobPollDelayMs < 0) throw new Error('jobPollDelayMs must be a non-negative number');
   const jobs = new Map();
   let jobNumber = 0;
   const server = createServer(async (request, response) => {
@@ -249,6 +250,7 @@ export async function createMockAppServer({ distDir, jobSequence = ['JOB_STATUS_
     if (request.method === 'GET' && jobMatch) {
       const job = jobs.get(decodeURIComponent(jobMatch[1]));
       if (!job) { json(response, 404, { message: 'Job not found' }); return; }
+      if (jobPollDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, jobPollDelayMs));
       const nextStatus = jobSequence[Math.min(job.pollCount, jobSequence.length - 1)] ?? 'JOB_STATUS_SUCCEEDED';
       job.pollCount += 1;
       job.status = nextStatus;

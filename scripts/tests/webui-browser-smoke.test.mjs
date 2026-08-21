@@ -143,3 +143,27 @@ test('serves the built app and advances mock jobs to a text-only success result'
   assert.equal(succeeded.stdout, 'browser smoke output\n<em>rendered as text</em>');
   assert.equal(succeeded.stderr, 'browser smoke stderr');
 });
+
+test('can delay mock job polling for deterministic stop and resume coverage', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'sandkasten-browser-smoke-delay-'));
+  const distDir = path.join(root, 'dist');
+  await mkdir(distDir);
+  for (const name of ['index.html', 'app.js', 'styles.css', 'config.js']) {
+    await writeFile(path.join(distDir, name), '');
+  }
+
+  const app = await createMockAppServer({ distDir, jobPollDelayMs: 25 });
+  t.after(() => app.close());
+  const submitted = await fetch(`${app.url}v1/python/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'print("delay")' }),
+  }).then((response) => response.json());
+  const startedAt = performance.now();
+  const response = await fetch(`${app.url}v1/jobs/${submitted.jobId}`);
+  const elapsedMs = performance.now() - startedAt;
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, 'JOB_STATUS_RUNNING');
+  assert.ok(elapsedMs >= 15, `mock polling delay was ${elapsedMs.toFixed(1)}ms`);
+});
