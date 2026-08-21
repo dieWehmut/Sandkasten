@@ -1,42 +1,102 @@
 # Sandkasten WebUI
 
-This directory is a dependency-free, same-origin client for the Sandkasten HTTP API. Serve it from the same host as the API (the installer configures Nginx to proxy `/v1/` and `/healthz`), then open `index.html` through that site.
+The WebUI is a Vue 3 and TypeScript workbench built with Vite. It loads
+`GET /v1/runtimes`, submits source with `POST /v1/{language}/run`, and polls
+`GET /v1/jobs/{jobId}`. API-controlled source, errors, and output are rendered
+as text; components do not inject them as HTML.
 
-The client loads `GET /v1/runtimes`, submits JSON source with `POST /v1/{language}/run`, and polls `GET /v1/jobs/{jobId}` until a terminal status. Responses must be JSON objects and failed HTTP responses are shown as diagnostics. Job output is untrusted and is always assigned with `textContent`.
+## Develop and test
 
-For a local preview, use any static server from the repository root, for example:
+Use the Node.js release pinned by the Pages workflow (Node 22.18.0):
 
 ```sh
-python3 -m http.server 8080 --directory webui
+cd webui
+npm ci
+npm run dev -- --host 127.0.0.1
 ```
 
-The preview needs an API proxy or same-origin API at `/v1/` to execute jobs.
+The Vite development server expects the Sandkasten API at the same origin, or
+behind a local reverse proxy that exposes `/v1/` and `/healthz`. Run the unit
+and component suite with:
+
+```sh
+cd webui
+npm test
+```
+
+## Production distribution
+
+Create the production payload with:
+
+```sh
+cd webui
+npm run build
+```
+
+Vite writes exactly four regular files to `webui/dist`:
+
+- `index.html`
+- `app.js`
+- `styles.css`
+- `config.js`
+
+There are no nested assets, source maps, tests, lockfiles, or symbolic links.
+The HTML uses relative `./` references and loads `config.js` before `app.js`, so
+the same payload works at the GitHub Pages project path `/Sandkasten/` and at an
+installer-managed site root. The four files are committed because the server
+installer copies this prebuilt payload and never installs Node.js packages.
+
+The source runtime config deliberately keeps its nullish, same-origin default:
+
+```js
+globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: '' };
+```
+
+Validate a clean deterministic build and the committed payload with:
+
+```sh
+cd webui
+node --test tests/build-contract.test.mjs
+cd ..
+bash scripts/webui-build-test.sh --test
+```
+
+To preview the generated files without the Vite development server:
+
+```sh
+python3 -m http.server 8080 --directory webui/dist
+```
+
+Execution still needs a same-origin API or reverse proxy unless the staged
+`config.js` provides a separate public API base URL.
 
 ## GitHub Pages
 
-The public site is <https://diewehmut.github.io/Sandkasten/>. The `Deploy WebUI
-to GitHub Pages` workflow publishes only `index.html`, `app.js`, `styles.css`,
-and a generated `config.js` whenever `main` is pushed. It can also be started
-manually with `workflow_dispatch`; enable **Settings -> Pages -> GitHub
-Actions** as the repository Pages source first.
+The public site is <https://diewehmut.github.io/Sandkasten/>. On every push to
+`main`, `.github/workflows/pages.yml` installs from `package-lock.json`, runs
+the unit tests, builds and validates the four-file distribution, stages it,
+and deploys it with the official GitHub Pages actions. The workflow can also be
+started manually with `workflow_dispatch`; select **GitHub Actions** as the
+Pages source under **Settings > Pages**.
 
-To connect the public Pages site to a separately deployed API, create the
-repository variable `SANDKASTEN_API_BASE_URL` under **Settings > Secrets and
-variables > Actions > Variables**. Set it to a public HTTPS API origin, or to
-an origin plus path prefix, for example `https://runner.example.com`. The value
-is embedded in the public artifact and must not contain tokens, passwords, or
-other secrets. An unset or empty variable generates an empty `apiBaseUrl`, so
-requests remain same-origin.
+The staged Pages artifact replaces only its copy of `config.js` with a
+JSON-escaped direct assignment such as:
 
-The API must use HTTPS and allow `https://diewehmut.github.io` through CORS when
-the Pages and API origins differ. Set
-`SANDKASTEN_API_CORS_ORIGINS=https://diewehmut.github.io` (plus any local origins
-you need). The CORS value is the origin only; do not include the `/sandkasten/`
-repository path.
+```js
+globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "https://runner.example.com" };
+```
 
-Repository maintainers must select **GitHub Actions** as the Pages source under
-**Settings → Pages**. The staged artifact can be checked locally on a
-Linux/macOS shell (or WSL) with:
+Set the repository variable `SANDKASTEN_API_BASE_URL` under **Settings >
+Secrets and variables > Actions > Variables** to a public HTTPS API origin, or
+to an origin plus path prefix. An unset value remains empty and therefore uses
+same-origin requests. This value is public: never put tokens, passwords, or
+other secrets in it.
+
+When Pages and the API use different origins, the API must allow
+`https://diewehmut.github.io` through CORS. The CORS value is the origin only;
+do not append `/Sandkasten/`.
+
+Validate the workflow and a representative staged artifact with:
 
 ```sh
 bash scripts/pages-artifact-test.sh --test

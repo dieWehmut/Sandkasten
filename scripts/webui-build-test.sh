@@ -65,6 +65,22 @@ check_repository_contract() {
       return 1
     }
   done
+
+  local readme="$repository_root/webui/README.md"
+  for required_text in \
+    'npm ci' \
+    'npm run dev' \
+    'npm test' \
+    'npm run build' \
+    'webui/dist' \
+    'globalThis.SANDKASTEN_CONFIG ??=' \
+    'globalThis.SANDKASTEN_CONFIG =' \
+    'SANDKASTEN_API_BASE_URL'; do
+    grep -Fq "$required_text" "$readme" || {
+      fail "webui/README.md must document: $required_text"
+      return 1
+    }
+  done
 }
 
 repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
