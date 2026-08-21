@@ -32,4 +32,12 @@ describe('workbench style boundaries', () => {
     expect(workbench).toContain('@media (max-width: 767px)');
     expect(workbench).not.toMatch(/gradient\(/i);
   });
+
+  test('keeps letter spacing neutral across the operational interface', () => {
+    const combined = ['tokens.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
+      .map(style)
+      .join('\n');
+    const values = Array.from(combined.matchAll(/letter-spacing:\s*([^;]+);/g), (match) => match[1].trim());
+    expect(new Set(values)).toEqual(new Set(['0']));
+  });
 });

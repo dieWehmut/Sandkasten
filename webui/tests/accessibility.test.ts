@@ -92,9 +92,11 @@ describe('EdgeSheet', () => {
 
     await wrapper.get('button[aria-label="Show inspector"]').trigger('click');
     expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
-    expect(wrapper.get('[role="dialog"]').text()).toContain('Inspector');
+    const inspectorSheet = wrapper.get('[role="dialog"]');
+    expect(inspectorSheet.text()).toContain('Inspector');
     expect(wrapper.find('#history-panel').exists()).toBe(false);
     wrapper.get('#inspector-panel');
+    expect(inspectorSheet.element.contains(document.activeElement)).toBe(true);
 
     wrapper.unmount();
   });
