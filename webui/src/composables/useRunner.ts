@@ -106,14 +106,17 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
       const completed = await pollJob(owner.jobId, {
         signal: controller.signal,
         onUpdate(job) {
-          if (!isCurrent(owner)) return;
+          if (!isCurrent(owner) || pollingController !== controller) return;
           currentJob.value = job;
           if (isLiveView(owner)) result.value = job;
         },
       });
+      if (pollingController !== controller) return;
       finish(owner, completed);
     } catch (cause) {
-      if (!isCurrent(owner)) return;
+      // A Stop/Resume pair can overlap briefly: an old aborted poll must not
+      // write an error into the state owned by the newer controller.
+      if (!isCurrent(owner) || pollingController !== controller) return;
       if (isAbortError(cause) && pollingStopped.value) {
         phase.value = 'stopped';
         return;
@@ -172,12 +175,12 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
       if (!isCurrent(owner)) return;
       owner.jobId = submitted.jobId;
       currentJob.value = submitted;
-      result.value = submitted;
+      if (isLiveView(owner)) result.value = submitted;
       if (isTerminalStatus(submitted.status)) finish(owner, submitted);
       else await monitor(owner);
     } catch (cause) {
       if (!isCurrent(owner)) return;
-      result.value = lastTerminalResult;
+      if (isLiveView(owner)) result.value = lastTerminalResult;
       error.value = messageFrom(cause);
       phase.value = 'error';
     }

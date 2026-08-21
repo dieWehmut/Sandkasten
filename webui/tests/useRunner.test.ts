@@ -229,6 +229,88 @@ describe('useRunner', () => {
     expect(runner.result.value?.jobId).toBe('live-job');
   });
 
+  test('keeps a history result selected while a pending submission resolves', async () => {
+    const pendingSubmit = deferred<JobResponse>();
+    const submitJob = vi.fn()
+      .mockResolvedValueOnce({ jobId: 'history-job', status: 'JOB_STATUS_SUCCEEDED', stdout: 'history' })
+      .mockImplementationOnce(() => pendingSubmit.promise);
+    const runner = useRunner({
+      loadRuntimes: vi.fn().mockResolvedValue(runtimes),
+      submitJob,
+      pollJob: vi.fn(),
+    });
+    await runner.load();
+    runner.setSource('history source');
+    await runner.submit();
+    const historyItem = runner.history.value[0];
+
+    runner.setSource('pending source');
+    const pendingRun = runner.submit();
+    runner.selectHistoryItem(historyItem);
+    pendingSubmit.resolve({ jobId: 'new-job', status: 'JOB_STATUS_SUCCEEDED', stdout: 'new output' });
+    await pendingRun;
+
+    expect(runner.result.value?.jobId).toBe('history-job');
+    expect(runner.source.value).toBe('history source');
+    expect(runner.currentJob.value?.jobId).toBe('new-job');
+  });
+
+  test('keeps a history result selected when a pending submission fails', async () => {
+    const pendingSubmit = deferred<JobResponse>();
+    const submitJob = vi.fn()
+      .mockResolvedValueOnce({ jobId: 'history-job', status: 'JOB_STATUS_SUCCEEDED', stdout: 'history' })
+      .mockImplementationOnce(() => pendingSubmit.promise);
+    const runner = useRunner({
+      loadRuntimes: vi.fn().mockResolvedValue(runtimes),
+      submitJob,
+      pollJob: vi.fn(),
+    });
+    await runner.load();
+    runner.setSource('history source');
+    await runner.submit();
+    const historyItem = runner.history.value[0];
+
+    runner.setSource('pending source');
+    const pendingRun = runner.submit();
+    runner.selectHistoryItem(historyItem);
+    pendingSubmit.reject(new Error('submit failed'));
+    await pendingRun;
+
+    expect(runner.result.value?.jobId).toBe('history-job');
+    expect(runner.source.value).toBe('history source');
+    expect(runner.requestError.value).toBe('submit failed');
+  });
+
+  test('ignores an old poll abort when polling is resumed immediately', async () => {
+    const firstPoll = deferred<JobResponse>();
+    const resumedPoll = deferred<JobResponse>();
+    const pollJob = vi.fn()
+      .mockImplementationOnce((_jobId, options) => {
+        options.signal.addEventListener('abort', () => firstPoll.reject(new DOMException('stopped', 'AbortError')), { once: true });
+        return firstPoll.promise;
+      })
+      .mockImplementationOnce(() => resumedPoll.promise);
+    const runner = useRunner({
+      loadRuntimes: vi.fn().mockResolvedValue(runtimes),
+      submitJob: vi.fn().mockResolvedValue({ jobId: 'job-resume', status: 'JOB_STATUS_QUEUED' }),
+      pollJob,
+    });
+    await runner.load();
+    runner.setSource('work()');
+    const submitting = runner.submit();
+    await nextTick();
+
+    runner.stopPolling();
+    const resuming = runner.resumePolling();
+    await nextTick();
+
+    expect(runner.phase.value).toBe('polling');
+    expect(runner.requestError.value).toBeUndefined();
+    resumedPoll.resolve(succeeded('job-resume'));
+    await Promise.all([submitting, resuming]);
+    expect(runner.phase.value).toBe('completed');
+  });
+
   test('exposes submission errors for Diagnostics while retaining the last result', async () => {
     const submitJob = vi.fn()
       .mockResolvedValueOnce(succeeded('old'))
