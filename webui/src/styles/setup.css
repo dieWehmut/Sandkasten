@@ -12,6 +12,29 @@
   max-width: 52rem;
 }
 
+.setup-welcome__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.setup-welcome__toolbar .locale-switcher {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.setup-welcome__toolbar .locale-switcher button {
+  min-height: 34px;
+  padding-inline: 10px;
+}
+
+.setup-welcome__toolbar .locale-switcher button[aria-pressed="true"] {
+  border-color: var(--accent-strong);
+  color: #fff;
+  background: var(--accent-strong);
+}
+
 .setup-welcome__intro h1 {
   margin: 4px 0 8px;
   font-size: 3rem;

@@ -10,15 +10,17 @@ const t = useTranslation();
 
 <template>
   <div class="run-controls">
-    <button v-if="props.phase === 'polling'" type="button" :aria-label="t('controls.stopPolling')" @click="emit('stop')">
+    <button v-if="props.phase === 'polling'" type="button" data-action="stop-polling" :aria-label="t('controls.stopPolling')" @click="emit('stop')">
       <CircleStop :size="17" aria-hidden="true" /> <span>{{ t('controls.stopPolling') }}</span>
     </button>
     <template v-else>
-      <button v-if="props.canResume && (props.phase === 'stopped' || props.phase === 'error')" type="button" :aria-label="t('controls.resumePolling')" @click="emit('resume')">
+      <button v-if="props.canResume && (props.phase === 'stopped' || props.phase === 'error')" type="button" data-action="resume-polling" :aria-label="t('controls.resumePolling')" @click="emit('resume')">
         <RotateCcw :size="17" aria-hidden="true" /> <span>{{ t('controls.resumePolling') }}</span>
       </button>
       <button
         type="button"
+        data-action="run-source"
+        class="run-source-action"
         :aria-label="props.canResume && (props.phase === 'stopped' || props.phase === 'error') ? t('controls.runNewSource') : t('controls.runSource')"
         :disabled="!canRun || props.phase === 'booting' || props.phase === 'submitting'"
         @click="emit('run')"

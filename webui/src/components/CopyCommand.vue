@@ -42,6 +42,7 @@ async function copyCommand(): Promise<void> {
     <button
       type="button"
       data-testid="copy-command-button"
+      data-action="copy-install-command"
       :aria-label="state === 'copied' ? copiedLabel : copyLabel"
       :title="state === 'copied' ? copiedLabel : copyLabel"
       @click="copyCommand"

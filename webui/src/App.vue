@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
+import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
+import { useLocale } from './composables/useLocale';
+import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner } from './composables/useRunner';
 import { useTheme } from './composables/useTheme';
 import { useMediaLayout } from './composables/useMediaLayout';
+import { TRANSLATOR_KEY } from './i18n/useTranslation';
 
 const runner = useRunner();
 const theme = useTheme();
 const layout = useMediaLayout();
+const locale = useLocale();
+const setupWelcome = useSetupWelcome();
 const historyOpen = ref(layout.isDesktop.value);
 const inspectorOpen = ref(layout.isDesktop.value);
+const runnerLoaded = ref(false);
+
+provide(TRANSLATOR_KEY, locale.t);
 
 const selectedRuntime = computed(() => runner.runtimes.value.find((runtime) => runtime.language === runner.selectedLanguage.value));
 const canRun = computed(() => runner.connectionState.value === 'connected'
@@ -20,6 +29,17 @@ const canRun = computed(() => runner.connectionState.value === 'connected'
 
 function openGithub(): void {
   window.open('https://github.com/dieWehmut/Sandkasten', '_blank', 'noopener,noreferrer');
+}
+
+function loadRunnerOnce(): void {
+  if (runnerLoaded.value) return;
+  runnerLoaded.value = true;
+  void runner.load();
+}
+
+function dismissSetup(): void {
+  setupWelcome.dismiss();
+  loadRunnerOnce();
 }
 
 function toggleHistory(): void {
@@ -44,7 +64,9 @@ watch(layout.mode, (mode, previousMode) => {
   }
 });
 
-onMounted(() => { void runner.load(); });
+onMounted(() => {
+  if (!setupWelcome.isGuideOpen.value) loadRunnerOnce();
+});
 onBeforeUnmount(() => {
   theme.dispose();
   layout.dispose();
@@ -54,20 +76,33 @@ onBeforeUnmount(() => {
 <template>
   <div class="workbench-app" data-testid="app-shell">
     <AppHeader
+      v-if="!setupWelcome.isGuideOpen.value"
       :connection-state="runner.connectionState.value"
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
+      :locale="locale.locale.value"
+      :t="locale.t"
       @toggle-history="toggleHistory"
       @toggle-inspector="toggleInspector"
       @toggle-theme="theme.toggleTheme"
       @open-github="openGithub"
+      @open-setup="setupWelcome.reopen"
+      @change-locale="locale.setLocale"
     />
-    <section v-if="runner.connectionState.value === 'unavailable'" class="connection-error" role="alert">
+    <SetupWelcome
+      v-if="setupWelcome.isGuideOpen.value"
+      :t="locale.t"
+      :locale="locale.locale.value"
+      @change-locale="locale.setLocale"
+      @dismiss="dismissSetup"
+    />
+    <section v-else-if="runner.connectionState.value === 'unavailable'" class="connection-error" role="alert">
       <span>{{ runner.error.value }}</span>
-      <button type="button" @click="runner.load">Retry runtime connection</button>
+      <button type="button" @click="runner.load">{{ locale.t('connection.retry') }}</button>
     </section>
     <WorkbenchShell
+      v-if="!setupWelcome.isGuideOpen.value"
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
       :layout-mode="layout.mode.value"

@@ -128,6 +128,14 @@ describe('SetupWelcome', () => {
     expect(wrapper.emitted('dismiss')).toHaveLength(1);
   });
 
+  test('offers the locale switcher on the first-visit page', async () => {
+    const wrapper = mount(SetupWelcome, { props: { t: createTranslator('en'), locale: 'en' } });
+
+    await wrapper.get('[data-testid="locale-switcher"] [data-locale="zh-CN"]').trigger('click');
+
+    expect(wrapper.emitted('changeLocale')).toEqual([['zh-CN']]);
+  });
+
   test('ships focused responsive styles without fixed or dialog positioning', () => {
     const guideSource = readFileSync(resolve(process.cwd(), 'src/components/SetupGuide.vue'), 'utf8');
     const setupStyles = readFileSync(resolve(process.cwd(), 'src/styles/setup.css'), 'utf8');

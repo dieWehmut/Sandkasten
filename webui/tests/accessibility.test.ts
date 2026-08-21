@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import EdgeSheet from '../src/components/EdgeSheet.vue';
+import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
 
 const api = vi.hoisted(() => ({
   loadRuntimes: vi.fn(),
@@ -31,6 +32,7 @@ function mediaQuery(matches: boolean): MediaQueryList {
 }
 
 beforeEach(() => {
+  window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
   api.loadRuntimes.mockReset().mockResolvedValue([]);
   api.submitJob.mockReset();
   api.pollJob.mockReset();
@@ -38,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
   document.body.innerHTML = '';
 });
 

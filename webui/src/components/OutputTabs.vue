@@ -66,6 +66,7 @@ async function move(event: KeyboardEvent, index: number) {
         :key="tab.id"
         :ref="(element) => { if (element) tabElements[index] = element as HTMLButtonElement; }"
         type="button"
+        :data-action="`select-output-${tab.id}`"
         role="tab"
         :aria-selected="selected === tab.id"
         :aria-controls="`${instanceId}-panel`"

@@ -75,6 +75,16 @@
   gap: 6px;
 }
 
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+}
+
 .header-actions button,
 .output-viewer > button,
 .edge-sheet__header button {
@@ -86,6 +96,21 @@
   padding: 0;
   color: var(--text-muted);
   background: transparent;
+}
+
+.header-actions .locale-switcher button {
+  width: auto;
+  min-width: 34px;
+  height: 28px;
+  flex-basis: auto;
+  padding-inline: 7px;
+  border: 0;
+  font: 700 10px/1 var(--font-ui);
+}
+
+.header-actions .locale-switcher button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--accent-strong);
 }
 
 .header-actions button[aria-expanded="true"] {
@@ -304,20 +329,18 @@
   white-space: nowrap;
 }
 
-.run-controls button[aria-label="Run source"],
-.run-controls button[aria-label="Run new source"] {
+.run-controls .run-source-action {
   border-color: var(--accent-strong);
   color: #fff;
   background: var(--accent-strong);
 }
 
-:root[data-theme="dark"] .run-controls button[aria-label="Run source"],
-:root[data-theme="dark"] .run-controls button[aria-label="Run new source"] {
+:root[data-theme="dark"] .run-controls .run-source-action {
   color: #21151a;
   background: var(--accent);
 }
 
-.run-controls button[aria-label="Stop polling"] {
+.run-controls [data-action="stop-polling"] {
   border-color: var(--danger);
   color: var(--danger);
   background: var(--danger-soft);
@@ -468,6 +491,11 @@
     gap: 3px;
   }
 
+  .header-actions .locale-switcher button {
+    min-width: 28px;
+    padding-inline: 5px;
+  }
+
   .header-actions button {
     width: 32px;
     height: 32px;
@@ -541,5 +569,13 @@
     width: 30px;
     height: 30px;
     flex-basis: 30px;
+  }
+
+  .header-actions .locale-switcher button {
+    min-width: 26px;
+    width: auto;
+    height: 26px;
+    flex-basis: auto;
+    padding-inline: 4px;
   }
 }
