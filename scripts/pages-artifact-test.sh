@@ -87,6 +87,7 @@ assert_workflow_contract() {
   grep -Fq 'npm ci' "$workflow" || { fail 'workflow must install from package-lock'; return 1; }
   grep -Fq 'npm test' "$workflow" || { fail 'workflow must test the WebUI'; return 1; }
   grep -Fq 'npm run build' "$workflow" || { fail 'workflow must build the WebUI'; return 1; }
+  grep -Fq 'npm run test:browser' "$workflow" || { fail 'workflow must run the responsive browser smoke'; return 1; }
   grep -Fq 'SANDKASTEN_BUILD_ALREADY_RUN=1 bash scripts/webui-build-test.sh --test' "$workflow" || { fail 'workflow must validate the built distribution contract'; return 1; }
   grep -Fq 'cp -R webui/dist/. _site/' "$workflow" || { fail 'workflow must stage the complete built WebUI before config generation'; return 1; }
   grep -Fq "API_BASE_URL=\"\$API_BASE_URL\" python3 - <<'PY' > _site/config.js" "$workflow" || { fail 'workflow must generate config.js from the environment'; return 1; }
