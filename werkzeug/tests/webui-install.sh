@@ -107,4 +107,36 @@ export DRY_RUN=true
 install_webui_assets
 [[ ! -e "$WEBUI_ROOT" ]] || fail 'dry-run created WebUI assets'
 
+# The repository quality entrypoint must execute the final Task 5 WebUI
+# commands. A fixture verifies the integration contract without copying those
+# concurrently developed scripts into this branch.
+QUALITY_SCRIPT="$ROOT_DIR/werkzeug/quality/test.sh"
+assert_contains "$QUALITY_SCRIPT" 'SANDKASTEN_QUALITY_ROOT'
+quality_root="$TMP_DIR/quality-root"
+quality_events="$TMP_DIR/quality-events.log"
+mkdir -p "$quality_root/webui" "$quality_root/scripts" "$quality_root/bin"
+printf '{}\n' > "$quality_root/webui/package.json"
+cat > "$quality_root/bin/npm" <<'NPM'
+#!/usr/bin/env bash
+printf 'npm:%s:%s\n' "$PWD" "$*" >> "$QUALITY_EVENTS"
+NPM
+cat > "$quality_root/scripts/webui-build-test.sh" <<'BUILD_TEST'
+#!/usr/bin/env bash
+printf 'webui-build:%s\n' "$*" >> "$QUALITY_EVENTS"
+BUILD_TEST
+cat > "$quality_root/scripts/pages-artifact-test.sh" <<'PAGES_TEST'
+#!/usr/bin/env bash
+printf 'pages-artifact:%s\n' "$*" >> "$QUALITY_EVENTS"
+PAGES_TEST
+chmod +x "$quality_root/bin/npm" "$quality_root/scripts/webui-build-test.sh" "$quality_root/scripts/pages-artifact-test.sh"
+QUALITY_EVENTS="$quality_events" \
+  SANDKASTEN_QUALITY_ROOT="$quality_root" \
+  PATH="$quality_root/bin:/usr/bin:/bin" \
+  bash "$QUALITY_SCRIPT"
+assert_contains "$quality_events" "npm:$quality_root/webui:ci"
+assert_contains "$quality_events" "npm:$quality_root/webui:test"
+assert_contains "$quality_events" "npm:$quality_root/webui:run build"
+assert_contains "$quality_events" 'webui-build:'
+assert_contains "$quality_events" 'pages-artifact:--test'
+
 printf 'webui deployment tests: ok\n'
