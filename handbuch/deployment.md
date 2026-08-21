@@ -30,18 +30,38 @@ options and prints the selected mode, languages, and command without changing
 the host. Existing `deploy.sh` commands remain compatible and forward to this
 installer.
 
-In `webui` mode the checked-in `webui/` directory is copied to
-`/opt/sandkasten/webui` (override with `SANDKASTEN_WEBUI_DIR`). Nginx serves
-that directory and proxies `/v1/` and `/healthz` to the API, so the browser
-client uses same-origin relative URLs and does not require CORS configuration.
-`cli` mode installs no static files or WebUI Nginx location.
+In `webui` mode the installer validates and atomically copies the checked-in
+`webui/dist/` payload to `/opt/sandkasten/webui` (override with
+`SANDKASTEN_WEBUI_DIR`). The payload must contain exactly four regular files:
+`index.html`, `app.js`, `styles.css`, and `config.js`; missing files, extra
+entries, nested directories, and symlinks are rejected before the existing
+managed installation is replaced. Nginx serves that directory and proxies
+`/v1/` and `/healthz` to the API, so the browser client uses same-origin
+relative URLs and does not require CORS configuration. The server installer
+does not run Node/npm or download frontend packages. `cli` mode installs no
+static files or WebUI Nginx location.
+
+Build and verify the Vue 3/TypeScript application before publishing a new
+distribution:
+
+```sh
+cd webui
+npm ci
+npm test
+npm run build
+cd ..
+bash scripts/webui-build-test.sh
+```
+
+The committed `webui/dist/` files must match a clean production build.
 
 ## GitHub Pages WebUI
 
-The repository publishes the dependency-free client at
+The repository publishes the built Vue client at
 <https://diewehmut.github.io/Sandkasten/> through
 `.github/workflows/pages.yml`. Enable **Settings -> Pages -> GitHub Actions**
-once; pushes to `main` and manual workflow dispatches then publish the four-file
+once; pushes to `main` and manual workflow dispatches run `npm ci`, unit tests,
+the Vite production build, distribution checks, and then publish the four-file
 artifact. Before the first deployment, add the repository variable
 `SANDKASTEN_API_BASE_URL` under **Settings -> Secrets and variables -> Actions ->
 Variables**. It is public runtime configuration and is embedded into
@@ -51,8 +71,12 @@ or other credential.
 For a Pages site calling a separately hosted API, configure the API with
 `SANDKASTEN_API_CORS_ORIGINS=https://diewehmut.github.io` (plus any local origins
 you need). The API endpoint must be HTTPS; the CORS allow-list uses the Pages
-origin without the `/sandkasten/` path. If WebUI mode is installed behind the
+origin without the `/Sandkasten/` path. If WebUI mode is installed behind the
 same Nginx origin instead, no cross-origin request is needed.
+
+The WebUI action labelled **Stop polling** aborts only browser-side monitoring;
+it does not cancel the server job. A known job ID can be resumed from the same
+page session.
 
 The installer also supports `status`, `restart`, `languages`/`reconfigure`,
 `domain`, and `uninstall` subcommands. To remove a deployment, use

@@ -47,14 +47,16 @@
 - 运行时索引页：<https://run.diesw.tech/v1/runtimes>
 - GitHub Pages WebUI：<https://diewehmut.github.io/Sandkasten/>
 
-GitHub Pages 由仓库中的 `.github/workflows/pages.yml` 自动发布。首次启用时，在
+GitHub Pages 由仓库中的 `.github/workflows/pages.yml` 自动构建并发布 Vue WebUI。首次启用时，在
 GitHub 仓库的 **Settings → Pages** 将发布来源设为 **GitHub Actions**；之后推送到
-`main` 或手动运行该 workflow 即可更新页面。Pages 页面使用仓库变量
-`SANDKASTEN_API_BASE_URL` 连接独立部署的 HTTP API。该变量会原样写入公开静态文件，
+`main` 或手动运行该 workflow 即可更新页面。workflow 会执行 `npm ci`、单元测试和
+Vite 生产构建，只发布 `webui/dist/` 中的 `index.html`、`app.js`、`styles.css` 与
+`config.js`。Pages 页面使用仓库变量
+`SANDKASTEN_API_BASE_URL` 连接独立部署的 HTTP API。该变量会经 JSON 安全序列化写入公开静态文件，
 因此它只能包含公开的 HTTPS API 基址（例如 `https://run.example.com`），不得放入
 API token、密码或其它凭据。API 与 Pages 跨域时，服务端必须使用 HTTPS，并在
 `SANDKASTEN_API_CORS_ORIGINS` 中允许来源 `https://diewehmut.github.io`（CORS 使用
-origin，不包含 `/sandkasten/` 路径）。
+origin，不包含 `/Sandkasten/` 路径）。
 
 运行时索引页由 API 直接服务端渲染,列出所有已启用语言、版本、默认资源限制与编译/运行命令。
 
@@ -129,6 +131,27 @@ sudo ./werkzeug/deploy.sh domain      # 仅配置域名 / Nginx / HTTPS
 ./werkzeug/development/dev-up.sh
 ```
 
+### WebUI 开发与安装
+
+WebUI 源码是 `webui/src/` 下的 Vue 3 + TypeScript 应用。开发或重新生成生产分发时运行：
+
+```bash
+cd webui
+npm ci
+npm run dev
+npm test
+npm run build
+```
+
+`npm run build` 生成固定的四文件 `webui/dist/`，该目录是 Pages 与服务器安装器共享的
+唯一静态发布边界。`--mode webui` 安装只验证并原子复制这四个预构建文件，因此服务器
+安装期间不会执行 Node、npm 或下载前端依赖。已有非受管目录、额外分发文件、目录和
+符号链接都会被拒绝。
+
+浏览器中的 **Stop polling** 只停止本地轮询；它不会取消后端任务。只要已有 job ID，
+页面可恢复轮询。跨域 Pages 配置只能包含公开 HTTPS API 基址，并需要 API 的 CORS
+允许 `https://diewehmut.github.io`；不得把 token 或其它凭据写入 `config.js`。
+
 ## 卸载
 
 免克隆一键卸载:
@@ -170,7 +193,7 @@ Go、Assembly、Bash/Shell、C、Cangjie(仓颉)、Clojure、CSS、C++、C#、Co
 ## 本地测试
 
 ```bash
-./werkzeug/quality/test.sh         # 单元测试
+./werkzeug/quality/test.sh         # Go、Rust、WebUI 单元/构建/工件检查
 ./werkzeug/smoke/smoke-go.sh       # 本地 API + 运行器 Go 执行冒烟
 ./werkzeug/smoke/smoke-languages.sh # 所有语言的 HTTP 冒烟
 ```

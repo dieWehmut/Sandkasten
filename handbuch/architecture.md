@@ -13,15 +13,23 @@ The repository uses German directory names for component ownership:
 - `pruefung/`: fixtures and integration/security test material.
 - `beispiele/`: sample projects and clients.
 
-The optional browser client lives in `webui/` (`index.html`, `app.js`, and
-`styles.css`). In WebUI installer mode it is installed under
-`SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`) and served by Nginx.
-Nginx keeps the client and API same-origin: static files are served from that
-directory, while `/v1/` and `/healthz` are reverse-proxied to the API. The
-client therefore uses relative API paths and treats returned job artifacts as
-untrusted text. CLI mode omits this static-site location.
+The optional browser client is a Vue 3/TypeScript application under
+`webui/src/`. Vite emits the deployment boundary under `webui/dist/` as exactly
+four regular files: `index.html`, `app.js`, `styles.css`, and `config.js`. In
+WebUI installer mode only that prebuilt payload is atomically installed under
+`SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`); source, tests,
+package metadata, extra files, directories, and symlinks are never copied.
+Server installation therefore needs neither Node/npm nor a frontend network
+download.
 
-The same client is also published as a static GitHub Pages artifact at
+Nginx keeps the client and API same-origin: static files are served from the
+installed directory, while `/v1/` and `/healthz` are reverse-proxied to the
+API. The client therefore uses relative API paths and treats returned job
+artifacts as untrusted text. Stopping polling aborts only the browser request;
+it does not cancel the backend job, and polling can resume for a known job ID.
+CLI mode omits this static-site location.
+
+The same built payload is also published as a static GitHub Pages artifact at
 <https://diewehmut.github.io/Sandkasten/>. The Pages workflow generates a
 public `config.js` from the repository variable `SANDKASTEN_API_BASE_URL`; it
 contains only the API origin/path prefix and must never contain credentials.

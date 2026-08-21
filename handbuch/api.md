@@ -208,7 +208,8 @@ Configure HTTP with:
 
 ### GitHub Pages clients
 
-The checked-in client is published at
+The Vue client is built from `webui/src/` and its four-file `webui/dist/`
+payload is published at
 <https://diewehmut.github.io/Sandkasten/> by `.github/workflows/pages.yml`.
 Set the repository variable `SANDKASTEN_API_BASE_URL` to a public HTTPS API
 origin (optionally with a path prefix) so the generated Pages `config.js` can
@@ -216,7 +217,7 @@ resolve `/v1/` requests. This variable is intentionally public static
 configuration; never put `SANDKASTEN_API_TOKEN` or any other secret in it. The
 API must be served over HTTPS and its `SANDKASTEN_API_CORS_ORIGINS` list must
 include `https://diewehmut.github.io` when the API is hosted on another origin.
-The allowed CORS value is the origin only, not the `/sandkasten/` repository
+The allowed CORS value is the origin only, not the `/Sandkasten/` repository
 path. Same-origin WebUI installs behind Nginx do not need this CORS entry.
 
 Run a single-file program and wait for the result:
@@ -231,12 +232,19 @@ curl -fsS \
 
 The HTTP API accepts `POST /v1/{language}/run` and `POST /v1/run` with a JSON `language` field.
 
-The checked-in `webui/` client uses this same-origin surface directly. When
-installed in WebUI mode, Nginx serves the client from
+The built `webui/dist/` client uses this same-origin surface directly. When
+installed in WebUI mode, the installer copies only `index.html`, `app.js`,
+`styles.css`, and `config.js`; it does not run npm on the server. Nginx serves
+the client from
 `SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`) and forwards `/v1/`
 and `/healthz` to the API. It loads `GET /v1/runtimes`, submits source to
 `POST /v1/{language}/run`, and polls `GET /v1/jobs/{jobId}`; no cross-origin
 request or frontend package manager is required.
+
+The WebUI's **Stop polling** control aborts only its current browser-side GET
+request/timer and reports that the job may still be running. It does not call
+the gRPC cancellation method or claim server cancellation. **Resume polling**
+continues `GET /v1/jobs/{jobId}` when a job ID is available.
 
 Response artifacts use `outputEncoding=auto` by default. UTF-8 artifacts are returned as normal strings; non-UTF-8 artifacts are base64 encoded. Clients may set `outputEncoding` to `utf8`, `base64`, or `auto` in the POST body. `GET /v1/jobs/{job_id}` accepts the same value as a query parameter.
 

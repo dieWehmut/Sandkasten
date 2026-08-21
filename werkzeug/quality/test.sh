@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="${SANDKASTEN_QUALITY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 export PATH="/usr/local/go/bin:$PATH:/usr/local/bin:/usr/bin:/bin"
 failures=0
 
@@ -22,6 +22,12 @@ missing() {
   failures=$((failures + 1))
 }
 
+missing_check() {
+  local path="$1"
+  printf 'MISSING: %s\n' "$path" >&2
+  failures=$((failures + 1))
+}
+
 if [[ -f "$ROOT/schnittstelle/go.mod" ]]; then
   if command -v go >/dev/null 2>&1; then
     run_or_fail "Go API tests" bash -c "cd \"\$1\" && go test ./..." bash "$ROOT/schnittstelle"
@@ -35,6 +41,28 @@ if [[ -f "$ROOT/laeufer/Cargo.toml" ]]; then
     run_or_fail "Rust runner tests" bash -c "cd \"\$1\" && cargo test --all" bash "$ROOT/laeufer"
   else
     missing cargo "Install the Rust toolchain or run this script in the runner builder image."
+  fi
+fi
+
+if [[ -f "$ROOT/webui/package.json" ]]; then
+  if command -v npm >/dev/null 2>&1; then
+    run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/webui"
+    run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/webui"
+    run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/webui"
+  else
+    missing npm "Install the pinned Node.js major used by the Pages workflow."
+  fi
+
+  if [[ -f "$ROOT/scripts/webui-build-test.sh" ]]; then
+    run_or_fail "WebUI distribution freshness" bash "$ROOT/scripts/webui-build-test.sh"
+  else
+    missing_check "$ROOT/scripts/webui-build-test.sh"
+  fi
+
+  if [[ -f "$ROOT/scripts/pages-artifact-test.sh" ]]; then
+    run_or_fail "WebUI Pages artifact contract" bash "$ROOT/scripts/pages-artifact-test.sh" --test
+  else
+    missing_check "$ROOT/scripts/pages-artifact-test.sh"
   fi
 fi
 
