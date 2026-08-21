@@ -1,4 +1,4 @@
-import { readonly, ref, type DeepReadonly } from 'vue';
+import { computed, readonly, ref, type DeepReadonly } from 'vue';
 import {
   loadRuntimes as loadRuntimesRequest,
   pollJob as pollJobRequest,
@@ -57,6 +57,9 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
   const pollingStopped = ref(false);
   const activeOutputTab = ref<OutputTab>('output');
   const connectionState = ref<ConnectionState>('connecting');
+  const canResumePolling = computed(() => Boolean(
+    activeRun?.jobId && (phase.value === 'stopped' || phase.value === 'error'),
+  ));
 
   let generation = 0;
   let activeRun: ActiveRun | undefined;
@@ -253,6 +256,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
     pollingStopped: readonly(pollingStopped),
     activeOutputTab: readonly(activeOutputTab),
     connectionState: readonly(connectionState),
+    canResumePolling,
     requestError: readonly(error),
     history: runHistory.history,
     load,

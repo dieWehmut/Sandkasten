@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { Check, Copy } from '@lucide/vue';
 import type { JobResponse } from '../services/sandkastenApi';
 import { decodeOutput, type DecodedOutput } from '../services/sandkastenApi';
 import type { OutputTab } from '../composables/useRunner';
@@ -17,7 +18,7 @@ const copied = ref(false);
 const channels = computed<Channel[]>(() => {
   const job = props.result;
   if (!job) return props.tab === 'diagnostics' && props.error
-    ? [{ label: 'Request error', output: decodeOutput(props.error, 'utf8') }]
+    ? [{ label: 'Request error', output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' }]
     : [];
   if (props.tab === 'output') return [{ label: 'Output', output: decodeOutput(job.stdout, job.stdoutEncoding), encoding: job.stdoutEncoding ?? 'utf8', truncated: job.truncated?.stdout === true }];
   if (props.tab === 'errors') return [{ label: 'Errors', output: decodeOutput(job.stderr, job.stderrEncoding), encoding: job.stderrEncoding ?? 'utf8', truncated: job.truncated?.stderr === true }];
@@ -27,9 +28,9 @@ const channels = computed<Channel[]>(() => {
   ];
   const diagnosticText = job.diagnostics ? JSON.stringify(job.diagnostics, null, 2) : '';
   return [
-    { label: 'Error message', output: decodeOutput(job.errorMessage, 'utf8') },
-    { label: 'Diagnostics', output: decodeOutput(diagnosticText, 'utf8') },
-    { label: 'Request error', output: decodeOutput(props.error, 'utf8') },
+    { label: 'Error message', output: decodeOutput(job.errorMessage, 'utf8'), encoding: 'utf8' },
+    { label: 'Diagnostics', output: decodeOutput(diagnosticText, 'utf8'), encoding: 'utf8' },
+    { label: 'Request error', output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' },
   ];
 });
 
@@ -37,6 +38,10 @@ const visibleText = computed(() => channels.value.map((channel) => channel.outpu
 const hasVisibleChannel = computed(() => channels.value.some((channel) => Boolean(channel.output.text || channel.output.warning || channel.truncated)));
 const emptyLabel = computed(() => `No ${props.tab === 'errors' ? 'errors' : props.tab === 'compile' ? 'compile output' : props.tab === 'diagnostics' ? 'diagnostics' : 'output'}`);
 const copyLabel = computed(() => `Copy ${props.tab === 'output' ? 'Output' : props.tab.charAt(0).toUpperCase() + props.tab.slice(1)}`);
+
+watch(() => [props.tab, props.result?.jobId, visibleText.value], () => {
+  copied.value = false;
+});
 
 async function copyVisible() {
   if (!visibleText.value || !navigator.clipboard?.writeText) return;
@@ -47,8 +52,9 @@ async function copyVisible() {
 
 <template>
   <div class="output-viewer">
-    <button type="button" :aria-label="copyLabel" :disabled="!visibleText" @click="copyVisible">
-      {{ copied ? 'Copied' : 'Copy' }}
+    <button type="button" :aria-label="copyLabel" :title="copyLabel" :disabled="!visibleText" @click="copyVisible">
+      <Check v-if="copied" :size="16" aria-hidden="true" />
+      <Copy v-else :size="16" aria-hidden="true" />
     </button>
     <p v-if="!hasVisibleChannel" class="empty-state">{{ emptyLabel }}</p>
     <template v-for="channel in channels" :key="channel.label">

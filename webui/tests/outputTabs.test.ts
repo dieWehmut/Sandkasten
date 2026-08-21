@@ -72,16 +72,59 @@ describe('output inspection', () => {
     expect(wrapper.find('[role="tabpanel"]').text()).toContain('Truncated');
     await wrapper.findAll('[role="tab"]')[3].trigger('click');
     expect(wrapper.find('[role="tabpanel"]').text()).toContain('request failed');
+
+    const unavailable = mount(OutputTabs, { props: { error: 'runtime request failed', modelValue: 'diagnostics' } });
+    expect(unavailable.get('.output-channel .badge').text()).toBe('utf8');
+  });
+
+  test('marks every tab whose corresponding channel contains visible content', () => {
+    const wrapper = mount(OutputTabs, {
+      props: {
+        result: {
+          jobId: 'job-1',
+          status: 'JOB_STATUS_COMPILE_FAILED',
+          stdout: 'out',
+          stderr: 'err',
+          compileStderr: 'compile err',
+          errorMessage: 'failed',
+        },
+      },
+    });
+    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.find('.tab-indicator').exists())).toEqual([true, true, true, true]);
+  });
+
+  test('labels each visible diagnostics channel as utf8 while rendering payloads as text', async () => {
+    const wrapper = mount(OutputTabs, {
+      props: {
+        result: {
+          jobId: 'job-1',
+          status: 'JOB_STATUS_SYSTEM_ERROR',
+          errorMessage: '<request failed>',
+          diagnostics: { message: '<unsafe>' },
+        },
+        error: '<network error>',
+        modelValue: 'diagnostics',
+      },
+    });
+    expect(wrapper.findAll('.output-channel')).toHaveLength(3);
+    expect(wrapper.findAll('.output-channel').map((channel) => channel.find('.badge').text())).toEqual(['utf8', 'utf8', 'utf8']);
+    expect(wrapper.findAll('request').length).toBe(0);
+    expect(wrapper.text()).toContain('<unsafe>');
   });
 
   test('offers empty states and copies visible output', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     const wrapper = mount(OutputTabs, { props: { result: { jobId: 'job-1', status: 'JOB_STATUS_SUCCEEDED', stdout: 'copy me' } } });
-    await wrapper.get('button[aria-label="Copy Output"]').trigger('click');
+    const copyButton = wrapper.get('button[aria-label="Copy Output"]');
+    expect(copyButton.attributes('title')).toBe('Copy Output');
+    expect(copyButton.find('svg').exists()).toBe(true);
+    await copyButton.trigger('click');
     expect(writeText).toHaveBeenCalledWith('copy me');
+    expect(copyButton.find('.lucide-check').exists()).toBe(true);
 
     await wrapper.setProps({ result: { jobId: 'job-2', status: 'JOB_STATUS_SUCCEEDED' } });
+    expect(copyButton.find('.lucide-check').exists()).toBe(false);
     expect(wrapper.find('[role="tabpanel"]').text()).toContain('No output');
   });
 

@@ -54,6 +54,33 @@ describe('useRunner', () => {
     expect(runner.selectedLanguage.value).toBe('python');
   });
 
+  test('offers Resume only while the runner still owns an active pollable job', async () => {
+    const loadRuntimes = vi.fn()
+      .mockResolvedValueOnce(runtimes)
+      .mockRejectedValueOnce(new Error('runtime reload failed'));
+    const firstPoll = deferred<JobResponse>();
+    const runner = useRunner({
+      loadRuntimes,
+      submitJob: vi.fn().mockResolvedValue({ jobId: 'job-resumable', status: 'JOB_STATUS_QUEUED' }),
+      pollJob: vi.fn((_jobId, options) => {
+        options.signal.addEventListener('abort', () => firstPoll.reject(new DOMException('stopped', 'AbortError')), { once: true });
+        return firstPoll.promise;
+      }),
+    });
+    await runner.load();
+    runner.setSource('work()');
+    const submitting = runner.submit();
+    await nextTick();
+    runner.stopPolling();
+    await submitting;
+    expect(runner.canResumePolling.value).toBe(true);
+
+    await runner.load();
+    expect(runner.phase.value).toBe('error');
+    expect(runner.currentJob.value?.jobId).toBe('job-resumable');
+    expect(runner.canResumePolling.value).toBe(false);
+  });
+
   test('submits, publishes polling updates, and completes a terminal job', async () => {
     const queued: JobResponse = { jobId: 'job-1', status: 'JOB_STATUS_QUEUED' };
     const running: JobResponse = { jobId: 'job-1', status: 'JOB_STATUS_RUNNING', stdout: 'partial' };

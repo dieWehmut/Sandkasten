@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
-import type { JobResponse } from '../services/sandkastenApi';
+import { decodeOutput, type JobResponse } from '../services/sandkastenApi';
 import type { OutputTab } from '../composables/useRunner';
 import OutputViewer from './OutputViewer.vue';
 
@@ -15,6 +15,24 @@ const tabs: Array<{ id: OutputTab; label: string }> = [
 const selected = ref<OutputTab>(props.modelValue);
 const tabElements = ref<HTMLButtonElement[]>([]);
 const instanceId = `output-tabs-${Math.random().toString(36).slice(2)}`;
+
+function hasChannelContent(tab: OutputTab): boolean {
+  const job = props.result;
+  if (tab === 'output') {
+    const decoded = decodeOutput(job?.stdout, job?.stdoutEncoding);
+    return Boolean(decoded.text || decoded.warning || job?.truncated?.stdout);
+  }
+  if (tab === 'errors') {
+    const decoded = decodeOutput(job?.stderr, job?.stderrEncoding);
+    return Boolean(decoded.text || decoded.warning || job?.truncated?.stderr);
+  }
+  if (tab === 'compile') {
+    const stdout = decodeOutput(job?.compileStdout, job?.compileStdoutEncoding);
+    const stderr = decodeOutput(job?.compileStderr, job?.compileStderrEncoding);
+    return Boolean(stdout.text || stdout.warning || stderr.text || stderr.warning);
+  }
+  return Boolean(props.error || job?.errorMessage || (job?.diagnostics && Object.keys(job.diagnostics).length));
+}
 
 watch(() => props.modelValue, (value) => { selected.value = value; });
 
@@ -54,6 +72,7 @@ async function move(event: KeyboardEvent, index: number) {
         @keydown="move($event, index)"
       >
         {{ tab.label }}
+        <span v-if="hasChannelContent(tab.id)" class="tab-indicator" aria-label="Contains content">*</span>
       </button>
     </div>
     <div
@@ -70,5 +89,6 @@ async function move(event: KeyboardEvent, index: number) {
 <style scoped>
 [role="tablist"] { display: flex; gap: .25rem; }
 [role="tab"][aria-selected="true"] { font-weight: 700; }
+.tab-indicator { display: inline-block; width: .4rem; height: .4rem; border-radius: 999px; background: currentColor; font-size: 0; vertical-align: middle; }
 [role="tabpanel"] { min-width: 0; padding-top: .5rem; }
 </style>
