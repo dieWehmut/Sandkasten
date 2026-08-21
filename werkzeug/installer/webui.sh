@@ -9,6 +9,7 @@ NGINX_SITE_ENABLED="${NGINX_SITE_ENABLED:-/etc/nginx/sites-enabled/sandkasten.co
 HTTP_PORT="${HTTP_PORT:-8080}"
 WEBUI_MANAGED_MARKER="${WEBUI_MANAGED_MARKER:-sandkasten-webui-managed}"
 NGINX_MANAGED_MARKER="# sandkasten-webui-managed"
+WEBUI_DIST_FILES=(index.html app.js styles.css config.js)
 
 _webui_error() {
   printf 'webui: %s\n' "$*" >&2
@@ -44,43 +45,71 @@ validate_webui_root() {
 }
 
 validate_webui_source() {
-  local source="${REPO_ROOT:-}/webui"
-  [[ -n "${REPO_ROOT:-}" && -d "$source" ]] || {
-    _webui_error "WebUI source directory not found: $source"
+  local source="${REPO_ROOT:-}/webui/dist" entry name entry_count=0
+  [[ -n "${REPO_ROOT:-}" && -d "$source" && ! -L "$source" ]] || {
+    _webui_error "WebUI distribution directory not found or is not a regular directory: $source"
     return 1
   }
-  [[ -f "$source/index.html" ]] || {
-    _webui_error "WebUI source is missing index.html: $source"
+
+  for name in "${WEBUI_DIST_FILES[@]}"; do
+    [[ -f "$source/$name" && ! -L "$source/$name" && -r "$source/$name" ]] || {
+      _webui_error "WebUI distribution requires a readable regular file: $source/$name"
+      return 1
+    }
+  done
+
+  while IFS= read -r -d '' entry; do
+    entry_count=$((entry_count + 1))
+    name="${entry##*/}"
+    [[ -f "$entry" && ! -L "$entry" ]] || {
+      _webui_error "WebUI distribution contains a non-regular entry: $entry"
+      return 1
+    }
+    case " ${WEBUI_DIST_FILES[*]} " in
+      *" $name "*) ;;
+      *)
+        _webui_error "WebUI distribution contains an unexpected file: $entry"
+        return 1
+        ;;
+    esac
+  done < <(find "$source" -mindepth 1 -maxdepth 1 -print0)
+
+  [[ "$entry_count" -eq "${#WEBUI_DIST_FILES[@]}" ]] || {
+    _webui_error "WebUI distribution must contain exactly ${#WEBUI_DIST_FILES[@]} files: $source"
     return 1
   }
-  [[ -r "$source/index.html" ]] || {
-    _webui_error "WebUI entrypoint is not readable: $source/index.html"
-    return 1
-  }
+}
+
+is_managed_webui_root() {
+  local marker="${1:-$WEBUI_ROOT}/.${WEBUI_MANAGED_MARKER}"
+  [[ -f "$marker" && ! -L "$marker" ]] || return 1
+  [[ "$(<"$marker")" == "managed-by=sandkasten" ]]
 }
 
 install_webui_assets() {
   validate_webui_root || return
   validate_webui_source || return
   if [[ "${DRY_RUN:-false}" == true ]]; then
-    printf '[dry-run] install WebUI assets from %s to %s\n' "${REPO_ROOT}/webui" "$WEBUI_ROOT"
+    printf '[dry-run] install WebUI assets from %s to %s\n' "${REPO_ROOT}/webui/dist" "$WEBUI_ROOT"
     return 0
   fi
 
-  local parent stage backup source="${REPO_ROOT}/webui"
+  local parent stage backup name source="${REPO_ROOT}/webui/dist"
   parent="$(dirname "$WEBUI_ROOT")"
   mkdir -p "$parent"
-  if [[ -e "$WEBUI_ROOT" && ! -f "$WEBUI_ROOT/.${WEBUI_MANAGED_MARKER}" ]]; then
+  if [[ -e "$WEBUI_ROOT" || -L "$WEBUI_ROOT" ]] && ! is_managed_webui_root "$WEBUI_ROOT"; then
     _webui_error "refusing to replace unmanaged WebUI directory: $WEBUI_ROOT"
     return 1
   fi
 
   stage="$(mktemp -d "${WEBUI_ROOT}.staging.XXXXXX")" || return 1
-  if ! cp -a "$source"/. "$stage"/; then
-    rm -rf "$stage"
-    _webui_error "failed to stage WebUI assets"
-    return 1
-  fi
+  for name in "${WEBUI_DIST_FILES[@]}"; do
+    if ! cp -p -- "$source/$name" "$stage/$name"; then
+      rm -rf "$stage"
+      _webui_error "failed to stage WebUI asset: $name"
+      return 1
+    fi
+  done
   printf '%s\n' "managed-by=sandkasten" > "$stage/.${WEBUI_MANAGED_MARKER}"
 
   # Rename the old managed tree aside, publish the complete staged tree, then
