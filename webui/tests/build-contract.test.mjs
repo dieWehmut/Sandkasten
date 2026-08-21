@@ -41,8 +41,10 @@ function assertRegularFile(fileName) {
 }
 
 test('a clean production build emits exactly four regular runtime files', { timeout: 120_000 }, () => {
-  run(npmCommand, ['ci'], webuiDirectory);
-  run(npmCommand, ['run', 'build'], webuiDirectory);
+  if (process.env.SANDKASTEN_BUILD_ALREADY_RUN !== '1') {
+    run(npmCommand, ['ci'], webuiDirectory);
+    run(npmCommand, ['run', 'build'], webuiDirectory);
+  }
 
   assert.deepEqual(readdirSync(distributionDirectory).sort(), expectedFiles);
   for (const fileName of expectedFiles) assertRegularFile(fileName);

@@ -46,6 +46,18 @@ check_artifact() {
   printf '%s\n' "$config_source" | grep -Eq \
     '^globalThis\.SANDKASTEN_CONFIG[[:space:]]*=[[:space:]]*\{[[:space:]]*apiBaseUrl:[[:space:]]*"([^"\\]|\\.)*"[[:space:]]*\};[[:space:]]*$' || \
     { fail 'config.js must define only the JSON-escaped apiBaseUrl field'; return 1; }
+
+  local config_line app_line
+  config_line="$(grep -nF 'src="./config.js"' "$artifact_dir/index.html" | head -n 1 | cut -d: -f1 || true)"
+  app_line="$(grep -nF 'src="./app.js"' "$artifact_dir/index.html" | head -n 1 | cut -d: -f1 || true)"
+  [[ -n "$config_line" && -n "$app_line" && "$config_line" -lt "$app_line" ]] || {
+    fail 'index.html must load relative config.js before relative app.js'
+    return 1
+  }
+  grep -Fq 'href="./styles.css"' "$artifact_dir/index.html" || {
+    fail 'index.html must load relative styles.css for the /Sandkasten/ project path'
+    return 1
+  }
 }
 
 assert_workflow_contract() {
@@ -66,10 +78,12 @@ assert_workflow_contract() {
   grep -Fq 'vars.SANDKASTEN_API_BASE_URL' "$workflow" || { fail 'workflow must read the repository variable'; return 1; }
   grep -Fq 'globalThis.SANDKASTEN_CONFIG' "$workflow" || { fail 'workflow must generate the runtime config contract'; return 1; }
   grep -Fq 'actions/setup-node@v4' "$workflow" || { fail 'workflow must set up Node.js'; return 1; }
+  grep -Fq 'node-version: 22.18.0' "$workflow" || { fail 'workflow must pin the tested Node.js release'; return 1; }
   grep -Fq 'cache-dependency-path: webui/package-lock.json' "$workflow" || { fail 'workflow must cache from webui/package-lock.json'; return 1; }
   grep -Fq 'npm ci' "$workflow" || { fail 'workflow must install from package-lock'; return 1; }
   grep -Fq 'npm test' "$workflow" || { fail 'workflow must test the WebUI'; return 1; }
   grep -Fq 'npm run build' "$workflow" || { fail 'workflow must build the WebUI'; return 1; }
+  grep -Fq 'SANDKASTEN_BUILD_ALREADY_RUN=1 bash scripts/webui-build-test.sh --test' "$workflow" || { fail 'workflow must validate the built distribution contract'; return 1; }
   grep -Fq 'cp -R webui/dist/. _site/' "$workflow" || { fail 'workflow must stage the complete built WebUI before config generation'; return 1; }
   grep -Fq "API_BASE_URL=\"\$API_BASE_URL\" python3 - <<'PY' > _site/config.js" "$workflow" || { fail 'workflow must generate config.js from the environment'; return 1; }
   grep -Fq 'os.environ.get("API_BASE_URL", "")' "$workflow" || { fail 'workflow must treat an unset API variable as empty'; return 1; }
@@ -88,7 +102,11 @@ run_tests() {
 
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf -- "${tmp_dir:-}"' EXIT
-  for file in index.html app.js styles.css; do
+  printf '%s\n' \
+    '<script src="./config.js"></script>' \
+    '<script type="module" src="./app.js"></script>' \
+    '<link rel="stylesheet" href="./styles.css">' > "$tmp_dir/index.html"
+  for file in app.js styles.css; do
     printf '%s\n' "$file" > "$tmp_dir/$file"
   done
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
@@ -97,6 +115,18 @@ run_tests() {
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "https://example.test/a\\\"b" };\n' > "$tmp_dir/config.js"
   check_artifact "$tmp_dir"
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
+
+  printf '%s\n' \
+    '<script type="module" src="./app.js"></script>' \
+    '<script src="./config.js"></script>' \
+    '<link rel="stylesheet" href="./styles.css">' > "$tmp_dir/index.html"
+  if check_artifact "$tmp_dir" >/dev/null 2>&1; then
+    fail 'artifact checker accepted app.js before config.js'
+  fi
+  printf '%s\n' \
+    '<script src="./config.js"></script>' \
+    '<script type="module" src="./app.js"></script>' \
+    '<link rel="stylesheet" href="./styles.css">' > "$tmp_dir/index.html"
 
   printf 'source documentation must not ship\n' > "$tmp_dir/README.md"
   if check_artifact "$tmp_dir" >/dev/null 2>&1; then

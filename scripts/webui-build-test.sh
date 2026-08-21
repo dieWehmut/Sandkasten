@@ -38,8 +38,8 @@ check_distribution() {
   done
 
   local config_line app_line
-  config_line="$(grep -nF 'src="./config.js"' "$distribution_dir/index.html" | head -n 1 | cut -d: -f1)"
-  app_line="$(grep -nF 'src="./app.js"' "$distribution_dir/index.html" | head -n 1 | cut -d: -f1)"
+  config_line="$(grep -nF 'src="./config.js"' "$distribution_dir/index.html" | head -n 1 | cut -d: -f1 || true)"
+  app_line="$(grep -nF 'src="./app.js"' "$distribution_dir/index.html" | head -n 1 | cut -d: -f1 || true)"
   [[ -n "$config_line" && -n "$app_line" && "$config_line" -lt "$app_line" ]] || {
     fail 'index.html must load config.js before app.js'
     return 1
