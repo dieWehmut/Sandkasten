@@ -11,12 +11,11 @@ the API and runner without static assets.
 
 ## Current Context
 
-The repository already has a production-oriented, interactive
-`werkzeug/deploy.sh`.  It knows how to select runtimes, install their tool
-chains, build the Go API and Rust runner, provision PostgreSQL, and configure
-systemd/Nginx.  It is currently a single large script and always treats Nginx
-as an optional reverse proxy for the API.  There is no standalone frontend
-directory.
+The installer has been split into focused modules while retaining the
+`werkzeug/deploy.sh` compatibility surface. The browser client is now a Vue 3,
+TypeScript, and Vite project under `webui/`; source and package metadata remain
+development inputs, while a deterministic four-file `webui/dist/` directory is
+the only installer and Pages payload.
 
 ## Architecture
 
@@ -45,26 +44,30 @@ mode inspectable and keeps reconfiguration idempotent.
 
 ### WebUI
 
-`webui/` contains a dependency-free static client:
+`webui/` contains a Vue 3/TypeScript source project and a fixed production
+distribution:
 
-- `index.html` provides the accessible shell and status/output regions.
-- `app.js` loads `/v1/runtimes`, submits source to
-  `/v1/{language}/run`, polls `/v1/jobs/{id}`, and renders stdout/stderr and
-  diagnostics without injecting untrusted output as HTML.
-- `styles.css` provides a responsive, keyboard-friendly layout.
-- `README.md` documents the same-origin API contract and local preview.
+- `src/`, `tests/`, `package.json`, and the lockfile are development inputs.
+- `npm ci`, `npm test`, and `npm run build` produce and verify the client.
+- `dist/` contains exactly `index.html`, `app.js`, `styles.css`, and
+  `config.js`; no nested assets, source maps, tests, package files, or symlinks
+  are permitted.
+- Pages and the self-hosted installer consume the same four-file boundary.
 
 The client uses same-origin relative URLs.  Nginx serves files from
 `/opt/sandkasten/webui` and proxies `/v1/` and `/healthz` to the API.  No
-frontend package manager or network download is needed during installation.
+frontend package manager or network download is needed during server
+installation. Stop polling affects only browser monitoring and never claims
+that the backend job was canceled.
 
 ### Modes
 
 - `cli`: install backend services and expose the configured API HTTP port;
   do not install WebUI files or create a static-site Nginx location.
-- `webui`: perform the same backend install, copy the checked-out `webui/`
-  directory to the configured WebUI root, install Nginx, and configure a
-  same-origin site.  A domain/HTTPS prompt remains optional.
+- `webui`: perform the same backend install, validate and atomically copy only
+  the checked-in `webui/dist/` files to the configured WebUI root, install
+  Nginx, and configure a same-origin site. A domain/HTTPS prompt remains
+  optional.
 
 Interactive invocation asks for the mode before language selection.  A
 non-interactive invocation must provide `--mode` and `--languages`, or use
@@ -77,19 +80,30 @@ documented defaults (`cli` and `core`) when explicitly requested by the caller.
 - Existing checksum and retry behavior for downloaded toolchains is retained.
 - WebUI output is inserted with `textContent`; job artifacts are untrusted.
 - Nginx proxy headers and timeouts follow the existing deployment defaults.
-- WebUI installation is atomic: copy to a temporary directory, validate
-  `index.html`, then rename into place.  A failed copy leaves the previous
-  installation intact.
+- WebUI installation validates all four required regular files and rejects a
+  missing distribution, extra entries, directories, and symlinks before
+  staging. It copies each expected file to a temporary sibling directory and
+  renames the complete tree into place; a failed validation or copy leaves the
+  previous installation intact.
 - Uninstall removes the WebUI root and Nginx site only when those paths were
-  created by Sandkasten, while preserving user data unless purge is chosen.
+  created by Sandkasten. Ownership requires a real directory and a regular,
+  non-symlink marker with the exact Sandkasten marker value; unmanaged user
+  data is preserved even in purge flows.
+- Cross-origin Pages configuration accepts only a public HTTPS API base and
+  requires the API CORS allow-list to include the Pages origin. Browser static
+  configuration never contains API credentials.
 
 ## Testing and Acceptance
 
 - Shell tests verify mode parsing, language parsing, non-interactive behavior,
   and that CLI mode does not emit a WebUI Nginx location.
-- WebUI tests verify required files, safe output rendering primitives, and
-  the API request paths using a small Node test harness.
-- Existing Go/Rust tests and `./werkzeug/test.sh` remain green.
+- WebUI unit/component tests verify API behavior, runner state, and safe text
+  rendering; build-contract tests verify the exact distribution.
+- Installer fixtures reject missing, extra, nested, and symlinked payloads and
+  demonstrate that server installation does not invoke Node/npm.
+- The canonical quality path runs existing Go/Rust tests plus WebUI dependency
+  installation, unit tests, production build, distribution freshness, and
+  Pages artifact checks.
 - A dry-run installer invocation demonstrates both mode branches without
   requiring root or package downloads.
 - Documentation includes the one-liner, mode examples, language selection
