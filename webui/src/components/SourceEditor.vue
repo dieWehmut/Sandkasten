@@ -30,6 +30,20 @@ function languageExtension(): Extension {
   return languageExtensionForRuntime(props.language) ?? [];
 }
 
+function editableExtensions(label: string, disabled: boolean): Extension[] {
+  return [
+    EditorState.readOnly.of(disabled),
+    EditorView.editable.of(!disabled),
+    EditorView.contentAttributes.of({
+      role: 'textbox',
+      'aria-multiline': 'true',
+      'aria-label': label,
+      'aria-disabled': String(disabled),
+      spellcheck: 'false',
+    }),
+  ];
+}
+
 function editorExtensions(): Extension[] {
   return [
     lineNumbers(),
@@ -42,17 +56,7 @@ function editorExtensions(): Extension[] {
     search(),
     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     languageCompartment.of(languageExtension()),
-    editableCompartment.of([
-      EditorState.readOnly.of(props.disabled),
-      EditorView.editable.of(!props.disabled),
-      EditorView.contentAttributes.of({
-        role: 'textbox',
-        'aria-multiline': 'true',
-        'aria-label': props.label,
-        'aria-disabled': String(props.disabled),
-        spellcheck: 'false',
-      }),
-    ]),
+    editableCompartment.of(editableExtensions(props.label, props.disabled)),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !applyingExternalValue) emit('update:modelValue', update.state.doc.toString());
     }),
@@ -79,19 +83,9 @@ watch(() => props.language, () => {
   editorView.value?.dispatch({ effects: languageCompartment.reconfigure(languageExtension()) });
 });
 
-watch(() => props.disabled, (disabled) => {
+watch(() => [props.disabled, props.label] as const, ([disabled, label]) => {
   editorView.value?.dispatch({
-    effects: editableCompartment.reconfigure([
-      EditorState.readOnly.of(disabled),
-      EditorView.editable.of(!disabled),
-      EditorView.contentAttributes.of({
-        role: 'textbox',
-        'aria-multiline': 'true',
-        'aria-label': props.label,
-        'aria-disabled': String(disabled),
-        spellcheck: 'false',
-      }),
-    ]),
+    effects: editableCompartment.reconfigure(editableExtensions(label, disabled)),
   });
 });
 

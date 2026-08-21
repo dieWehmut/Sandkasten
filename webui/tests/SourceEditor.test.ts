@@ -34,6 +34,22 @@ describe('SourceEditor', () => {
     expect(view.state.doc.toString()).toBe('console.log("external")');
   });
 
+  test('updates the contenteditable aria-label when the parent changes the editor label', async () => {
+    const wrapper = mount(SourceEditor, {
+      props: {
+        modelValue: 'print("ok")',
+        language: 'python',
+        label: 'Program source',
+      },
+    });
+
+    expect(wrapper.get('[role="textbox"]').attributes('aria-label')).toBe('Program source');
+
+    await wrapper.setProps({ label: '程序源码' });
+
+    expect(wrapper.get('[role="textbox"]').attributes('aria-label')).toBe('程序源码');
+  });
+
   test('updates language and disabled state without recreating the editor, then destroys it on unmount', async () => {
     const destroy = vi.spyOn(EditorView.prototype, 'destroy');
     const wrapper = mount(SourceEditor, {
@@ -41,8 +57,9 @@ describe('SourceEditor', () => {
     });
     const view = wrapper.vm.editorView as EditorView;
 
-    await wrapper.setProps({ language: 'rust', disabled: true });
+    await wrapper.setProps({ language: 'rust', disabled: true, label: 'Disabled source' });
     expect(wrapper.vm.editorView).toBe(view);
+    expect(wrapper.get('[role="textbox"]').attributes('aria-label')).toBe('Disabled source');
     expect(wrapper.get('[role="textbox"]').attributes('aria-disabled')).toBe('true');
 
     wrapper.unmount();
