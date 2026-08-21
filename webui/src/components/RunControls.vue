@@ -11,11 +11,19 @@ const emit = defineEmits<{ run: []; stop: []; resume: [] }>();
     <button v-if="props.phase === 'polling'" type="button" aria-label="Stop polling" @click="emit('stop')">
       <CircleStop :size="17" aria-hidden="true" /> <span>Stop polling</span>
     </button>
-    <button v-else-if="props.phase === 'stopped' || (props.phase === 'error' && props.canResume)" type="button" aria-label="Resume polling" :disabled="!props.canResume" @click="emit('resume')">
-      <RotateCcw :size="17" aria-hidden="true" /> <span>Resume polling</span>
-    </button>
-    <button v-else type="button" aria-label="Run source" :disabled="!canRun || props.phase === 'booting' || props.phase === 'submitting'" @click="emit('run')">
-      <CirclePlay :size="17" aria-hidden="true" /> <span>{{ props.phase === 'submitting' ? 'Submitting' : 'Run' }}</span>
-    </button>
+    <template v-else>
+      <button v-if="props.canResume && (props.phase === 'stopped' || props.phase === 'error')" type="button" aria-label="Resume polling" @click="emit('resume')">
+        <RotateCcw :size="17" aria-hidden="true" /> <span>Resume polling</span>
+      </button>
+      <button
+        type="button"
+        :aria-label="props.canResume && (props.phase === 'stopped' || props.phase === 'error') ? 'Run new source' : 'Run source'"
+        :disabled="!canRun || props.phase === 'booting' || props.phase === 'submitting'"
+        @click="emit('run')"
+      >
+        <CirclePlay :size="17" aria-hidden="true" />
+        <span>{{ props.phase === 'submitting' ? 'Submitting' : props.canResume && (props.phase === 'stopped' || props.phase === 'error') ? 'Run new' : 'Run' }}</span>
+      </button>
+    </template>
   </div>
 </template>

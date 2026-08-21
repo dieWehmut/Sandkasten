@@ -89,6 +89,9 @@ describe('workbench controls', () => {
     const stopped = mount(RunControls, { props: { phase: 'stopped', canRun: true } });
     await stopped.get('button[aria-label="Resume polling"]').trigger('click');
     expect(stopped.emitted('resume')).toHaveLength(1);
+
+    await stopped.get('button[aria-label="Run new source"]').trigger('click');
+    expect(stopped.emitted('run')).toHaveLength(1);
   });
 
   test('shows runtime, job, encoding, truncation, limits, and diagnostic metadata', () => {
@@ -97,7 +100,7 @@ describe('workbench controls', () => {
     });
     const text = wrapper.text();
     for (const expected of [
-      'python', '3.13', 'main.py', 'python:3.13', 'job-inspect', 'Succeeded', '1.23 s',
+      'python', '3.13', 'main.py', 'Runtime version', 'python:3.13', 'job-inspect', 'Succeeded', '1.23 s',
       'Exit code', '0', 'Signal', 'stdout', 'utf8', 'base64', 'Truncated', '5 s', '256 MiB', 'memoryPeakBytes',
       'Compile phase enabled', 'No', 'Run phase enabled', 'Yes', 'python -m compileall', 'python main.py',
     ]) expect(text).toContain(expected);

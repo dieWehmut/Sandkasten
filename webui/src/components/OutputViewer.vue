@@ -14,6 +14,7 @@ interface Channel {
 
 const props = defineProps<{ result?: JobResponse; error?: string; tab: OutputTab }>();
 const copied = ref(false);
+const copyError = ref('');
 
 const channels = computed<Channel[]>(() => {
   const job = props.result;
@@ -27,11 +28,15 @@ const channels = computed<Channel[]>(() => {
     { label: 'Compile stderr', output: decodeOutput(job.compileStderr, job.compileStderrEncoding), encoding: job.compileStderrEncoding ?? 'utf8' },
   ];
   const diagnosticText = job.diagnostics ? JSON.stringify(job.diagnostics, null, 2) : '';
-  return [
+  const diagnosticChannels = [
     { label: 'Error message', output: decodeOutput(job.errorMessage, 'utf8'), encoding: 'utf8' },
     { label: 'Diagnostics', output: decodeOutput(diagnosticText, 'utf8'), encoding: 'utf8' },
     { label: 'Request error', output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' },
   ];
+  const visibleChannels = diagnosticChannels.filter((channel) => channel.output.text || channel.output.warning);
+  return visibleChannels.length
+    ? visibleChannels
+    : [{ label: 'Diagnostics', output: decodeOutput('', 'utf8'), encoding: 'utf8' }];
 });
 
 const visibleText = computed(() => channels.value.map((channel) => channel.output.text).filter(Boolean).join('\n'));
@@ -41,12 +46,19 @@ const copyLabel = computed(() => `Copy ${props.tab === 'output' ? 'Output' : pro
 
 watch(() => [props.tab, props.result?.jobId, visibleText.value], () => {
   copied.value = false;
+  copyError.value = '';
 });
 
 async function copyVisible() {
   if (!visibleText.value || !navigator.clipboard?.writeText) return;
-  await navigator.clipboard.writeText(visibleText.value);
-  copied.value = true;
+  try {
+    await navigator.clipboard.writeText(visibleText.value);
+    copied.value = true;
+    copyError.value = '';
+  } catch {
+    copied.value = false;
+    copyError.value = 'Copy failed';
+  }
 }
 </script>
 
@@ -56,6 +68,7 @@ async function copyVisible() {
       <Check v-if="copied" :size="16" aria-hidden="true" />
       <Copy v-else :size="16" aria-hidden="true" />
     </button>
+    <p v-if="copyError" role="alert">{{ copyError }}</p>
     <p v-if="!hasVisibleChannel && !channels.length" class="empty-state">{{ emptyLabel }}</p>
     <template v-for="channel in channels" :key="channel.label">
       <section v-if="channel.output.text || channel.output.warning || channel.truncated || channel.encoding" class="output-channel">

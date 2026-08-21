@@ -112,6 +112,15 @@ describe('output inspection', () => {
     expect(wrapper.text()).toContain('<unsafe>');
   });
 
+  test('uses one empty diagnostics view instead of three empty channel blocks', () => {
+    const wrapper = mount(OutputTabs, {
+      props: { result: { jobId: 'job-clean', status: 'JOB_STATUS_SUCCEEDED' }, modelValue: 'diagnostics' },
+    });
+    expect(wrapper.findAll('.output-channel')).toHaveLength(1);
+    expect(wrapper.get('.output-channel .badge').text()).toBe('utf8');
+    expect(wrapper.get('.output-channel .empty-state').text()).toBe('No diagnostics');
+  });
+
   test('offers empty states and copies visible output', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
@@ -134,6 +143,18 @@ describe('output inspection', () => {
     });
     expect(wrapper.get('.output-channel .badge').text()).toBe('base64');
     expect(wrapper.get('.output-channel .empty-state').text()).toBe('No output');
+  });
+
+  test('reports clipboard failures without an unhandled rejection', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    const wrapper = mount(OutputTabs, {
+      props: { result: { jobId: 'job-copy-fail', status: 'JOB_STATUS_SUCCEEDED', stdout: 'copy me' } },
+    });
+    await wrapper.get('button[aria-label="Copy Output"]').trigger('click');
+    expect(wrapper.get('[role="alert"]').text()).toBe('Copy failed');
   });
 
   test('states that stopping monitoring does not cancel the backend job and exposes errors', () => {
