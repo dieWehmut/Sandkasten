@@ -105,14 +105,29 @@ install_webui_assets() {
   fi
 
   stage="$(mktemp -d "${WEBUI_ROOT}.staging.XXXXXX")" || return 1
+  if ! chmod 0755 "$stage"; then
+    rm -rf "$stage"
+    _webui_error "failed to prepare WebUI staging permissions"
+    return 1
+  fi
   for name in "${WEBUI_DIST_FILES[@]}"; do
     if ! cp -p -- "$source/$name" "$stage/$name"; then
       rm -rf "$stage"
       _webui_error "failed to stage WebUI asset: $name"
       return 1
     fi
+    if ! chmod 0644 "$stage/$name"; then
+      rm -rf "$stage"
+      _webui_error "failed to prepare WebUI asset permissions: $name"
+      return 1
+    fi
   done
-  printf '%s\n' "managed-by=sandkasten" > "$stage/.${WEBUI_MANAGED_MARKER}"
+  if ! printf '%s\n' "managed-by=sandkasten" > "$stage/.${WEBUI_MANAGED_MARKER}" \
+    || ! chmod 0644 "$stage/.${WEBUI_MANAGED_MARKER}"; then
+    rm -rf "$stage"
+    _webui_error "failed to prepare WebUI ownership marker permissions"
+    return 1
+  fi
 
   # Rename the old managed tree aside, publish the complete staged tree, then
   # remove the old tree. This avoids exposing a partially copied directory.

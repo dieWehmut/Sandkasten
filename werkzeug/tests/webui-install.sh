@@ -64,7 +64,10 @@ assert_file "$WEBUI_ROOT/index.html"
 assert_file "$WEBUI_ROOT/.sandkasten-webui-managed"
 for asset in index.html app.js styles.css config.js; do
   assert_file "$WEBUI_ROOT/$asset"
+  [[ "$(stat -c '%a' "$WEBUI_ROOT/$asset")" == 644 ]] || fail "WebUI asset is not Nginx-readable: $asset"
 done
+[[ "$(stat -c '%a' "$WEBUI_ROOT")" == 755 ]] || fail 'WebUI root is not traversable by Nginx'
+[[ "$(stat -c '%a' "$WEBUI_ROOT/.sandkasten-webui-managed")" == 644 ]] || fail 'WebUI ownership marker has unexpected permissions'
 [[ "$(find "$WEBUI_ROOT" -mindepth 1 -maxdepth 1 -type f ! -name '.sandkasten-webui-managed' | wc -l)" -eq 4 ]] || fail 'installer copied files outside the four-file payload'
 [[ ! -e "$WEBUI_ROOT/src-placeholder.ts" ]] || fail 'installer copied WebUI source files'
 
@@ -73,6 +76,12 @@ npm() { fail 'installer invoked npm'; }
 node() { fail 'installer invoked node'; }
 install_webui_assets
 unset -f npm node
+
+# A staging-permission failure must abort before replacing the managed tree.
+chmod() { return 1; }
+assert_failure "staging permission failure" install_webui_assets
+unset -f chmod
+assert_contains "$WEBUI_ROOT/index.html" '<!doctype html>'
 
 # A failed validation must leave the last managed install intact.
 printf 'stale\n' > "$REPO_ROOT/webui/dist/extra.txt"
