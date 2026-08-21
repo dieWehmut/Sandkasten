@@ -41,6 +41,10 @@ describe('useSetupWelcome', () => {
     expect(setup.seen.value).toBe(true);
     expect(setup.isGuideOpen.value).toBe(true);
     expect(storage.setItem).toHaveBeenCalledTimes(1);
+
+    setup.dismiss();
+
+    expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 
   test('restores the exact seen value and keeps storage failures non-blocking', () => {

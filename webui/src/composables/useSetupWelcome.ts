@@ -41,8 +41,10 @@ export function useSetupWelcome(environment: SetupWelcomeEnvironment = {}): Setu
   const isGuideOpen = ref(!hasSeenGuide);
 
   function dismiss(): void {
+    const wasSeen = seen.value;
     seen.value = true;
     isGuideOpen.value = false;
+    if (wasSeen) return;
     try {
       storage?.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
     } catch {
