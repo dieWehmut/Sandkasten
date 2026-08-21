@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
@@ -40,6 +40,9 @@ function loadRunnerOnce(): void {
 function dismissSetup(): void {
   setupWelcome.dismiss();
   loadRunnerOnce();
+  void nextTick(() => {
+    document.querySelector<HTMLElement>('[data-testid="open-setup-guide"]')?.focus();
+  });
 }
 
 function toggleHistory(): void {
