@@ -65,7 +65,12 @@ assert_workflow_contract() {
   grep -Fq 'actions/deploy-pages@v4' "$workflow" || { fail 'workflow must deploy Pages with the official action'; return 1; }
   grep -Fq 'vars.SANDKASTEN_API_BASE_URL' "$workflow" || { fail 'workflow must read the repository variable'; return 1; }
   grep -Fq 'globalThis.SANDKASTEN_CONFIG' "$workflow" || { fail 'workflow must generate the runtime config contract'; return 1; }
-  grep -Fq 'cp webui/index.html webui/app.js webui/styles.css _site/' "$workflow" || { fail 'workflow must stage only the three static WebUI files before config generation'; return 1; }
+  grep -Fq 'actions/setup-node@v4' "$workflow" || { fail 'workflow must set up Node.js'; return 1; }
+  grep -Fq 'cache-dependency-path: webui/package-lock.json' "$workflow" || { fail 'workflow must cache from webui/package-lock.json'; return 1; }
+  grep -Fq 'npm ci' "$workflow" || { fail 'workflow must install from package-lock'; return 1; }
+  grep -Fq 'npm test' "$workflow" || { fail 'workflow must test the WebUI'; return 1; }
+  grep -Fq 'npm run build' "$workflow" || { fail 'workflow must build the WebUI'; return 1; }
+  grep -Fq 'cp -R webui/dist/. _site/' "$workflow" || { fail 'workflow must stage the complete built WebUI before config generation'; return 1; }
   grep -Fq "API_BASE_URL=\"\$API_BASE_URL\" python3 - <<'PY' > _site/config.js" "$workflow" || { fail 'workflow must generate config.js from the environment'; return 1; }
   grep -Fq 'os.environ.get("API_BASE_URL", "")' "$workflow" || { fail 'workflow must treat an unset API variable as empty'; return 1; }
   grep -Fq 'json.dumps' "$workflow" || { fail 'workflow must JSON-escape the API base URL'; return 1; }
@@ -89,6 +94,10 @@ run_tests() {
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
   check_artifact "$tmp_dir"
 
+  printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "https://example.test/a\\\"b" };\n' > "$tmp_dir/config.js"
+  check_artifact "$tmp_dir"
+  printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: "" };\n' > "$tmp_dir/config.js"
+
   printf 'source documentation must not ship\n' > "$tmp_dir/README.md"
   if check_artifact "$tmp_dir" >/dev/null 2>&1; then
     fail 'artifact checker accepted README.md'
@@ -102,6 +111,12 @@ run_tests() {
   fi
 
   rm -rf "$tmp_dir/test"
+  ln -s app.js "$tmp_dir/linked-app.js"
+  if check_artifact "$tmp_dir" >/dev/null 2>&1; then
+    fail 'artifact checker accepted a symbolic link'
+  fi
+  rm -f "$tmp_dir/linked-app.js"
+
   printf 'globalThis.SANDKASTEN_CONFIG = { apiBaseUrl: 42 };\n' > "$tmp_dir/config.js"
   if check_artifact "$tmp_dir" >/dev/null 2>&1; then
     fail 'artifact checker accepted a non-string apiBaseUrl'
