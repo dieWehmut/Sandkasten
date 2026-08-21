@@ -6,6 +6,12 @@ fail() {
   return 1
 }
 
+contains_exact_line() {
+  local expected_line="$1"
+  local source_file="$2"
+  tr -d '\r' < "$source_file" | grep -Fqx -- "$expected_line"
+}
+
 check_distribution() {
   local distribution_dir="${1:-}"
   [[ -n "$distribution_dir" ]] || { fail 'distribution directory is required'; return 1; }
@@ -60,7 +66,7 @@ check_repository_contract() {
 
   local distribution_file
   for distribution_file in index.html app.js styles.css config.js; do
-    grep -Fxq "!webui/dist/$distribution_file" "$repository_root/.gitignore" || {
+    contains_exact_line "!webui/dist/$distribution_file" "$repository_root/.gitignore" || {
       fail ".gitignore must expose webui/dist/$distribution_file as a versioned payload"
       return 1
     }
@@ -94,6 +100,13 @@ case "${1:---test}" in
     if command -v npm >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
       (cd "$repository_root/webui" && node --test tests/build-contract.test.mjs)
     fi
+    line_fixture="$(mktemp)"
+    trap 'rm -f -- "${line_fixture:-}"' EXIT
+    printf 'first\r\n!webui/dist/index.html\r\nlast\r\n' > "$line_fixture"
+    contains_exact_line '!webui/dist/index.html' "$line_fixture" || {
+      fail 'exact-line checks must accept CRLF text files'
+      exit 1
+    }
     check_repository_contract "$repository_root"
     printf 'webui build tests: ok\n'
     ;;
