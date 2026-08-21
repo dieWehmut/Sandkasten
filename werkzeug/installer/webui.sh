@@ -81,7 +81,9 @@ validate_webui_source() {
 }
 
 is_managed_webui_root() {
-  local marker="${1:-$WEBUI_ROOT}/.${WEBUI_MANAGED_MARKER}"
+  local root="${1:-$WEBUI_ROOT}" marker
+  [[ -d "$root" && ! -L "$root" ]] || return 1
+  marker="$root/.${WEBUI_MANAGED_MARKER}"
   [[ -f "$marker" && ! -L "$marker" ]] || return 1
   [[ "$(<"$marker")" == "managed-by=sandkasten" ]]
 }
@@ -198,7 +200,7 @@ EOF
 remove_webui_assets() {
   validate_webui_root || return 1
   [[ -e "$WEBUI_ROOT" || -L "$WEBUI_ROOT" ]] || return 0
-  [[ -f "$WEBUI_ROOT/.${WEBUI_MANAGED_MARKER}" ]] || {
+  is_managed_webui_root "$WEBUI_ROOT" || {
     _webui_error "preserving unmanaged WebUI directory: $WEBUI_ROOT"
     return 0
   }

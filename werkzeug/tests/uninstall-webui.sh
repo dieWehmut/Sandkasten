@@ -10,9 +10,12 @@ toolchain_body="$(sed -n '/^remove_toolchains()/,/^}/p' "$UNINSTALL")"
 [[ "$toolchain_body" != *'remove_webui_assets'* ]] || fail 'toolchain confirmation must not implicitly remove WebUI assets'
 
 grep -q '_confirm_remove_webui_assets' "$UNINSTALL" || fail 'Nginx cleanup must use confirmed WebUI cleanup'
+grep -q '^_uninstall_webui_assets_owned()' "$UNINSTALL" || fail 'standalone uninstaller lacks strict WebUI ownership validation'
 webui_confirm_line="$(grep -n 'if confirm_step "delete managed WebUI assets' "$UNINSTALL" | head -1 | cut -d: -f1)"
 webui_remove_line="$(grep -n 'remove_webui_assets ||' "$UNINSTALL" | head -1 | cut -d: -f1)"
 [[ "$webui_remove_line" -gt "$webui_confirm_line" ]] || fail 'WebUI assets must be removed after WebUI confirmation'
+webui_confirm_body="$(sed -n '/^_confirm_remove_webui_assets()/,/^}/p' "$UNINSTALL")"
+[[ "$webui_confirm_body" == *'_uninstall_webui_assets_owned'* ]] || fail 'WebUI confirmation accepts an unverified ownership marker'
 nginx_body="$(sed -n '/^remove_nginx()/,/^}/p' "$UNINSTALL")"
 grep -q '^_uninstall_webui_root_safe()' "$UNINSTALL" || fail 'fallback WebUI cleanup lacks path guard'
 [[ "$nginx_body" == *'_confirm_remove_webui_assets'* ]] || fail 'Nginx cleanup misses WebUI confirmation path'
@@ -52,6 +55,28 @@ mkdir -p "$WEBUI_ROOT"
 printf 'unmanaged\n' > "$WEBUI_ROOT/user-data.txt"
 remove_webui_assets
 [[ -e "$WEBUI_ROOT/user-data.txt" ]] || fail 'unmanaged WebUI data was removed'
+
+printf 'not-sandkasten\n' > "$WEBUI_ROOT/.sandkasten-webui-managed"
+remove_webui_assets
+[[ -e "$WEBUI_ROOT/user-data.txt" ]] || fail 'WebUI data with an invalid marker was removed'
+
+rm "$WEBUI_ROOT/.sandkasten-webui-managed"
+printf 'managed-by=sandkasten\n' > "$tmp_dir/marker-target"
+ln -s "$tmp_dir/marker-target" "$WEBUI_ROOT/.sandkasten-webui-managed"
+remove_webui_assets
+[[ -e "$WEBUI_ROOT/user-data.txt" ]] || fail 'WebUI data with a symlink marker was removed'
+
+rm "$WEBUI_ROOT/.sandkasten-webui-managed"
+printf 'managed-by=sandkasten\n' > "$WEBUI_ROOT/.sandkasten-webui-managed"
+managed_alias="$tmp_dir/managed-alias"
+ln -s "$WEBUI_ROOT" "$managed_alias"
+WEBUI_ROOT="$managed_alias"
+remove_webui_assets
+[[ -L "$managed_alias" && -e "$SANDKASTEN_WEBUI_DIR/user-data.txt" ]] || fail 'WebUI root symlink was treated as an owned installation'
+
+WEBUI_ROOT="$SANDKASTEN_WEBUI_DIR"
+remove_webui_assets
+[[ ! -e "$WEBUI_ROOT" ]] || fail 'managed WebUI directory was not removed'
 
 avail="$tmp_dir/sandkasten.conf"
 enabled="$tmp_dir/enabled.conf"

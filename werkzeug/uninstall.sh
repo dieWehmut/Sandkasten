@@ -64,9 +64,15 @@ _uninstall_webui_root_safe() {
   case "$canonical" in /|/tmp|/var|/usr|/etc|/home|/root|/opt|/opt/sandkasten) return 1 ;; esac
 }
 
+_uninstall_webui_assets_owned() {
+  local root="${WEBUI_ROOT:-}" marker=".${WEBUI_MANAGED_MARKER:-sandkasten-webui-managed}"
+  [[ -d "$root" && ! -L "$root" ]] || return 1
+  [[ -f "$root/$marker" && ! -L "$root/$marker" ]] || return 1
+  [[ "$(<"$root/$marker")" == "managed-by=sandkasten" ]]
+}
+
 _confirm_remove_webui_assets() {
-  local marker=".${WEBUI_MANAGED_MARKER:-sandkasten-webui-managed}"
-  [[ -f "$WEBUI_ROOT/$marker" ]] || return 0
+  _uninstall_webui_assets_owned || return 0
   if confirm_step "delete managed WebUI assets at $WEBUI_ROOT?"; then
     if declare -F remove_webui_assets >/dev/null 2>&1; then
       remove_webui_assets || warn "WebUI assets could not be removed"
