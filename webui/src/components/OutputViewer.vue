@@ -4,6 +4,7 @@ import { Check, Copy } from '@lucide/vue';
 import type { JobResponse } from '../services/sandkastenApi';
 import { decodeOutput, type DecodedOutput } from '../services/sandkastenApi';
 import type { OutputTab } from '../composables/useRunner';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface Channel {
   label: string;
@@ -13,36 +14,37 @@ interface Channel {
 }
 
 const props = defineProps<{ result?: JobResponse; error?: string; tab: OutputTab }>();
+const t = useTranslation();
 const copied = ref(false);
 const copyError = ref('');
 
 const channels = computed<Channel[]>(() => {
   const job = props.result;
   if (!job) return props.tab === 'diagnostics' && props.error
-    ? [{ label: 'Request error', output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' }]
+    ? [{ label: t('output.requestError'), output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' }]
     : [];
-  if (props.tab === 'output') return [{ label: 'Output', output: decodeOutput(job.stdout, job.stdoutEncoding), encoding: job.stdoutEncoding ?? 'utf8', truncated: job.truncated?.stdout === true }];
-  if (props.tab === 'errors') return [{ label: 'Errors', output: decodeOutput(job.stderr, job.stderrEncoding), encoding: job.stderrEncoding ?? 'utf8', truncated: job.truncated?.stderr === true }];
+  if (props.tab === 'output') return [{ label: t('output.output'), output: decodeOutput(job.stdout, job.stdoutEncoding), encoding: job.stdoutEncoding ?? 'utf8', truncated: job.truncated?.stdout === true }];
+  if (props.tab === 'errors') return [{ label: t('output.errors'), output: decodeOutput(job.stderr, job.stderrEncoding), encoding: job.stderrEncoding ?? 'utf8', truncated: job.truncated?.stderr === true }];
   if (props.tab === 'compile') return [
-    { label: 'Compile stdout', output: decodeOutput(job.compileStdout, job.compileStdoutEncoding), encoding: job.compileStdoutEncoding ?? 'utf8' },
-    { label: 'Compile stderr', output: decodeOutput(job.compileStderr, job.compileStderrEncoding), encoding: job.compileStderrEncoding ?? 'utf8' },
+    { label: t('output.compileStdout'), output: decodeOutput(job.compileStdout, job.compileStdoutEncoding), encoding: job.compileStdoutEncoding ?? 'utf8' },
+    { label: t('output.compileStderr'), output: decodeOutput(job.compileStderr, job.compileStderrEncoding), encoding: job.compileStderrEncoding ?? 'utf8' },
   ];
   const diagnosticText = job.diagnostics ? JSON.stringify(job.diagnostics, null, 2) : '';
   const diagnosticChannels = [
-    { label: 'Error message', output: decodeOutput(job.errorMessage, 'utf8'), encoding: 'utf8' },
-    { label: 'Diagnostics', output: decodeOutput(diagnosticText, 'utf8'), encoding: 'utf8' },
-    { label: 'Request error', output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' },
+    { label: t('output.errorMessage'), output: decodeOutput(job.errorMessage, 'utf8'), encoding: 'utf8' },
+    { label: t('output.diagnostics'), output: decodeOutput(diagnosticText, 'utf8'), encoding: 'utf8' },
+    { label: t('output.requestError'), output: decodeOutput(props.error, 'utf8'), encoding: 'utf8' },
   ];
   const visibleChannels = diagnosticChannels.filter((channel) => channel.output.text || channel.output.warning);
   return visibleChannels.length
     ? visibleChannels
-    : [{ label: 'Diagnostics', output: decodeOutput('', 'utf8'), encoding: 'utf8' }];
+    : [{ label: t('output.diagnostics'), output: decodeOutput('', 'utf8'), encoding: 'utf8' }];
 });
 
 const visibleText = computed(() => channels.value.map((channel) => channel.output.text).filter(Boolean).join('\n'));
 const hasVisibleChannel = computed(() => channels.value.some((channel) => Boolean(channel.output.text || channel.output.warning || channel.truncated)));
-const emptyLabel = computed(() => `No ${props.tab === 'errors' ? 'errors' : props.tab === 'compile' ? 'compile output' : props.tab === 'diagnostics' ? 'diagnostics' : 'output'}`);
-const copyLabel = computed(() => `Copy ${props.tab === 'output' ? 'Output' : props.tab.charAt(0).toUpperCase() + props.tab.slice(1)}`);
+const emptyLabel = computed(() => t(props.tab === 'errors' ? 'output.noErrors' : props.tab === 'compile' ? 'output.noCompile' : props.tab === 'diagnostics' ? 'output.noDiagnostics' : 'output.none'));
+const copyLabel = computed(() => t(props.tab === 'output' ? 'output.copyOutput' : props.tab === 'errors' ? 'output.copyErrors' : props.tab === 'compile' ? 'output.copyCompile' : 'output.copyDiagnostics'));
 
 watch(() => [props.tab, props.result?.jobId, visibleText.value], () => {
   copied.value = false;
@@ -57,7 +59,7 @@ async function copyVisible() {
     copyError.value = '';
   } catch {
     copied.value = false;
-    copyError.value = 'Copy failed';
+    copyError.value = t('output.copyFailed');
   }
 }
 </script>
@@ -75,7 +77,7 @@ async function copyVisible() {
         <h3 v-if="channels.length > 1">{{ channel.label }}</h3>
         <div class="badges">
           <span v-if="channel.encoding" class="badge">{{ channel.encoding }}</span>
-          <span v-if="channel.truncated" class="badge">Truncated</span>
+          <span v-if="channel.truncated" class="badge">{{ t('output.truncated') }}</span>
         </div>
         <p v-if="channel.output.warning" role="status">{{ channel.output.warning }}</p>
         <pre v-if="channel.output.text">{{ channel.output.text }}</pre>
