@@ -25,4 +25,20 @@ describe('CopyCommand', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toContain('Copy failed');
   });
+
+  test('does not mark a replacement command as copied when an older write finishes', async () => {
+    let resolveWrite: (() => void) | undefined;
+    const writeText = vi.fn(() => new Promise<void>((resolve) => { resolveWrite = resolve; }));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const wrapper = mount(CopyCommand, { props: { command: 'old command' } });
+
+    await wrapper.get('[data-testid="copy-command-button"]').trigger('click');
+    await wrapper.setProps({ command: 'new command' });
+    resolveWrite?.();
+    await Promise.resolve();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="copy-command-status"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="copy-command-button"]').text()).toContain('Copy command');
+  });
 });
