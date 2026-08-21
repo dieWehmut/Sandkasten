@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest run && node --test test.mjs",
+    "test": "vitest run && node --test test.mjs ../scripts/tests/webui-browser-smoke.test.mjs",
+    "test:browser": "node ../scripts/webui-browser-smoke.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
