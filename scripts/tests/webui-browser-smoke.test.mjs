@@ -12,6 +12,13 @@ import {
   loadPlaywrightChromium,
   measurePixelDifference,
 } from '../webui-browser-smoke-lib.mjs';
+import {
+  SETUP_FLOW_SELECTORS,
+  createPlaywrightSetupDriver,
+  runFirstVisitSetupFlow,
+  runReopenedSetupFlow,
+  setupLocaleActionSelector,
+} from '../webui-browser-smoke.mjs';
 
 function crc32(buffer) {
   let crc = 0xffffffff;
@@ -55,6 +62,131 @@ test('defines the required desktop, tablet, and mobile viewports', () => {
     { name: 'desktop', width: 1440, height: 900 },
     { name: 'tablet', width: 1024, height: 768 },
     { name: 'mobile', width: 390, height: 844 },
+  ]);
+});
+
+test('defines stable setup and locale selectors for the first-visit browser flow', () => {
+  assert.deepEqual(SETUP_FLOW_SELECTORS, {
+    welcome: '[data-testid="setup-welcome"]',
+    guide: '[data-testid="setup-guide"]',
+    localeSwitcher: '[data-testid="locale-switcher"]',
+    copyCommand: '[data-testid="copy-command-button"][data-action="copy-install-command"]',
+    installCommand: '[data-testid="install-command"] code',
+    dismiss: '[data-testid="setup-dismiss"][data-action="dismiss-setup"]',
+    workbench: '[data-testid="workbench-shell"]',
+    reopen: '[data-testid="open-setup-guide"][data-action="open-setup-guide"]',
+  });
+});
+
+test('builds locale action selectors only for the supported languages', () => {
+  assert.equal(
+    setupLocaleActionSelector('zh-CN'),
+    '[data-testid="locale-switcher"] [data-action="set-locale-zh-CN"]',
+  );
+  assert.equal(
+    setupLocaleActionSelector('en'),
+    '[data-testid="locale-switcher"] [data-action="set-locale-en"]',
+  );
+  assert.throws(() => setupLocaleActionSelector('fr'), /Unsupported smoke locale: fr/);
+});
+
+test('drives the first-visit setup, locale, copy, persistence, and dismissal contract', async () => {
+  const calls = [];
+  const command = 'sudo ./sandkasten-install.sh --mode webui';
+  const driver = {
+    waitForVisible(selector) { calls.push(['visible', selector]); },
+    waitForHidden(selector) { calls.push(['hidden', selector]); },
+    click(selector) { calls.push(['click', selector]); },
+    waitForLocale(locale) { calls.push(['locale', locale]); },
+    readText(selector) { calls.push(['text', selector]); return command; },
+    expectClipboard(value) { calls.push(['clipboard', value]); },
+    expectStoredValue(key, value) { calls.push(['storage', key, value]); },
+    assertNoHorizontalOverflow(stage) { calls.push(['overflow', stage]); },
+  };
+
+  await runFirstVisitSetupFlow(driver);
+
+  assert.deepEqual(calls, [
+    ['visible', SETUP_FLOW_SELECTORS.welcome],
+    ['visible', SETUP_FLOW_SELECTORS.guide],
+    ['visible', SETUP_FLOW_SELECTORS.localeSwitcher],
+    ['click', setupLocaleActionSelector('zh-CN')],
+    ['locale', 'zh-CN'],
+    ['storage', 'sandkasten-locale', 'zh-CN'],
+    ['click', setupLocaleActionSelector('en')],
+    ['locale', 'en'],
+    ['storage', 'sandkasten-locale', 'en'],
+    ['text', SETUP_FLOW_SELECTORS.installCommand],
+    ['click', SETUP_FLOW_SELECTORS.copyCommand],
+    ['clipboard', command],
+    ['overflow', 'setup welcome'],
+    ['click', SETUP_FLOW_SELECTORS.dismiss],
+    ['hidden', SETUP_FLOW_SELECTORS.welcome],
+    ['visible', SETUP_FLOW_SELECTORS.workbench],
+    ['storage', 'sandkasten-install-guide-seen', 'true'],
+  ]);
+});
+
+test('drives the header action that reopens and dismisses the setup guide', async () => {
+  const calls = [];
+  const driver = {
+    waitForVisible(selector) { calls.push(['visible', selector]); },
+    waitForHidden(selector) { calls.push(['hidden', selector]); },
+    click(selector) { calls.push(['click', selector]); },
+    assertNoHorizontalOverflow(stage) { calls.push(['overflow', stage]); },
+  };
+
+  await runReopenedSetupFlow(driver);
+
+  assert.deepEqual(calls, [
+    ['visible', SETUP_FLOW_SELECTORS.reopen],
+    ['click', SETUP_FLOW_SELECTORS.reopen],
+    ['visible', SETUP_FLOW_SELECTORS.guide],
+    ['overflow', 'reopened setup guide'],
+    ['click', SETUP_FLOW_SELECTORS.dismiss],
+    ['hidden', SETUP_FLOW_SELECTORS.welcome],
+    ['visible', SETUP_FLOW_SELECTORS.workbench],
+  ]);
+});
+
+test('adapts the setup flow contract to Playwright locators and browser state', async () => {
+  const calls = [];
+  const page = {
+    locator(selector) {
+      return {
+        waitFor(options) { calls.push(['wait', selector, options]); },
+        click() { calls.push(['click', selector]); },
+        innerText() { calls.push(['text', selector]); return 'install command'; },
+      };
+    },
+    waitForFunction(_predicate, value) { calls.push(['waitForFunction', value]); },
+    evaluate(_callback, argument) {
+      calls.push(['evaluate', argument]);
+      return argument === undefined ? 'install command' : 'true';
+    },
+  };
+  const driver = createPlaywrightSetupDriver(page, 'mobile', {
+    assertNoOverflow(_page, label) { calls.push(['overflow', label]); },
+  });
+
+  await driver.waitForVisible('#welcome');
+  await driver.waitForHidden('#welcome');
+  await driver.click('#copy');
+  assert.equal(await driver.readText('#command'), 'install command');
+  await driver.waitForLocale('zh-CN');
+  await driver.expectClipboard('install command');
+  await driver.expectStoredValue('seen', 'true');
+  await driver.assertNoHorizontalOverflow('setup welcome');
+
+  assert.deepEqual(calls, [
+    ['wait', '#welcome', { state: 'visible', timeout: 5000 }],
+    ['wait', '#welcome', { state: 'hidden', timeout: 5000 }],
+    ['click', '#copy'],
+    ['text', '#command'],
+    ['waitForFunction', 'zh-CN'],
+    ['waitForFunction', { expectedValue: 'install command' }],
+    ['evaluate', { storageKey: 'seen', expectedValue: 'true' }],
+    ['overflow', 'mobile setup welcome'],
   ]);
 });
 
