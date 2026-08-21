@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { GitFork, History, PanelRight, SunMoon } from '@lucide/vue';
+import { computed } from 'vue';
+import { GitFork, History, Moon, PanelRight, Sun } from '@lucide/vue';
+import type { Theme } from '../composables/useTheme';
 
-defineProps<{ historyOpen?: boolean; inspectorOpen?: boolean }>();
+const props = withDefaults(defineProps<{ historyOpen?: boolean; inspectorOpen?: boolean; theme?: Theme }>(), { theme: 'light' });
 const emit = defineEmits<{ toggleHistory: []; toggleInspector: []; toggleTheme: []; openGithub: [] }>();
+const themeLabel = computed(() => `Use ${props.theme === 'light' ? 'dark' : 'light'} theme`);
 </script>
 
 <template>
@@ -13,8 +16,9 @@ const emit = defineEmits<{ toggleHistory: []; toggleInspector: []; toggleTheme: 
     <button type="button" :aria-label="inspectorOpen ? 'Hide inspector' : 'Show inspector'" :title="inspectorOpen ? 'Hide inspector' : 'Show inspector'" @click="emit('toggleInspector')">
       <PanelRight :size="17" aria-hidden="true" />
     </button>
-    <button type="button" aria-label="Toggle theme" title="Toggle theme" @click="emit('toggleTheme')">
-      <SunMoon :size="17" aria-hidden="true" />
+    <button type="button" :aria-label="themeLabel" :title="themeLabel" @click="emit('toggleTheme')">
+      <Moon v-if="theme === 'light'" :size="17" aria-hidden="true" />
+      <Sun v-else :size="17" aria-hidden="true" />
     </button>
     <button type="button" aria-label="Open GitHub repository" title="Open GitHub repository" @click="emit('openGithub')">
       <GitFork :size="17" aria-hidden="true" />

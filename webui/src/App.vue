@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import { useRunner } from './composables/useRunner';
+import { useTheme } from './composables/useTheme';
 
 const runner = useRunner();
+const theme = useTheme();
 const historyOpen = ref(true);
 const inspectorOpen = ref(true);
 
@@ -14,16 +16,12 @@ const canRun = computed(() => runner.connectionState.value === 'connected'
   && Boolean(runner.source.value.trim())
   && !['booting', 'submitting', 'polling'].includes(runner.phase.value));
 
-function toggleTheme(): void {
-  const root = document.documentElement;
-  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
-}
-
 function openGithub(): void {
   window.open('https://github.com/dieWehmut/Sandkasten', '_blank', 'noopener,noreferrer');
 }
 
 onMounted(() => { void runner.load(); });
+onBeforeUnmount(theme.dispose);
 </script>
 
 <template>
@@ -32,9 +30,10 @@ onMounted(() => { void runner.load(); });
       :connection-state="runner.connectionState.value"
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
+      :theme="theme.theme.value"
       @toggle-history="historyOpen = !historyOpen"
       @toggle-inspector="inspectorOpen = !inspectorOpen"
-      @toggle-theme="toggleTheme"
+      @toggle-theme="theme.toggleTheme"
       @open-github="openGithub"
     />
     <section v-if="runner.connectionState.value === 'unavailable'" class="connection-error" role="alert">
