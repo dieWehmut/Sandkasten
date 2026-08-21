@@ -19,6 +19,94 @@ const screenshotDirectory = path.resolve(
 );
 const distributionFiles = ['app.js', 'config.js', 'index.html', 'styles.css'];
 
+export const SETUP_FLOW_SELECTORS = Object.freeze({
+  welcome: '[data-testid="setup-welcome"]',
+  guide: '[data-testid="setup-guide"]',
+  localeSwitcher: '[data-testid="locale-switcher"]',
+  copyCommand: '[data-testid="copy-command-button"][data-action="copy-install-command"]',
+  installCommand: '[data-testid="install-command"] code',
+  dismiss: '[data-testid="setup-dismiss"][data-action="dismiss-setup"]',
+  workbench: '[data-testid="workbench-shell"]',
+  reopen: '[data-testid="open-setup-guide"][data-action="open-setup-guide"]',
+});
+
+export function setupLocaleActionSelector(locale) {
+  if (locale !== 'en' && locale !== 'zh-CN') {
+    throw new Error('Unsupported smoke locale: ' + locale);
+  }
+  return `${SETUP_FLOW_SELECTORS.localeSwitcher} [data-action="set-locale-${locale}"]`;
+}
+
+export async function runFirstVisitSetupFlow(driver) {
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.welcome);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.guide);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.localeSwitcher);
+  await driver.click(setupLocaleActionSelector('zh-CN'));
+  await driver.waitForLocale('zh-CN');
+  await driver.expectStoredValue('sandkasten-locale', 'zh-CN');
+  await driver.click(setupLocaleActionSelector('en'));
+  await driver.waitForLocale('en');
+  await driver.expectStoredValue('sandkasten-locale', 'en');
+  const command = await driver.readText(SETUP_FLOW_SELECTORS.installCommand);
+  await driver.click(SETUP_FLOW_SELECTORS.copyCommand);
+  await driver.expectClipboard(command);
+  await driver.assertNoHorizontalOverflow('setup welcome');
+  await driver.click(SETUP_FLOW_SELECTORS.dismiss);
+  await driver.waitForHidden(SETUP_FLOW_SELECTORS.welcome);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.workbench);
+  await driver.expectStoredValue('sandkasten-install-guide-seen', 'true');
+}
+
+export async function runReopenedSetupFlow(driver) {
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.reopen);
+  await driver.click(SETUP_FLOW_SELECTORS.reopen);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.guide);
+  await driver.assertNoHorizontalOverflow('reopened setup guide');
+  await driver.click(SETUP_FLOW_SELECTORS.dismiss);
+  await driver.waitForHidden(SETUP_FLOW_SELECTORS.welcome);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.workbench);
+}
+
+export function createPlaywrightSetupDriver(page, viewportName, options = {}) {
+  const timeout = options.timeout ?? 5000;
+  const assertNoOverflow = options.assertNoOverflow ?? assertNoHorizontalOverflow;
+  return {
+    waitForVisible(selector) {
+      return page.locator(selector).waitFor({ state: 'visible', timeout });
+    },
+    waitForHidden(selector) {
+      return page.locator(selector).waitFor({ state: 'hidden', timeout });
+    },
+    click(selector) {
+      return page.locator(selector).click();
+    },
+    waitForLocale(locale) {
+      return page.waitForFunction((expectedLocale) => document.documentElement.lang === expectedLocale, locale);
+    },
+    readText(selector) {
+      return page.locator(selector).innerText();
+    },
+    expectClipboard(value) {
+      return page.waitForFunction(
+        async ({ expectedValue }) => (await navigator.clipboard.readText()) === expectedValue,
+        { expectedValue: value },
+        { timeout },
+      );
+    },
+    expectStoredValue(key, value) {
+      return page.evaluate(({ storageKey, expectedValue }) => {
+        const actualValue = window.localStorage.getItem(storageKey);
+        if (actualValue !== expectedValue) {
+          throw new Error(`Storage mismatch for ${storageKey}: expected ${expectedValue}, got ${actualValue}`);
+        }
+      }, { storageKey: key, expectedValue: value });
+    },
+    assertNoHorizontalOverflow(stage) {
+      return assertNoOverflow(page, `${viewportName} ${stage}`);
+    },
+  };
+}
+
 function log(message) {
   process.stdout.write('[webui-browser-smoke] ' + message + '\n');
 }
@@ -112,6 +200,13 @@ async function waitForConnected(page) {
   await page.locator('[aria-label="Editor"] .cm-content').waitFor({ state: 'visible', timeout: 5000 });
 }
 
+async function inspectSetupFlow(page, viewportName) {
+  const driver = createPlaywrightSetupDriver(page, viewportName);
+  await runFirstVisitSetupFlow(driver);
+  await waitForConnected(page);
+  await runReopenedSetupFlow(driver);
+}
+
 async function enterSource(page) {
   const editor = page.locator('[aria-label="Editor"] .cm-content');
   await editor.click();
@@ -162,7 +257,7 @@ async function inspectViewport(browser, appUrl, viewport) {
   const page = await context.newPage();
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await page.goto(appUrl, { waitUntil: 'networkidle' });
-  await waitForConnected(page);
+  await inspectSetupFlow(page, viewport.name);
   await assertMainRegions(page, viewport.name);
   await assertNoHorizontalOverflow(page, viewport.name);
   await assertNoIntersectingControls(page, viewport.name);
@@ -203,7 +298,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write('[webui-browser-smoke] ' + (error instanceof Error ? error.stack : String(error)) + '\n');
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write('[webui-browser-smoke] ' + (error instanceof Error ? error.stack : String(error)) + '\n');
+    process.exitCode = 1;
+  });
+}
