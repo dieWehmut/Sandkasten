@@ -112,6 +112,16 @@ describe('workbench controls', () => {
     expect(wrapper.findAll('dd').filter((node) => node.text() === 'Not reported')).toHaveLength(2);
   });
 
+  test('treats an omitted phase enabled flag as disabled', () => {
+    const wrapper = mount(InspectorPanel, {
+      props: {
+        runtime: { language: 'compiled', compile_phase: {}, run_phase: { enabled: true } },
+      },
+    });
+    expect(wrapper.text()).toContain('Compile phase enabledNo');
+    expect(wrapper.text()).toContain('Run phase enabledYes');
+  });
+
   test('wires runtime, editing, running, text-only output, and history restoration through App', async () => {
     api.submitJob
       .mockResolvedValueOnce(completed('job-one', '<img src=x onerror=alert(1)>'))

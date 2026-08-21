@@ -42,8 +42,8 @@ function limitEntries(limits: RuntimeLimits | undefined): Array<[string, unknown
       <div v-if="runtime.default_entrypoint"><dt>Entrypoint</dt><dd>{{ runtime.default_entrypoint }}</dd></div>
       <div><dt>Vendor required</dt><dd>{{ runtime.requires_vendor ? 'Yes' : 'No' }}</dd></div>
       <div v-if="runtime.aliases?.length"><dt>Aliases</dt><dd>{{ runtime.aliases.join(', ') }}</dd></div>
-      <div v-if="runtime.compile_phase"><dt>Compile phase enabled</dt><dd>{{ runtime.compile_phase.enabled === false ? 'No' : 'Yes' }}</dd></div>
-      <div v-if="runtime.run_phase"><dt>Run phase enabled</dt><dd>{{ runtime.run_phase.enabled === false ? 'No' : 'Yes' }}</dd></div>
+      <div v-if="runtime.compile_phase"><dt>Compile phase enabled</dt><dd>{{ runtime.compile_phase.enabled ? 'Yes' : 'No' }}</dd></div>
+      <div v-if="runtime.run_phase"><dt>Run phase enabled</dt><dd>{{ runtime.run_phase.enabled ? 'Yes' : 'No' }}</dd></div>
       <div v-if="runtime.compile_phase?.command?.length"><dt>Compile command</dt><dd>{{ runtime.compile_phase.command.join(' ') }}</dd></div>
       <div v-if="runtime.run_phase?.command?.length"><dt>Run command</dt><dd>{{ runtime.run_phase.command.join(' ') }}</dd></div>
     </dl>
