@@ -24,8 +24,3 @@ const phaseLabel = computed(() => {
     <p v-if="error" role="alert">{{ error }}</p>
   </section>
 </template>
-
-<style scoped>
-.job-timeline { min-width: 0; }
-.job-timeline p { overflow-wrap: anywhere; }
-</style>

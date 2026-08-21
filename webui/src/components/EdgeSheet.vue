@@ -114,15 +114,3 @@ onBeforeUnmount(() => {
     </div>
   </Transition>
 </template>
-
-<style scoped>
-.edge-sheet-layer { position: fixed; inset: 0; z-index: 50; }
-.edge-sheet__backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgb(22 19 21 / 54%); }
-.edge-sheet { position: absolute; inset-block: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(22rem, 88vw); overflow: hidden; background: #fff; }
-.edge-sheet--left { left: 0; border-right: 1px solid #d9d3d4; }
-.edge-sheet--right { right: 0; border-left: 1px solid #d9d3d4; }
-.edge-sheet__header { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: .65rem 1rem; border-bottom: 1px solid #d9d3d4; }
-.edge-sheet__header h2 { margin: 0; font-size: 1rem; }
-.edge-sheet__header button { display: inline-grid; width: 2rem; height: 2rem; place-items: center; }
-.edge-sheet__body { min-width: 0; min-height: 0; overflow: auto; }
-</style>

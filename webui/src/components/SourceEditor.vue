@@ -108,10 +108,3 @@ defineExpose({ editorView });
     <div ref="editorHost" class="source-editor__surface" />
   </div>
 </template>
-
-<style scoped>
-.source-editor { min-width: 0; min-height: 18rem; height: 100%; overflow: hidden; }
-.source-editor__surface { min-height: 18rem; height: 100%; }
-.source-editor :deep(.cm-editor) { height: 100%; min-height: 18rem; }
-.source-editor :deep(.cm-scroller) { overflow: auto; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
-</style>

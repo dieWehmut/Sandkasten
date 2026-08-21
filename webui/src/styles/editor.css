@@ -1,0 +1,81 @@
+.source-editor,
+.source-editor__surface,
+.source-editor .cm-editor {
+  min-width: 0;
+  min-height: 18rem;
+  height: 100%;
+}
+
+.source-editor {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.source-editor .cm-editor {
+  color: var(--text);
+  background: var(--surface);
+  font: 13px/1.62 var(--font-mono);
+}
+
+.source-editor .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.source-editor .cm-scroller {
+  overflow: auto;
+  font-family: var(--font-mono);
+}
+
+.source-editor .cm-content {
+  min-width: max-content;
+  padding: 12px 0 28px;
+  caret-color: var(--accent-strong);
+}
+
+.source-editor .cm-line {
+  padding-inline: 8px 20px;
+}
+
+.source-editor .cm-gutters {
+  border-right: 1px solid var(--border);
+  color: var(--text-faint);
+  background: var(--surface-subtle);
+}
+
+.source-editor .cm-activeLine,
+.source-editor .cm-activeLineGutter {
+  background: var(--accent-soft);
+}
+
+.source-editor .cm-selectionBackground,
+.source-editor .cm-content ::selection {
+  background: var(--selection) !important;
+}
+
+.source-editor .cm-cursor,
+.source-editor .cm-dropCursor {
+  border-left-color: var(--accent-strong);
+}
+
+.source-editor .cm-panels,
+.source-editor .cm-tooltip {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+.source-editor .cm-searchMatch {
+  outline-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+@media (max-width: 767px) {
+  .source-editor,
+  .source-editor__surface,
+  .source-editor .cm-editor {
+    min-height: 0;
+  }
+}

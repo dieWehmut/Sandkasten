@@ -71,15 +71,3 @@ const emit = defineEmits<{
     </EdgeSheet>
   </div>
 </template>
-
-<style scoped>
-.workbench-shell { display: grid; min-width: 0; height: calc(100vh - 52px); overflow: hidden; }
-.workbench-shell.layout-desktop { grid-template-columns: 244px minmax(0, 1fr) 304px; }
-.workbench-shell.layout-desktop.without-history { grid-template-columns: minmax(0, 1fr) 304px; }
-.workbench-shell.layout-desktop.without-inspector { grid-template-columns: 244px minmax(0, 1fr); }
-.workbench-shell.layout-desktop.without-history.without-inspector,
-.workbench-shell:not(.layout-desktop) { grid-template-columns: minmax(0, 1fr); }
-.workbench-shell > * { min-width: 0; }
-.workbench-shell :deep(.run-history), .workbench-shell :deep(.inspector-panel) { overflow: auto; }
-.workbench-shell :deep(.source-workbench) { min-width: 0; overflow: auto; }
-</style>
