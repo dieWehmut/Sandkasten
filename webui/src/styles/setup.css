@@ -35,6 +35,10 @@
   background: var(--accent-strong);
 }
 
+:root[data-theme="dark"] .setup-welcome__toolbar .locale-switcher button[aria-pressed="true"] {
+  color: var(--surface);
+}
+
 .setup-welcome__intro h1 {
   margin: 4px 0 8px;
   font-size: 3rem;
