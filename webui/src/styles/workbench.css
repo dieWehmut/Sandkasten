@@ -113,6 +113,10 @@
   background: var(--accent-strong);
 }
 
+:root[data-theme="dark"] .header-actions .locale-switcher button[aria-pressed="true"] {
+  color: var(--surface);
+}
+
 .header-actions button[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent-strong);
@@ -336,7 +340,7 @@
 }
 
 :root[data-theme="dark"] .run-controls .run-source-action {
-  color: #21151a;
+  color: var(--surface);
   background: var(--accent);
 }
 
