@@ -44,9 +44,6 @@ export async function runFirstVisitSetupFlow(driver) {
   await driver.click(setupLocaleActionSelector('zh-CN'));
   await driver.waitForLocale('zh-CN');
   await driver.expectStoredValue('sandkasten-locale', 'zh-CN');
-  await driver.click(setupLocaleActionSelector('en'));
-  await driver.waitForLocale('en');
-  await driver.expectStoredValue('sandkasten-locale', 'en');
   const command = await driver.readText(SETUP_FLOW_SELECTORS.installCommand);
   await driver.click(SETUP_FLOW_SELECTORS.copyCommand);
   await driver.expectClipboard(command);
@@ -55,6 +52,16 @@ export async function runFirstVisitSetupFlow(driver) {
   await driver.waitForHidden(SETUP_FLOW_SELECTORS.welcome);
   await driver.waitForVisible(SETUP_FLOW_SELECTORS.workbench);
   await driver.expectStoredValue('sandkasten-install-guide-seen', 'true');
+  await driver.reload();
+  await driver.waitForHidden(SETUP_FLOW_SELECTORS.welcome);
+  await driver.waitForVisible(SETUP_FLOW_SELECTORS.workbench);
+  await driver.waitForLocale('zh-CN');
+  await driver.expectStoredValue('sandkasten-locale', 'zh-CN');
+  await driver.expectEditorLabel('编辑器');
+  await driver.click(setupLocaleActionSelector('en'));
+  await driver.waitForLocale('en');
+  await driver.expectStoredValue('sandkasten-locale', 'en');
+  await driver.expectEditorLabel('Editor');
 }
 
 export async function runReopenedSetupFlow(driver) {
@@ -80,8 +87,17 @@ export function createPlaywrightSetupDriver(page, viewportName, options = {}) {
     click(selector) {
       return page.locator(selector).click();
     },
+    reload() {
+      return page.reload({ waitUntil: 'domcontentloaded' });
+    },
     waitForLocale(locale) {
       return page.waitForFunction((expectedLocale) => document.documentElement.lang === expectedLocale, locale);
+    },
+    async expectEditorLabel(label) {
+      const editor = page.locator(`[aria-label="${label.replaceAll('"', '\\"')}"]`);
+      await editor.waitFor({ state: 'visible', timeout });
+      const value = await editor.getAttribute('aria-label');
+      if (value !== label) throw new Error(`Editor label mismatch: expected ${label}, got ${value}`);
     },
     readText(selector) {
       return page.locator(selector).innerText();

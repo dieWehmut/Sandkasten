@@ -101,6 +101,8 @@ test('drives the first-visit setup, locale, copy, persistence, and dismissal con
     readText(selector) { calls.push(['text', selector]); return command; },
     expectClipboard(value) { calls.push(['clipboard', value]); },
     expectStoredValue(key, value) { calls.push(['storage', key, value]); },
+    reload() { calls.push(['reload']); },
+    expectEditorLabel(label) { calls.push(['editor', label]); },
     assertNoHorizontalOverflow(stage) { calls.push(['overflow', stage]); },
   };
 
@@ -113,9 +115,6 @@ test('drives the first-visit setup, locale, copy, persistence, and dismissal con
     ['click', setupLocaleActionSelector('zh-CN')],
     ['locale', 'zh-CN'],
     ['storage', 'sandkasten-locale', 'zh-CN'],
-    ['click', setupLocaleActionSelector('en')],
-    ['locale', 'en'],
-    ['storage', 'sandkasten-locale', 'en'],
     ['text', SETUP_FLOW_SELECTORS.installCommand],
     ['click', SETUP_FLOW_SELECTORS.copyCommand],
     ['clipboard', command],
@@ -124,6 +123,16 @@ test('drives the first-visit setup, locale, copy, persistence, and dismissal con
     ['hidden', SETUP_FLOW_SELECTORS.welcome],
     ['visible', SETUP_FLOW_SELECTORS.workbench],
     ['storage', 'sandkasten-install-guide-seen', 'true'],
+    ['reload'],
+    ['hidden', SETUP_FLOW_SELECTORS.welcome],
+    ['visible', SETUP_FLOW_SELECTORS.workbench],
+    ['locale', 'zh-CN'],
+    ['storage', 'sandkasten-locale', 'zh-CN'],
+    ['editor', '编辑器'],
+    ['click', setupLocaleActionSelector('en')],
+    ['locale', 'en'],
+    ['storage', 'sandkasten-locale', 'en'],
+    ['editor', 'Editor'],
   ]);
 });
 
@@ -152,13 +161,15 @@ test('drives the header action that reopens and dismisses the setup guide', asyn
 test('adapts the setup flow contract to Playwright locators and browser state', async () => {
   const calls = [];
   const page = {
-    locator(selector) {
-      return {
-        waitFor(options) { calls.push(['wait', selector, options]); },
-        click() { calls.push(['click', selector]); },
-        innerText() { calls.push(['text', selector]); return 'install command'; },
-      };
-    },
+      locator(selector) {
+        return {
+          waitFor(options) { calls.push(['wait', selector, options]); },
+          click() { calls.push(['click', selector]); },
+          getAttribute(name) { calls.push(['attribute', selector, name]); return selector.includes('编辑器') ? '编辑器' : 'Editor'; },
+          innerText() { calls.push(['text', selector]); return 'install command'; },
+        };
+      },
+    reload(options) { calls.push(['reload', options]); },
     waitForFunction(_predicate, value) { calls.push(['waitForFunction', value]); },
     evaluate(_callback, argument) {
       calls.push(['evaluate', argument]);
@@ -177,6 +188,8 @@ test('adapts the setup flow contract to Playwright locators and browser state', 
   await driver.expectClipboard('install command');
   await driver.expectStoredValue('seen', 'true');
   await driver.assertNoHorizontalOverflow('setup welcome');
+  await driver.reload();
+  await driver.expectEditorLabel('编辑器');
 
   assert.deepEqual(calls, [
     ['wait', '#welcome', { state: 'visible', timeout: 5000 }],
@@ -187,6 +200,9 @@ test('adapts the setup flow contract to Playwright locators and browser state', 
     ['waitForFunction', { expectedValue: 'install command' }],
     ['evaluate', { storageKey: 'seen', expectedValue: 'true' }],
     ['overflow', 'mobile setup welcome'],
+    ['reload', { waitUntil: 'domcontentloaded' }],
+    ['wait', '[aria-label="编辑器"]', { state: 'visible', timeout: 5000 }],
+    ['attribute', '[aria-label="编辑器"]', 'aria-label'],
   ]);
 });
 
