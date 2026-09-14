@@ -8,6 +8,12 @@ export interface InstallStep {
   modes: readonly InstallMode[];
 }
 
+export interface OperationalCommand {
+  id: 'repository' | 'verify' | 'status' | 'restart' | 'languages' | 'reconfigure' | 'domain' | 'uninstall';
+  command: string;
+  modes: readonly InstallMode[];
+}
+
 const INSTALL_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh';
 const DOWNLOAD_INSTALLER = `curl -fsSL ${INSTALL_SCRIPT_URL} -o sandkasten-install.sh && chmod +x sandkasten-install.sh`;
 
@@ -59,5 +65,20 @@ export const INSTALL_STEPS: readonly InstallStep[] = [
 ] as const;
 
 export function buildInstallCommand(mode: InstallMode, preset: RuntimePreset): string {
-  return `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh --mode ${mode} --languages ${preset} --non-interactive`;
+  return `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh --mode ${mode} --languages ${preset}`;
+}
+
+export function buildOperationalCommands(mode: InstallMode, preset: RuntimePreset): readonly OperationalCommand[] {
+  const wrapper = (action: string) => `sudo ./sandkasten-install.sh ${action} --mode ${mode}`;
+  const apiOrigin = mode === 'webui' ? 'http://127.0.0.1' : 'http://127.0.0.1:8080';
+  return [
+    { id: 'repository', command: `git clone https://github.com/dieWehmut/Sandkasten.git && cd Sandkasten && sudo ./werkzeug/install.sh --mode ${mode} --languages ${preset}`, modes: ['cli', 'webui'] },
+    { id: 'verify', command: `sudo systemctl status sandkasten-api.service sandkasten-laeufer.service && curl -fsS ${apiOrigin}/healthz && curl -fsS ${apiOrigin}/v1/runtimes`, modes: ['cli', 'webui'] },
+    { id: 'status', command: wrapper('status'), modes: ['cli', 'webui'] },
+    { id: 'restart', command: wrapper('restart'), modes: ['cli', 'webui'] },
+    { id: 'languages', command: wrapper('languages'), modes: ['cli', 'webui'] },
+    { id: 'reconfigure', command: wrapper('reconfigure'), modes: ['cli', 'webui'] },
+    { id: 'domain', command: wrapper('domain'), modes: ['webui'] },
+    { id: 'uninstall', command: wrapper('uninstall') + ' --dry-run', modes: ['cli', 'webui'] },
+  ].filter((operation) => operation.modes.includes(mode)) as readonly OperationalCommand[];
 }

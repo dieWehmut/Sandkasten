@@ -220,6 +220,12 @@
   overflow-wrap: anywhere;
 }
 
+.setup-steps h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
 .setup-step-number {
   display: inline-grid;
   width: 28px;
@@ -237,6 +243,18 @@
   padding-top: 16px;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
+}
+
+.setup-operations {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.setup-command--operation h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 .setup-cautions p {

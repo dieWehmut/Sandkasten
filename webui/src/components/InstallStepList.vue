@@ -7,9 +7,9 @@ const visibleSteps = computed(() => props.steps.filter((step) => step.modes.incl
 </script>
 
 <template>
-  <ol class="install-step-list">
+  <ol class="install-step-list setup-steps" data-testid="install-steps">
     <li v-for="(step, index) in visibleSteps" :key="step.id" data-testid="install-step">
-      <span class="install-step-number" aria-hidden="true">{{ index + 1 }}</span>
+      <span class="setup-step-number" aria-hidden="true">{{ index + 1 }}</span>
       <div>
         <h3>{{ step.title }}</h3>
         <p>{{ step.description }}</p>

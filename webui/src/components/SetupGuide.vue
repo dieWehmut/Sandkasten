@@ -8,9 +8,11 @@ import {
   type InstallMode,
   type InstallStep,
   type RuntimePreset,
+  buildOperationalCommands,
 } from '../setup/installGuide';
 import CopyCommand from './CopyCommand.vue';
 import InstallModeToggle from './InstallModeToggle.vue';
+import InstallStepList from './InstallStepList.vue';
 import '../styles/setup.css';
 
 const props = defineProps<{
@@ -36,7 +38,27 @@ const stepMessageKeys: Readonly<Record<InstallStep['id'], MessageKey>> = {
   verify: 'setup.step.verify',
   maintain: 'setup.step.maintain',
 };
+const stepTitleMessageKeys: Readonly<Record<InstallStep['id'], MessageKey>> = {
+  host: 'setup.step.title.host',
+  mode: 'setup.step.title.select',
+  install: 'setup.step.title.bootstrap',
+  services: 'setup.step.title.provision',
+  webui: 'setup.step.title.webui',
+  verify: 'setup.step.title.verify',
+  maintain: 'setup.step.title.maintain',
+};
 const visibleSteps = computed(() => INSTALL_STEPS.filter((step) => step.modes.includes(props.mode)));
+const operationalCommands = computed(() => buildOperationalCommands(props.mode, props.runtimePreset));
+const commandLabels: Record<ReturnType<typeof buildOperationalCommands>[number]['id'], MessageKey> = {
+  repository: 'setup.command.repository',
+  verify: 'setup.command.verify',
+  status: 'setup.command.status',
+  restart: 'setup.command.restart',
+  languages: 'setup.command.languages',
+  reconfigure: 'setup.command.reconfigure',
+  domain: 'setup.command.domain',
+  uninstall: 'setup.command.uninstall',
+};
 </script>
 
 <template>
@@ -98,12 +120,23 @@ const visibleSteps = computed(() => INSTALL_STEPS.filter((step) => step.modes.in
       />
     </div>
 
-    <ol class="setup-steps" data-testid="install-steps">
-      <li v-for="(step, index) in visibleSteps" :key="step.id" data-testid="install-step">
-        <span class="setup-step-number" aria-hidden="true">{{ index + 1 }}</span>
-        <p>{{ t(stepMessageKeys[step.id]) }}</p>
-      </li>
-    </ol>
+    <InstallStepList
+      :steps="visibleSteps.map((step) => ({ ...step, title: t(stepTitleMessageKeys[step.id]), description: t(stepMessageKeys[step.id]) }))"
+      :mode="mode"
+    />
+
+    <section class="setup-operations" data-testid="operational-commands">
+      <h3>{{ t('setup.command.operations') }}</h3>
+      <div v-for="operation in operationalCommands" :key="operation.id" class="setup-command setup-command--operation">
+        <h4>{{ t(commandLabels[operation.id]) }}</h4>
+        <CopyCommand
+          :command="operation.command"
+          :copy-label="t('setup.command.copy')"
+          :copied-label="t('setup.command.copied')"
+          :failed-label="t('setup.command.copyFailed')"
+        />
+      </div>
+    </section>
 
     <aside class="setup-cautions" :aria-label="t('setup.guide')">
       <p>{{ t('setup.warning.publicPages') }}</p>
