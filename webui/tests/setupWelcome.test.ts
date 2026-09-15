@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+﻿import { mount } from '@vue/test-utils';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
@@ -130,6 +130,23 @@ describe('SetupWelcome', () => {
     await wrapper.get('[data-testid="setup-dismiss"]').trigger('click');
 
     expect(wrapper.emitted('dismiss')).toHaveLength(1);
+  });
+
+  test('exposes a unique, language-independent copy action for every command', async () => {
+    const wrapper = mount(SetupWelcome, { props: { t: createTranslator('en') } });
+
+    const actions = wrapper.findAll('[data-testid="copy-command-button"]').map((button) => button.attributes('data-action'));
+
+    expect(actions.length).toBeGreaterThan(1);
+    expect(actions[0]).toBe('copy-install-command');
+    expect(new Set(actions).size).toBe(actions.length);
+    expect(wrapper.findAll('[data-testid="copy-command-button"][data-action="copy-install-command"]')).toHaveLength(1);
+
+    await wrapper.get('[data-testid="install-mode-webui"]').setValue(true);
+
+    const webuiActions = wrapper.findAll('[data-testid="copy-command-button"]').map((button) => button.attributes('data-action'));
+    expect(webuiActions.length).toBeGreaterThan(actions.length);
+    expect(new Set(webuiActions).size).toBe(webuiActions.length);
   });
 
   test('offers the locale switcher on the first-visit page', async () => {

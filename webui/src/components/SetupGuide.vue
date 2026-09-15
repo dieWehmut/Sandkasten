@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, useId } from 'vue';
 import type { MessageKey } from '../i18n/messages';
 import type { Translator } from '../i18n/locale';
@@ -114,6 +114,7 @@ const commandLabels: Record<ReturnType<typeof buildOperationalCommands>[number][
       <h3>{{ t('setup.command.bootstrap') }}</h3>
       <CopyCommand
         :command="command"
+        action="copy-install-command"
         :copy-label="t('setup.command.copy')"
         :copied-label="t('setup.command.copied')"
         :failed-label="t('setup.command.copyFailed')"
@@ -131,6 +132,7 @@ const commandLabels: Record<ReturnType<typeof buildOperationalCommands>[number][
         <h4>{{ t(commandLabels[operation.id]) }}</h4>
         <CopyCommand
           :command="operation.command"
+          :action="'copy-operation-' + operation.id"
           :copy-label="t('setup.command.copy')"
           :copied-label="t('setup.command.copied')"
           :failed-label="t('setup.command.copyFailed')"

@@ -1,13 +1,15 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, watch } from 'vue';
 import { Check, Clipboard } from '@lucide/vue';
 
 const props = withDefaults(defineProps<{
   command: string;
+  action?: string;
   copyLabel?: string;
   copiedLabel?: string;
   failedLabel?: string;
 }>(), {
+  action: 'copy-install-command',
   copyLabel: 'Copy command',
   copiedLabel: 'Copied',
   failedLabel: 'Copy failed',
@@ -42,7 +44,7 @@ async function copyCommand(): Promise<void> {
     <button
       type="button"
       data-testid="copy-command-button"
-      data-action="copy-install-command"
+      :data-action="action"
       :aria-label="state === 'copied' ? copiedLabel : copyLabel"
       :title="state === 'copied' ? copiedLabel : copyLabel"
       @click="copyCommand"
