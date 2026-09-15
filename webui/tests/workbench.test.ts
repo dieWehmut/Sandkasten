@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { EditorView } from '@codemirror/view';
 import App from '../src/App.vue';
 import ConnectionStatus from '../src/components/ConnectionStatus.vue';
@@ -9,6 +9,7 @@ import RunControls from '../src/components/RunControls.vue';
 import RuntimeSelect from '../src/components/RuntimeSelect.vue';
 import SourceEditor from '../src/components/SourceEditor.vue';
 import type { JobResponse, Runtime } from '../src/services/sandkastenApi';
+import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
 
 const api = vi.hoisted(() => ({
   loadRuntimes: vi.fn(),
@@ -40,6 +41,8 @@ const runtimes: Runtime[] = [
   { language: 'go', version: '1.26', default_entrypoint: '.', requires_vendor: true },
 ];
 
+afterEach(() => window.localStorage.clear());
+
 function completed(jobId: string, stdout: string): JobResponse {
   return {
     jobId,
@@ -61,6 +64,7 @@ function completed(jobId: string, stdout: string): JobResponse {
 
 describe('workbench controls', () => {
   beforeEach(() => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
     api.loadRuntimes.mockReset().mockResolvedValue(runtimes);
     api.submitJob.mockReset();
     api.pollJob.mockReset();

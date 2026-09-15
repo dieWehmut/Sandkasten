@@ -2,9 +2,18 @@
 import { computed } from 'vue';
 import { CircleAlert, CircleCheck, LoaderCircle } from '@lucide/vue';
 import type { ConnectionState } from '../composables/useRunner';
+import type { MessageKey } from '../i18n/messages';
+import type { Translator } from '../i18n/locale';
+import { useTranslation } from '../i18n/useTranslation';
 
-const props = defineProps<{ state: ConnectionState }>();
-const label = computed(() => ({ connecting: 'Connecting', connected: 'Connected', unavailable: 'Unavailable' }[props.state]));
+const props = defineProps<{ state: ConnectionState; t?: Translator }>();
+const injectedTranslator = useTranslation();
+const stateKeys: Readonly<Record<ConnectionState, MessageKey>> = {
+  connecting: 'connection.connecting',
+  connected: 'connection.connected',
+  unavailable: 'connection.unavailable',
+};
+const label = computed(() => (props.t ?? injectedTranslator)(stateKeys[props.state]));
 </script>
 
 <template>

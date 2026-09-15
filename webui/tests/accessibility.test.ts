@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import EdgeSheet from '../src/components/EdgeSheet.vue';
+import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
 
 const api = vi.hoisted(() => ({
   loadRuntimes: vi.fn(),
@@ -31,6 +32,7 @@ function mediaQuery(matches: boolean): MediaQueryList {
 }
 
 beforeEach(() => {
+  window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
   api.loadRuntimes.mockReset().mockResolvedValue([]);
   api.submitJob.mockReset();
   api.pollJob.mockReset();
@@ -38,7 +40,50 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
   document.body.innerHTML = '';
+});
+
+describe('Setup welcome focus management', () => {
+  test('focuses the setup title on a first visit without an opening control', async () => {
+    window.localStorage.clear();
+    const wrapper = mount(App, { attachTo: document.body });
+    await nextTick();
+
+    const title = wrapper.get('[data-testid="setup-title"]');
+    expect(title.attributes('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(title.element);
+
+    wrapper.unmount();
+  });
+
+  test('focuses the setup title and restores the rebuilt opening control after dismissal', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    const opener = wrapper.get('[data-testid="open-setup-guide"]');
+    (opener.element as HTMLElement).focus();
+    expect(document.activeElement).toBe(opener.element);
+
+    await opener.trigger('click');
+    await nextTick();
+
+    const title = wrapper.get('[data-testid="setup-title"]');
+    expect(title.attributes('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(title.element);
+    expect(opener.element.isConnected).toBe(false);
+
+    const dismiss = wrapper.get('[data-testid="setup-dismiss"]');
+    (dismiss.element as HTMLElement).focus();
+    await dismiss.trigger('click');
+    await nextTick();
+
+    const restoredOpener = wrapper.get('[data-testid="open-setup-guide"]');
+    expect(restoredOpener.element).not.toBe(opener.element);
+    expect(document.activeElement).toBe(restoredOpener.element);
+
+    wrapper.unmount();
+  });
 });
 
 describe('EdgeSheet', () => {

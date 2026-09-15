@@ -8,6 +8,7 @@ import EdgeSheet from './EdgeSheet.vue';
 import InspectorPanel from './InspectorPanel.vue';
 import RunHistory from './RunHistory.vue';
 import SourceWorkbench from './SourceWorkbench.vue';
+import { useTranslation } from '../i18n/useTranslation';
 
 withDefaults(defineProps<{
   historyOpen: boolean;
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   closeHistory: [];
   closeInspector: [];
 }>();
+const t = useTranslation();
 </script>
 
 <template>
@@ -63,10 +65,10 @@ const emit = defineEmits<{
       @resume="emit('resume')"
     />
     <InspectorPanel v-if="layoutMode === 'desktop' && inspectorOpen" :runtime="runtime" :job="result" :error="error" />
-    <EdgeSheet v-if="layoutMode !== 'desktop'" :open="historyOpen" side="left" title="Recent runs" @close="emit('closeHistory')">
+    <EdgeSheet v-if="layoutMode !== 'desktop'" :open="historyOpen" side="left" :title="t('history.title')" @close="emit('closeHistory')">
       <RunHistory :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
     </EdgeSheet>
-    <EdgeSheet v-if="layoutMode !== 'desktop'" :open="inspectorOpen" side="right" title="Inspector" @close="emit('closeInspector')">
+    <EdgeSheet v-if="layoutMode !== 'desktop'" :open="inspectorOpen" side="right" :title="t('inspector.title')" @close="emit('closeInspector')">
       <InspectorPanel :runtime="runtime" :job="result" :error="error" />
     </EdgeSheet>
   </div>

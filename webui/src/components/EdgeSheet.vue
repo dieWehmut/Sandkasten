@@ -2,11 +2,13 @@
 import { X } from '@lucide/vue';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { lockBodyScroll, unlockBodyScroll } from './edgeSheetState';
+import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{ open: boolean; side?: 'left' | 'right'; title: string }>(), { side: 'right' });
 const emit = defineEmits<{ close: [] }>();
 const panel = ref<HTMLElement>();
 const titleId = `edge-sheet-title-${Math.random().toString(36).slice(2)}`;
+const t = useTranslation();
 let returnFocus: HTMLElement | null = null;
 
 function focusableElements(): HTMLElement[] {
@@ -89,7 +91,7 @@ onBeforeUnmount(() => {
 <template>
   <Transition name="edge-sheet">
     <div v-if="open" class="edge-sheet-layer" :class="`edge-sheet-layer--${side}`">
-      <button class="edge-sheet__backdrop" type="button" tabindex="-1" :aria-label="`Dismiss ${title}`" @click="close" />
+      <button class="edge-sheet__backdrop" type="button" tabindex="-1" :aria-label="side === 'left' ? t('sheet.history.dismiss') : t('sheet.inspector.dismiss')" @click="close" />
       <section
         ref="panel"
         class="edge-sheet"
@@ -103,7 +105,7 @@ onBeforeUnmount(() => {
       >
         <header class="edge-sheet__header">
           <h2 :id="titleId">{{ title }}</h2>
-          <button type="button" :aria-label="`Close ${title}`" :title="`Close ${title}`" @click="close">
+          <button type="button" :aria-label="side === 'left' ? t('sheet.history.close') : t('sheet.inspector.close')" :title="side === 'left' ? t('sheet.history.close') : t('sheet.inspector.close')" @click="close">
             <X :size="18" aria-hidden="true" />
           </button>
         </header>
