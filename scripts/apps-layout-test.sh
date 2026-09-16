@@ -47,9 +47,27 @@ check_apps_entrypoints() {
   [[ -f "$ROOT/apps/web/src/main.ts" ]] || { fail 'apps/web/src/main.ts is required'; return 1; }
 }
 
+check_all_app_entrypoints() {
+  local entries=(
+    "apps/web/package.json"
+    "apps/web/dist/index.html"
+    "apps/cli/package.json"
+    "apps/cli/bin/sandkasten.mjs"
+    "apps/cli/src/api.mjs"
+    "apps/desktop/package.json"
+    "apps/desktop/src/main.mjs"
+    "apps/desktop/src/preload.mjs"
+  )
+  local entry
+  for entry in "${entries[@]}"; do
+    [[ -f "$ROOT/$entry" && ! -L "$ROOT/$entry" ]] || { fail "missing app entrypoint: $entry"; return 1; }
+  done
+}
+
 check_web_distribution
 check_no_stale_webui_tree
 check_no_live_webui_paths
 check_apps_entrypoints
+check_all_app_entrypoints
 
 printf 'apps layout tests: ok\n'
