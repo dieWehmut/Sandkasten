@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// This config lives in apps/desktop, so the app root is its own directory and
+// the repository root is two levels up.
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(appRoot, '..', '..');
 
 export default {
