@@ -19,9 +19,12 @@ npm start
 ```
 
 The window loads `apps/web/dist/index.html` directly. API requests default to
-same-origin paths; set `SANDKASTEN_API_BASE_URL` before launching (or edit the
-built `config.js`) to point at a remote API. There is no bundled secret: the
-desktop app never reads or stores API tokens.
+same-origin paths; set `SANDKASTEN_API_BASE_URL` before launching to point at a
+remote API. Because the committed `dist/` is shared with Pages and the server
+installer, a configured origin is staged into one reusable scratch copy under
+the Electron user-data directory (with a JSON-escaped `config.js`) instead of
+rewriting the tracked bundle. There is no bundled secret: the desktop app never
+reads or stores API tokens.
 
 If `apps/web/dist` is missing, the app shows an error dialog naming the
 directory and exits instead of starting an empty window.
