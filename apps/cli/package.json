@@ -1,0 +1,16 @@
+{
+  "name": "sandkasten-cli",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local command-line client for the Sandkasten HTTP API",
+  "type": "module",
+  "bin": {
+    "sandkasten": "bin/sandkasten.mjs"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
