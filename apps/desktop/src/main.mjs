@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { resolveVerifiedDistribution } from './distribution.mjs';
+import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
 import { applyNavigationPolicy, createWindowOptions } from './navigation.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,7 +34,12 @@ async function start() {
     appRoot,
     resourcesPath: app.isPackaged ? process.resourcesPath : undefined,
   });
-  createWindow(path.join(distribution, 'index.html'));
+  const apiBaseUrl = resolveApiBaseUrl();
+  const activeDistribution = await prepareDistribution(distribution, {
+    apiBaseUrl,
+    stageRoot: app.getPath('userData'),
+  });
+  createWindow(path.join(activeDistribution, 'index.html'));
 }
 
 app.whenReady().then(start).catch((error) => {
