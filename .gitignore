@@ -6,6 +6,7 @@ dist/
 target/
 coverage/
 node_modules/
+prompt/
 
 # Versioned WebUI installer payload
 !apps/web/dist/
