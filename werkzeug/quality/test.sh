@@ -44,11 +44,11 @@ if [[ -f "$ROOT/laeufer/Cargo.toml" ]]; then
   fi
 fi
 
-if [[ -f "$ROOT/webui/package.json" ]]; then
+if [[ -f "$ROOT/apps/web/package.json" ]]; then
   if command -v npm >/dev/null 2>&1; then
-    run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/webui"
-    run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/webui"
-    run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/webui"
+    run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/apps/web"
+    run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/apps/web"
+    run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/apps/web"
   else
     missing npm "Install the pinned Node.js major used by the Pages workflow."
   fi

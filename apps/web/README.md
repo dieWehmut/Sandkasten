@@ -10,7 +10,7 @@ as text; components do not inject them as HTML.
 Use the Node.js release pinned by the Pages workflow (Node 22.18.0):
 
 ```sh
-cd webui
+cd apps/web
 npm ci
 npm run dev -- --host 127.0.0.1
 ```
@@ -20,7 +20,7 @@ behind a local reverse proxy that exposes `/v1/` and `/healthz`. Run the unit
 and component suite with:
 
 ```sh
-cd webui
+cd apps/web
 npm test
 ```
 
@@ -28,7 +28,7 @@ Run the real-browser responsive smoke against the committed distribution with
 the local mock API:
 
 ```sh
-cd webui
+cd apps/web
 npm run build
 npm run test:browser
 ```
@@ -45,11 +45,11 @@ written to the ignored `tmp/webui-browser-smoke/` directory. Set
 Create the production payload with:
 
 ```sh
-cd webui
+cd apps/web
 npm run build
 ```
 
-Vite writes exactly four regular files to `webui/dist`:
+Vite writes exactly four regular files to `apps/web/dist`:
 
 - `index.html`
 - `app.js`
@@ -71,7 +71,7 @@ globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: '' };
 Validate a clean deterministic build and the committed payload with:
 
 ```sh
-cd webui
+cd apps/web
 node --test tests/build-contract.test.mjs
 cd ..
 bash scripts/webui-build-test.sh --test
@@ -80,7 +80,7 @@ bash scripts/webui-build-test.sh --test
 To preview the generated files without the Vite development server:
 
 ```sh
-python3 -m http.server 8080 --directory webui/dist
+python3 -m http.server 8080 --directory apps/web/dist
 ```
 
 Execution still needs a same-origin API or reverse proxy unless the staged

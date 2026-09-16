@@ -45,7 +45,7 @@ validate_webui_root() {
 }
 
 validate_webui_source() {
-  local source="${REPO_ROOT:-}/webui/dist" entry name entry_count=0
+  local source="${REPO_ROOT:-}/apps/web/dist" entry name entry_count=0
   [[ -n "${REPO_ROOT:-}" && -d "$source" && ! -L "$source" ]] || {
     _webui_error "WebUI distribution directory not found or is not a regular directory: $source"
     return 1
@@ -92,11 +92,11 @@ install_webui_assets() {
   validate_webui_root || return
   validate_webui_source || return
   if [[ "${DRY_RUN:-false}" == true ]]; then
-    printf '[dry-run] install WebUI assets from %s to %s\n' "${REPO_ROOT}/webui/dist" "$WEBUI_ROOT"
+    printf '[dry-run] install WebUI assets from %s to %s\n' "${REPO_ROOT}/apps/web/dist" "$WEBUI_ROOT"
     return 0
   fi
 
-  local parent stage backup name source="${REPO_ROOT}/webui/dist"
+  local parent stage backup name source="${REPO_ROOT}/apps/web/dist"
   parent="$(dirname "$WEBUI_ROOT")"
   mkdir -p "$parent"
   if [[ -e "$WEBUI_ROOT" || -L "$WEBUI_ROOT" ]] && ! is_managed_webui_root "$WEBUI_ROOT"; then

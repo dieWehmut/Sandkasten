@@ -15,7 +15,7 @@ import {
 } from '../src/setup/installGuide';
 
 describe('installation guide data', () => {
-  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
   test('keeps the supported deployment steps in operational order', () => {
     expect(INSTALL_STEPS.map((step) => step.id)).toEqual([
@@ -68,13 +68,13 @@ describe('installation guide data', () => {
   });
 
   test('retains localized step descriptions for the shared list component', () => {
-    const guideSource = readFileSync(resolve(repositoryRoot, 'webui', 'src', 'components', 'SetupGuide.vue'), 'utf8');
+    const guideSource = readFileSync(resolve(repositoryRoot, 'apps', 'web', 'src', 'components', 'SetupGuide.vue'), 'utf8');
     expect(guideSource).not.toContain("description: ''");
-    expect(readFileSync(resolve(repositoryRoot, 'webui', 'src', 'components', 'InstallStepList.vue'), 'utf8')).toContain('setup-step-number');
+    expect(readFileSync(resolve(repositoryRoot, 'apps', 'web', 'src', 'components', 'InstallStepList.vue'), 'utf8')).toContain('setup-step-number');
   });
 
   test('defines localized operational command sections for each mode', () => {
-    const guideSource = readFileSync(resolve(repositoryRoot, 'webui', 'src', 'components', 'SetupGuide.vue'), 'utf8');
+    const guideSource = readFileSync(resolve(repositoryRoot, 'apps', 'web', 'src', 'components', 'SetupGuide.vue'), 'utf8');
     expect(guideSource).toContain('InstallStepList');
     expect(guideSource).toContain('operational-commands');
   });

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.dirname(root);
+const repoRoot = path.resolve(root, '..', '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('Vue foundation source files and deployment entrypoint exist', () => {
