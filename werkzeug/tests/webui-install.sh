@@ -137,7 +137,11 @@ cat > "$quality_root/scripts/pages-artifact-test.sh" <<'PAGES_TEST'
 #!/usr/bin/env bash
 printf 'pages-artifact:%s\n' "$*" >> "$QUALITY_EVENTS"
 PAGES_TEST
-chmod +x "$quality_root/bin/npm" "$quality_root/scripts/webui-build-test.sh" "$quality_root/scripts/pages-artifact-test.sh"
+cat > "$quality_root/scripts/apps-layout-test.sh" <<'LAYOUT_TEST'
+#!/usr/bin/env bash
+printf 'apps-layout:%s\n' "$*" >> "$QUALITY_EVENTS"
+LAYOUT_TEST
+chmod +x "$quality_root/bin/npm" "$quality_root/scripts/webui-build-test.sh" "$quality_root/scripts/pages-artifact-test.sh" "$quality_root/scripts/apps-layout-test.sh"
 QUALITY_EVENTS="$quality_events" \
   SANDKASTEN_QUALITY_ROOT="$quality_root" \
   PATH="$quality_root/bin:/usr/bin:/bin" \
@@ -147,5 +151,6 @@ assert_contains "$quality_events" "npm:$quality_root/apps/web:test"
 assert_contains "$quality_events" "npm:$quality_root/apps/web:run build"
 assert_contains "$quality_events" 'webui-build:'
 assert_contains "$quality_events" 'pages-artifact:--test'
+assert_contains "$quality_events" 'apps-layout:'
 
 printf 'webui deployment tests: ok\n'

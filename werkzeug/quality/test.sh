@@ -66,6 +66,12 @@ if [[ -f "$ROOT/apps/web/package.json" ]]; then
   fi
 fi
 
+if [[ -f "$ROOT/scripts/apps-layout-test.sh" ]]; then
+  run_or_fail "Apps layout contract" bash "$ROOT/scripts/apps-layout-test.sh"
+else
+  missing_check "$ROOT/scripts/apps-layout-test.sh"
+fi
+
 if [[ -d "$ROOT/pruefung/integration" ]]; then
   if find "$ROOT/pruefung/integration" -type f | grep -q .; then
     printf 'Integration fixtures are present under pruefung/integration; no standalone integration runner is defined yet.\n'
