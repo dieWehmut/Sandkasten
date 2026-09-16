@@ -77,11 +77,18 @@ cd ..
 bash scripts/webui-build-test.sh --test
 ```
 
-To preview the generated files without the Vite development server:
+To preview the built distribution without extra tooling, use the bundled
+dependency-free server (defaults to `127.0.0.1:4173`):
 
 ```sh
-python3 -m http.server 8080 --directory apps/web/dist
+cd apps/web
+npm run serve
 ```
+
+`npm run serve` serves only the four distribution files, rejects path
+traversal, and disables caching. It accepts `--port`, `--host`, and
+`--directory` when run as `node scripts/serve.mjs`. A plain static server
+works too, for example `python3 -m http.server 8080 --directory apps/web/dist`.
 
 Execution still needs a same-origin API or reverse proxy unless the staged
 `config.js` provides a separate public API base URL.
