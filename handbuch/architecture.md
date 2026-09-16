@@ -14,7 +14,7 @@ The repository uses German directory names for component ownership:
 - `beispiele/`: sample projects and clients.
 
 The optional browser client is a Vue 3/TypeScript application under
-`webui/src/`. Vite emits the deployment boundary under `webui/dist/` as exactly
+`apps/web/src/`. Vite emits the deployment boundary under `apps/web/dist/` as exactly
 four regular files: `index.html`, `app.js`, `styles.css`, and `config.js`. In
 WebUI installer mode only that prebuilt payload is atomically installed under
 `SANDKASTEN_WEBUI_DIR` (default `/opt/sandkasten/webui`); source, tests,

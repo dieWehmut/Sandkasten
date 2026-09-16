@@ -208,7 +208,7 @@ Configure HTTP with:
 
 ### GitHub Pages clients
 
-The Vue client is built from `webui/src/` and its four-file `webui/dist/`
+The Vue client is built from `apps/web/src/` and its four-file `apps/web/dist/`
 payload is published at
 <https://diewehmut.github.io/Sandkasten/> by `.github/workflows/pages.yml`.
 Set the repository variable `SANDKASTEN_API_BASE_URL` to a public HTTPS API
@@ -232,7 +232,7 @@ curl -fsS \
 
 The HTTP API accepts `POST /v1/{language}/run` and `POST /v1/run` with a JSON `language` field.
 
-The built `webui/dist/` client uses this same-origin surface directly. When
+The built `apps/web/dist/` client uses this same-origin surface directly. When
 installed in WebUI mode, the installer copies only `index.html`, `app.js`,
 `styles.css`, and `config.js`; it does not run npm on the server. Nginx serves
 the client from

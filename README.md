@@ -50,7 +50,7 @@
 GitHub Pages 由仓库中的 `.github/workflows/pages.yml` 自动构建并发布 Vue WebUI。首次启用时，在
 GitHub 仓库的 **Settings → Pages** 将发布来源设为 **GitHub Actions**；之后推送到
 `main` 或手动运行该 workflow 即可更新页面。workflow 会执行 `npm ci`、单元测试和
-Vite 生产构建，只发布 `webui/dist/` 中的 `index.html`、`app.js`、`styles.css` 与
+Vite 生产构建，只发布 `apps/web/dist/` 中的 `index.html`、`app.js`、`styles.css` 与
 `config.js`。Pages 页面使用仓库变量
 `SANDKASTEN_API_BASE_URL` 连接独立部署的 HTTP API。该变量会经 JSON 安全序列化写入公开静态文件，
 因此它只能包含公开的 HTTPS API 基址（例如 `https://run.example.com`），不得放入
@@ -85,6 +85,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `pruefung/` | 集成测试与安全测试 |
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
+| `apps/` | 客户端应用源码与分发(`apps/web` 为当前 Vue 工作台) |
 | `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
 
 ## 快速开始
@@ -133,17 +134,17 @@ sudo ./werkzeug/deploy.sh domain      # 仅配置域名 / Nginx / HTTPS
 
 ### WebUI 开发与安装
 
-WebUI 源码是 `webui/src/` 下的 Vue 3 + TypeScript 应用。开发或重新生成生产分发时运行：
+WebUI 源码是 `apps/web/src/` 下的 Vue 3 + TypeScript 应用。开发或重新生成生产分发时运行：
 
 ```bash
-cd webui
+cd apps/web
 npm ci
 npm run dev
 npm test
 npm run build
 ```
 
-`npm run build` 生成固定的四文件 `webui/dist/`，该目录是 Pages 与服务器安装器共享的
+`npm run build` 生成固定的四文件 `apps/web/dist/`，该目录是 Pages 与服务器安装器共享的
 唯一静态发布边界。`--mode webui` 安装只验证并原子复制这四个预构建文件，因此服务器
 安装期间不会执行 Node、npm 或下载前端依赖。已有非受管目录、额外分发文件、目录和
 符号链接都会被拒绝。
