@@ -1,0 +1,21 @@
+{
+  "name": "sandkasten-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Electron desktop shell for the Sandkasten WebUI",
+  "type": "module",
+  "main": "src/main.mjs",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "package:dir": "electron-builder --dir --config electron-builder.config.mjs"
+  },
+  "devDependencies": {
+    "electron": "38.8.6",
+    "electron-builder": "26.15.3"
+  }
+}

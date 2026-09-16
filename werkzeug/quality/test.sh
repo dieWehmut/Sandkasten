@@ -44,11 +44,11 @@ if [[ -f "$ROOT/laeufer/Cargo.toml" ]]; then
   fi
 fi
 
-if [[ -f "$ROOT/webui/package.json" ]]; then
+if [[ -f "$ROOT/apps/web/package.json" ]]; then
   if command -v npm >/dev/null 2>&1; then
-    run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/webui"
-    run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/webui"
-    run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/webui"
+    run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/apps/web"
+    run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/apps/web"
+    run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/apps/web"
   else
     missing npm "Install the pinned Node.js major used by the Pages workflow."
   fi
@@ -63,6 +63,28 @@ if [[ -f "$ROOT/webui/package.json" ]]; then
     run_or_fail "WebUI Pages artifact contract" bash "$ROOT/scripts/pages-artifact-test.sh" --test
   else
     missing_check "$ROOT/scripts/pages-artifact-test.sh"
+  fi
+fi
+
+if [[ -f "$ROOT/scripts/apps-layout-test.sh" ]]; then
+  run_or_fail "Apps layout contract" bash "$ROOT/scripts/apps-layout-test.sh"
+else
+  missing_check "$ROOT/scripts/apps-layout-test.sh"
+fi
+
+if [[ -f "$ROOT/apps/cli/package.json" ]]; then
+  if command -v node >/dev/null 2>&1; then
+    run_or_fail "CLI tests" bash -c 'cd "$1" && node --test tests/*.test.mjs' bash "$ROOT/apps/cli"
+  else
+    missing node "Install the pinned Node.js major used by the CLI."
+  fi
+fi
+
+if [[ -f "$ROOT/apps/desktop/package.json" ]]; then
+  if command -v node >/dev/null 2>&1; then
+    run_or_fail "Desktop shell tests" bash -c 'cd "$1" && node --test tests/*.test.mjs' bash "$ROOT/apps/desktop"
+  else
+    missing node "Install the pinned Node.js major used by the desktop shell."
   fi
 fi
 

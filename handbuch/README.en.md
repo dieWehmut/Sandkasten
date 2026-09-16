@@ -132,7 +132,7 @@ ranges, and the `core`, `web`, and `all` presets. `--dry-run` only prints the
 parsed mode, languages, and command. `deploy.sh` remains a compatibility
 wrapper for existing invocations.
 
-In `webui` mode, Nginx serves the dependency-free `webui/` directory from
+In `webui` mode, Nginx serves the dependency-free `apps/web/` build from
 `/opt/sandkasten/webui` (override with `SANDKASTEN_WEBUI_DIR`) and proxies
 `/v1/` and `/healthz` to the API. The browser client consequently uses
 same-origin relative URLs. CLI mode installs the backend without this static

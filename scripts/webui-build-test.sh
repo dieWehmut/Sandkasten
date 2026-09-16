@@ -54,11 +54,11 @@ check_distribution() {
 
 check_repository_contract() {
   local repository_root="$1"
-  local distribution_dir="$repository_root/webui/dist"
+  local distribution_dir="$repository_root/apps/web/dist"
 
   check_distribution "$distribution_dir"
 
-  [[ "$(tr -d '\r\n' < "$repository_root/webui/public/config.js")" == \
+  [[ "$(tr -d '\r\n' < "$repository_root/apps/web/public/config.js")" == \
     "globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: '' };" ]] || {
     fail 'public/config.js must preserve nullish assignment and the same-origin default'
     return 1
@@ -66,24 +66,24 @@ check_repository_contract() {
 
   local distribution_file
   for distribution_file in index.html app.js styles.css config.js; do
-    contains_exact_line "!webui/dist/$distribution_file" "$repository_root/.gitignore" || {
-      fail ".gitignore must expose webui/dist/$distribution_file as a versioned payload"
+    contains_exact_line "!apps/web/dist/$distribution_file" "$repository_root/.gitignore" || {
+      fail ".gitignore must expose apps/web/dist/$distribution_file as a versioned payload"
       return 1
     }
   done
 
-  local readme="$repository_root/webui/README.md"
+  local readme="$repository_root/apps/web/README.md"
   for required_text in \
     'npm ci' \
     'npm run dev' \
     'npm test' \
     'npm run build' \
-    'webui/dist' \
+    'apps/web/dist' \
     'globalThis.SANDKASTEN_CONFIG ??=' \
     'globalThis.SANDKASTEN_CONFIG =' \
     'SANDKASTEN_API_BASE_URL'; do
     grep -Fq "$required_text" "$readme" || {
-      fail "webui/README.md must document: $required_text"
+      fail "apps/web/README.md must document: $required_text"
       return 1
     }
   done
@@ -98,12 +98,12 @@ case "${1:---test}" in
     ;;
   --test)
     if command -v npm >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
-      (cd "$repository_root/webui" && node --test tests/build-contract.test.mjs)
+      (cd "$repository_root/apps/web" && node --test tests/build-contract.test.mjs)
     fi
     line_fixture="$(mktemp)"
     trap 'rm -f -- "${line_fixture:-}"' EXIT
-    printf 'first\r\n!webui/dist/index.html\r\nlast\r\n' > "$line_fixture"
-    contains_exact_line '!webui/dist/index.html' "$line_fixture" || {
+    printf 'first\r\n!apps/web/dist/index.html\r\nlast\r\n' > "$line_fixture"
+    contains_exact_line '!apps/web/dist/index.html' "$line_fixture" || {
       fail 'exact-line checks must accept CRLF text files'
       exit 1
     }

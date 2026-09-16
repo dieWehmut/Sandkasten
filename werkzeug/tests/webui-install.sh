@@ -24,39 +24,39 @@ export NGINX_SITE_AVAIL="$TMP_DIR/nginx/sites-available/sandkasten.conf"
 export NGINX_SITE_ENABLED="$TMP_DIR/nginx/sites-enabled/sandkasten.conf"
 export DRY_RUN=false
 export SANDKASTEN_INSTALL_MODE=webui
-mkdir -p "$REPO_ROOT/webui" "$(dirname "$NGINX_SITE_AVAIL")" "$(dirname "$NGINX_SITE_ENABLED")"
-printf 'source-only\n' > "$REPO_ROOT/webui/src-placeholder.ts"
-printf '<!doctype html> source template\n' > "$REPO_ROOT/webui/index.html"
+mkdir -p "$REPO_ROOT/apps/web" "$(dirname "$NGINX_SITE_AVAIL")" "$(dirname "$NGINX_SITE_ENABLED")"
+printf 'source-only\n' > "$REPO_ROOT/apps/web/src-placeholder.ts"
+printf '<!doctype html> source template\n' > "$REPO_ROOT/apps/web/index.html"
 
 # shellcheck source=/dev/null
 source "$ROOT_DIR/werkzeug/installer/webui.sh"
 
 assert_failure "source without dist" validate_webui_source
 
-mkdir -p "$REPO_ROOT/webui/dist"
-printf '<!doctype html>\n' > "$REPO_ROOT/webui/dist/index.html"
-printf 'console.log(1)\n' > "$REPO_ROOT/webui/dist/app.js"
-printf ':root {}\n' > "$REPO_ROOT/webui/dist/styles.css"
+mkdir -p "$REPO_ROOT/apps/web/dist"
+printf '<!doctype html>\n' > "$REPO_ROOT/apps/web/dist/index.html"
+printf 'console.log(1)\n' > "$REPO_ROOT/apps/web/dist/app.js"
+printf ':root {}\n' > "$REPO_ROOT/apps/web/dist/styles.css"
 
 assert_failure "dist missing config.js" validate_webui_source
-printf 'globalThis.SANDKASTEN_CONFIG = {};\n' > "$REPO_ROOT/webui/dist/config.js"
-printf 'stale\n' > "$REPO_ROOT/webui/dist/extra.txt"
+printf 'globalThis.SANDKASTEN_CONFIG = {};\n' > "$REPO_ROOT/apps/web/dist/config.js"
+printf 'stale\n' > "$REPO_ROOT/apps/web/dist/extra.txt"
 assert_failure "dist with extra file" validate_webui_source
-rm "$REPO_ROOT/webui/dist/extra.txt"
+rm "$REPO_ROOT/apps/web/dist/extra.txt"
 
-mkdir "$REPO_ROOT/webui/dist/nested"
+mkdir "$REPO_ROOT/apps/web/dist/nested"
 assert_failure "dist with nested directory" validate_webui_source
-rmdir "$REPO_ROOT/webui/dist/nested"
+rmdir "$REPO_ROOT/apps/web/dist/nested"
 
-ln -s index.html "$REPO_ROOT/webui/dist/linked.html"
+ln -s index.html "$REPO_ROOT/apps/web/dist/linked.html"
 assert_failure "dist with symlink" validate_webui_source
-rm "$REPO_ROOT/webui/dist/linked.html"
+rm "$REPO_ROOT/apps/web/dist/linked.html"
 
-rm "$REPO_ROOT/webui/dist/config.js"
-ln -s app.js "$REPO_ROOT/webui/dist/config.js"
+rm "$REPO_ROOT/apps/web/dist/config.js"
+ln -s app.js "$REPO_ROOT/apps/web/dist/config.js"
 assert_failure "dist with expected symlink" validate_webui_source
-rm "$REPO_ROOT/webui/dist/config.js"
-printf 'globalThis.SANDKASTEN_CONFIG = {};\n' > "$REPO_ROOT/webui/dist/config.js"
+rm "$REPO_ROOT/apps/web/dist/config.js"
+printf 'globalThis.SANDKASTEN_CONFIG = {};\n' > "$REPO_ROOT/apps/web/dist/config.js"
 
 validate_webui_source
 install_webui_assets
@@ -84,10 +84,10 @@ unset -f chmod
 assert_contains "$WEBUI_ROOT/index.html" '<!doctype html>'
 
 # A failed validation must leave the last managed install intact.
-printf 'stale\n' > "$REPO_ROOT/webui/dist/extra.txt"
+printf 'stale\n' > "$REPO_ROOT/apps/web/dist/extra.txt"
 assert_failure "invalid upgrade" install_webui_assets
 assert_contains "$WEBUI_ROOT/index.html" '<!doctype html>'
-rm "$REPO_ROOT/webui/dist/extra.txt"
+rm "$REPO_ROOT/apps/web/dist/extra.txt"
 
 # Existing unmanaged destinations remain protected.
 unmanaged_root="$TMP_DIR/unmanaged-webui"
@@ -123,8 +123,8 @@ QUALITY_SCRIPT="$ROOT_DIR/werkzeug/quality/test.sh"
 assert_contains "$QUALITY_SCRIPT" 'SANDKASTEN_QUALITY_ROOT'
 quality_root="$TMP_DIR/quality-root"
 quality_events="$TMP_DIR/quality-events.log"
-mkdir -p "$quality_root/webui" "$quality_root/scripts" "$quality_root/bin"
-printf '{}\n' > "$quality_root/webui/package.json"
+mkdir -p "$quality_root/apps/web" "$quality_root/scripts" "$quality_root/bin"
+printf '{}\n' > "$quality_root/apps/web/package.json"
 cat > "$quality_root/bin/npm" <<'NPM'
 #!/usr/bin/env bash
 printf 'npm:%s:%s\n' "$PWD" "$*" >> "$QUALITY_EVENTS"
@@ -137,15 +137,20 @@ cat > "$quality_root/scripts/pages-artifact-test.sh" <<'PAGES_TEST'
 #!/usr/bin/env bash
 printf 'pages-artifact:%s\n' "$*" >> "$QUALITY_EVENTS"
 PAGES_TEST
-chmod +x "$quality_root/bin/npm" "$quality_root/scripts/webui-build-test.sh" "$quality_root/scripts/pages-artifact-test.sh"
+cat > "$quality_root/scripts/apps-layout-test.sh" <<'LAYOUT_TEST'
+#!/usr/bin/env bash
+printf 'apps-layout:%s\n' "$*" >> "$QUALITY_EVENTS"
+LAYOUT_TEST
+chmod +x "$quality_root/bin/npm" "$quality_root/scripts/webui-build-test.sh" "$quality_root/scripts/pages-artifact-test.sh" "$quality_root/scripts/apps-layout-test.sh"
 QUALITY_EVENTS="$quality_events" \
   SANDKASTEN_QUALITY_ROOT="$quality_root" \
   PATH="$quality_root/bin:/usr/bin:/bin" \
   bash "$QUALITY_SCRIPT"
-assert_contains "$quality_events" "npm:$quality_root/webui:ci"
-assert_contains "$quality_events" "npm:$quality_root/webui:test"
-assert_contains "$quality_events" "npm:$quality_root/webui:run build"
+assert_contains "$quality_events" "npm:$quality_root/apps/web:ci"
+assert_contains "$quality_events" "npm:$quality_root/apps/web:test"
+assert_contains "$quality_events" "npm:$quality_root/apps/web:run build"
 assert_contains "$quality_events" 'webui-build:'
 assert_contains "$quality_events" 'pages-artifact:--test'
+assert_contains "$quality_events" 'apps-layout:'
 
 printf 'webui deployment tests: ok\n'

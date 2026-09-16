@@ -50,7 +50,7 @@
 GitHub Pages 由仓库中的 `.github/workflows/pages.yml` 自动构建并发布 Vue WebUI。首次启用时，在
 GitHub 仓库的 **Settings → Pages** 将发布来源设为 **GitHub Actions**；之后推送到
 `main` 或手动运行该 workflow 即可更新页面。workflow 会执行 `npm ci`、单元测试和
-Vite 生产构建，只发布 `webui/dist/` 中的 `index.html`、`app.js`、`styles.css` 与
+Vite 生产构建，只发布 `apps/web/dist/` 中的 `index.html`、`app.js`、`styles.css` 与
 `config.js`。Pages 页面使用仓库变量
 `SANDKASTEN_API_BASE_URL` 连接独立部署的 HTTP API。该变量会经 JSON 安全序列化写入公开静态文件，
 因此它只能包含公开的 HTTPS API 基址（例如 `https://run.example.com`），不得放入
@@ -85,6 +85,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `pruefung/` | 集成测试与安全测试 |
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
+| `apps/` | 客户端应用:`apps/web` Vue 工作台、`apps/cli` 命令行、`apps/desktop` 桌面端 |
 | `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
 
 ## 快速开始
@@ -133,17 +134,17 @@ sudo ./werkzeug/deploy.sh domain      # 仅配置域名 / Nginx / HTTPS
 
 ### WebUI 开发与安装
 
-WebUI 源码是 `webui/src/` 下的 Vue 3 + TypeScript 应用。开发或重新生成生产分发时运行：
+WebUI 源码是 `apps/web/src/` 下的 Vue 3 + TypeScript 应用。开发或重新生成生产分发时运行：
 
 ```bash
-cd webui
+cd apps/web
 npm ci
 npm run dev
 npm test
 npm run build
 ```
 
-`npm run build` 生成固定的四文件 `webui/dist/`，该目录是 Pages 与服务器安装器共享的
+`npm run build` 生成固定的四文件 `apps/web/dist/`，该目录是 Pages 与服务器安装器共享的
 唯一静态发布边界。`--mode webui` 安装只验证并原子复制这四个预构建文件，因此服务器
 安装期间不会执行 Node、npm 或下载前端依赖。已有非受管目录、额外分发文件、目录和
 符号链接都会被拒绝。
@@ -151,6 +152,28 @@ npm run build
 浏览器中的 **Stop polling** 只停止本地轮询；它不会取消后端任务。只要已有 job ID，
 页面可恢复轮询。跨域 Pages 配置只能包含公开 HTTPS API 基址，并需要 API 的 CORS
 允许 `https://diewehmut.github.io`；不得把 token 或其它凭据写入 `config.js`。
+
+### CLI 与桌面端
+
+`apps/cli` 是零依赖的 Node.js 命令行客户端，直接调用同一套 HTTP API：
+
+```bash
+node apps/cli/bin/sandkasten.mjs run main.py --language python --api https://run.example.com
+node apps/cli/bin/sandkasten.mjs runtimes --api http://127.0.0.1:8080
+node apps/cli/bin/sandkasten.mjs job <jobId> --api http://127.0.0.1:8080
+```
+
+`--api`/`--token` 也可用 `SANDKASTEN_API_BASE_URL`、`SANDKASTEN_API_TOKEN` 提供；`--json`
+输出机器可读结果。退出码:0 成功、1 任务失败、2 用法错误、3 API 或网络错误。
+
+`apps/desktop` 是加载 `apps/web/dist` 的 Electron 桌面外壳:
+
+```bash
+cd apps/web && npm ci && npm run build && cd ../desktop && npm install && npm start
+```
+
+桌面端沿用同一 `config.js` 运行时配置，外部链接交给系统浏览器,且不会读取或保存任何
+API 凭据。打包(未签名)使用 `npm run package:dir`,产物位于 `tmp/desktop-dist`。
 
 ## 卸载
 

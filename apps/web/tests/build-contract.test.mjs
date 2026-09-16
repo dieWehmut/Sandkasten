@@ -7,10 +7,10 @@ import test from 'node:test';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const webuiDirectory = resolve(testDirectory, '..');
-const repositoryRoot = resolve(webuiDirectory, '..');
+const repositoryRoot = resolve(webuiDirectory, '..', '..');
 const distributionDirectory = resolve(webuiDirectory, 'dist');
 const expectedFiles = ['app.js', 'config.js', 'index.html', 'styles.css'];
-const expectedTrackedFiles = expectedFiles.map((fileName) => `webui/dist/${fileName}`);
+const expectedTrackedFiles = expectedFiles.map((fileName) => `apps/web/dist/${fileName}`);
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function run(command, args, cwd) {
@@ -71,11 +71,11 @@ test('source config keeps nullish same-origin semantics', () => {
 });
 
 test('the generated installer payload is tracked and fresh', () => {
-  const tracked = run('git', ['ls-files', 'webui/dist/*'], repositoryRoot)
+  const tracked = run('git', ['ls-files', 'apps/web/dist/*'], repositoryRoot)
     .trim()
     .split(/\r?\n/)
     .filter(Boolean)
     .sort();
   assert.deepEqual(tracked, expectedTrackedFiles);
-  run('git', ['diff', '--quiet', '--', 'webui/dist'], repositoryRoot);
+  run('git', ['diff', '--quiet', '--', 'apps/web/dist'], repositoryRoot);
 });

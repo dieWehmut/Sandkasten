@@ -31,7 +31,7 @@ the host. Existing `deploy.sh` commands remain compatible and forward to this
 installer.
 
 In `webui` mode the installer validates and atomically copies the checked-in
-`webui/dist/` payload to `/opt/sandkasten/webui` (override with
+`apps/web/dist/` payload to `/opt/sandkasten/webui` (override with
 `SANDKASTEN_WEBUI_DIR`). The payload must contain exactly four regular files:
 `index.html`, `app.js`, `styles.css`, and `config.js`; missing files, extra
 entries, nested directories, and symlinks are rejected before the existing
@@ -45,7 +45,7 @@ Build and verify the Vue 3/TypeScript application before publishing a new
 distribution:
 
 ```sh
-cd webui
+cd apps/web
 npm ci
 npm test
 npm run build
@@ -53,7 +53,7 @@ cd ..
 bash scripts/webui-build-test.sh
 ```
 
-The committed `webui/dist/` files must match a clean production build.
+The committed `apps/web/dist/` files must match a clean production build.
 
 ## GitHub Pages WebUI
 

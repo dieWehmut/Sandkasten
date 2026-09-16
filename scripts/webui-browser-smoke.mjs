@@ -13,7 +13,7 @@ import {
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
-const distDir = path.join(repositoryRoot, 'webui', 'dist');
+const distDir = path.join(repositoryRoot, 'apps', 'web', 'dist');
 const screenshotDirectory = path.resolve(
   process.env.SANDKASTEN_SMOKE_OUTPUT_DIR || path.join(repositoryRoot, 'tmp', 'webui-browser-smoke'),
 );
@@ -130,8 +130,8 @@ function log(message) {
 async function verifyDistribution() {
   const entries = await readdir(distDir, { withFileTypes: true });
   const names = entries.map((entry) => entry.name).sort();
-  assert.deepEqual(names, distributionFiles.slice().sort(), 'webui/dist must contain exactly four files');
-  assert.ok(entries.every((entry) => entry.isFile()), 'webui/dist entries must be regular files');
+  assert.deepEqual(names, distributionFiles.slice().sort(), 'apps/web/dist must contain exactly four files');
+  assert.ok(entries.every((entry) => entry.isFile()), 'apps/web/dist entries must be regular files');
 }
 
 async function assertNoHorizontalOverflow(page, viewportName) {
@@ -297,7 +297,7 @@ async function main() {
   if (!executablePath) throw new Error('No Chrome/Edge executable found. Set SANDKASTEN_BROWSER_PATH to a local browser binary.');
   log('using browser ' + executablePath);
   const app = await createMockAppServer({ distDir, jobSequence: ['JOB_STATUS_RUNNING', 'JOB_STATUS_RUNNING', 'JOB_STATUS_SUCCEEDED'], jobPollDelayMs: 250 });
-  const chromium = loadPlaywrightChromium({ webuiDirectory: path.join(repositoryRoot, 'webui') });
+  const chromium = loadPlaywrightChromium({ webuiDirectory: path.join(repositoryRoot, 'apps', 'web') });
   const browser = await chromium.launch({ executablePath, headless: true, args: ['--disable-gpu', '--disable-dev-shm-usage'] });
   try {
     const results = [];

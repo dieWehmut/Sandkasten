@@ -225,7 +225,7 @@ test('loads Playwright Core relative to the WebUI package', () => {
   const chromium = { launch() {} };
   let anchor;
   const loaded = loadPlaywrightChromium({
-    webuiDirectory: 'D:/Sandkasten/webui',
+    webuiDirectory: 'D:/Sandkasten/apps/web',
     createRequireImpl(packagePath) {
       anchor = packagePath;
       return (specifier) => {
@@ -235,7 +235,7 @@ test('loads Playwright Core relative to the WebUI package', () => {
     },
   });
 
-  assert.equal(anchor, path.join('D:/Sandkasten/webui', 'package.json'));
+  assert.equal(anchor, path.join('D:/Sandkasten/apps/web', 'package.json'));
   assert.equal(loaded, chromium);
 });
 

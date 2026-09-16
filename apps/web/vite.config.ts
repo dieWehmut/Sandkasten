@@ -52,6 +52,6 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    exclude: [...configDefaults.exclude, 'tests/build-contract.test.mjs'],
+    exclude: [...configDefaults.exclude, 'tests/build-contract.test.mjs', 'tests/serve.test.mjs'],
   },
 });
