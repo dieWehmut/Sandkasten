@@ -72,6 +72,22 @@ else
   missing_check "$ROOT/scripts/apps-layout-test.sh"
 fi
 
+if [[ -f "$ROOT/apps/cli/package.json" ]]; then
+  if command -v node >/dev/null 2>&1; then
+    run_or_fail "CLI tests" bash -c 'cd "$1" && node --test tests/*.test.mjs' bash "$ROOT/apps/cli"
+  else
+    missing node "Install the pinned Node.js major used by the CLI."
+  fi
+fi
+
+if [[ -f "$ROOT/apps/desktop/package.json" ]]; then
+  if command -v node >/dev/null 2>&1; then
+    run_or_fail "Desktop shell tests" bash -c 'cd "$1" && node --test tests/*.test.mjs' bash "$ROOT/apps/desktop"
+  else
+    missing node "Install the pinned Node.js major used by the desktop shell."
+  fi
+fi
+
 if [[ -d "$ROOT/pruefung/integration" ]]; then
   if find "$ROOT/pruefung/integration" -type f | grep -q .; then
     printf 'Integration fixtures are present under pruefung/integration; no standalone integration runner is defined yet.\n'

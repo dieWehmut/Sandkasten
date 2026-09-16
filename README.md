@@ -85,7 +85,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `pruefung/` | 集成测试与安全测试 |
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
-| `apps/` | 客户端应用源码与分发(`apps/web` 为当前 Vue 工作台) |
+| `apps/` | 客户端应用:`apps/web` Vue 工作台、`apps/cli` 命令行、`apps/desktop` 桌面端 |
 | `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
 
 ## 快速开始
@@ -152,6 +152,28 @@ npm run build
 浏览器中的 **Stop polling** 只停止本地轮询；它不会取消后端任务。只要已有 job ID，
 页面可恢复轮询。跨域 Pages 配置只能包含公开 HTTPS API 基址，并需要 API 的 CORS
 允许 `https://diewehmut.github.io`；不得把 token 或其它凭据写入 `config.js`。
+
+### CLI 与桌面端
+
+`apps/cli` 是零依赖的 Node.js 命令行客户端，直接调用同一套 HTTP API：
+
+```bash
+node apps/cli/bin/sandkasten.mjs run main.py --language python --api https://run.example.com
+node apps/cli/bin/sandkasten.mjs runtimes --api http://127.0.0.1:8080
+node apps/cli/bin/sandkasten.mjs job <jobId> --api http://127.0.0.1:8080
+```
+
+`--api`/`--token` 也可用 `SANDKASTEN_API_BASE_URL`、`SANDKASTEN_API_TOKEN` 提供；`--json`
+输出机器可读结果。退出码:0 成功、1 任务失败、2 用法错误、3 API 或网络错误。
+
+`apps/desktop` 是加载 `apps/web/dist` 的 Electron 桌面外壳:
+
+```bash
+cd apps/web && npm ci && npm run build && cd ../desktop && npm install && npm start
+```
+
+桌面端沿用同一 `config.js` 运行时配置，外部链接交给系统浏览器,且不会读取或保存任何
+API 凭据。打包(未签名)使用 `npm run package:dir`,产物位于 `tmp/desktop-dist`。
 
 ## 卸载
 

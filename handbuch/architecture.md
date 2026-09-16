@@ -12,6 +12,8 @@ The repository uses German directory names for component ownership:
 - `werkzeug/`: local developer scripts.
 - `pruefung/`: fixtures and integration/security test material.
 - `beispiele/`: sample projects and clients.
+- `apps/`: client applications sharing one layout: `apps/web` (Vue workbench),
+  `apps/cli` (Node command-line client), `apps/desktop` (Electron shell).
 
 The optional browser client is a Vue 3/TypeScript application under
 `apps/web/src/`. Vite emits the deployment boundary under `apps/web/dist/` as exactly
@@ -28,6 +30,13 @@ API. The client therefore uses relative API paths and treats returned job
 artifacts as untrusted text. Stopping polling aborts only the browser request;
 it does not cancel the backend job, and polling can resume for a known job ID.
 CLI mode omits this static-site location.
+
+The command-line client in `apps/cli` is a dependency-free Node.js program that
+drives the same HTTP surface: it lists runtimes, submits a source file with
+`POST /v1/{language}/run`, and polls `GET /v1/jobs/{jobId}` until a terminal
+status. The Electron shell in `apps/desktop` loads the built `apps/web/dist`
+payload from disk and talks to the API through the identical `config.js`
+contract, so all three clients share one API boundary.
 
 The same built payload is also published as a static GitHub Pages artifact at
 <https://diewehmut.github.io/Sandkasten/>. The Pages workflow generates a
