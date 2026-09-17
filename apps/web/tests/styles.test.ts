@@ -36,7 +36,7 @@ function token(theme: string, name: string): string {
 
 describe('workbench style boundaries', () => {
   test('keeps visual concerns in focused files', () => {
-    for (const file of ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']) {
+    for (const file of ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css', 'ide.css']) {
       expect(style(file).trim().length, file).toBeGreaterThan(0);
     }
   });
@@ -119,7 +119,7 @@ describe('workbench style boundaries', () => {
   });
 
   test('defines stable desktop, tablet, and mobile tracks without gradients', () => {
-    const combined = ['base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
+    const combined = ['base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css', 'ide.css']
       .map(style)
       .join('\n');
     const workbench = style('workbench.css');
@@ -130,7 +130,7 @@ describe('workbench style boundaries', () => {
   });
 
   test('keeps letter spacing neutral across the operational interface', () => {
-    const combined = ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
+    const combined = ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css', 'ide.css']
       .map(style)
       .join('\n');
     const values = Array.from(combined.matchAll(/letter-spacing:\s*([^;]+);/g), (match) => match[1].trim());

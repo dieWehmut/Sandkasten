@@ -7,5 +7,6 @@ import './styles/workbench.css';
 import './styles/editor.css';
 import './styles/output.css';
 import './styles/sheets.css';
+import './styles/ide.css';
 
 createApp(App).mount('#app');

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RunnerPhase } from '../composables/useRunner';
+import type { ExecutionPhase } from '../composables/execution';
 import type { Runtime } from '../services/sandkastenApi';
 import RunControls from './RunControls.vue';
 import RuntimeSelect from './RuntimeSelect.vue';
@@ -7,7 +7,7 @@ import RuntimeSelect from './RuntimeSelect.vue';
 defineProps<{
   runtimes: Runtime[];
   language: string;
-  phase: RunnerPhase;
+  phase: ExecutionPhase;
   canRun: boolean;
   canResume?: boolean;
 }>();

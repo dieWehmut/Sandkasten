@@ -22,6 +22,27 @@
   --selection: rgb(66 185 107 / 22%);
   --grid-line: rgb(23 35 27 / 3.5%);
   --shadow-sheet: 0 18px 48px rgb(23 35 27 / 16%);
+  /* Syntax colors follow the VS Code Light+ defaults (>= 4.5:1 on --surface). */
+  --syntax-comment: #008000;
+  --syntax-keyword: #0000ff;
+  --syntax-control-keyword: #af00db;
+  --syntax-string: #a31515;
+  --syntax-number: #098658;
+  --syntax-constant: #0070c1;
+  --syntax-function: #795e26;
+  --syntax-type: #267f99;
+  --syntax-variable: #001080;
+  --syntax-property: #0451a5;
+  --syntax-operator: #000000;
+  --syntax-punctuation: #000000;
+  --syntax-meta: #800000;
+  --syntax-regexp: #811f3f;
+  --syntax-escape: #ee0000;
+  --syntax-invalid: #cd3131;
+  --syntax-inserted: #008000;
+  --syntax-deleted: #cd3131;
+  --syntax-changed: #795e26;
+  --syntax-link: #0000ff;
   --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --radius-sm: 4px;
@@ -57,4 +78,25 @@
   --selection: rgb(63 191 112 / 25%);
   --grid-line: rgb(232 243 234 / 3.5%);
   --shadow-sheet: 0 18px 54px rgb(0 0 0 / 38%);
+  /* Syntax colors follow the VS Code Dark+ defaults (>= 4.5:1 on --surface). */
+  --syntax-comment: #6a9955;
+  --syntax-keyword: #569cd6;
+  --syntax-control-keyword: #c586c0;
+  --syntax-string: #ce9178;
+  --syntax-number: #b5cea8;
+  --syntax-constant: #4fc1ff;
+  --syntax-function: #dcdcaa;
+  --syntax-type: #4ec9b0;
+  --syntax-variable: #9cdcfe;
+  --syntax-property: #9cdcfe;
+  --syntax-operator: #d4d4d4;
+  --syntax-punctuation: #d4d4d4;
+  --syntax-meta: #9b9b9b;
+  --syntax-regexp: #d16969;
+  --syntax-escape: #d7ba7d;
+  --syntax-invalid: #f44747;
+  --syntax-inserted: #b5cea8;
+  --syntax-deleted: #f14c4c;
+  --syntax-changed: #e2c08d;
+  --syntax-link: #4fc1ff;
 }

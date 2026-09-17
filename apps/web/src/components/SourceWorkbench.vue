@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { RunnerPhase, OutputTab } from '../composables/useRunner';
+import type { OutputTab } from '../composables/useRunner';
+import type { ExecutionPhase } from '../composables/execution';
 import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import JobTimeline from './JobTimeline.vue';
 import OutputTabs from './OutputTabs.vue';
@@ -11,7 +12,7 @@ defineProps<{
   runtimes: Runtime[];
   language: string;
   source: string;
-  phase: RunnerPhase;
+  phase: ExecutionPhase;
   currentJob?: JobResponse;
   result?: JobResponse;
   error?: string;
@@ -19,6 +20,7 @@ defineProps<{
   activeOutputTab: OutputTab;
   canRun: boolean;
   canResume?: boolean;
+  disabled?: boolean;
 }>();
 const emit = defineEmits<{
   'update:language': [language: string];
@@ -45,7 +47,7 @@ const t = useTranslation();
       @resume="emit('resume')"
     />
     <section class="editor-region" :aria-label="t('workbench.editor')">
-      <SourceEditor :model-value="source" :language="language" :label="t('workbench.programSource')" @update:model-value="emit('update:source', $event)" />
+      <SourceEditor :model-value="source" :language="language" :disabled="disabled" :label="t('workbench.programSource')" @update:model-value="emit('update:source', $event)" />
     </section>
     <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
     <section class="output-region" :aria-label="t('workbench.resultOutput')">

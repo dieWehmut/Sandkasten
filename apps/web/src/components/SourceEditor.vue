@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { bracketMatching } from '@codemirror/language';
 import { search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { languageExtensionForRuntime } from '../editor/language';
+import { sourceHighlighting } from '../editor/highlight';
 
 const props = withDefaults(defineProps<{
   modelValue: string;
@@ -19,7 +20,7 @@ const props = withDefaults(defineProps<{
   label: 'Source code',
 });
 
-const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
+const emit = defineEmits<{ 'update:modelValue': [value: string]; 'update:cursor': [position: { line: number; column: number }] }>();
 const editorHost = ref<HTMLElement>();
 const editorView = ref<EditorView>();
 const languageCompartment = new Compartment();
@@ -44,6 +45,12 @@ function editableExtensions(label: string, disabled: boolean): Extension[] {
   ];
 }
 
+function cursorOf(state: EditorState): { line: number; column: number } {
+  const head = state.selection.main.head;
+  const line = state.doc.lineAt(head);
+  return { line: line.number, column: head - line.from + 1 };
+}
+
 function editorExtensions(): Extension[] {
   return [
     lineNumbers(),
@@ -52,23 +59,23 @@ function editorExtensions(): Extension[] {
     bracketMatching(),
     closeBrackets(),
     highlightActiveLine(),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    sourceHighlighting(),
     search(),
     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     languageCompartment.of(languageExtension()),
     editableCompartment.of(editableExtensions(props.label, props.disabled)),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !applyingExternalValue) emit('update:modelValue', update.state.doc.toString());
+      if (update.selectionSet || update.docChanged || update.focusChanged) emit('update:cursor', cursorOf(update.state));
     }),
   ];
 }
 
 onMounted(() => {
   if (!editorHost.value) return;
-  editorView.value = new EditorView({
-    state: EditorState.create({ doc: props.modelValue, extensions: editorExtensions() }),
-    parent: editorHost.value,
-  });
+  const state = EditorState.create({ doc: props.modelValue, extensions: editorExtensions() });
+  editorView.value = new EditorView({ state, parent: editorHost.value });
+  emit('update:cursor', cursorOf(state));
 });
 
 watch(() => props.modelValue, (value) => {
