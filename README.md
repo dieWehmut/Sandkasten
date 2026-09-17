@@ -173,7 +173,11 @@ cd apps/web && npm ci && npm run build && cd ../desktop && npm install && npm st
 ```
 
 桌面端沿用同一 `config.js` 运行时配置，外部链接交给系统浏览器,且不会读取或保存任何
-API 凭据。打包(未签名)使用 `npm run package:dir`,产物位于 `tmp/desktop-dist`。
+API 凭据。打包(未签名)使用 `npm run package:dir`(解包目录)或 `npm run package:win`
+(x64 + arm64 的 NSIS 安装程序,含桌面与开始菜单快捷方式),产物位于 `tmp/desktop-dist`。
+发布前先运行 `npm run verify:installer` 校验安装程序载荷完整,再用
+`npm run release:desktop` 上传到 GitHub Release(`GH_TOKEN`/`GITHUB_TOKEN` 需要 `repo`
+权限)。详见 `apps/desktop/README.md`。
 
 ## 卸载
 

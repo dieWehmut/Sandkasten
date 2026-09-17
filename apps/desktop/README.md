@@ -46,8 +46,53 @@ cd apps/desktop
 npm test            # unit tests: window options, navigation policy, distribution resolution
 npm run smoke       # headless Electron launch against apps/web/dist
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
+npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
 
 `package:dir` produces an unsigned unpacked build. The bundled WebUI is copied
 into `resources/web-dist`, which the main process resolves through
 `process.resourcesPath` when the app is packaged.
+
+## Windows installer
+
+`npm run package:win` builds an assisted NSIS installer
+(`Sandkasten-<version>-Setup.exe`) for x64 and arm64. It installs per user,
+lets the user pick the destination directory, and creates desktop and Start Menu
+shortcuts. The installer is unsigned, so Windows SmartScreen may warn on first
+launch.
+
+The payload is compressed with the classic BCJ filter. 7-Zip 24 selects the
+newer ARM64 branch-converter filter for arm64 binaries when building on an
+arm64 host, but the `nsis7z` plugin bundled with electron-builder predates that
+filter and silently skips the affected entries, which produced installers
+without `Sandkasten.exe`. The filter is pinned in
+`electron-builder.config.mjs`; keep it pinned when touching the packaging
+configuration.
+
+Verify a built installer before publishing it:
+
+```sh
+npm run verify:installer                 # default: tmp/desktop-dist setup executable
+node scripts/verify-installer.mjs <setup.exe>
+```
+
+The check lists every embedded payload with the same 7-Zip build that produced
+it and fails when an entry uses a filter the plugin cannot decode or when the
+executable, the asar bundle, or the bundled web distribution is missing.
+
+## Release
+
+Publish the verified installer as a GitHub release asset:
+
+```sh
+cd apps/desktop
+npm run package:win
+npm run verify:installer
+GH_TOKEN=<token> npm run release:desktop
+```
+
+`release:desktop` re-verifies the payload, then creates (or reuses) the
+`v<version>` release and uploads `Sandkasten-<version>-Setup.exe`. Pass
+`--dry-run` to print the plan without touching GitHub, or `--file <path>` to
+upload a specific artifact. `GH_TOKEN` (or `GITHUB_TOKEN`) needs `repo` scope;
+the script never reads or stores any other credential.
