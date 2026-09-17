@@ -2,21 +2,25 @@
 import { computed } from 'vue';
 import { BookOpen, GitFork, History, Moon, PanelRight, Sun } from '@lucide/vue';
 import type { Theme } from '../composables/useTheme';
+import type { ColorScheme } from '../theme/colorScheme';
 import { createTranslator, type Locale, type Translator } from '../i18n/locale';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import ColorSchemeSwitcher from './ColorSchemeSwitcher.vue';
 
 const props = withDefaults(defineProps<{
   historyOpen?: boolean;
   inspectorOpen?: boolean;
   theme?: Theme;
+  colorScheme?: ColorScheme;
   locale?: Locale;
   t?: Translator;
-}>(), { theme: 'light', locale: 'en' });
+}>(), { theme: 'light', colorScheme: 'green', locale: 'en' });
 
 const emit = defineEmits<{
   toggleHistory: [];
   toggleInspector: [];
   toggleTheme: [];
+  changeColorScheme: [scheme: ColorScheme];
   openGithub: [];
   openSetup: [];
   changeLocale: [locale: Locale];
@@ -78,6 +82,12 @@ const themeLabel = computed(() => translate.value(props.theme === 'light' ? 'hea
       <Moon v-if="theme === 'light'" :size="17" aria-hidden="true" />
       <Sun v-else :size="17" aria-hidden="true" />
     </button>
+    <ColorSchemeSwitcher
+      :color-scheme="colorScheme"
+      :locale="locale"
+      :t="translate"
+      @change="emit('changeColorScheme', $event)"
+    />
     <button
       type="button"
       data-action="open-github"

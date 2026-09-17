@@ -7,11 +7,13 @@ import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner } from './composables/useRunner';
 import { useTheme } from './composables/useTheme';
+import { useColorScheme } from './composables/useColorScheme';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
 
 const runner = useRunner();
 const theme = useTheme();
+const colorScheme = useColorScheme();
 const layout = useMediaLayout();
 const locale = useLocale();
 const setupWelcome = useSetupWelcome();
@@ -84,11 +86,13 @@ onBeforeUnmount(() => {
       :history-open="historyOpen"
       :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
+      :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"
       @toggle-history="toggleHistory"
       @toggle-inspector="toggleInspector"
       @toggle-theme="theme.toggleTheme"
+      @change-color-scheme="colorScheme.setColorScheme"
       @open-github="openGithub"
       @open-setup="setupWelcome.reopen"
       @change-locale="locale.setLocale"
