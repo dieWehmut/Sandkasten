@@ -176,6 +176,23 @@ test('a missing workspace file or folder is rejected before spawning', async (t)
   await assert.rejects(() => runner.run({ jobId: 'job-x', path: 'main.py', language: 'python' }, {}), /open a workspace folder/i);
 });
 
+test('a hung toolchain probe is bounded and reported as unavailable', async () => {
+  const spawned = [];
+  const spawnImpl = (command, args, options) => {
+    const plan = command === 'python' ? { hold: true } : { error: 'ENOENT' };
+    const child = fakeSpawn(plan).spawnImpl(command, args, options);
+    spawned.push(child);
+    return child;
+  };
+  const runner = createLocalRunner({ spawnImpl, probeTimeoutMs: 150 });
+  const started = Date.now();
+  const detected = await runner.detect();
+  const elapsed = Date.now() - started;
+  assert.equal(detected.find((entry) => entry.language === 'python').available, false);
+  assert.ok(elapsed < 3_000, `detection must not wait for the hung probe (took ${elapsed} ms)`);
+  assert.equal(spawned[0].killedWith, 'SIGKILL', 'the hung probe must be killed');
+});
+
 test('a real toolchain runs a real file end to end', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-real-'));
   t.after(() => rm(root, { recursive: true, force: true }));

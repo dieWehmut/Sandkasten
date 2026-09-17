@@ -12,6 +12,7 @@ import { resolveInsideRoot } from './workspace.mjs';
 export const DEFAULT_TIMEOUT_MS = 20_000;
 export const MAX_TIMEOUT_MS = 120_000;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
+export const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
 
 // {file} is the absolute path of the active workspace file; {exe} is the build
 // output path for compiled languages.
@@ -86,15 +87,25 @@ export function runtimeForExtension(extension) {
   return '';
 }
 
-function settleAvailability(spawnImpl, command, probe) {
+// A toolchain probe that never exits (a broken shim, a stalled WSL relay, an
+// interactive binary) must not block runtime detection: the probe is bounded and
+// a timeout simply reports the runtime as unavailable.
+function settleAvailability(spawnImpl, command, probe, timeoutMs) {
   return new Promise((resolve) => {
     let settled = false;
+    let child;
     const finish = (value) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
+      try {
+        child?.kill('SIGKILL');
+      } catch {
+        // The process already exited.
+      }
       resolve(value);
     };
-    let child;
+    const timer = setTimeout(() => finish(false), timeoutMs);
     try {
       child = spawnImpl(command, probe, { stdio: 'ignore', windowsHide: true });
     } catch {
@@ -175,6 +186,7 @@ export function createLocalRunner(options = {}) {
   const tmpRoot = options.tmpRoot ?? os.tmpdir();
   const maxOutputBytes = options.maxOutputBytes ?? MAX_OUTPUT_BYTES;
   const defaultTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
   const activeRuns = new Map();
   let detection;
 
@@ -185,7 +197,7 @@ export function createLocalRunner(options = {}) {
       label: runtime.label,
       command: runtime.compile?.command ?? runtime.command,
       extensions: [...runtime.extensions],
-      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe),
+      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, probeTimeoutMs),
     })));
     detection = entries;
     return detection;
