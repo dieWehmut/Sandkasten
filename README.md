@@ -85,7 +85,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `pruefung/` | 集成测试与安全测试 |
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
-| `apps/` | 客户端应用:`apps/web` Vue 工作台、`apps/cli` 命令行、`apps/desktop` 桌面端 |
+| `apps/` | 客户端应用:`apps/web` Vue 工作台(IDE 布局)、`apps/cli` 命令行、`apps/desktop` 桌面端 |
 | `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
 
 ## 快速开始
@@ -166,18 +166,26 @@ node apps/cli/bin/sandkasten.mjs job <jobId> --api http://127.0.0.1:8080
 `--api`/`--token` 也可用 `SANDKASTEN_API_BASE_URL`、`SANDKASTEN_API_TOKEN` 提供；`--json`
 输出机器可读结果。退出码:0 成功、1 任务失败、2 用法错误、3 API 或网络错误。
 
-`apps/desktop` 是加载 `apps/web/dist` 的 Electron 桌面外壳:
+`apps/desktop` 是加载 `apps/web/dist` 的 Electron 桌面工作台:仿照 VS Code 的简洁 IDE 布局——
+活动栏、工作区文件浏览器、多文件标签页、代码编辑器、底部输出面板与状态栏:
 
 ```bash
 cd apps/web && npm ci && npm run build && cd ../desktop && npm install && npm start
 ```
 
-桌面端沿用同一 `config.js` 运行时配置，外部链接交给系统浏览器,且不会读取或保存任何
-API 凭据。打包(未签名)使用 `npm run package:dir`(解包目录)或 `npm run package:win`
-(x64 + arm64 的 NSIS 安装程序,含桌面与开始菜单快捷方式),产物位于 `tmp/desktop-dist`。
-发布前先运行 `npm run verify:installer` 校验安装程序载荷完整,再用
+桌面端在浏览器版本之上额外提供:**打开本地文件夹**并用原生对话框读写磁盘文件(`Ctrl+S` 保存)、
+**本地运行**当前文件(使用本机已安装的 `python`、`node`、`go`、`rustc`/`gcc`、`java`、`ruby`、`php`、
+`bash` 等工具链,不做沙箱隔离,默认 20 s 超时、1 MiB 输出上限),以及 File / Run / View / Help 菜单
+(菜单与页面共用同一批快捷键命令)。编辑器工具栏可在 `本地` 与 `沙箱 API` 两种执行后端之间切换,
+状态栏始终标明本次运行来自哪一种后端;浏览器版本仍只使用沙箱 API。
+
+桌面端沿用同一 `config.js` 运行时配置,外部链接交给系统浏览器,且不会读取或保存任何
+API 凭据。工作区路径全部限制在已打开的文件夹内。打包(未签名)使用 `npm run package:dir`
+(解包目录)或 `npm run package:win`(x64 + arm64 的 NSIS 安装程序,含桌面与开始菜单快捷方式),
+产物位于 `tmp/desktop-dist`。发布前先运行 `npm run verify:installer` 校验安装程序载荷完整,再用
 `npm run release:desktop` 上传到 GitHub Release(`GH_TOKEN`/`GITHUB_TOKEN` 需要 `repo`
-权限)。详见 `apps/desktop/README.md`。
+权限)。端到端校验 `npm run e2e` 会真实启动应用:打开临时工作区、编辑保存、本地运行并截图。
+详见 `apps/desktop/README.md`。
 
 ## 卸载
 
