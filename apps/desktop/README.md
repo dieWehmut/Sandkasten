@@ -93,6 +93,9 @@ GH_TOKEN=<token> npm run release:desktop
 
 `release:desktop` re-verifies the payload, then creates (or reuses) the
 `v<version>` release and uploads `Sandkasten-<version>-Setup.exe`. Pass
-`--dry-run` to print the plan without touching GitHub, or `--file <path>` to
-upload a specific artifact. `GH_TOKEN` (or `GITHUB_TOKEN`) needs `repo` scope;
-the script never reads or stores any other credential.
+`--dry-run` to print the plan without touching GitHub, `--file <path>` to
+upload a specific artifact, or `--notes-file <path>` for multiline release
+notes (`--notes` takes short inline text). Re-running the command refreshes the
+release title and notes instead of leaving stale metadata. `GH_TOKEN` (or
+`GITHUB_TOKEN`) needs `repo` scope; the script never reads or stores any other
+credential.
