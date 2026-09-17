@@ -123,6 +123,77 @@
   background: var(--accent-soft);
 }
 
+.color-scheme-switcher {
+  position: relative;
+}
+
+.color-scheme-switcher > button {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  padding: 0;
+}
+
+.color-scheme-switcher[data-open="true"] > button {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.color-scheme-switcher__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 150px;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sheet);
+}
+
+.color-scheme-switcher__menu button {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  background: transparent;
+}
+
+.color-scheme-switcher__menu button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--surface-subtle);
+}
+
+.color-scheme-switcher__menu button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.color-scheme-switcher__swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--scheme-swatch);
+}
+
 .connection-error {
   display: flex;
   min-width: 0;
@@ -506,6 +577,16 @@
     flex-basis: 32px;
   }
 
+  .color-scheme-switcher > button {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .color-scheme-switcher__menu {
+    min-width: 132px;
+  }
+
   .connection-error {
     align-items: flex-start;
   }
@@ -570,6 +651,12 @@
   }
 
   .header-actions button {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  .color-scheme-switcher > button {
     width: 30px;
     height: 30px;
     flex-basis: 30px;

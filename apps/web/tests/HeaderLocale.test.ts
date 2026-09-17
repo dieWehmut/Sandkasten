@@ -1,11 +1,21 @@
-import { mount } from '@vue/test-utils';
-import { describe, expect, test } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
+import { afterEach, describe, expect, test } from 'vitest';
+import App from '../src/App.vue';
 import AppHeader from '../src/components/AppHeader.vue';
+import ColorSchemeSwitcher from '../src/components/ColorSchemeSwitcher.vue';
 import ConnectionStatus from '../src/components/ConnectionStatus.vue';
 import HeaderActions from '../src/components/HeaderActions.vue';
 import LocaleSwitcher from '../src/components/LocaleSwitcher.vue';
 import { createTranslator } from '../src/i18n/locale';
 import { TRANSLATOR_KEY } from '../src/i18n/useTranslation';
+import { COLOR_SCHEME_STORAGE_KEY } from '../src/composables/useColorScheme';
+import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
+
+afterEach(() => {
+  window.localStorage.clear();
+  document.documentElement.removeAttribute('data-color-scheme');
+});
 
 describe('LocaleSwitcher', () => {
   test('exposes an accessible two-locale control and emits the selected locale', async () => {
@@ -100,5 +110,122 @@ describe('ConnectionStatus locale fallback', () => {
 
     expect(standalone.text()).toBe('Unavailable');
     expect(injected.text()).toBe(t('connection.connecting'));
+  });
+});
+
+describe('color scheme switcher', () => {
+  test('exposes every scheme with stable hooks and localized labels', async () => {
+    const t = createTranslator('zh-CN');
+    const wrapper = mount(ColorSchemeSwitcher, {
+      props: { colorScheme: 'purple', locale: 'zh-CN', t },
+    });
+
+    const toggle = wrapper.get('[data-action="toggle-color-scheme"]');
+    expect(toggle.attributes('aria-label')).toBe(t('header.colorScheme'));
+    await toggle.trigger('click');
+
+    const menu = wrapper.get('[data-testid="color-scheme-menu"]');
+    expect(menu.attributes('aria-label')).toBe(t('header.colorScheme'));
+    expect(menu.findAll('button')).toHaveLength(5);
+    for (const scheme of ['green', 'purple', 'pink', 'white', 'black']) {
+      const button = wrapper.get(`[data-action="set-color-scheme-${scheme}"]`);
+      expect(button.attributes('aria-label')).toBe(t(`colorScheme.${scheme}` as never));
+      expect(button.attributes('aria-pressed')).toBe(String(scheme === 'purple'));
+    }
+
+    await wrapper.get('[data-action="set-color-scheme-black"]').trigger('click');
+
+    expect(wrapper.emitted('change')).toEqual([['black']]);
+  });
+
+  test('forwards the active scheme and selection through the header', async () => {
+    const wrapper = mount(HeaderActions, {
+      props: { theme: 'light', colorScheme: 'pink', locale: 'en' },
+    });
+
+    await wrapper.get('[data-action="toggle-color-scheme"]').trigger('click');
+    expect(wrapper.get('[data-action="set-color-scheme-pink"]').attributes('aria-pressed')).toBe('true');
+    await wrapper.get('[data-action="set-color-scheme-green"]').trigger('click');
+
+    expect(wrapper.emitted('changeColorScheme')).toEqual([['green']]);
+  });
+
+  test('applies the stored scheme to the document before the workbench renders', async () => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
+    window.localStorage.setItem('sandkasten-color-scheme', 'pink');
+    mount(App);
+
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('pink');
+  });
+
+  test('persists a scheme picked from the workbench header', async () => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-action="toggle-color-scheme"]').trigger('click');
+    await wrapper.get('[data-action="set-color-scheme-white"]').trigger('click');
+
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('white');
+    expect(window.localStorage.getItem('sandkasten-color-scheme')).toBe('white');
+  });
+});
+
+describe('color scheme switcher menu state', () => {
+  test('starts closed and toggles the accessible menu on demand', async () => {
+    const wrapper = mount(ColorSchemeSwitcher, { props: { colorScheme: 'green', locale: 'en' }, attachTo: document.body });
+    const root = wrapper.get('.color-scheme-switcher');
+    const toggle = wrapper.get('[data-action="toggle-color-scheme"]');
+
+    expect(root.attributes('data-open')).toBe('false');
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+    expect(toggle.attributes('aria-haspopup')).toBe('true');
+    expect(wrapper.find('[data-testid="color-scheme-menu"]').exists()).toBe(false);
+
+    await toggle.trigger('click');
+    expect(root.attributes('data-open')).toBe('true');
+    expect(toggle.attributes('aria-expanded')).toBe('true');
+    expect(wrapper.get('[data-testid="color-scheme-menu"]').attributes('role')).toBe('group');
+    wrapper.unmount();
+  });
+
+  test('closes the menu and reports the selection after picking a scheme', async () => {
+    const wrapper = mount(ColorSchemeSwitcher, { props: { colorScheme: 'green', locale: 'en' }, attachTo: document.body });
+
+    await wrapper.get('[data-action="toggle-color-scheme"]').trigger('click');
+    await wrapper.get('[data-action="set-color-scheme-purple"]').trigger('click');
+
+    expect(wrapper.get('.color-scheme-switcher').attributes('data-open')).toBe('false');
+    expect(wrapper.find('[data-testid="color-scheme-menu"]').exists()).toBe(false);
+    expect(wrapper.emitted('change')).toEqual([['purple']]);
+    wrapper.unmount();
+  });
+
+  test('closes the menu on Escape and on an outside pointer press', async () => {
+    const wrapper = mount(ColorSchemeSwitcher, { props: { colorScheme: 'green', locale: 'en' }, attachTo: document.body });
+    const toggle = wrapper.get('[data-action="toggle-color-scheme"]');
+
+    await toggle.trigger('click');
+    document.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    await nextTick();
+    expect(wrapper.get('.color-scheme-switcher').attributes('data-open')).toBe('false');
+
+    await toggle.trigger('click');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+    expect(wrapper.get('.color-scheme-switcher').attributes('data-open')).toBe('false');
+    wrapper.unmount();
+  });
+
+  test('keeps the menu open when the pointer presses a control inside it', async () => {
+    const wrapper = mount(ColorSchemeSwitcher, { props: { colorScheme: 'green', locale: 'en' }, attachTo: document.body });
+
+    await wrapper.get('[data-action="toggle-color-scheme"]').trigger('click');
+    const inside = wrapper.get('[data-action="set-color-scheme-pink"]');
+    inside.element.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    await nextTick();
+
+    expect(wrapper.get('.color-scheme-switcher').attributes('data-open')).toBe('true');
+    wrapper.unmount();
   });
 });

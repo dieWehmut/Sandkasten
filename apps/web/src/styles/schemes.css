@@ -1,0 +1,90 @@
+/*
+ * Color scheme layer.
+ *
+ * `tokens.css` owns the neutral surfaces (canvas, text, borders, semantic
+ * states); this file owns the accent family only. Every scheme overrides the
+ * same three accent tokens in both themes, so each component keeps referencing
+ * `--accent*` and never learns which scheme is active.
+ *
+ * Each palette was checked for WCAG AA (>= 4.5:1) on the pairs the interface
+ * actually renders:
+ *   - light: white text on `--accent-strong` used as a button background
+ *   - light: `--accent-strong` text on `--accent-soft`
+ *   - light: `--accent` used as an icon/text color on `--surface`
+ *   - dark: `--surface` text on `--accent` used as a button background
+ *   - dark: `--accent-strong` text on `--accent-soft`
+ *   - dark: `--accent` used as an icon/text color on `--surface`
+ */
+
+/* Green is the historical default. Its values are the tokens the workbench
+   shipped with, so an untouched install renders exactly as before. */
+:root,
+:root[data-color-scheme="green"] {
+  --accent: #23834a;
+  --accent-strong: #176235;
+  --accent-soft: #e1f2e6;
+}
+
+:root[data-theme="dark"],
+:root[data-theme="dark"][data-color-scheme="green"] {
+  --accent: #63d58a;
+  --accent-strong: #8be8a8;
+  --accent-soft: #1f422d;
+}
+
+:root[data-color-scheme="purple"] {
+  --accent: #7c3aed;
+  --accent-strong: #5b21b6;
+  --accent-soft: #ede9fe;
+}
+
+:root[data-theme="dark"][data-color-scheme="purple"] {
+  --accent: #b79bfd;
+  --accent-strong: #cdb6ff;
+  --accent-soft: #2c2145;
+}
+
+:root[data-color-scheme="pink"] {
+  --accent: #db2777;
+  --accent-strong: #9d174d;
+  --accent-soft: #fce7f3;
+}
+
+:root[data-theme="dark"][data-color-scheme="pink"] {
+  --accent: #f591bd;
+  --accent-strong: #ffb3d4;
+  --accent-soft: #40202f;
+}
+
+/* Monochrome schemes keep the interface usable without introducing a hue. */
+:root[data-color-scheme="white"] {
+  --accent: #767676;
+  --accent-strong: #4f4f4f;
+  --accent-soft: #ececec;
+}
+
+:root[data-theme="dark"][data-color-scheme="white"] {
+  --accent: #ffffff;
+  --accent-strong: #d4d4d4;
+  --accent-soft: #2a2a2a;
+}
+
+:root[data-color-scheme="black"] {
+  --accent: #1a1a1a;
+  --accent-strong: #000000;
+  --accent-soft: #e6e6e6;
+}
+
+:root[data-theme="dark"][data-color-scheme="black"] {
+  --accent: #9a9a9a;
+  --accent-strong: #cfcfcf;
+  --accent-soft: #262626;
+}
+
+/* Selection and focus ring follow the accent so the active scheme reads as one
+   system rather than a recolored button. The fallbacks above stay in place for
+   engines without `color-mix()`. */
+:root[data-color-scheme] {
+  --selection: color-mix(in srgb, var(--accent) 22%, transparent);
+  --focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+}
