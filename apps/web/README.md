@@ -36,9 +36,44 @@ npm run test:browser
 The smoke reuses an installed Chrome or Edge executable and never downloads a
 browser. It checks the desktop (1440x900), tablet (1024x768), and mobile
 (390x844) layouts, including overflow, compact panels, theme switching, run
-success, resume polling, and output/error text rendering. Screenshots are
+success, resume polling, color scheme switching, and output/error text
+rendering. Screenshots are
 written to the ignored `tmp/webui-browser-smoke/` directory. Set
 `SANDKASTEN_BROWSER_PATH` to override executable discovery when needed.
+
+## Themes and color schemes
+
+The workbench keeps two independent appearance axes: a light/dark surface
+theme and a five-color accent scheme. Both reach the document as attributes on
+`<html>` before the workbench renders, so the first paint already uses the
+active pairing:
+
+- `data-theme`: `light` or `dark`, persisted as `sandkasten-theme`.
+- `data-color-scheme`: `green`, `purple`, `pink`, `white`, or `black`,
+  persisted as `sandkasten-color-scheme`.
+
+`green` is the historical default: its token values are unchanged, so an
+untouched install renders exactly as before. On a first visit without a stored
+preference the interface picks a random chromatic scheme (`green`, `purple`,
+or `pink`) and does not persist it, so a reload can land on a different
+accent. The monochrome `white` and `black` schemes stay opt-in: `white` is a
+deep gray in the light theme and pure white in the dark theme, so it reads as
+the strongest available contrast in either theme. Only an explicit pick is
+written to `localStorage`.
+
+The accent tokens live in `src/styles/schemes.css`; `tokens.css` keeps the
+neutral surfaces, text, borders, and semantic states. Every scheme overrides
+the same three tokens (`--accent`, `--accent-strong`, `--accent-soft`) in both
+themes, and a final `color-mix()` block derives `--selection` and
+`--focus-ring` from the active accent, so components never learn which scheme
+is active. The catalog and the random pick live in `src/theme/colorScheme.ts`;
+`src/composables/useColorScheme.ts` restores storage, applies the document
+attribute, and persists explicit choices.
+
+The header palette button opens a menu with one swatch per scheme. The choice
+persists across reloads, and `apps/web/tests/colorScheme.test.ts`,
+`apps/web/tests/styles.test.ts`, and the browser smoke cover the catalog,
+contrast, persistence, and switch behavior.
 
 ## Production distribution
 
