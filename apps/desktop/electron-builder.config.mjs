@@ -24,12 +24,23 @@ export default {
     },
   ],
   win: {
-    target: ['dir'],
+    target: [
+      { target: 'nsis', arch: ['x64', 'arm64'] },
+    ],
   },
   mac: {
     target: ['dir'],
   },
   linux: {
     target: ['dir'],
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: 'Sandkasten',
+    artifactName: 'Sandkasten-${version}-Setup.${ext}',
   },
 };
