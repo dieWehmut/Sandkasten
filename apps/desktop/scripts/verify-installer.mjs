@@ -6,18 +6,13 @@
 // Listing the payload with the same 7-Zip build that produced it catches that
 // regression before the artifact is published.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { getPath7za } from 'app-builder-lib/out/toolsets/7zip.js';
 
-import {
-  findPayloadOffsets,
-  inspectInstallerPayloads,
-  parseSevenZipListing,
-} from '../src/installer-payload.mjs';
+import { parseSevenZipListing, verifyPayloadsFromFile } from '../src/installer-payload.mjs';
 
 // Resolve the default artifact from the repository root so the script works
 // from apps/desktop (npm script) and from the repository root alike.
@@ -41,41 +36,15 @@ async function main() {
   }
 
   const sevenZip = await getPath7za();
-  const buffer = readFileSync(installer);
-  const offsets = findPayloadOffsets(buffer);
-  if (offsets.length === 0) {
-    process.stderr.write(`verify-installer: no embedded 7z payload in ${installer}\n`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const work = mkdtempSync(path.join(tmpdir(), 'sandkasten-installer-'));
-  const payloads = [];
-  try {
-    offsets.forEach((offset, index) => {
-      const payload = path.join(work, `payload-${index}.7z`);
-      writeFileSync(payload, buffer.subarray(offset));
-      payloads.push(listEntries(sevenZip, payload));
-    });
-  } finally {
-    rmSync(work, { recursive: true, force: true });
-  }
-
-  const { problems } = inspectInstallerPayloads(payloads);
-  payloads.forEach((entries, index) => {
-    const count = problems.filter((problem) => problem.index === index).length;
-    process.stdout.write(`payload ${index}: entries=${entries.length} problems=${count}\n`);
+  const result = await verifyPayloadsFromFile(installer, { sevenZip, listEntries });
+  result.entriesByPayload.forEach((entries, index) => {
+    const problems = result.problems.filter((problem) => problem.index === index).length;
+    process.stdout.write(`payload ${index}: entries=${entries.length} problems=${problems}\n`);
   });
-  for (const problem of problems) {
+  for (const problem of result.problems) {
     process.stderr.write(`  payload ${problem.index} ${problem.kind}: ${problem.names.join(', ')}\n`);
   }
-
-  if (problems.length > 0) {
-    process.stderr.write(`verify-installer: ${problems.length} problem(s) in ${installer}\n`);
-    process.exitCode = 1;
-    return;
-  }
-  process.stdout.write(`verify-installer: ok (${payloads.length} payload(s))\n`);
+  process.stdout.write(`verify-installer: ok (${result.entriesByPayload.length} payload(s))\n`);
 }
 
 main().catch((error) => {

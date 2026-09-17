@@ -3,6 +3,9 @@
 // plugin cannot decode is dropped silently during installation. The check
 // therefore inspects the embedded payload and rejects filters the plugin
 // predates.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 export const SEVEN_ZIP_SIGNATURE = Buffer.from([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c]);
 
@@ -54,4 +57,53 @@ export function inspectInstallerPayloads(payloads) {
     if (missing.length > 0) problems.push({ index, kind: 'missing', names: missing });
   });
   return { payloads: payloads.length, problems };
+}
+
+// Read a built installer, list every embedded payload with the 7-Zip build that
+// produced it, and report undecodable or missing entries.
+export async function inspectInstallerFile(installer, { sevenZip, listEntries } = {}) {
+  if (typeof sevenZip !== 'string' || typeof listEntries !== 'function') {
+    throw new Error('sevenZip and listEntries are required');
+  }
+  const buffer = readFileSync(installer);
+  const offsets = findPayloadOffsets(buffer);
+  if (offsets.length === 0) throw new Error(`no embedded 7z payload in ${installer}`);
+
+  const work = mkdtempSync(path.join(tmpdir(), 'sandkasten-installer-'));
+  const payloads = [];
+  try {
+    offsets.forEach((offset, index) => {
+      const payload = path.join(work, `payload-${index}.7z`);
+      writeFileSync(payload, buffer.subarray(offset));
+      payloads.push(listEntries(sevenZip, payload));
+    });
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  return { entriesByPayload: payloads, ...inspectInstallerPayloads(payloads) };
+}
+
+export async function verifyPayloadsFromFile(installer, { sevenZip, listEntries } = {}) {
+  if (typeof sevenZip === 'string' && typeof listEntries === 'function') {
+    const result = await inspectInstallerFile(installer, { sevenZip, listEntries });
+    assertComplete(result, installer);
+    return result;
+  }
+  const { spawnSync } = await import('node:child_process');
+  const { getPath7za } = await import('app-builder-lib/out/toolsets/7zip.js');
+  const resolved = await getPath7za();
+  const list = (binary, archive) => {
+    const listed = spawnSync(binary, ['l', '-slt', archive], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    if (listed.status !== 0) throw new Error(`7za failed for ${archive}: ${listed.stderr || listed.stdout}`);
+    return parseSevenZipListing(listed.stdout, archive);
+  };
+  const result = await inspectInstallerFile(installer, { sevenZip: resolved, listEntries: list });
+  assertComplete(result, installer);
+  return result;
+}
+
+function assertComplete(result, installer) {
+  if (result.problems.length === 0) return;
+  const detail = result.problems.map((problem) => `payload ${problem.index} ${problem.kind}: ${problem.names.join(', ')}`);
+  throw new Error(`installer payload is incomplete: ${detail.join('; ')} (${installer})`);
 }
