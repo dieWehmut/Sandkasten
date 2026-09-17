@@ -267,6 +267,31 @@ async function inspectCompactSheets(page, viewportName) {
   await inspectorDialog.waitFor({ state: 'hidden', timeout: 2000 });
 }
 
+async function inspectColorScheme(page, viewportName) {
+  const toggle = page.locator('[data-action="toggle-color-scheme"]');
+  await toggle.waitFor({ state: 'visible', timeout: 3000 });
+  await toggle.click();
+  const menu = page.locator('[data-testid="color-scheme-menu"]');
+  await menu.waitFor({ state: 'visible', timeout: 3000 });
+  assert.equal(await menu.locator('button').count(), 5, viewportName + ' scheme menu must expose five schemes');
+  await page.locator('[data-action="set-color-scheme-purple"]').click();
+  await menu.waitFor({ state: 'hidden', timeout: 3000 });
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'purple');
+  assert.equal(
+    await page.evaluate(() => window.localStorage.getItem('sandkasten-color-scheme')),
+    'purple',
+    viewportName + ' scheme choice was not persisted',
+  );
+  assert.equal(
+    await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()),
+    '#7c3aed',
+    viewportName + ' scheme did not change the accent token',
+  );
+  await toggle.click();
+  await page.locator('[data-action="set-color-scheme-green"]').click();
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'green');
+}
+
 async function inspectViewport(browser, appUrl, viewport) {
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(appUrl).origin });
@@ -277,6 +302,7 @@ async function inspectViewport(browser, appUrl, viewport) {
   await assertMainRegions(page, viewport.name);
   await assertNoHorizontalOverflow(page, viewport.name);
   await assertNoIntersectingControls(page, viewport.name);
+  await inspectColorScheme(page, viewport.name);
   await runAndInspectOutput(page, viewport.name);
   if (viewport.name !== 'desktop') await inspectCompactSheets(page, viewport.name);
   const light = await assertScreenshot(page, viewport.name, viewport.width, viewport.height);
