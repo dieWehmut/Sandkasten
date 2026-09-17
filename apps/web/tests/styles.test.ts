@@ -36,7 +36,7 @@ function token(theme: string, name: string): string {
 
 describe('workbench style boundaries', () => {
   test('keeps visual concerns in focused files', () => {
-    for (const file of ['tokens.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']) {
+    for (const file of ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']) {
       expect(style(file).trim().length, file).toBeGreaterThan(0);
     }
   });
@@ -45,7 +45,6 @@ describe('workbench style boundaries', () => {
     const tokens = style('tokens.css');
     const base = style('base.css');
     expect(tokens).toContain('[data-theme="dark"]');
-    expect(tokens).toContain('--accent:');
     expect(tokens).toContain('--success:');
     expect(base).toContain('@media (prefers-reduced-motion: reduce)');
     expect(base).toContain('transition: none');
@@ -59,9 +58,6 @@ describe('workbench style boundaries', () => {
     expect(light).toContain('--text: #17231b;');
     expect(light).toContain('--text-muted: #607064;');
     expect(light).toContain('--border: #d5e0d6;');
-    expect(light).toContain('--accent: #23834a;');
-    expect(light).toContain('--accent-strong: #176235;');
-    expect(light).toContain('--focus-ring: #42b96b;');
   });
 
   test('uses the approved accessible green tokens in the dark theme', () => {
@@ -74,9 +70,6 @@ describe('workbench style boundaries', () => {
     expect(dark).toContain('--text: #e8f3ea;');
     expect(dark).toContain('--text-muted: #a9bcae;');
     expect(dark).toContain('--border: #33483a;');
-    expect(dark).toContain('--accent: #63d58a;');
-    expect(dark).toContain('--accent-strong: #8be8a8;');
-    expect(dark).toContain('--focus-ring: #3fbf70;');
   });
 
   test('keeps semantic states distinct and removes the rose accent palette', () => {
@@ -102,9 +95,11 @@ describe('workbench style boundaries', () => {
     const workbench = style('workbench.css');
     const setup = style('setup.css');
     const tokens = style('tokens.css');
-    const dark = tokens.split(':root[data-theme="dark"]')[1];
-    const darkSurface = token(dark, '--surface');
-    const darkAccent = token(dark, '--accent-strong');
+    const schemes = style('schemes.css');
+    const darkTokens = tokens.split(':root[data-theme="dark"]')[1];
+    const darkScheme = schemes.split(':root[data-theme="dark"],')[1].split(':root[data-color-scheme="purple"]')[0];
+    const darkSurface = token(darkTokens, '--surface');
+    const darkAccent = token(darkScheme, '--accent-strong');
 
     expect(contrastRatio(darkSurface, darkAccent)).toBeGreaterThanOrEqual(4.5);
     expect(workbench).toMatch(
@@ -135,10 +130,92 @@ describe('workbench style boundaries', () => {
   });
 
   test('keeps letter spacing neutral across the operational interface', () => {
-    const combined = ['tokens.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
+    const combined = ['tokens.css', 'schemes.css', 'base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css']
       .map(style)
       .join('\n');
     const values = Array.from(combined.matchAll(/letter-spacing:\s*([^;]+);/g), (match) => match[1].trim());
     expect(new Set(values)).toEqual(new Set(['0']));
+  });
+});
+
+const SCHEME_NAMES = ['green', 'purple', 'pink', 'white', 'black'] as const;
+
+function schemeBlock(scheme: string, theme: 'light' | 'dark'): string {
+  const source = style('schemes.css');
+  const selector = theme === 'dark'
+    ? `:root[data-theme="dark"][data-color-scheme="${scheme}"]`
+    : `:root[data-color-scheme="${scheme}"]`;
+  const start = source.indexOf(selector);
+  if (start === -1) throw new Error(`Missing ${theme} block for ${scheme}`);
+  const body = source.slice(start).split('{')[1];
+  return body.split('}')[0] ?? '';
+}
+
+function lightBlock(scheme: string): string {
+  if (scheme === 'green') {
+    const source = style('schemes.css');
+    return source.slice(0, source.indexOf(':root[data-theme="dark"]')).split('{')[1]?.split('}')[0] ?? '';
+  }
+  return schemeBlock(scheme, 'light');
+}
+
+describe('color scheme palettes', () => {
+  test('defines every supported scheme in both themes', () => {
+    for (const scheme of SCHEME_NAMES) {
+      for (const theme of ['light', 'dark'] as const) {
+        const block = theme === 'light' ? lightBlock(scheme) : schemeBlock(scheme, 'dark');
+        expect(block, `${scheme}/${theme}`).toContain('--accent:');
+        expect(block, `${scheme}/${theme}`).toContain('--accent-strong:');
+        expect(block, `${scheme}/${theme}`).toContain('--accent-soft:');
+      }
+    }
+  });
+
+  test('keeps green as the untouched default in both themes', () => {
+    expect(lightBlock('green')).toContain('--accent: #23834a;');
+    expect(lightBlock('green')).toContain('--accent-strong: #176235;');
+    expect(lightBlock('green')).toContain('--accent-soft: #e1f2e6;');
+    expect(schemeBlock('green', 'dark')).toContain('--accent: #63d58a;');
+    expect(schemeBlock('green', 'dark')).toContain('--accent-strong: #8be8a8;');
+    expect(schemeBlock('green', 'dark')).toContain('--accent-soft: #1f422d;');
+  });
+
+  test('keeps every light scheme readable on the rendered surfaces', () => {
+    const lightTokens = style('tokens.css').split(':root[data-theme="dark"]')[0];
+    const surface = token(lightTokens, '--surface');
+    const text = token(lightTokens, '--text');
+    for (const scheme of SCHEME_NAMES) {
+      const block = lightBlock(scheme);
+      const accent = token(block, '--accent');
+      const strong = token(block, '--accent-strong');
+      const soft = token(block, '--accent-soft');
+      expect(contrastRatio('#ffffff', strong), `${scheme} white on accent-strong`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(strong, soft), `${scheme} accent-strong on accent-soft`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(accent, surface), `${scheme} accent on surface`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(text, soft), `${scheme} text on accent-soft`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test('keeps every dark scheme readable on the rendered surfaces', () => {
+    const darkTokens = style('tokens.css').split(':root[data-theme="dark"]')[1];
+    const surface = token(darkTokens, '--surface');
+    const text = token(darkTokens, '--text');
+    for (const scheme of SCHEME_NAMES) {
+      const block = schemeBlock(scheme, 'dark');
+      const accent = token(block, '--accent');
+      const strong = token(block, '--accent-strong');
+      const soft = token(block, '--accent-soft');
+      expect(contrastRatio(surface, accent), `${scheme} surface on accent`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(surface, strong), `${scheme} surface on accent-strong`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(strong, soft), `${scheme} accent-strong on accent-soft`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(accent, surface), `${scheme} accent on surface`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(text, soft), `${scheme} text on accent-soft`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test('derives selection and focus from the active accent', () => {
+    const schemes = style('schemes.css');
+    expect(schemes).toMatch(/--selection:\s*color-mix\(in srgb, var\(--accent\)/);
+    expect(schemes).toMatch(/--focus-ring:\s*color-mix\(in srgb, var\(--accent\)/);
   });
 });
