@@ -7,7 +7,7 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createRelease, findReleaseByTag, uploadReleaseAsset } from '../src/github-release.mjs';
+import { createRelease, findReleaseByTag, updateRelease, uploadReleaseAsset } from '../src/github-release.mjs';
 import { verifyPayloadsFromFile } from '../src/installer-payload.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -64,8 +64,13 @@ async function main() {
   const token = resolveToken();
   const request = { token, fetchImpl: fetch };
   const existing = await findReleaseByTag({ ...request, repo: options.repo, tag });
-  const release = existing ?? (await createRelease({ ...request, repo: options.repo, tag, name, body: options.notes ?? '' }));
-  process.stdout.write(`${existing ? 'reusing' : 'created'} release ${release.tag_name ?? tag}\n`);
+  const notes = options.notes ?? '';
+  // A release is immutable through createRelease once it exists, so re-runs
+  // refresh the title and notes instead of silently keeping stale metadata.
+  const release = existing
+    ? await updateRelease({ ...request, repo: options.repo, release: existing, tag, name, body: notes })
+    : await createRelease({ ...request, repo: options.repo, tag, name, body: notes });
+  process.stdout.write(`${existing ? 'updated' : 'created'} release ${release.tag_name ?? tag}\n`);
 
   for (const file of files) {
     const asset = await uploadReleaseAsset({ ...request, repo: options.repo, release, file });

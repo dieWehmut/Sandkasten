@@ -66,6 +66,17 @@ export async function createRelease({ repo, tag, name, body = '', token, fetchIm
   });
 }
 
+export async function updateRelease({ repo, release, tag, name, body = '', token, fetchImpl = fetch }) {
+  if (!release?.id) throw new Error('an existing release is required to update it');
+  return request({
+    fetchImpl,
+    token,
+    url: releaseApiUrl(repo, `/${release.id}`),
+    method: 'PATCH',
+    body: JSON.stringify({ tag_name: tag, name, body, draft: false, prerelease: false }),
+  });
+}
+
 export async function uploadReleaseAsset({ repo, release, file, token, fetchImpl = fetch, contentType = 'application/octet-stream' }) {
   const stats = statSync(file, { throwIfNoEntry: false });
   if (!stats?.isFile()) throw new Error(`missing release asset: ${file}`);
