@@ -13,18 +13,25 @@ import { verifyPayloadsFromFile } from '../src/installer-payload.mjs';
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 function parseArgs(argv) {
-  const options = { repo: 'dieWehmut/Sandkasten', tag: null, name: null, files: [], notes: null, dryRun: false };
+  const options = { repo: 'dieWehmut/Sandkasten', tag: null, name: null, files: [], notes: null, notesFile: null, dryRun: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--repo') options.repo = argv[++index];
     else if (arg === '--tag') options.tag = argv[++index];
     else if (arg === '--name') options.name = argv[++index];
     else if (arg === '--notes') options.notes = argv[++index];
+    else if (arg === '--notes-file') options.notesFile = argv[++index];
     else if (arg === '--file') options.files.push(argv[++index]);
     else if (arg === '--dry-run') options.dryRun = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
   return options;
+}
+
+export function resolveNotes({ notes, notesFile } = {}, { readFile = readFileSync } = {}) {
+  // Multiline notes survive shell quoting badly, so prefer a file when given.
+  if (typeof notesFile === 'string' && notesFile !== '') return readFile(notesFile, 'utf8');
+  return typeof notes === 'string' ? notes : '';
 }
 
 function resolveToken(environment = process.env) {
@@ -64,7 +71,7 @@ async function main() {
   const token = resolveToken();
   const request = { token, fetchImpl: fetch };
   const existing = await findReleaseByTag({ ...request, repo: options.repo, tag });
-  const notes = options.notes ?? '';
+  const notes = resolveNotes(options);
   // A release is immutable through createRelease once it exists, so re-runs
   // refresh the title and notes instead of silently keeping stale metadata.
   const release = existing
