@@ -7,6 +7,7 @@ import {
   createRelease,
   findReleaseByTag,
   releaseApiUrl,
+  updateRelease,
 } from '../src/github-release.mjs';
 
 function jsonResponse(body, status = 200) {
@@ -85,5 +86,28 @@ test('surfaces GitHub errors with their message', async () => {
   await assert.rejects(
     () => createRelease({ repo: 'dieWehmut/Sandkasten', tag: 'v1', name: 'n', token: 't', fetchImpl: async () => jsonResponse({ message: 'Validation Failed' }, 422) }),
     /Validation Failed/,
+  );
+});
+
+test('refreshes an existing release instead of keeping stale metadata', async () => {
+  let captured;
+  const release = await updateRelease({
+    repo: 'dieWehmut/Sandkasten',
+    release: { id: 7 },
+    tag: 'v0.1.0',
+    name: 'Sandkasten 0.1.0',
+    body: 'fresh notes',
+    token: 't',
+    fetchImpl: async (url, options) => {
+      captured = { url, options };
+      return jsonResponse({ id: 7, tag_name: 'v0.1.0', body: 'fresh notes' });
+    },
+  });
+  assert.equal(release.body, 'fresh notes');
+  assert.equal(captured.url, `${GITHUB_API}/repos/dieWehmut/Sandkasten/releases/7`);
+  assert.equal(captured.options.method, 'PATCH');
+  await assert.rejects(
+    () => updateRelease({ repo: 'dieWehmut/Sandkasten', tag: 'v1', name: 'n', token: 't' }),
+    /existing release/,
   );
 });
