@@ -12,7 +12,10 @@
     "start": "electron .",
     "test": "node --test tests/*.test.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "package:dir": "electron-builder --dir --config electron-builder.config.mjs"
+    "package:dir": "electron-builder --dir --config electron-builder.config.mjs",
+    "package:win": "electron-builder --win --config electron-builder.config.mjs",
+    "verify:installer": "node scripts/verify-installer.mjs",
+    "release:desktop": "node scripts/publish-release.mjs"
   },
   "devDependencies": {
     "electron": "38.8.6",
