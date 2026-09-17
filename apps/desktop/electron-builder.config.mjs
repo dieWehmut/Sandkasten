@@ -6,6 +6,14 @@ import { fileURLToPath } from 'node:url';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(appRoot, '..', '..');
 
+// 7-Zip 24 applies the ARM64 branch-converter filter to arm64 PE files by
+// default, but the nsis7z plugin shipped with electron-builder predates that
+// filter and silently skips such entries, producing installers without the
+// application executable. Pin the classic BCJ filter so the payload stays
+// readable for the plugin on every build host.
+export const NSIS_ARCHIVE_FILTER = 'BCJ';
+process.env.ELECTRON_BUILDER_7Z_FILTER ??= NSIS_ARCHIVE_FILTER;
+
 export default {
   appId: 'tech.diesw.sandkasten',
   productName: 'Sandkasten',
