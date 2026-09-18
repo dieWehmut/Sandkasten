@@ -7,7 +7,7 @@ import {
   type Runtime,
 } from '../services/sandkastenApi';
 import { isTerminalStatus } from '../state/status';
-import { useRunHistory, type RunHistoryItem } from './useRunHistory';
+import { useRunHistory, type RunHistory, type RunHistoryItem } from './useRunHistory';
 
 export type RunnerPhase = 'booting' | 'ready' | 'submitting' | 'polling' | 'stopped' | 'completed' | 'error';
 export type OutputTab = 'output' | 'errors' | 'compile' | 'diagnostics';
@@ -21,6 +21,7 @@ export interface RunnerDependencies {
   loadRuntimes?: LoadRuntimes;
   submitJob?: SubmitJob;
   pollJob?: PollJob;
+  history?: RunHistory;
 }
 
 interface ActiveRun {
@@ -45,7 +46,7 @@ export function useRunner(dependencies: RunnerDependencies = {}) {
   const loadRuntimes = dependencies.loadRuntimes ?? loadRuntimesRequest;
   const submitJob = dependencies.submitJob ?? submitJobRequest;
   const pollJob = dependencies.pollJob ?? pollJobRequest;
-  const runHistory = useRunHistory(20);
+  const runHistory = dependencies.history ?? useRunHistory(20);
 
   const phase = ref<RunnerPhase>('booting');
   const runtimes = ref<Runtime[]>([]);

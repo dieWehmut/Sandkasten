@@ -1,0 +1,206 @@
+#!/usr/bin/env node
+// End-to-end verification of the desktop IDE: launches the real Electron main
+// process against a temporary workspace, drives the built WebUI, runs a file
+// with the local toolchain, and captures screenshots. Playwright's Electron
+// driver lives in the web app because it is already a WebUI dev dependency.
+import { spawnSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const repositoryRoot = path.resolve(appRoot, '..', '..');
+const outputRoot = path.join(repositoryRoot, 'tmp');
+
+function hasPython() {
+  const probe = spawnSync(process.platform === 'win32' ? 'python' : 'python3', ['--version'], { stdio: 'ignore' });
+  return probe.status === 0;
+}
+
+async function loadElectronDriver() {
+  const candidates = [
+    path.join(appRoot, '..', 'web', 'node_modules', 'playwright-core', 'index.js'),
+    path.join(appRoot, 'node_modules', 'playwright-core', 'index.js'),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      const module = await import(pathToFileURL(candidate).href);
+      return module._electron ?? module.default?._electron ?? module.default;
+    }
+  }
+  throw new Error('playwright-core is required for the desktop E2E run; install WebUI dependencies first');
+}
+
+async function main() {
+  if (!hasPython()) {
+    throw new Error('the desktop E2E run needs python on PATH to execute a local file');
+  }
+  const driver = await loadElectronDriver();
+  const electronExecutable = (await import('electron')).default;
+
+  const workspace = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-e2e-'));
+  await mkdir(path.join(workspace, 'pkg'), { recursive: true });
+  await writeFile(path.join(workspace, 'hello.py'), 'print("E2E-LOCAL-RUN-OK")\n');
+  await writeFile(path.join(workspace, 'pkg', 'util.py'), 'print("util-ok")\n');
+  await writeFile(path.join(workspace, 'notes.md'), '# notes\n');
+  await mkdir(path.join(outputRoot), { recursive: true });
+
+  const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
+  const app = packagedExecutable
+    ? await driver.launch({ executablePath: packagedExecutable, args: [], env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } })
+    : await driver.launch({ executablePath: electronExecutable, args: ['.'], cwd: appRoot, env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } });
+
+  const checks = { workspace, python: true, mode: packagedExecutable ? 'packaged' : 'development' };
+  let failure;
+  try {
+    const page = await app.firstWindow();
+    const consoleMessages = [];
+    page.on('console', (message) => consoleMessages.push(`${message.type()}: ${message.text()}`));
+    page.on('pageerror', (error) => consoleMessages.push(`pageerror: ${error.message}`));
+    checks.consoleMessages = consoleMessages;
+
+    await page.waitForSelector('[data-testid="app-shell"]', { timeout: 30_000 });
+    if (await page.locator('[data-testid="setup-dismiss"]').count()) {
+      await page.click('[data-testid="setup-dismiss"]');
+      checks.setupGuideDismissed = true;
+    }
+    await page.waitForSelector('[data-testid="workbench-shell"]', { timeout: 30_000 });
+
+    checks.bridgeExposed = await page.evaluate(() => typeof window.sandkastenDesktop?.workspace?.read === 'function');
+    checks.workspaceRoot = await page.evaluate(() => window.sandkastenDesktop?.workspace?.root?.() ?? null);
+    checks.bridgeTree = await page.evaluate(() => window.sandkastenDesktop?.workspace?.list?.() ?? null);
+    checks.menu = await app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map((item) => item.label) ?? []);
+    await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'local', null, { timeout: 30_000 });
+    checks.backend = await page.getAttribute('[data-testid="ide-status-bar"]', 'data-backend');
+    checks.localRuntimes = await page.evaluate(async () => (await window.sandkastenDesktop.runner.detect()).filter((entry) => entry.available).map((entry) => entry.language));
+    checks.activityButtons = await page.locator('.ide-activity__button').count();
+    checks.explorerRows = await page.locator('.ide-tree__row').count();
+    checks.tree = await page.locator('.ide-tree__name').allInnerTexts();
+    checks.bodyPreview = (await page.locator('.ide-sidebar').innerText().catch(() => '')).slice(0, 200);
+
+    await page.click('[data-path="hello.py"] .ide-tree__open');
+    await page.waitForSelector('[data-action="ide-tab-hello.py"]');
+    checks.activeTab = (await page.locator('.ide-tab--active .ide-tab__name').innerText()).trim();
+    checks.editorText = (await page.locator('.cm-content').innerText()).trim();
+
+    await page.click('[data-action="run-source"]');
+    await page.waitForFunction(() => document.body.innerText.includes('E2E-LOCAL-RUN-OK'), null, { timeout: 30_000 });
+    checks.localRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
+    checks.localRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
+    checks.localRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
+
+    await page.click('.cm-content');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type('print("E2E-SAVED")\n');
+    await page.waitForSelector('.ide-tab__dirty');
+    await page.keyboard.press('Control+s');
+    await page.waitForFunction(() => !document.querySelector('.ide-tab__dirty'), null, { timeout: 10_000 });
+    checks.savedFile = (await readFile(path.join(workspace, 'hello.py'), 'utf8')).trim();
+    checks.savedRemotely = checks.savedFile === 'print("E2E-SAVED")';
+
+    await page.keyboard.press('Control+n');
+    await page.waitForSelector('[data-testid="ide-new-file-form"]');
+    await page.fill('input[name="fileName"]', 'extra.py');
+    await page.click('[data-action="ide-create-file"]');
+    await page.waitForSelector('[data-path="extra.py"]');
+    checks.createdOnDisk = existsSync(path.join(workspace, 'extra.py'));
+    checks.openTabs = await page.locator('.ide-tab__name').allInnerTexts();
+
+    await page.keyboard.press('Control+j');
+    await page.waitForFunction(() => !document.querySelector('.ide-panel'), null, { timeout: 5_000 });
+    checks.panelHidden = (await page.locator('.ide-panel').count()) === 0;
+    await page.keyboard.press('Control+j');
+    await page.waitForSelector('.ide-panel');
+
+    checks.rowsBeforeCollapse = await page.locator('.ide-tree__row').count();
+    const toggle = page.locator('[data-path="pkg"] .ide-tree__toggle');
+    checks.toggleExpandedBefore = await toggle.getAttribute('aria-expanded');
+    await toggle.click();
+    await page.waitForTimeout(300);
+    checks.toggleExpandedAfter = await toggle.getAttribute('aria-expanded');
+    checks.utilRowAfterCollapse = await page.locator('[data-path="pkg/util.py"]').count();
+    checks.collapsedRows = await page.locator('.ide-tree__row').count();
+    if (checks.utilRowAfterCollapse === 0) {
+      await toggle.click();
+      await page.waitForSelector('[data-path="pkg/util.py"]');
+    }
+
+    const ensureTheme = async (theme) => {
+      if ((await page.getAttribute('html', 'data-theme')) === theme) return;
+      await page.click('[data-action="toggle-theme"]');
+      await page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, theme, { timeout: 5_000 });
+    };
+
+    await ensureTheme('light');
+    checks.lightTheme = await page.getAttribute('html', 'data-theme');
+    checks.lightSyntaxColors = await page.evaluate(() => Array.from(document.querySelectorAll('.ide-editor .cm-line span'))
+      .slice(0, 5)
+      .map((span) => ({ text: span.textContent, color: getComputedStyle(span).color })));
+    const lightShot = path.join(outputRoot, 'desktop-ide-light.png');
+    await page.screenshot({ path: lightShot });
+    checks.lightScreenshot = lightShot;
+    checks.lightScreenshotBytes = statSync(lightShot).size;
+
+    checks.layout = await page.evaluate(() => {
+      const rect = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
+      };
+      const colour = (selector) => {
+        const element = document.querySelector(selector);
+        return element ? getComputedStyle(element).backgroundColor : null;
+      };
+      const pageElement = document.documentElement;
+      return {
+        viewport: { w: window.innerWidth, h: window.innerHeight },
+        activity: rect('.ide-activity'),
+        sidebar: rect('.ide-sidebar'),
+        tabs: rect('.ide-tabs'),
+        toolbar: rect('.ide-toolbar'),
+        editor: rect('.ide-editor'),
+        codeMirror: rect('.ide-editor .cm-editor'),
+        panel: rect('.ide-panel'),
+        status: rect('.ide-status'),
+        activityBackground: colour('.ide-activity'),
+        editorBackground: colour('.ide-editor .cm-editor'),
+        panelBackground: colour('.ide-panel'),
+        statusBackground: colour('.ide-status'),
+        documentTheme: document.documentElement.dataset.theme,
+        systemPrefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+        fullHeight: Math.abs((rect('.ide-main')?.h ?? 0) + (rect('.app-header')?.h ?? 0) - window.innerHeight) <= 1,
+        noPageScroll: pageElement.scrollHeight <= window.innerHeight + 1 && pageElement.scrollWidth <= window.innerWidth + 1,
+      };
+    });
+
+    await ensureTheme('dark');
+    checks.darkTheme = await page.getAttribute('html', 'data-theme');
+    checks.darkSyntaxColors = await page.evaluate(() => Array.from(document.querySelectorAll('.ide-editor .cm-line span'))
+      .slice(0, 5)
+      .map((span) => ({ text: span.textContent, color: getComputedStyle(span).color })));
+    const darkShot = path.join(outputRoot, 'desktop-ide-dark.png');
+    await page.screenshot({ path: darkShot });
+    checks.darkScreenshot = darkShot;
+    checks.darkScreenshotBytes = statSync(darkShot).size;
+    checks.darkStatusBackground = await page.evaluate(() => getComputedStyle(document.querySelector('.ide-status')).backgroundColor);
+
+    const errors = await page.evaluate(() => window.__sandkastenErrors ?? []);
+    checks.rendererErrors = errors;
+  } catch (error) {
+    failure = error;
+  } finally {
+    await app.close().catch(() => {});
+    await rm(workspace, { recursive: true, force: true }).catch(() => {});
+  }
+
+  process.stdout.write(`${JSON.stringify(checks, null, 2)}\n`);
+  if (failure) throw failure;
+}
+
+main().catch((error) => {
+  process.stderr.write(`desktop ide e2e: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.exitCode = 1;
+});

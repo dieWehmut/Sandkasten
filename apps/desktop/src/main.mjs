@@ -1,10 +1,14 @@
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { resolveVerifiedDistribution } from './distribution.mjs';
 import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
 import { applyNavigationPolicy, createWindowOptions } from './navigation.mjs';
+import { registerDesktopIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
+import { createLocalRunner } from './local-runner.mjs';
+import { buildMenuTemplate } from './menu.mjs';
+import { createWorkspaceSession } from './workspace.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -12,7 +16,7 @@ function createWindow(bundledIndex) {
   const window = new BrowserWindow(
     createWindowOptions({
       bundledIndex,
-      preloadPath: path.join(appRoot, 'src', 'preload.mjs'),
+      preloadPath: path.join(appRoot, 'src', 'preload.cjs'),
     }),
   );
 
@@ -39,7 +43,27 @@ async function start() {
     apiBaseUrl,
     stageRoot: app.getPath('userData'),
   });
-  createWindow(path.join(activeDistribution, 'index.html'));
+
+  const session = createWorkspaceSession({
+    storeFile: path.join(app.getPath('userData'), 'workspace.json'),
+  });
+  const runner = createLocalRunner();
+  await resolveInitialWorkspace(session).catch(() => null);
+
+  const focusedWindow = () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const sendToWindow = (command) => {
+    const target = focusedWindow();
+    if (target && !target.isDestroyed()) target.webContents.send(IPC_CHANNELS.menu, command);
+  };
+
+  registerDesktopIpc({ ipcMain, dialog, runner, session, getWindow: focusedWindow });
+  Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
+
+  app.on('before-quit', () => {
+    void runner.stopAll();
+  });
+
+  return createWindow(path.join(activeDistribution, 'index.html'));
 }
 
 app.whenReady().then(start).catch((error) => {

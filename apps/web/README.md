@@ -5,6 +5,53 @@ The WebUI is a Vue 3 and TypeScript workbench built with Vite. It loads
 `GET /v1/jobs/{jobId}`. API-controlled source, errors, and output are rendered
 as text; components do not inject them as HTML.
 
+## Workbench layout
+
+Above 1200 px the workbench renders an editor-first layout: an activity bar
+(explorer, recent runs, inspector, setup guide), a sidebar with the workspace
+file tree and recent runs, open-file tabs, a CodeMirror editor, a bottom output
+panel, and a status bar. Narrower windows fall back to the single-column
+layout with history and inspector sheets.
+
+The workspace holds one or more open files. In the browser the workspace is an
+in-memory scratch workspace persisted under `sandkasten-workspace-v1`; in the
+desktop app the same UI reads and writes a real folder through the preload
+bridge described below. Files are never sent anywhere except the execution
+backend the user selected, and `Ctrl+S` writes the active buffer.
+
+Two execution backends share one output surface:
+
+- **Sandboxed API** (`Sandbox API`): the remote Sandkasten service, unchanged
+  from the browser contract above.
+- **Local** (`Local`): the desktop app runs the active file with the toolchains
+  installed on the machine through `window.sandkastenDesktop.runner`. This
+  backend is unsandboxed, unavailable in the browser, and offered only when the
+  file's runtime is installed.
+
+Keyboard: `Ctrl+S` save, `Ctrl+Enter` run, `Ctrl+N` new file, `Ctrl+W` close
+editor, `Ctrl+B` toggle sidebar, `Ctrl+J` toggle the output panel.
+
+### Desktop bridge contract
+
+`apps/desktop` injects `window.sandkastenDesktop` from its sandboxed preload
+script. The bundle treats the bridge as optional and degrades to the scratch
+workspace, so the same `apps/web/dist` payload serves GitHub Pages and the
+desktop app:
+
+```ts
+window.sandkastenDesktop = {
+  platform, versions,
+  workspace: { openFolder, root, list, read, write, create, remove },
+  runner: { detect, run, stop },
+  onMenuCommand(handler),
+};
+```
+
+Every path passed to `workspace.*` is relative to the opened folder; the main
+process rejects anything that escapes it. `runner.run({ jobId, path, language })`
+resolves to a job-shaped result (`status`, `stdout`, `stderr`, `exitCode`,
+`durationMs`) so the panel, tabs, and status bar need no backend-specific code.
+
 ## Develop and test
 
 Use the Node.js release pinned by the Pages workflow (Node 22.18.0):

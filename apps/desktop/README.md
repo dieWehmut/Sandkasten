@@ -1,9 +1,26 @@
 # Sandkasten Desktop
 
-An Electron shell that loads the built `apps/web` distribution from disk and
-talks to the Sandkasten HTTP API. It is a desktop wrapper around the same
-workbench published to GitHub Pages, so the UI, API contract, and
-`config.js` runtime configuration are identical.
+An Electron workbench that loads the built `apps/web` distribution from disk. It
+is the editor-first desktop build of the same WebUI published to GitHub Pages:
+an activity bar, a workspace file explorer, open-file tabs, a CodeMirror editor,
+an output panel, and a status bar — the VS Code arrangement, kept deliberately
+plain.
+
+The desktop build adds three things the browser cannot do:
+
+1. **A real workspace folder.** `File > Open Folder…` (or the explorer button)
+   picks a directory with the native dialog; files are listed, opened, edited,
+   created, and deleted on disk, and `Ctrl+S` writes the buffer back.
+2. **Local execution.** `Run` executes the active file with the toolchain
+   installed on this computer (`python`, `node`, `go`, `rustc`/`gcc`/`g++`,
+   `java`, `ruby`, `php`, `bash`, `lua`, `perl`), unsandboxed, with a 20 s
+   default timeout and a 1 MiB output cap. The status bar always shows which
+   backend ran the code (`Local run` vs `Sandbox API`).
+3. **A desktop menu.** File / Run / View / Help forward stable command ids to
+   the renderer, so the same shortcuts work from the menu and from the page.
+
+The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
+in the editor toolbar to submit the active file to the deployed service instead.
 
 ## Run
 
@@ -26,13 +43,37 @@ the Electron user-data directory (with a JSON-escaped `config.js`) instead of
 rewriting the tracked bundle. There is no bundled secret: the desktop app never
 reads or stores API tokens.
 
+The last opened folder is remembered in `workspace.json` under the Electron
+user-data directory. Set `SANDKASTEN_WORKSPACE_ROOT=/path/to/folder` to open a
+folder without a dialog, which is how the end-to-end run and scripted checks
+start the app.
+
 If `apps/web/dist` is missing, the app shows an error dialog naming the
 directory and exits instead of starting an empty window.
+
+## Workspace and execution model
+
+- Every renderer path is relative to the opened folder. The main process
+  resolves it, rejects absolute paths, `..` segments, and NUL bytes, and refuses
+  to touch anything outside the root.
+- The explorer skips VCS and build directories (`.git`, `node_modules`, `dist`,
+  `target`, `__pycache__`, …), caps the tree at 6 levels / 2000 entries, and
+  refuses to open files above 2 MiB.
+- Local runs execute the file **on disk**, so the app saves the active buffer
+  before running. Compile steps (`rustc`, `gcc`, `g++`) build into a temporary
+  directory that is removed after the run.
+- Local execution is not sandboxed. It is opt-in per run through the backend
+  selector and unavailable in the browser build.
 
 ## Security defaults
 
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
-- The preload exposes only `platform` and Electron/Chromium versions.
+- The preload is CommonJS (`src/preload.cjs`) because sandboxed preloads cannot
+  be ES modules; `tests/preload.test.mjs` fails when the preload and the IPC
+  registry drift apart.
+- The preload exposes one `sandkastenDesktop` bridge: promise-based workspace
+  file access, local run/detect/stop, and a menu-command subscription. The raw
+  `ipcRenderer` never reaches the renderer.
 - Navigations stay on `file:` URLs under the bundled distribution directory.
 - External `http(s)` links are denied in the window and handed to the OS
   browser; `file:` paths outside the distribution and other schemes are
@@ -43,11 +84,19 @@ directory and exits instead of starting an empty window.
 
 ```sh
 cd apps/desktop
-npm test            # unit tests: window options, navigation policy, distribution resolution
+npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, window policy
 npm run smoke       # headless Electron launch against apps/web/dist
+npm run e2e         # drives the real app: open folder, edit, save, run, screenshots
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
 npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
+
+`npm run e2e` launches the app against a temporary workspace and asserts the
+explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel
+toggling, and both themes; it writes `tmp/desktop-ide-light.png` and
+`tmp/desktop-ide-dark.png`. Set `SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/win-unpacked/Sandkasten.exe`
+to run the same checks against a packaged build. It needs Python on `PATH` and
+reuses the `playwright-core` already installed in `apps/web/node_modules`.
 
 `package:dir` produces an unsigned unpacked build. The bundled WebUI is copied
 into `resources/web-dist`, which the main process resolves through

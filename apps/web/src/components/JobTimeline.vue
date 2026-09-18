@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { JobResponse } from '../services/sandkastenApi';
-import type { RunnerPhase } from '../composables/useRunner';
+import type { ExecutionPhase } from '../composables/execution';
 import { statusLabel } from '../state/status';
 import { useTranslation } from '../i18n/useTranslation';
 
 const props = defineProps<{
-  phase: RunnerPhase;
+  phase: ExecutionPhase;
   currentJob?: JobResponse;
   error?: string;
   pollingStopped?: boolean;
 }>();
 const t = useTranslation();
-const phaseKeys: Record<RunnerPhase, Parameters<typeof t>[0]> = {
+const phaseKeys: Record<ExecutionPhase, Parameters<typeof t>[0]> = {
   booting: 'phase.booting',
   ready: 'phase.ready',
   submitting: 'phase.submitting',
@@ -20,6 +20,8 @@ const phaseKeys: Record<RunnerPhase, Parameters<typeof t>[0]> = {
   stopped: 'phase.stopped',
   completed: 'phase.completed',
   error: 'phase.error',
+  running: 'phase.running',
+  unavailable: 'phase.unavailable',
 };
 
 const phaseLabel = computed(() => {
