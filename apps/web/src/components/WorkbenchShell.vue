@@ -222,6 +222,7 @@ const styles = computed(() => (isIde.value
               :model-value="source"
               :language="language"
               :label="t('workbench.programSource')"
+              minimap
               @update:model-value="emit('update:source', $event)"
               @update:cursor="emit('update:cursor', $event)"
             />

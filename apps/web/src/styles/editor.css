@@ -79,3 +79,29 @@
     min-height: 0;
   }
 }
+
+/* Minimap: the reference's code-overview strip. It sits in the editor's right
+   gutter and is styled from the same tokens as the editor so both themes keep
+   it readable; the overlay marks the viewport the way the reference does. */
+.source-editor .cm-minimap-gutter {
+  border-left: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+
+.source-editor .cm-minimap-gutter .cm-minimap-overlay-container {
+  background: transparent;
+}
+
+.source-editor .cm-minimap-gutter .cm-minimap-overlay {
+  background: var(--selection);
+}
+
+.source-editor .cm-minimap-box-shadow {
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  .source-editor .cm-minimap-gutter {
+    display: none;
+  }
+}

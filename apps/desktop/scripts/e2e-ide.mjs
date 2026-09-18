@@ -229,6 +229,26 @@ async function main() {
     });
     checks.editorScrollTop = await wheelOver('.ide-editor .cm-scroller', 400);
 
+    // The minimap overviews the whole file, so it must exist for a long file
+    // and must actually paint instead of staying an empty column.
+    checks.minimap = await page.evaluate(() => {
+      const gutter = document.querySelector('.ide-editor .cm-minimap-gutter');
+      const canvas = gutter?.querySelector('canvas');
+      if (!gutter || !canvas) return { present: false };
+      const box = gutter.getBoundingClientRect();
+      let painted = false;
+      try {
+        const context = canvas.getContext('2d');
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let index = 3; index < pixels.length; index += 4) {
+          if (pixels[index] !== 0) { painted = true; break; }
+        }
+      } catch {
+        painted = null;
+      }
+      return { present: true, width: Math.round(box.width), painted };
+    });
+
     await page.click('[data-action="run-source"]');
     await page.waitForFunction(() => document.body.innerText.includes('line 199'), null, { timeout: 30_000 });
     checks.panelScrollable = await page.evaluate(() => {
