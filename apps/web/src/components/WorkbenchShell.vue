@@ -22,6 +22,7 @@ import EditorTabs from './ide/EditorTabs.vue';
 import IdeActivityBar from './ide/IdeActivityBar.vue';
 import IdeBreadcrumbs from './ide/IdeBreadcrumbs.vue';
 import IdeEditorToolbar from './ide/IdeEditorToolbar.vue';
+import IdePanelActions from './ide/IdePanelActions.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import { useTranslation } from '../i18n/useTranslation';
@@ -46,6 +47,7 @@ const props = withDefaults(defineProps<{
   activity?: IdeActivity;
   sidebarVisible?: boolean;
   panelVisible?: boolean;
+  panelMaximized?: boolean;
   files?: readonly WorkspaceFile[];
   activePath?: string;
   tree?: WorkspaceTreeNode[];
@@ -68,6 +70,7 @@ const props = withDefaults(defineProps<{
   activity: 'explorer',
   sidebarVisible: true,
   panelVisible: true,
+  panelMaximized: false,
   files: () => [],
   activePath: '',
   tree: () => [],
@@ -97,6 +100,8 @@ const emit = defineEmits<{
   closeInspector: [];
   selectActivity: [activity: IdeActivity];
   toggleSidebar: [];
+  togglePanelMaximize: [];
+  closePanel: [];
   openSetup: [];
   selectFile: [path: string];
   revealFile: [path: string];
@@ -121,6 +126,7 @@ const styles = computed(() => (isIde.value
   ? ['layout-ide', {
     'without-sidebar': !props.sidebarVisible,
     'without-panel': !props.panelVisible,
+    'panel-maximized': props.panelMaximized,
   }]
   : [`layout-${props.layoutMode}`, {
     'without-history': !props.historyOpen,
@@ -230,6 +236,11 @@ const styles = computed(() => (isIde.value
           </section>
           <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
           <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
+            <IdePanelActions
+              :maximized="panelMaximized"
+              @toggle-maximize="emit('togglePanelMaximize')"
+              @close="emit('closePanel')"
+            />
             <OutputTabs
               :result="result"
               :error="error"

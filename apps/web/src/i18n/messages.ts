@@ -225,6 +225,9 @@ const en = {
   'ide.status.unsaved': 'Unsaved',
   'ide.status.cursor': 'Ln',
   'ide.status.exitCode': 'Exit',
+  'ide.panel.maximize': 'Maximize panel',
+  'ide.panel.restore': 'Restore panel size',
+  'ide.panel.close': 'Close panel',
   'ide.workspace.save': 'Save',
 } as const;
 
@@ -457,6 +460,9 @@ const zhCN: { [Key in keyof EnglishMessages]: string } = {
   'ide.status.unsaved': '未保存',
   'ide.status.cursor': '行',
   'ide.status.exitCode': '退出码',
+  'ide.panel.maximize': '最大化面板',
+  'ide.panel.restore': '还原面板高度',
+  'ide.panel.close': '关闭面板',
   'ide.workspace.save': '保存',
 };
 
