@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { X } from '@lucide/vue';
+import { languageForPath } from '../../editor/language';
 import { useTranslation } from '../../i18n/useTranslation';
+import FileIcon from '../FileIcon.vue';
 
 defineProps<{
   files: ReadonlyArray<{ path: string; name: string; dirty: boolean }>;
@@ -28,6 +30,7 @@ const t = useTranslation();
         :title="file.path"
         @click="emit('select', file.path)"
       >
+        <FileIcon :language="languageForPath(file.path)" :name="file.name" :size="15" />
         <span class="ide-tab__name">{{ file.name }}</span>
         <span v-if="file.dirty" class="ide-tab__dirty" :aria-label="t('ide.tabs.unsaved')">*</span>
       </button>

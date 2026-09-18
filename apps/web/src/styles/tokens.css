@@ -22,6 +22,15 @@
   --selection: rgb(66 185 107 / 22%);
   --grid-line: rgb(23 35 27 / 3.5%);
   --shadow-sheet: 0 18px 48px rgb(23 35 27 / 16%);
+  /* File-type hues. Each one clears 4.5:1 on --surface so a file mark is
+     readable at 15 px without borrowing the accent from the active row. */
+  --file-blue: #1a5fb4;
+  --file-yellow: #8a6100;
+  --file-green: #1f7a3d;
+  --file-orange: #a8480a;
+  --file-purple: #6d28d9;
+  --file-red: #b91c1c;
+  --file-cyan: #0e7490;
   /* Syntax colors follow the VS Code Light+ defaults (>= 4.5:1 on --surface). */
   --syntax-comment: #008000;
   --syntax-keyword: #0000ff;
@@ -78,6 +87,14 @@
   --selection: rgb(63 191 112 / 25%);
   --grid-line: rgb(232 243 234 / 3.5%);
   --shadow-sheet: 0 18px 54px rgb(0 0 0 / 38%);
+  /* Brighter file-type hues for the dark surface, still >= 4.5:1 on it. */
+  --file-blue: #6cb6ff;
+  --file-yellow: #d8b25a;
+  --file-green: #7fdc9b;
+  --file-orange: #f0a868;
+  --file-purple: #c4a2ff;
+  --file-red: #ff8f8f;
+  --file-cyan: #6fd3e8;
   /* Syntax colors follow the VS Code Dark+ defaults (>= 4.5:1 on --surface). */
   --syntax-comment: #6a9955;
   --syntax-keyword: #569cd6;

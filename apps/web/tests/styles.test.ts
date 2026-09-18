@@ -226,4 +226,23 @@ describe('color scheme palettes', () => {
     expect(schemes).toMatch(/--selection:\s*color-mix\(in srgb, var\(--accent\)/);
     expect(schemes).toMatch(/--focus-ring:\s*color-mix\(in srgb, var\(--accent\)/);
   });
+
+  test('keeps every file-type hue readable on the surfaces it renders on', () => {
+    const [lightTokens, darkTokens] = style('tokens.css').split(':root[data-theme="dark"]');
+    const lightSurface = token(lightTokens, '--surface');
+    const lightSubtle = token(lightTokens, '--surface-subtle');
+    const darkSurface = token(darkTokens, '--surface');
+    const darkSubtle = token(darkTokens, '--surface-subtle');
+    const tones = ['blue', 'yellow', 'green', 'orange', 'purple', 'red', 'cyan'];
+
+    for (const tone of tones) {
+      const light = token(lightTokens, `--file-${tone}`);
+      expect(contrastRatio(light, lightSurface), `light ${tone} on surface`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(light, lightSubtle), `light ${tone} on subtle`).toBeGreaterThanOrEqual(4.5);
+
+      const dark = token(darkTokens, `--file-${tone}`);
+      expect(contrastRatio(dark, darkSurface), `dark ${tone} on surface`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(dark, darkSubtle), `dark ${tone} on subtle`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

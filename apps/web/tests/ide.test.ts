@@ -4,6 +4,7 @@ import type { EditorView } from '@codemirror/view';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import SourceEditor from '../src/components/SourceEditor.vue';
+import EditorTabs from '../src/components/ide/EditorTabs.vue';
 import WorkspaceExplorer from '../src/components/ide/WorkspaceExplorer.vue';
 import { useWorkspace } from '../src/composables/useWorkspace';
 import { useIdeLayout } from '../src/composables/useIdeLayout';
@@ -198,6 +199,29 @@ describe('workspace explorer', () => {
     expect(wrapper.emitted('select')).toEqual([['main.py']]);
     await wrapper.get('[data-path="main.py"] .ide-tree__remove').trigger('click');
     expect(wrapper.emitted('remove')).toEqual([['main.py']]);
+  });
+
+  test('marks each file with its language hue and kind in the tree and the tab strip', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'main.py', name: 'main.py', type: 'file' },
+          { path: 'app.ts', name: 'app.ts', type: 'file' },
+          { path: 'LICENSE', name: 'LICENSE', type: 'file' },
+        ],
+        kind: 'desktop',
+        activePath: 'main.py',
+      },
+    });
+
+    expect(wrapper.get('[data-path="main.py"] .file-icon').attributes('data-tone')).toBe('blue');
+    expect(wrapper.get('[data-path="app.ts"] .file-icon').attributes('data-tone')).toBe('blue');
+    expect(wrapper.get('[data-path="LICENSE"] .file-icon').attributes('data-tone')).toBe('slate');
+
+    const tabs = mount(EditorTabs, {
+      props: { files: [{ path: 'main.py', name: 'main.py', dirty: false }], activePath: 'main.py' },
+    });
+    expect(tabs.get('.ide-tab__select .file-icon').attributes('data-tone')).toBe('blue');
   });
 });
 

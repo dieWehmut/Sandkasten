@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ChevronDown, ChevronRight, FileCode, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
+import { ChevronDown, ChevronRight, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
 import type { WorkspaceRoot, WorkspaceTreeNode } from '../../services/desktopBridge';
 import type { Runtime } from '../../services/sandkastenApi';
+import { languageForPath } from '../../editor/language';
 import { useTranslation } from '../../i18n/useTranslation';
+import FileIcon from '../FileIcon.vue';
 
 const props = withDefaults(defineProps<{
   tree: WorkspaceTreeNode[];
@@ -142,7 +144,7 @@ function submitNewFile(): void {
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
         >
           <button type="button" class="ide-tree__open" :data-action="`ide-open-${row.node.path}`" @click="emit('select', row.node.path)">
-            <FileCode :size="14" aria-hidden="true" />
+            <FileIcon :language="languageForPath(row.node.path)" :name="row.node.name" :size="14" />
             <span class="ide-tree__name">{{ row.node.name }}</span>
             <span v-if="dirtyPaths.includes(row.node.path)" class="ide-tree__dirty" :aria-label="t('ide.tabs.unsaved')">*</span>
           </button>
