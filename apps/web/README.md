@@ -19,6 +19,26 @@ collapse button sits flush with the sidebar's top-right corner, hides the whole
 sidebar, and matches `Ctrl+B`; selecting the active activity in the activity bar
 collapses it too.
 
+Files carry a language mark in the explorer and the tab strip: one silhouette
+per file kind and one hue per language family, resolved from the same table in
+`src/editor/fileIcon.ts`. The tones are declared per theme because a hue that
+reads on the light surface disappears on the dark one; every value is checked at
+4.5:1 against the surfaces it renders on.
+
+Under the tab strip, a breadcrumb trail names the open file's location: the
+workspace root, then each folder, then the file with its language mark. Folder
+steps are buttons that reveal themselves in the explorer, unfolding the tree
+when the folder was collapsed. The editor adds an optional minimap that
+overviews the whole file and the current viewport; it is enabled in the IDE
+shell only and hidden on the narrow layout.
+
+The output panel carries its own maximize and close controls, so it can be
+expanded or dismissed from the panel itself instead of only through the menu or
+`Ctrl+J`. Hiding the panel clears the maximized state, so reopening it comes
+back at its normal height. The window title reads
+`<file> — <workspace> — <app>`, with a dot on the file while its buffer is
+unsaved.
+
 The desktop shell is bounded to the viewport (`100dvh`), so the file tree, the
 editor, and the output panel scroll inside their own panes with the mouse wheel
 while the status bar and the activity bar stay pinned. The document itself does
