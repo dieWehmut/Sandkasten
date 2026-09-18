@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Terminal } from '@lucide/vue';
+// Inlined as a data URI so the four-file distribution contract keeps holding.
+import brandMark from '../assets/brand-88.png?inline';
 import type { ConnectionState } from '../composables/useRunner';
 import type { Theme } from '../composables/useTheme';
 import type { ColorScheme } from '../theme/colorScheme';
@@ -36,7 +37,7 @@ const translate = computed(() => props.t ?? englishTranslator);
 <template>
   <header class="app-header" data-testid="app-header">
     <a class="brand" href="./" :aria-label="translate('brand.home')">
-      <Terminal :size="19" aria-hidden="true" />
+      <img class="brand__mark" :src="brandMark" alt="" aria-hidden="true" />
       <strong>{{ translate('brand.name') }}</strong>
     </a>
     <ConnectionStatus :state="connectionState" :t="translate" />

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { resolveVerifiedDistribution } from './distribution.mjs';
 import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
-import { applyNavigationPolicy, createWindowOptions } from './navigation.mjs';
+import { applyNavigationPolicy, createWindowOptions, APP_ICON_PATH } from './navigation.mjs';
 import { registerDesktopIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
 import { createLocalRunner } from './local-runner.mjs';
 import { buildMenuTemplate } from './menu.mjs';
@@ -17,6 +17,7 @@ function createWindow(bundledIndex) {
     createWindowOptions({
       bundledIndex,
       preloadPath: path.join(appRoot, 'src', 'preload.cjs'),
+      icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : APP_ICON_PATH,
     }),
   );
 
