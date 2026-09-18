@@ -676,3 +676,49 @@
   background: var(--surface-subtle);
   color: var(--text);
 }
+
+/* Panel header: the reference keeps maximize and close on the panel itself, so
+   the panel is controllable without reaching for the menu or a shortcut. The
+   actions sit at the panel's top-right, away from the output tabs. */
+.ide-panel {
+  position: relative;
+}
+
+.ide-panel__header {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+}
+
+.ide-panel__action {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.ide-panel__action:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+/* A maximized panel takes the body's remaining space and pushes the editor to
+   its minimum, which matches the reference's panel-maximize behaviour. */
+.workbench-shell.layout-ide.panel-maximized .ide-panel {
+  max-height: none;
+  flex: 1 1 auto;
+}
+
+.workbench-shell.layout-ide.panel-maximized .ide-editor {
+  min-height: 4rem;
+  flex: 0 0 auto;
+}

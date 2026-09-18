@@ -9,17 +9,20 @@ export interface IdeLayoutController {
   activity: DeepReadonly<Ref<IdeActivity>>;
   sidebarVisible: DeepReadonly<Ref<boolean>>;
   panelVisible: DeepReadonly<Ref<boolean>>;
+  panelMaximized: DeepReadonly<Ref<boolean>>;
   selectActivity(activity: IdeActivity): void;
   showActivity(activity: IdeActivity): void;
   toggleSidebar(): void;
   togglePanel(): void;
   showPanel(): void;
+  togglePanelMaximize(): void;
 }
 
 export function useIdeLayout(): IdeLayoutController {
   const activity = ref<IdeActivity>('explorer');
   const sidebarVisible = ref(true);
   const panelVisible = ref(true);
+  const panelMaximized = ref(false);
 
   function selectActivity(next: IdeActivity): void {
     if (activity.value === next && sidebarVisible.value) {
@@ -39,10 +42,20 @@ export function useIdeLayout(): IdeLayoutController {
     activity: readonly(activity),
     sidebarVisible: readonly(sidebarVisible),
     panelVisible: readonly(panelVisible),
+    panelMaximized: readonly(panelMaximized),
     selectActivity,
     showActivity,
     toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value; },
-    togglePanel: () => { panelVisible.value = !panelVisible.value; },
+    togglePanel: () => {
+      panelVisible.value = !panelVisible.value;
+      if (!panelVisible.value) panelMaximized.value = false;
+    },
     showPanel: () => { panelVisible.value = true; },
+    // Maximizing implies the panel is shown, and hiding it drops the maximized
+    // state so the next time it opens it comes back at its normal height.
+    togglePanelMaximize: () => {
+      panelVisible.value = true;
+      panelMaximized.value = !panelMaximized.value;
+    },
   };
 }

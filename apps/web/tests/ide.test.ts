@@ -173,6 +173,29 @@ describe('ide layout', () => {
     layout.showPanel();
     expect(layout.panelVisible.value).toBe(true);
   });
+
+  test('maximizing the panel shows it, and hiding it clears the maximized state', () => {
+    const layout = useIdeLayout();
+    expect(layout.panelMaximized.value).toBe(false);
+
+    layout.togglePanelMaximize();
+    expect(layout.panelMaximized.value).toBe(true);
+    expect(layout.panelVisible.value).toBe(true);
+
+    layout.togglePanelMaximize();
+    expect(layout.panelMaximized.value).toBe(false);
+
+    // Hiding the panel drops the maximized state so reopening restores height.
+    layout.togglePanelMaximize();
+    expect(layout.panelMaximized.value).toBe(true);
+    layout.togglePanel();
+    expect(layout.panelVisible.value).toBe(false);
+    expect(layout.panelMaximized.value).toBe(false);
+    layout.showPanel();
+    expect(layout.panelVisible.value).toBe(true);
+    expect(layout.panelMaximized.value).toBe(false);
+  });
+
 });
 
 describe('workspace explorer', () => {
@@ -311,6 +334,25 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-action="ide-close-main.py"]').trigger('click');
     await nextTick();
     expect(wrapper.find('[data-action="ide-tab-main.py"]').exists()).toBe(false);
+  });
+
+  test('the panel header maximizes and closes the panel', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    expect(wrapper.find('.ide-panel').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="workbench-shell"]').classes()).not.toContain('panel-maximized');
+
+    await wrapper.get('[data-action="ide-panel-maximize"]').trigger('click');
+    await nextTick();
+    expect(wrapper.get('[data-testid="workbench-shell"]').classes()).toContain('panel-maximized');
+
+    await wrapper.get('[data-action="ide-panel-close"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-panel').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="workbench-shell"]').classes()).toContain('without-panel');
   });
 
   test('header section buttons switch the sidebar section without collapsing it', async () => {
