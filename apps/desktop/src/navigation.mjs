@@ -1,5 +1,10 @@
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// The brand icon lives in the app's build resources and is shared by the window,
+// the packaged executable, and the installer so every surface shows the same mark.
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const APP_ICON_PATH = path.join(appRoot, 'build', 'icon.png');
 
 export function isBundledUrl(target, bundledIndex) {
   if (typeof target !== 'string' || target === '') return false;
@@ -27,10 +32,11 @@ export function shouldOpenExternally(target) {
   return parsed.protocol === 'https:' || parsed.protocol === 'http:';
 }
 
-export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten' } = {}) {
+export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten', icon = APP_ICON_PATH } = {}) {
   return {
     show: false,
     title,
+    icon,
     width: 1280,
     height: 860,
     minWidth: 960,

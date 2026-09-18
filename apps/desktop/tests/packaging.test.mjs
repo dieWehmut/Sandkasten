@@ -23,7 +23,9 @@ test('pins a 7-Zip filter the bundled NSIS plugin can decompress', () => {
 });
 
 test('bundles the web distribution next to the packaged app', () => {
-  assert.equal(config.extraResources.length, 1);
+  assert.equal(config.extraResources.length, 2);
   assert.equal(config.extraResources[0].to, 'web-dist');
   assert.match(config.extraResources[0].from, /apps[\\/]web[\\/]dist$/);
+  assert.equal(config.extraResources[1].to, 'icon.png');
+  assert.match(config.extraResources[1].from, /apps[\\/]desktop[\\/]build[\\/]icon\.png$/);
 });

@@ -12,6 +12,10 @@ and the status bar stay pinned and the document never grows. The sidebar header
 carries the view actions and a collapse control at its top-right corner, next to
 `Ctrl+B`. The accent scheme is green unless the user picks another one.
 
+The window icon, the packaged executable, and every shortcut use one brand
+mark, generated from the source artwork into `build/icon.ico` (multi-size)
+and `build/icon.png` (512 px, also staged into the packaged resources).
+
 The desktop build adds three things the browser cannot do:
 
 1. **A real workspace folder.** `File > Open Folder…` (or the explorer button)

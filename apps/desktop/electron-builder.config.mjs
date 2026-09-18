@@ -30,8 +30,13 @@ export default {
       from: path.join(repositoryRoot, 'apps', 'web', 'dist'),
       to: 'web-dist',
     },
+    {
+      from: path.join(appRoot, 'build', 'icon.png'),
+      to: 'icon.png',
+    },
   ],
   win: {
+    icon: path.join(appRoot, 'build', 'icon.ico'),
     target: [
       { target: 'nsis', arch: ['x64', 'arm64'] },
     ],
