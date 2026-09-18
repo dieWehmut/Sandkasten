@@ -5,6 +5,7 @@ import { bracketMatching } from '@codemirror/language';
 import { search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view';
+import { showMinimap } from '@replit/codemirror-minimap';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { languageExtensionForRuntime } from '../editor/language';
 import { sourceHighlighting } from '../editor/highlight';
@@ -14,10 +15,12 @@ const props = withDefaults(defineProps<{
   language?: string;
   disabled?: boolean;
   label?: string;
+  minimap?: boolean;
 }>(), {
   language: '',
   disabled: false,
   label: 'Source code',
+  minimap: false,
 });
 
 const emit = defineEmits<{ 'update:modelValue': [value: string]; 'update:cursor': [position: { line: number; column: number }] }>();
@@ -25,7 +28,24 @@ const editorHost = ref<HTMLElement>();
 const editorView = ref<EditorView>();
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
+const minimapCompartment = new Compartment();
 let applyingExternalValue = false;
+
+// The minimap mounts its own column inside the editor, so the configuration
+// rides in a compartment: toggling it never rebuilds the document or the
+// cursors the user is working with.
+function minimapExtension(): Extension {
+  if (!props.minimap) return [];
+  return showMinimap.compute([], () => ({
+    create: () => {
+      const dom = document.createElement('div');
+      dom.className = 'source-editor__minimap';
+      return { dom };
+    },
+    displayText: 'characters',
+    showOverlay: 'always',
+  }));
+}
 
 function languageExtension(): Extension {
   return languageExtensionForRuntime(props.language) ?? [];
@@ -63,6 +83,7 @@ function editorExtensions(): Extension[] {
     search(),
     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     languageCompartment.of(languageExtension()),
+    minimapCompartment.of(minimapExtension()),
     editableCompartment.of(editableExtensions(props.label, props.disabled)),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !applyingExternalValue) emit('update:modelValue', update.state.doc.toString());
@@ -88,6 +109,10 @@ watch(() => props.modelValue, (value) => {
 
 watch(() => props.language, () => {
   editorView.value?.dispatch({ effects: languageCompartment.reconfigure(languageExtension()) });
+});
+
+watch(() => props.minimap, () => {
+  editorView.value?.dispatch({ effects: minimapCompartment.reconfigure(minimapExtension()) });
 });
 
 watch(() => [props.disabled, props.label] as const, ([disabled, label]) => {

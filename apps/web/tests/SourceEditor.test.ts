@@ -51,6 +51,26 @@ describe('SourceEditor', () => {
   });
 
   test('updates language and disabled state without recreating the editor, then destroys it on unmount', async () => {
+  });
+
+  test('mounts the minimap only when asked and toggles it without recreating the editor', async () => {
+    const wrapper = mount(SourceEditor, {
+      props: { modelValue: 'print("ok")', language: 'python' },
+    });
+    const view = wrapper.vm.editorView as EditorView;
+
+    expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(false);
+
+    await wrapper.setProps({ minimap: true });
+    expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(true);
+    expect(wrapper.vm.editorView).toBe(view);
+
+    await wrapper.setProps({ minimap: false });
+    expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(false);
+    expect(wrapper.vm.editorView).toBe(view);
+  });
+
+  test('updates language and disabled state without recreating the editor, then destroys it on unmount', async () => {
     const destroy = vi.spyOn(EditorView.prototype, 'destroy');
     const wrapper = mount(SourceEditor, {
       props: { modelValue: 'print("ok")', language: 'python', disabled: false },
