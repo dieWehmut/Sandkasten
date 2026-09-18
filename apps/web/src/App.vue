@@ -122,9 +122,11 @@ function dismissSetup(): void {
   });
 }
 
+// In the editor-first layout the header buttons switch the sidebar section; only
+// the activity bar, the sidebar's own collapse control, and Ctrl+B collapse it.
 function toggleHistory(): void {
   if (ideMode.value) {
-    ide.selectActivity('runs');
+    ide.showActivity('runs');
     return;
   }
   const nextOpen = !compactHistoryOpen.value;
@@ -134,7 +136,7 @@ function toggleHistory(): void {
 
 function toggleInspector(): void {
   if (ideMode.value) {
-    ide.selectActivity('context');
+    ide.showActivity('context');
     return;
   }
   const nextOpen = !compactInspectorOpen.value;

@@ -227,6 +227,29 @@ describe('desktop workbench', () => {
     expect(wrapper.find('[data-action="ide-tab-main.py"]').exists()).toBe(false);
   });
 
+  test('header section buttons switch the sidebar section without collapsing it', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const historyButton = wrapper.get('[data-action="toggle-history"]');
+    await historyButton.trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
+
+    await historyButton.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
+
+    await wrapper.get('[data-action="toggle-inspector"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Inspector');
+    expect(wrapper.get('#inspector-panel').exists()).toBe(true);
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
+  });
+
   test('keeps the sidebar collapse control at the top-right of the sidebar header', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
