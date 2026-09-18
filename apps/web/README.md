@@ -25,6 +25,10 @@ while the status bar and the activity bar stay pinned. The document itself does
 not grow with the workspace or the output, so a large tree or a noisy program
 never pushes the panel or the status bar out of reach.
 
+The header shows the product mark next to the name. Both the header icon and
+the favicon are inlined as data URIs, so the shipped distribution stays
+exactly four files (`app.js`, `config.js`, `index.html`, `styles.css`).
+
 The workspace holds one or more open files. In the browser the workspace is an
 in-memory scratch workspace persisted under `sandkasten-workspace-v1`; in the
 desktop app the same UI reads and writes a real folder through the preload

@@ -37,6 +37,13 @@
   text-decoration: none;
 }
 
+.brand__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 .brand svg {
   color: var(--accent-strong);
 }
