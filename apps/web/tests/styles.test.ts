@@ -118,6 +118,14 @@ describe('workbench style boundaries', () => {
     expect(workbench).not.toContain('color: #21151a;');
   });
 
+  test('uses the VS Code editing conventions without cloning them', () => {
+    const ide = style('ide.css');
+    expect(ide).toContain('--vscode-status-height: 22px');
+    expect(ide).toMatch(/\.ide-status \{[^}]*background: var\(--accent\);\s*color: var\(--surface\);/s);
+    expect(ide).toMatch(/\.ide-tab--active \{[^}]*box-shadow: inset 0 1px 0 var\(--accent\);/s);
+    expect(ide).toMatch(/@media \(max-width: 1199px\) \{\s*\.ide-status__group--center \{\s*display: none;/);
+  });
+
   test('defines stable desktop, tablet, and mobile tracks without gradients', () => {
     const combined = ['base.css', 'workbench.css', 'editor.css', 'output.css', 'sheets.css', 'ide.css']
       .map(style)
