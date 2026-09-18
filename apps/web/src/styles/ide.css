@@ -631,3 +631,48 @@
 .ide-tab__select .file-icon {
   margin-right: 1px;
 }
+
+/* Breadcrumb trail: the reference places it directly under the tab strip, so
+   the open file reads as a location inside the workspace. The strip scrolls
+   sideways rather than wrapping, which keeps the editor top edge stable. */
+.ide-breadcrumbs {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1px;
+  overflow-x: auto;
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.ide-breadcrumbs__separator {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+}
+
+.ide-breadcrumbs__step {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.ide-breadcrumbs__step--static {
+  color: var(--text);
+}
+
+.ide-breadcrumbs__step:not(.ide-breadcrumbs__step--static):hover {
+  background: var(--surface-subtle);
+  color: var(--text);
+}

@@ -38,6 +38,10 @@ const runnerLoaded = ref(false);
 const backend = ref<ExecutionBackend>('api');
 const cursor = ref({ line: 1, column: 1 });
 const creatingFile = ref(false);
+// The token lets a repeated click on the same folder re-open it after the user
+// folded it again; a bare path would not change and the watcher would stay put.
+const revealRequest = ref<{ path: string; token: number }>();
+let revealToken = 0;
 const apiEndpointOpen = ref(false);
 const configuredApiBaseUrl = ref(readConfiguredApiBaseUrl());
 
@@ -177,6 +181,14 @@ function saveActive(): void {
 
 function selectFile(path: string): void {
   void workspace.openFile(path);
+}
+
+// A breadcrumb step names a directory, so revealing it means showing the
+// explorer with that folder unfolded rather than opening a file.
+function revealInExplorer(path: string): void {
+  ide.showActivity('explorer');
+  revealToken += 1;
+  revealRequest.value = { path, token: revealToken };
 }
 
 function closeFile(path: string): void {
@@ -373,6 +385,7 @@ onBeforeUnmount(() => {
       :workspace-busy="workspace.status.value === 'loading'"
       :workspace-error="workspace.error.value"
       :creating-file="creatingFile"
+      :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
       :isolated-available="isolatedReady || local.isolation.value.available"
@@ -399,6 +412,7 @@ onBeforeUnmount(() => {
       @open-setup="setupWelcome.reopen"
       @select-file="selectFile"
       @close-file="closeFile"
+      @reveal-file="revealInExplorer"
       @create-file="createFile"
       @update:creating-file="creatingFile = $event"
       @remove-file="removeFile"

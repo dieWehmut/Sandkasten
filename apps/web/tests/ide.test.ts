@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import SourceEditor from '../src/components/SourceEditor.vue';
 import EditorTabs from '../src/components/ide/EditorTabs.vue';
+import IdeBreadcrumbs from '../src/components/ide/IdeBreadcrumbs.vue';
 import WorkspaceExplorer from '../src/components/ide/WorkspaceExplorer.vue';
 import { useWorkspace } from '../src/composables/useWorkspace';
 import { useIdeLayout } from '../src/composables/useIdeLayout';
 import { languageForPath } from '../src/editor/language';
+import { ancestorPaths, breadcrumbSegments } from '../src/editor/breadcrumbs';
 import { SCRATCH_FILE_NAME, SCRATCH_FILE_SOURCE, WORKSPACE_STORAGE_KEY } from '../src/services/workspaceStore';
 import type { DesktopBridge } from '../src/services/desktopBridge';
 import type { Runtime } from '../src/services/sandkastenApi';
@@ -174,6 +176,48 @@ describe('ide layout', () => {
 });
 
 describe('workspace explorer', () => {
+  test('splits a file path into readable breadcrumb steps', () => {
+    expect(breadcrumbSegments('main.py', 'C:\\ws')).toEqual([
+      { path: '', name: 'ws', kind: 'root' },
+      { path: '', name: 'main.py', kind: 'file' },
+    ]);
+    expect(breadcrumbSegments('pkg/deep/util.py', 'C:\\ws')).toEqual([
+      { path: '', name: 'ws', kind: 'root' },
+      { path: 'pkg', name: 'pkg', kind: 'directory' },
+      { path: 'pkg/deep', name: 'deep', kind: 'directory' },
+      { path: '', name: 'util.py', kind: 'file' },
+    ]);
+    expect(breadcrumbSegments('', 'C:\\ws')).toEqual([]);
+    expect(breadcrumbSegments('C:\\ws', 'C:\\ws')).toEqual([]);
+    // A file outside the open workspace keeps its own leading segments rather
+    // than pretending to sit under a root it does not belong to.
+    expect(breadcrumbSegments('D:\\other\\util.py', 'C:\\ws')).toEqual([
+      { path: 'D:', name: 'D:', kind: 'directory' },
+      { path: 'D:/other', name: 'other', kind: 'directory' },
+      { path: '', name: 'util.py', kind: 'file' },
+    ]);
+  });
+
+  test('lists the folders above a path so a reveal can open them', () => {
+    expect(ancestorPaths('pkg/deep/util.py')).toEqual(['pkg', 'pkg/deep']);
+    expect(ancestorPaths('main.py')).toEqual([]);
+    expect(ancestorPaths('')).toEqual([]);
+  });
+
+  test('renders the trail with a clickable folder and a static file', async () => {
+    const wrapper = mount(IdeBreadcrumbs, {
+      props: { filePath: 'pkg/deep/util.py', rootPath: 'C:\\ws' },
+    });
+
+    const steps = wrapper.findAll('.ide-breadcrumbs__step');
+    expect(steps.map((step) => step.text())).toEqual(['ws', 'pkg', 'deep', 'util.py']);
+    expect(wrapper.findAll('button.ide-breadcrumbs__step').map((step) => step.text())).toEqual(['pkg', 'deep']);
+    expect(wrapper.get('.ide-breadcrumbs__step--static .file-icon').attributes('data-tone')).toBe('blue');
+
+    await wrapper.get('[data-segment="pkg"]').trigger('click');
+    expect(wrapper.emitted('reveal')).toEqual([['pkg']]);
+  });
+
   test('renders folders, marks dirty files, and collapses directories', async () => {
     const wrapper = mount(WorkspaceExplorer, {
       props: {
@@ -249,6 +293,9 @@ describe('desktop workbench', () => {
     wrapper.get('[data-testid="editor-tabs"]');
     wrapper.get('[data-testid="ide-status-bar"]');
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('local');
+    // The breadcrumb trail names the workspace root and the open file.
+    expect(wrapper.get('[data-testid="ide-breadcrumbs"]').text()).toContain('ws');
+    expect(wrapper.get('[data-testid="ide-breadcrumbs"]').text()).toContain('main.py');
     expect(wrapper.get('[data-path="main.py"]').text()).toContain('main.py');
     expect(editorViewOf(wrapper).state.doc.toString()).toBe('print("disk")\n');
     expect(bridge.workspace.read).toHaveBeenCalledWith('main.py');

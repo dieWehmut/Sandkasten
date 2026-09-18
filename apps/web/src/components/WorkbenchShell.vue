@@ -20,6 +20,7 @@ import SourceEditor from './SourceEditor.vue';
 import SourceWorkbench from './SourceWorkbench.vue';
 import EditorTabs from './ide/EditorTabs.vue';
 import IdeActivityBar from './ide/IdeActivityBar.vue';
+import IdeBreadcrumbs from './ide/IdeBreadcrumbs.vue';
 import IdeEditorToolbar from './ide/IdeEditorToolbar.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
@@ -53,6 +54,7 @@ const props = withDefaults(defineProps<{
   workspaceBusy?: boolean;
   workspaceError?: string;
   creatingFile?: boolean;
+  revealRequest?: { path: string; token: number };
   backend?: ExecutionBackend;
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
@@ -97,6 +99,7 @@ const emit = defineEmits<{
   toggleSidebar: [];
   openSetup: [];
   selectFile: [path: string];
+  revealFile: [path: string];
   closeFile: [path: string];
   createFile: [payload: { name: string; language: string }];
   'update:creatingFile': [value: boolean];
@@ -172,6 +175,7 @@ const styles = computed(() => (isIde.value
             :error="workspaceError"
             :runtimes="runtimes"
             :creating="creatingFile"
+            :reveal-request="revealRequest"
             hide-heading
             @update:creating="emit('update:creatingFile', $event)"
             @select="emit('selectFile', $event)"
@@ -189,6 +193,11 @@ const styles = computed(() => (isIde.value
       </aside>
       <section class="ide-main" :aria-label="t('workbench.source')">
         <EditorTabs :files="files" :active-path="activePath" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
+        <IdeBreadcrumbs
+          :file-path="activePath"
+          :root-path="workspaceRoot?.path"
+          @reveal="emit('revealFile', $event)"
+        />
         <IdeEditorToolbar
           :runtimes="runtimes"
           :language="language"
