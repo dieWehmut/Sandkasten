@@ -15,6 +15,9 @@ const CHANNELS = {
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
+  isolatedDetect: 'sandkasten:isolated:detect',
+  isolatedRun: 'sandkasten:isolated:run',
+  isolatedStop: 'sandkasten:isolated:stop',
   menu: 'sandkasten:menu',
 };
 
@@ -38,6 +41,11 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     detect: () => ipcRenderer.invoke(CHANNELS.localDetect),
     run: (request) => ipcRenderer.invoke(CHANNELS.localRun, request),
     stop: (jobId) => ipcRenderer.invoke(CHANNELS.localStop, jobId),
+  },
+  isolated: {
+    detect: () => ipcRenderer.invoke(CHANNELS.isolatedDetect),
+    run: (request) => ipcRenderer.invoke(CHANNELS.isolatedRun, request),
+    stop: (jobId) => ipcRenderer.invoke(CHANNELS.isolatedStop, jobId),
   },
   onMenuCommand: (handler) => {
     if (typeof handler !== 'function') return;
