@@ -44,6 +44,15 @@ async function main() {
   await mkdir(path.join(workspace, 'pkg'), { recursive: true });
   await mkdir(path.join(workspace, 'many'), { recursive: true });
   await writeFile(path.join(workspace, 'hello.py'), 'print("E2E-LOCAL-RUN-OK")\n');
+  await writeFile(path.join(workspace, 'sandboxed.py'), [
+    'import os, socket',
+    'print("E2E-ISOLATED-RUN-OK", os.getpid() == 1)',
+    'try:',
+    '    socket.create_connection(("1.1.1.1", 53), timeout=2)',
+    '    print("E2E-NETWORK-OPEN")',
+    'except OSError:',
+    '    print("E2E-NETWORK-BLOCKED")',
+  ].join('\n') + '\n');
   await writeFile(path.join(workspace, 'pkg', 'util.py'), 'print("util-ok")\n');
   await writeFile(path.join(workspace, 'notes.md'), '# notes\n');
   const longFile = ['for index in range(200):', '    print(f"line {index:03d}")'];
@@ -103,6 +112,26 @@ async function main() {
     checks.localRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
     checks.localRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
     checks.localRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
+
+    // The isolated backend must be offered only when WSL2 can actually create
+    // the namespaces, and a run through it must execute the file in the sandbox.
+    checks.isolationStatus = await page.evaluate(() => window.sandkastenDesktop?.isolated?.detect?.() ?? null);
+    checks.isolatedOptionDisabled = await page.getAttribute('[data-testid="ide-backend-select"] option[value="isolated"]', 'disabled') !== null;
+    if (checks.isolationStatus?.available) {
+      await page.selectOption('[data-testid="ide-backend-select"]', 'isolated');
+      await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'isolated', null, { timeout: 10_000 });
+      await page.click('[data-path="sandboxed.py"] .ide-tree__open');
+      await page.waitForSelector('[data-action="ide-tab-sandboxed.py"]');
+      await page.click('[data-action="run-source"]');
+      await page.waitForFunction(() => document.body.innerText.includes('E2E-ISOLATED-RUN-OK'), null, { timeout: 180_000 });
+      checks.isolatedRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
+      checks.isolatedRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
+      checks.isolatedRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
+      await page.selectOption('[data-testid="ide-backend-select"]', 'local');
+      await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'local', null, { timeout: 10_000 });
+      await page.click('[data-path="hello.py"] .ide-tree__open');
+      await page.waitForSelector('[data-action="ide-tab-hello.py"]');
+    }
 
     await page.click('.cm-content');
     await page.keyboard.press('Control+a');

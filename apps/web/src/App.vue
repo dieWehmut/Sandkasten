@@ -58,19 +58,24 @@ const PHASE_KEYS: Readonly<Record<ExecutionPhase, MessageKey>> = {
 const activeFile = workspace.activeFile;
 const language = computed(() => activeFile.value?.language || runner.selectedLanguage.value);
 const source = computed(() => activeFile.value?.source ?? '');
-const executionPhase = computed<ExecutionPhase>(() => (backend.value === 'local' ? local.phase.value : runner.phase.value));
-const result = computed(() => (backend.value === 'local' ? local.result.value : runner.result.value));
-const currentJob = computed(() => (backend.value === 'local' ? local.result.value : runner.currentJob.value));
-const requestError = computed(() => (backend.value === 'local' ? local.error.value : runner.requestError.value));
-const pollingStopped = computed(() => backend.value !== 'local' && runner.pollingStopped.value);
-const connectionState = computed(() => (backend.value === 'local' ? 'connected' as const : runner.connectionState.value));
+// Both desktop backends share one controller, so only the API backend reads
+// from `useRunner`.
+const usesDesktop = computed(() => backend.value !== 'api');
+const executionPhase = computed<ExecutionPhase>(() => (usesDesktop.value ? local.phase.value : runner.phase.value));
+const result = computed(() => (usesDesktop.value ? local.result.value : runner.result.value));
+const currentJob = computed(() => (usesDesktop.value ? local.result.value : runner.currentJob.value));
+const requestError = computed(() => (usesDesktop.value ? local.error.value : runner.requestError.value));
+const pollingStopped = computed(() => !usesDesktop.value && runner.pollingStopped.value);
+const connectionState = computed(() => (usesDesktop.value ? 'connected' as const : runner.connectionState.value));
 const selectedRuntime = computed(() => runner.runtimes.value.find((runtime) => runtime.language === language.value));
 const localReady = computed(() => local.available.value && local.supports(language.value));
+const isolatedReady = computed(() => local.available.value && local.supportsIsolated(language.value));
 
 const canRun = computed(() => {
   if (!activeFile.value || !source.value.trim() || isExecutionBusy(executionPhase.value)) return false;
   if (executionPhase.value === 'booting' || executionPhase.value === 'unavailable') return false;
   if (backend.value === 'local') return localReady.value;
+  if (backend.value === 'isolated') return isolatedReady.value;
   return runner.connectionState.value === 'connected' && Boolean(language.value);
 });
 const canResume = computed(() => backend.value === 'api' && runner.canResumePolling.value);
@@ -203,12 +208,14 @@ async function runActive(): Promise<void> {
   if (!file || !canRun.value) return;
   ide.showPanel();
   cursor.value = { line: 1, column: 1 };
-  if (backend.value === 'local') {
+  if (usesDesktop.value) {
     if (workspace.isDesktop.value) {
       const saved = await workspace.saveActive();
       if (!saved) return;
     }
-    await local.run({ path: file.path, language: language.value, source: file.source });
+    const request = { path: file.path, language: language.value, source: file.source };
+    if (backend.value === 'isolated') await local.runIsolated(request);
+    else await local.run(request);
     return;
   }
   runner.setLanguage(language.value);
@@ -217,7 +224,7 @@ async function runActive(): Promise<void> {
 }
 
 function stopActive(): void {
-  if (backend.value === 'local') {
+  if (usesDesktop.value) {
     void local.stop();
     return;
   }
@@ -368,6 +375,7 @@ onBeforeUnmount(() => {
       :creating-file="creatingFile"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
+      :isolated-available="isolatedReady || local.isolation.value.available"
       :local-runtimes="local.runtimes.value"
       :cursor="cursor"
       :status-text="statusText"

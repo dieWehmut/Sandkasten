@@ -7,6 +7,7 @@ import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
 import { applyNavigationPolicy, createWindowOptions, APP_ICON_PATH } from './navigation.mjs';
 import { registerDesktopIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
 import { createLocalRunner } from './local-runner.mjs';
+import { createIsolatedRunner } from './isolated-runner.mjs';
 import { buildMenuTemplate } from './menu.mjs';
 import { createWorkspaceSession } from './workspace.mjs';
 
@@ -49,6 +50,7 @@ async function start() {
     storeFile: path.join(app.getPath('userData'), 'workspace.json'),
   });
   const runner = createLocalRunner();
+  const isolated = createIsolatedRunner();
   await resolveInitialWorkspace(session).catch(() => null);
 
   const focusedWindow = () => BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
@@ -57,11 +59,12 @@ async function start() {
     if (target && !target.isDestroyed()) target.webContents.send(IPC_CHANNELS.menu, command);
   };
 
-  registerDesktopIpc({ ipcMain, dialog, runner, session, getWindow: focusedWindow });
+  registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow });
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
 
   app.on('before-quit', () => {
     void runner.stopAll();
+    void isolated.stopAll();
   });
 
   return createWindow(path.join(activeDistribution, 'index.html'));

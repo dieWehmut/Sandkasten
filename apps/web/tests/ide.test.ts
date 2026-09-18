@@ -72,6 +72,21 @@ function stubBridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge & { w
       })),
       stop: vi.fn(async () => true),
     },
+    isolated: {
+      detect: vi.fn(async () => ({ available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true })),
+      run: vi.fn(async (request: { jobId: string; language: string }) => ({
+        jobId: request.jobId,
+        status: 'JOB_STATUS_SUCCEEDED',
+        language: request.language,
+        stdout: 'isolated hello\n',
+        stderr: '',
+        stdoutEncoding: 'utf8',
+        stderrEncoding: 'utf8',
+        exitCode: 0,
+        durationMs: 21,
+      })),
+      stop: vi.fn(async () => true),
+    },
     onMenuCommand: vi.fn(),
     ...overrides,
   };
@@ -393,7 +408,95 @@ describe('desktop workbench', () => {
     expect(wrapper.find('[data-testid="ide-new-file-form"]').exists()).toBe(true);
   });
 
-  test('keeps the browser build on the in-memory workspace and the API backend', async () => {
+  test('runs the active file inside the WSL2 sandbox when the isolated backend is selected', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const select = wrapper.get<HTMLSelectElement>('[data-testid="ide-backend-select"]');
+    expect(select.find('option[value="isolated"]').exists()).toBe(true);
+    await select.setValue('isolated');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('isolated');
+    expect(wrapper.get('.ide-status__badge').text()).toBe('Isolated run');
+
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await flushPromises();
+
+    // The isolated backend still writes the buffer first, because the payload
+    // reads the file from disk inside the distro.
+    expect(bridge.workspace.write).toHaveBeenCalledWith('main.py', 'print("disk")\n');
+    expect(bridge.isolated.detect).toHaveBeenCalled();
+    expect(bridge.isolated.run).toHaveBeenCalledTimes(1);
+    expect(bridge.runner.run).not.toHaveBeenCalled();
+    const request = bridge.isolated.run.mock.calls[0][0] as { path: string; language: string; command: string; args: string[]; jobId: string };
+    expect(request.path).toBe('main.py');
+    expect(request.language).toBe('python');
+    expect(request.command).toBe('python3');
+    expect(request.args).toEqual(['{file}']);
+    expect(request.jobId).toMatch(/^local-/);
+    expect(wrapper.text()).toContain('isolated hello');
+    expect(wrapper.get('[data-testid="ide-status-phase"]').text()).toBe('Succeeded');
+    expect(api.submitJob).not.toHaveBeenCalled();
+  });
+
+  test('cancels an isolated run through the isolated bridge, not the local one', async () => {
+    const bridge = stubBridge();
+    let release: (() => void) | undefined;
+    bridge.isolated.run.mockImplementation(async (request: { jobId: string; language: string }) => {
+      await new Promise<void>((resolve) => { release = resolve; });
+      return {
+        jobId: request.jobId,
+        status: 'JOB_STATUS_CANCELED',
+        language: request.language,
+        stdout: '',
+        stderr: '',
+        stdoutEncoding: 'utf8',
+        stderrEncoding: 'utf8',
+      };
+    });
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-testid="ide-backend-select"]').setValue('isolated');
+    await flushPromises();
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Stop run"]').trigger('click');
+    await flushPromises();
+    expect(bridge.isolated.stop).toHaveBeenCalledTimes(1);
+    expect(bridge.runner.stop).not.toHaveBeenCalled();
+    release?.();
+    await flushPromises();
+  });
+
+  test('keeps the isolated backend unavailable when WSL2 cannot sandbox', async () => {
+    const bridge = stubBridge({
+      isolated: {
+        detect: vi.fn(async () => ({ available: false, distro: '', pidIsolated: false, networkBlocked: false })),
+        run: vi.fn(),
+        stop: vi.fn(async () => false),
+      } as unknown as DesktopBridge['isolated'],
+    });
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="isolated"]').element.disabled).toBe(true);
+    expect(wrapper.get('[data-testid="ide-backend-select"] option[value="isolated"]').attributes('title')).toContain('WSL2');
+  });
+
+  test('keeps the browser build from offering either desktop backend', async () => {
+    const wrapper = mount(App);
+    await flushPromises();
+
+    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="local"]').element.disabled).toBe(true);
+    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="isolated"]').element.disabled).toBe(true);
+  });  test('keeps the browser build on the in-memory workspace and the API backend', async () => {
     const wrapper = mount(App);
     await flushPromises();
 

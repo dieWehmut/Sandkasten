@@ -32,8 +32,9 @@ sandboxed API.
 
 - No language server, debugging, multi-root workspaces, or extensions.
 - No terminals, package installation, or network access from local runs.
-- No sandboxing of local runs: the desktop app executes workspace files with the
-  user's own toolchain, and the UI says so.
+- No sandboxing of *local* runs: that backend executes workspace files with the
+  user's own toolchain, and the UI says so. The isolated backend is the
+  sandboxed desktop path and needs WSL2.
 
 ## Layout
 
@@ -91,20 +92,32 @@ recorded source back into the active buffer as an unsaved change.
 
 ## Execution backends
 
-Both backends project onto one `ExecutionPhase` union and produce a
+All three backends project onto one `ExecutionPhase` union and produce a
 `JobResponse`-shaped result, so `OutputTabs`, `OutputViewer`, `JobTimeline`, and
 the status bar are backend-agnostic.
 
-| | Sandboxed API | Local |
-| --- | --- | --- |
-| Owner | `useRunner` (remote jobs, polling, history) | `useLocalRunner` (desktop only) |
-| Input | active file source over HTTP | the file on disk |
-| Availability | runtime list from `/v1/runtimes` | detected toolchains on the machine |
-| Isolation | Linux sandbox | none |
+| | Sandboxed API | Local | Isolated |
+| --- | --- | --- | --- |
+| Owner | `useRunner` (remote jobs, polling, history) | `useLocalRunner` (desktop only) | `useLocalRunner` (desktop only) |
+| Input | active file source over HTTP | the file on disk | the file on disk |
+| Availability | runtime list from `/v1/runtimes` | detected toolchains on the machine | a WSL2 distro that creates the namespaces |
+| Isolation | Linux sandbox | none | user, network, and PID namespaces |
 
 `runActive` saves dirty desktop buffers before a local run, because the local
 runner executes the file rather than a buffer. Run history is shared through one
 `useRunHistory` instance injected into both runners.
+
+The local and isolated backends share one controller (`useLocalRunner`), so they
+reuse its phase, history, and result bookkeeping and the shell renders them
+identically. A canceled isolated run reports `JOB_STATUS_CANCELED` through the
+same path as a canceled local run.
+
+Isolated runs map canonical runtime names to the binary inside the distro
+(`python` → `python3`, `javascript`/`typescript` → `node`) and execute
+`unshare --user --map-root-user --net --pid --fork --mount-proc` in the file's
+own folder. The backend reports itself unavailable unless the probe confirms
+both that a PID namespace was created and that a network connection fails inside
+the network namespace, so a machine without WSL2 degrades to two backends.
 
 Local execution maps canonical runtime names to fixed commands
 (`python {file}`, `node {file}`, `go run {file}`, `rustc {file} -o {exe}` then
@@ -122,6 +135,7 @@ window.sandkastenDesktop = {
   platform, versions,
   workspace: { openFolder, root, list, read, write, create, remove },
   runner: { detect, run, stop },
+  isolated: { detect, run, stop },
   onMenuCommand(handler),
 }
 ```
@@ -133,6 +147,9 @@ Main-process boundary:
   the tree at 6 levels / 2000 entries, and caps files at 2 MiB.
 - `local-runner.mjs` owns detection, plans, spawning, output capture, timeouts,
   cancellation, and the temp build directory.
+- `isolated-runner.mjs` owns the WSL2 probe, the namespace invocation, path
+  translation to the `/mnt/<drive>` mount, wsl.exe stderr noise, and the same
+  timeout/cancellation contract over `wsl.exe`.
 - `ipc.mjs` validates every argument and requires an open folder before any file
   or run request; `tests/preload.test.mjs` keeps the preload channel names in
   sync with the IPC registry.

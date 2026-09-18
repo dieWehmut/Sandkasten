@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Cpu, Server } from '@lucide/vue';
+import { Cpu, Server, ShieldCheck } from '@lucide/vue';
 import type { ExecutionBackend, ExecutionPhase } from '../../composables/execution';
 import type { ConnectionState } from '../../composables/useRunner';
 import { useTranslation } from '../../i18n/useTranslation';
@@ -20,7 +20,12 @@ const props = withDefaults(defineProps<{
 }>(), { dirty: false, connectionState: 'connecting', cursor: () => ({ line: 1, column: 1 }) });
 
 const t = useTranslation();
-const backendLabel = computed(() => t(props.backend === 'local' ? 'ide.status.local' : 'ide.status.api'));
+const BACKEND_KEYS = {
+  local: 'ide.status.local',
+  isolated: 'ide.status.isolated',
+  api: 'ide.status.api',
+} as const;
+const backendLabel = computed(() => t(BACKEND_KEYS[props.backend]));
 const duration = computed(() => (typeof props.durationMs === 'number' ? `${(props.durationMs / 1000).toFixed(2)} s` : ''));
 </script>
 
@@ -29,6 +34,7 @@ const duration = computed(() => (typeof props.durationMs === 'number' ? `${(prop
     <span class="ide-status__group">
       <span class="ide-status__badge" :data-connection="connectionState">
         <Cpu v-if="backend === 'local'" :size="13" aria-hidden="true" />
+        <ShieldCheck v-else-if="backend === 'isolated'" :size="13" aria-hidden="true" />
         <Server v-else :size="13" aria-hidden="true" />
         {{ backendLabel }}
       </span>

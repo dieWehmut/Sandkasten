@@ -29,6 +29,22 @@ export interface LocalRunRequest {
   timeoutMs?: number;
 }
 
+export interface IsolatedRunRequest {
+  jobId: string;
+  path: string;
+  language: string;
+  command: string;
+  args?: string[];
+  timeoutMs?: number;
+}
+
+export interface IsolationStatus {
+  available: boolean;
+  distro: string;
+  pidIsolated: boolean;
+  networkBlocked: boolean;
+}
+
 export interface LocalRunOutput {
   jobId: string;
   status: string;
@@ -64,6 +80,11 @@ export interface DesktopBridge {
   runner: {
     detect(): Promise<LocalRuntimeInfo[]>;
     run(request: LocalRunRequest): Promise<LocalRunOutput>;
+    stop(jobId: string): Promise<boolean>;
+  };
+  isolated?: {
+    detect(): Promise<IsolationStatus>;
+    run(request: IsolatedRunRequest): Promise<LocalRunOutput>;
     stop(jobId: string): Promise<boolean>;
   };
   onMenuCommand(handler: (command: string) => void): void;

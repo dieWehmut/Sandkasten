@@ -6,6 +6,7 @@ import {
   deleteWorkspaceFile,
   listWorkspaceTree,
   readWorkspaceFile,
+  resolveInsideRoot,
   writeWorkspaceFile,
 } from './workspace.mjs';
 
@@ -20,6 +21,9 @@ export const IPC_CHANNELS = {
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
+  isolatedDetect: 'sandkasten:isolated:detect',
+  isolatedRun: 'sandkasten:isolated:run',
+  isolatedStop: 'sandkasten:isolated:stop',
   menu: 'sandkasten:menu',
 };
 
@@ -44,7 +48,7 @@ export async function resolveInitialWorkspace(session, environment = process.env
   return session.restore();
 }
 
-export function registerDesktopIpc({ ipcMain, dialog, runner, session, getWindow }) {
+export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow }) {
   ipcMain.handle(IPC_CHANNELS.workspaceOpenFolder, async () => {
     const options = {
       title: 'Open workspace folder',
@@ -95,6 +99,30 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, session, getWindow
   });
 
   ipcMain.handle(IPC_CHANNELS.localStop, async (_event, jobId) => runner.stop(assertString(jobId, 'jobId')));
+
+  ipcMain.handle(IPC_CHANNELS.isolatedDetect, async () => (
+    isolated ? isolated.detect() : { available: false, distro: '', pidIsolated: false, networkBlocked: false }
+  ));
+
+  ipcMain.handle(IPC_CHANNELS.isolatedRun, async (_event, request) => {
+    if (!isolated) throw new Error('Isolated execution is not available in this build.');
+    if (!request || typeof request !== 'object') throw new Error('an isolated run request is required');
+    const root = requireRoot(session);
+    const relativePath = assertString(request.path, 'path');
+    return isolated.run({
+      jobId: assertString(request.jobId, 'jobId'),
+      path: relativePath,
+      absolutePath: resolveInsideRoot(root, relativePath),
+      language: assertString(request.language, 'language'),
+      command: assertString(request.command, 'command'),
+      args: Array.isArray(request.args) ? request.args.map((argument) => String(argument)) : ['{file}'],
+      timeoutMs: request.timeoutMs,
+    }, { root });
+  });
+
+  ipcMain.handle(IPC_CHANNELS.isolatedStop, async (_event, jobId) => (
+    isolated ? isolated.stop(assertString(jobId, 'jobId')) : false
+  ));
 
   return IPC_CHANNELS;
 }
