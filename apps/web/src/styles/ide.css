@@ -313,8 +313,10 @@
   font-weight: 600;
 }
 
-.ide-tree__open svg,
-.ide-tree__toggle svg {
+/* Direct-child only: the file mark owns its own tone, so the faint-gray
+   rule must not reach the glyph nested inside it. */
+.ide-tree__open > svg,
+.ide-tree__toggle > svg {
   flex: 0 0 auto;
   color: var(--text-faint);
 }
@@ -604,4 +606,28 @@
   .ide-status__group--center {
     display: none;
   }
+}
+/* File-type marks: one silhouette per file kind, one hue per language family.
+   The tones are set per theme because a hue that reads on the light surface is
+   too dark on the dark one; both sets clear 4.5:1 against their surface so the
+   marks stay legible without competing with the active-row accent. */
+.file-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--file-icon-tone, var(--text-muted));
+}
+
+.file-icon[data-tone="blue"] { --file-icon-tone: var(--file-blue); }
+.file-icon[data-tone="yellow"] { --file-icon-tone: var(--file-yellow); }
+.file-icon[data-tone="green"] { --file-icon-tone: var(--file-green); }
+.file-icon[data-tone="orange"] { --file-icon-tone: var(--file-orange); }
+.file-icon[data-tone="purple"] { --file-icon-tone: var(--file-purple); }
+.file-icon[data-tone="red"] { --file-icon-tone: var(--file-red); }
+.file-icon[data-tone="cyan"] { --file-icon-tone: var(--file-cyan); }
+.file-icon[data-tone="slate"] { --file-icon-tone: var(--text-muted); }
+
+.ide-tree__open .file-icon,
+.ide-tab__select .file-icon {
+  margin-right: 1px;
 }
