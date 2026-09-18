@@ -25,6 +25,7 @@ const emit = defineEmits<{
   changeColorScheme: [scheme: ColorScheme];
   openGithub: [];
   openSetup: [];
+  openApiEndpoint: [];
   changeLocale: [locale: Locale];
 }>();
 
@@ -52,6 +53,7 @@ const translate = computed(() => props.t ?? englishTranslator);
       @change-color-scheme="emit('changeColorScheme', $event)"
       @open-github="emit('openGithub')"
       @open-setup="emit('openSetup')"
+      @open-api-endpoint="emit('openApiEndpoint')"
       @change-locale="emit('changeLocale', $event)"
     />
   </header>

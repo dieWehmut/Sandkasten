@@ -8,5 +8,6 @@ import './styles/editor.css';
 import './styles/output.css';
 import './styles/sheets.css';
 import './styles/ide.css';
+import './styles/apiEndpoint.css';
 
 createApp(App).mount('#app');

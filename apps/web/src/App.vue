@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
+import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import { useLocale } from './composables/useLocale';
@@ -15,6 +16,7 @@ import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { desktopBridge } from './services/desktopBridge';
+import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl } from './services/apiEndpoint';
 import { statusLabel } from './state/status';
 import type { MessageKey } from './i18n/messages';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
@@ -36,6 +38,8 @@ const runnerLoaded = ref(false);
 const backend = ref<ExecutionBackend>('api');
 const cursor = ref({ line: 1, column: 1 });
 const creatingFile = ref(false);
+const apiEndpointOpen = ref(false);
+const configuredApiBaseUrl = ref(readConfiguredApiBaseUrl());
 
 provide(TRANSLATOR_KEY, locale.t);
 
@@ -87,6 +91,23 @@ function openGithub(): void {
   window.open('https://github.com/dieWehmut/Sandkasten', '_blank', 'noopener,noreferrer');
 }
 
+function openApiEndpoint(): void {
+  apiEndpointOpen.value = true;
+}
+
+// Saving a new endpoint updates the stored override and reloads the runtime
+// list, because the previous runtimes came from the old origin.
+function saveApiEndpoint(value: string): void {
+  try {
+    configuredApiBaseUrl.value = saveConfiguredApiBaseUrl(window.localStorage, value);
+  } catch {
+    configuredApiBaseUrl.value = value;
+  }
+  apiEndpointOpen.value = false;
+  runnerLoaded.value = false;
+  loadRunnerOnce();
+}
+
 function loadRunnerOnce(): void {
   if (runnerLoaded.value) return;
   runnerLoaded.value = true;
@@ -101,9 +122,11 @@ function dismissSetup(): void {
   });
 }
 
+// In the editor-first layout the header buttons switch the sidebar section; only
+// the activity bar, the sidebar's own collapse control, and Ctrl+B collapse it.
 function toggleHistory(): void {
   if (ideMode.value) {
-    ide.selectActivity('runs');
+    ide.showActivity('runs');
     return;
   }
   const nextOpen = !compactHistoryOpen.value;
@@ -113,7 +136,7 @@ function toggleHistory(): void {
 
 function toggleInspector(): void {
   if (ideMode.value) {
-    ide.selectActivity('context');
+    ide.showActivity('context');
     return;
   }
   const nextOpen = !compactInspectorOpen.value;
@@ -289,7 +312,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="workbench-app" data-testid="app-shell">
+  <div class="workbench-app" :class="{ 'workbench-app--ide': layout.isDesktop.value }" data-testid="app-shell">
     <AppHeader
       v-if="!setupWelcome.isGuideOpen.value"
       :connection-state="connectionState"
@@ -305,7 +328,16 @@ onBeforeUnmount(() => {
       @change-color-scheme="colorScheme.setColorScheme"
       @open-github="openGithub"
       @open-setup="setupWelcome.reopen"
+      @open-api-endpoint="openApiEndpoint"
       @change-locale="locale.setLocale"
+    />
+    <ApiEndpointDialog
+      :open="apiEndpointOpen"
+      :value="configuredApiBaseUrl"
+      :desktop="Boolean(bridge)"
+      :t="locale.t"
+      @save="saveApiEndpoint"
+      @close="apiEndpointOpen = false"
     />
     <SetupWelcome
       v-if="setupWelcome.isGuideOpen.value"
@@ -355,6 +387,7 @@ onBeforeUnmount(() => {
       :can-run="canRun"
       :can-resume="canResume"
       @select-activity="selectActivity"
+      @toggle-sidebar="ide.toggleSidebar"
       @open-setup="setupWelcome.reopen"
       @select-file="selectFile"
       @close-file="closeFile"

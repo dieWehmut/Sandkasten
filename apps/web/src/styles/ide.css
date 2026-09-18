@@ -8,12 +8,31 @@
   --ide-status-height: 26px;
 }
 
+/* The IDE shell owns the viewport: panes scroll inside it instead of stretching
+   the document, which keeps the status bar and the activity bar in place no
+   matter how large the workspace or the output grows. Narrow layouts keep the
+   document-level scrolling they were designed around. */
+.workbench-app--ide {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.workbench-app--ide .workbench-shell {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
 .workbench-shell.layout-ide {
   grid-template-columns: var(--ide-activity-width) var(--ide-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .workbench-shell.layout-ide.without-sidebar {
   grid-template-columns: var(--ide-activity-width) minmax(0, 1fr);
+}
+
+.workbench-shell.layout-ide > * {
+  min-height: 0;
 }
 
 .ide-activity {
@@ -69,10 +88,65 @@
   min-width: 0;
 }
 
+/* The sidebar header owns the view title, the view actions, and the collapse
+   control, so the collapse button always sits at the sidebar's top-right. */
+.ide-sidebar__header {
+  display: flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ide-sidebar__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ide-sidebar__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1px;
+}
+
+.ide-sidebar__actions button {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.ide-sidebar__actions button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ide-sidebar__collapse {
+  margin-left: 2px;
+}
+
 .ide-sidebar__section {
   min-height: 0;
   flex: 0 1 auto;
   overflow: auto;
+  overscroll-behavior: contain;
   border-top: 1px solid var(--border);
 }
 
@@ -190,6 +264,7 @@
   margin: 0;
   padding: 4px 0 10px;
   overflow: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 
@@ -270,6 +345,20 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--canvas);
+}
+
+/* Editor, timeline, and panel live in one scrollable body so a short window
+   still reaches every region with the wheel while the status bar stays pinned. */
+.ide-body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .ide-tabs {
@@ -396,7 +485,7 @@
 
 .ide-editor {
   min-width: 0;
-  min-height: 0;
+  min-height: 10rem;
   flex: 1 1 auto;
   overflow: hidden;
 }
@@ -423,6 +512,7 @@
   max-height: 55%;
   flex: 0 0 34%;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 8px 12px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface);
@@ -498,15 +588,8 @@
 .ide-sidebar .run-history,
 .ide-sidebar .inspector-panel {
   border: 0;
+  overscroll-behavior: contain;
   background: transparent;
-}
-
-.ide-sidebar .run-history .pane-heading {
-  padding: 8px 10px;
-}
-
-.ide-sidebar .run-history .pane-heading h2 {
-  font-size: 12px;
 }
 
 @media (max-width: 1199px) {

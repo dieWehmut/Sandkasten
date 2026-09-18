@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { BookOpen, GitFork, History, Moon, PanelRight, Sun } from '@lucide/vue';
+import { ServerCog } from '@lucide/vue';
 import type { Theme } from '../composables/useTheme';
 import type { ColorScheme } from '../theme/colorScheme';
 import { createTranslator, type Locale, type Translator } from '../i18n/locale';
@@ -23,6 +24,7 @@ const emit = defineEmits<{
   changeColorScheme: [scheme: ColorScheme];
   openGithub: [];
   openSetup: [];
+  openApiEndpoint: [];
   changeLocale: [locale: Locale];
 }>();
 
@@ -96,6 +98,15 @@ const themeLabel = computed(() => translate.value(props.theme === 'light' ? 'hea
       @click="emit('openGithub')"
     >
       <GitFork :size="17" aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      data-action="open-api-endpoint"
+      :aria-label="translate('apiEndpoint.open')"
+      :title="translate('apiEndpoint.open')"
+      @click="emit('openApiEndpoint')"
+    >
+      <ServerCog :size="17" aria-hidden="true" />
     </button>
   </nav>
 </template>

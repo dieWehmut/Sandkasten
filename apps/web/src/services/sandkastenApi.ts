@@ -1,3 +1,9 @@
+import {
+  effectiveApiBaseUrl,
+  readConfiguredApiBaseUrl,
+} from './apiEndpoint';
+import { isDesktopRuntime } from './desktopBridge';
+
 export interface Runtime {
   language: string;
   version?: string;
@@ -78,10 +84,20 @@ type FetchLike = typeof fetch;
 
 const defaultFetch: FetchLike = (...args) => fetch(...args);
 
+// The base URL is resolved once per call so a runtime endpoint change takes
+// effect immediately: the user override, then the bundled deployment default,
+// then the desktop local API, then same-origin relative requests.
+export function apiBaseUrlFor(config: ApiConfig | undefined = globalThis.SANDKASTEN_CONFIG): string {
+  return effectiveApiBaseUrl({
+    configured: readConfiguredApiBaseUrl(),
+    bundled: typeof config?.apiBaseUrl === 'string' ? config.apiBaseUrl : '',
+    desktop: isDesktopRuntime(),
+  });
+}
+
 export function resolveApiUrl(pathname: string, config: ApiConfig | undefined = globalThis.SANDKASTEN_CONFIG): string {
   const path = `/${String(pathname).replace(/^\/+/, '')}`;
-  const base = typeof config?.apiBaseUrl === 'string' ? config.apiBaseUrl.trim().replace(/\/+$/, '') : '';
-  return `${base}${path}`;
+  return `${apiBaseUrlFor(config)}${path}`;
 }
 
 function asObject(value: unknown, context: string): Record<string, unknown> {

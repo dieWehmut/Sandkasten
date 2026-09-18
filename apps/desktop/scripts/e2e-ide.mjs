@@ -42,9 +42,16 @@ async function main() {
 
   const workspace = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-e2e-'));
   await mkdir(path.join(workspace, 'pkg'), { recursive: true });
+  await mkdir(path.join(workspace, 'many'), { recursive: true });
   await writeFile(path.join(workspace, 'hello.py'), 'print("E2E-LOCAL-RUN-OK")\n');
   await writeFile(path.join(workspace, 'pkg', 'util.py'), 'print("util-ok")\n');
   await writeFile(path.join(workspace, 'notes.md'), '# notes\n');
+  const longFile = ['for index in range(200):', '    print(f"line {index:03d}")'];
+  for (let index = 0; index < 200; index += 1) longFile.push(`# padding line ${index}`);
+  await writeFile(path.join(workspace, 'long.py'), `${longFile.join('\n')}\n`);
+  for (let index = 0; index < 60; index += 1) {
+    await writeFile(path.join(workspace, 'many', `file-${String(index).padStart(2, '0')}.py`), `print(${index})\n`);
+  }
   await mkdir(path.join(outputRoot), { recursive: true });
 
   const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
@@ -67,6 +74,12 @@ async function main() {
       checks.setupGuideDismissed = true;
     }
     await page.waitForSelector('[data-testid="workbench-shell"]', { timeout: 30_000 });
+
+    const ensureTheme = async (theme) => {
+      if ((await page.getAttribute('html', 'data-theme')) === theme) return;
+      await page.click('[data-action="toggle-theme"]');
+      await page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, theme, { timeout: 5_000 });
+    };
 
     checks.bridgeExposed = await page.evaluate(() => typeof window.sandkastenDesktop?.workspace?.read === 'function');
     checks.workspaceRoot = await page.evaluate(() => window.sandkastenDesktop?.workspace?.root?.() ?? null);
@@ -127,11 +140,122 @@ async function main() {
       await page.waitForSelector('[data-path="pkg/util.py"]');
     }
 
-    const ensureTheme = async (theme) => {
-      if ((await page.getAttribute('html', 'data-theme')) === theme) return;
-      await page.click('[data-action="toggle-theme"]');
-      await page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, theme, { timeout: 5_000 });
+    // The collapse control must live in the sidebar header, flush with its
+    // top-right corner, and must hide the whole sidebar.
+    checks.collapseButton = await page.evaluate(() => {
+      const button = document.querySelector('[data-action="ide-collapse-sidebar"]');
+      const header = document.querySelector('.ide-sidebar__header');
+      const sidebar = document.querySelector('.ide-sidebar');
+      if (!button || !header || !sidebar) return null;
+      const rects = { button: button.getBoundingClientRect(), header: header.getBoundingClientRect(), sidebar: sidebar.getBoundingClientRect() };
+      const buttons = Array.from(header.querySelectorAll('button'));
+      return {
+        insideHeader: header.contains(button),
+        lastControl: buttons.at(-1) === button,
+        topAligned: Math.abs(rects.button.top - rects.sidebar.top) <= 12,
+        rightGap: Math.round(rects.sidebar.right - rects.button.right),
+        verticalGap: Math.round(rects.button.top - rects.sidebar.top),
+        order: buttons.map((entry) => entry.getAttribute('data-action')),
+      };
+    });
+    await page.click('[data-action="ide-collapse-sidebar"]');
+    await page.waitForFunction(() => !document.querySelector('.ide-sidebar'), null, { timeout: 5_000 });
+    checks.sidebarHiddenByButton = (await page.locator('.ide-sidebar').count()) === 0;
+    await page.keyboard.press('Control+b');
+    await page.waitForSelector('.ide-sidebar');
+
+    // The wheel must scroll whatever pane is under the cursor.
+    const scrollTop = (selector) => page.evaluate((target) => document.querySelector(target)?.scrollTop ?? -1, selector);
+    const wheelOver = async (selector, delta) => {
+      const box = await page.locator(selector).first().boundingBox();
+      if (!box) return -1;
+      await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 120));
+      await page.mouse.wheel(0, delta);
+      await page.waitForTimeout(250);
+      return scrollTop(selector);
     };
+
+    checks.treeScrollable = await page.evaluate(() => {
+      const tree = document.querySelector('.ide-tree');
+      return Boolean(tree) && tree.scrollHeight > tree.clientHeight;
+    });
+    checks.treeScrollTop = await wheelOver('.ide-tree', 400);
+    checks.documentScrollY = await page.evaluate(() => window.scrollY);
+
+    await page.click('[data-path="long.py"] .ide-tree__open');
+    await page.waitForSelector('[data-action="ide-tab-long.py"]');
+    checks.editorScrollable = await page.evaluate(() => {
+      const scroller = document.querySelector('.ide-editor .cm-scroller');
+      return Boolean(scroller) && scroller.scrollHeight > scroller.clientHeight;
+    });
+    checks.longEditor = await page.evaluate(() => {
+      const scroller = document.querySelector('.ide-editor .cm-scroller');
+      return {
+        activeTab: document.querySelector('.ide-tab--active .ide-tab__name')?.textContent?.trim(),
+        client: scroller?.clientHeight,
+        scroll: scroller?.scrollHeight,
+        lines: document.querySelectorAll('.ide-editor .cm-line').length,
+        firstLine: document.querySelector('.ide-editor .cm-line')?.textContent,
+      };
+    });
+    checks.editorScrollTop = await wheelOver('.ide-editor .cm-scroller', 400);
+
+    await page.click('[data-action="run-source"]');
+    await page.waitForFunction(() => document.body.innerText.includes('line 199'), null, { timeout: 30_000 });
+    checks.panelScrollable = await page.evaluate(() => {
+      const panel = document.querySelector('.ide-panel');
+      return Boolean(panel) && panel.scrollHeight > panel.clientHeight;
+    });
+    checks.panelScrollTop = await wheelOver('.ide-panel', 400);
+
+    // The smallest allowed window keeps every region reachable: the document
+    // itself must not grow, and the status bar stays pinned to the viewport.
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (window) window.setSize(1280, 640);
+    });
+    await page.waitForTimeout(500);
+    checks.minimumWindow = await page.evaluate(() => {
+      const status = document.querySelector('.ide-status');
+      const body = document.querySelector('.ide-body');
+      const tree = document.querySelector('.ide-tree');
+      if (!status || !body) return null;
+      const statusRect = status.getBoundingClientRect();
+      return {
+        viewportHeight: window.innerHeight,
+        documentHeight: document.documentElement.scrollHeight,
+        statusBottom: Math.round(statusRect.bottom),
+        statusVisible: statusRect.bottom <= window.innerHeight + 1 && statusRect.top >= 0,
+        documentBounded: document.documentElement.scrollHeight <= window.innerHeight + 1,
+        treeScrollable: Boolean(tree) && tree.scrollHeight > tree.clientHeight,
+        bodyOverflowing: body.scrollHeight > body.clientHeight,
+      };
+    });
+    checks.minimumWindowBodyScrollTop = await scrollTop('.ide-body');
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (window) window.setSize(1280, 860);
+    });
+    await page.waitForTimeout(400);
+
+    // Green is the default accent; nothing may randomize it on a fresh start.
+    await page.evaluate(() => window.localStorage.removeItem('sandkasten-color-scheme'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-testid="workbench-shell"]');
+    if (await page.locator('[data-testid="setup-dismiss"]').count()) await page.click('[data-testid="setup-dismiss"]');
+    await page.waitForSelector('[data-testid="workbench-shell"]');
+    checks.colorScheme = await page.getAttribute('html', 'data-color-scheme');
+    checks.theme = await page.getAttribute('html', 'data-theme');
+    checks.greenAccentByTheme = {};
+    for (const theme of ['light', 'dark']) {
+      await ensureTheme(theme);
+      checks.greenAccentByTheme[theme] = await page.evaluate(() => ({
+        accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+        strong: getComputedStyle(document.documentElement).getPropertyValue('--accent-strong').trim(),
+        canvas: getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim(),
+      }));
+    }
+    checks.storedColorScheme = await page.evaluate(() => window.localStorage.getItem('sandkasten-color-scheme'));
 
     await ensureTheme('light');
     checks.lightTheme = await page.getAttribute('html', 'data-theme');

@@ -4,14 +4,23 @@ import type { RunHistoryItem as HistoryItem } from '../composables/useRunHistory
 import RunHistoryItem from './RunHistoryItem.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
-defineProps<{ items: readonly DeepReadonly<HistoryItem>[]; selectedJobId?: string }>();
+const props = withDefaults(defineProps<{
+  items: readonly DeepReadonly<HistoryItem>[];
+  selectedJobId?: string;
+  hideHeading?: boolean;
+}>(), { hideHeading: false });
 const emit = defineEmits<{ select: [item: DeepReadonly<HistoryItem>] }>();
 const t = useTranslation();
 </script>
 
 <template>
-  <aside id="history-panel" class="run-history" aria-labelledby="history-title">
-    <header class="pane-heading">
+  <aside
+    id="history-panel"
+    class="run-history"
+    :aria-labelledby="props.hideHeading ? undefined : 'history-title'"
+    :aria-label="props.hideHeading ? t('history.title') : undefined"
+  >
+    <header v-if="!props.hideHeading" class="pane-heading">
       <p class="eyebrow">{{ t('workbench.session') }}</p>
       <h2 id="history-title">{{ t('history.title') }}</h2>
     </header>

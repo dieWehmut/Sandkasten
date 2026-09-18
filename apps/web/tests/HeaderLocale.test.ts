@@ -100,6 +100,15 @@ describe('localized header controls', () => {
 });
 
 describe('ConnectionStatus locale fallback', () => {
+  test('exposes a stable hook for configuring the API endpoint', () => {
+    const t = createTranslator('en');
+    const wrapper = mount(HeaderActions, { props: { t } });
+    expect(wrapper.get('[data-action="open-api-endpoint"]').attributes('aria-label')).toBe(t('apiEndpoint.open'));
+    return wrapper.get('[data-action="open-api-endpoint"]').trigger('click').then(() => {
+      expect(wrapper.emitted('openApiEndpoint')).toHaveLength(1);
+    });
+  });
+
   test('keeps standalone English defaults and accepts an injected translator', () => {
     const standalone = mount(ConnectionStatus, { props: { state: 'unavailable' } });
     const t = createTranslator('zh-CN');

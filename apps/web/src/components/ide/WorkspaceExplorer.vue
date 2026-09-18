@@ -15,7 +15,8 @@ const props = withDefaults(defineProps<{
   error?: string;
   runtimes?: Runtime[];
   creating?: boolean;
-}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false });
+  hideHeading?: boolean;
+}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false });
 
 const emit = defineEmits<{
   select: [path: string];
@@ -81,7 +82,7 @@ function submitNewFile(): void {
 
 <template>
   <section class="ide-explorer" data-testid="workspace-explorer" :aria-label="t('ide.explorer.label')">
-    <header class="ide-section__heading">
+    <header v-if="!hideHeading" class="ide-section__heading">
       <span class="ide-section__title" :title="root?.path ?? root?.name">{{ root?.name ?? t('ide.explorer.scratch') }}</span>
       <span class="ide-section__actions">
         <button type="button" data-action="ide-new-file" :aria-label="t('ide.explorer.newFile')" :title="t('ide.explorer.newFile')" @click="startCreating">
