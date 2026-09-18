@@ -105,6 +105,9 @@ async function main() {
     await page.click('[data-path="hello.py"] .ide-tree__open');
     await page.waitForSelector('[data-action="ide-tab-hello.py"]');
     checks.activeTab = (await page.locator('.ide-tab--active .ide-tab__name').innerText()).trim();
+    // The window names the open file and workspace, which is how the shell
+    // titles itself in the OS task bar and window list.
+    checks.windowTitle = await page.title();
     checks.editorText = (await page.locator('.cm-content').innerText()).trim();
 
     await page.click('[data-action="run-source"]');
