@@ -17,6 +17,7 @@ import { useColorScheme } from './composables/useColorScheme';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { desktopBridge } from './services/desktopBridge';
 import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl } from './services/apiEndpoint';
+import { windowTitle } from './editor/windowTitle';
 import { statusLabel } from './state/status';
 import type { MessageKey } from './i18n/messages';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
@@ -60,6 +61,15 @@ const PHASE_KEYS: Readonly<Record<ExecutionPhase, MessageKey>> = {
 };
 
 const activeFile = workspace.activeFile;
+// The document title names the open file and workspace, so the desktop window
+// and a browser tab both identify what is being edited rather than the app
+// alone.
+const documentTitle = computed(() => windowTitle({
+  appName: locale.t('brand.name'),
+  workspace: workspace.root.value?.name,
+  file: activeFile.value?.name,
+  dirty: activeFile.value?.dirty,
+}));
 const language = computed(() => activeFile.value?.language || runner.selectedLanguage.value);
 const source = computed(() => activeFile.value?.source ?? '');
 // Both desktop backends share one controller, so only the API backend reads
@@ -309,6 +319,7 @@ watch(layout.mode, (mode, previousMode) => {
 
 watch(source, (value) => { runner.setSource(value); });
 watch(language, (value) => { if (value) runner.setLanguage(value); });
+watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
 
 onMounted(() => {

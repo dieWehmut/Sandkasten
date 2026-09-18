@@ -11,6 +11,7 @@ import { useWorkspace } from '../src/composables/useWorkspace';
 import { useIdeLayout } from '../src/composables/useIdeLayout';
 import { languageForPath } from '../src/editor/language';
 import { ancestorPaths, breadcrumbSegments } from '../src/editor/breadcrumbs';
+import { windowTitle } from '../src/editor/windowTitle';
 import { SCRATCH_FILE_NAME, SCRATCH_FILE_SOURCE, WORKSPACE_STORAGE_KEY } from '../src/services/workspaceStore';
 import type { DesktopBridge } from '../src/services/desktopBridge';
 import type { Runtime } from '../src/services/sandkastenApi';
@@ -157,6 +158,15 @@ describe('workspace store and language detection', () => {
 });
 
 describe('ide layout', () => {
+  test('names the open file and workspace in the window title', () => {
+    expect(windowTitle({ appName: 'Sandkasten' })).toBe('Sandkasten');
+    expect(windowTitle({ appName: 'Sandkasten', workspace: 'ws' })).toBe('ws \u2014 Sandkasten');
+    expect(windowTitle({ appName: 'Sandkasten', workspace: 'ws', file: 'main.py' })).toBe('main.py \u2014 ws \u2014 Sandkasten');
+    expect(windowTitle({ appName: 'Sandkasten', workspace: 'ws', file: 'main.py', dirty: true })).toBe('main.py \u2022 \u2014 ws \u2014 Sandkasten');
+    // An unnamed workspace or file leaves no empty separator behind.
+    expect(windowTitle({ appName: 'Sandkasten', workspace: '  ', file: '' })).toBe('Sandkasten');
+  });
+
   test('selecting the active activity collapses the sidebar', () => {
     const layout = useIdeLayout();
     expect(layout.activity.value).toBe('explorer');
@@ -334,6 +344,20 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-action="ide-close-main.py"]').trigger('click');
     await nextTick();
     expect(wrapper.find('[data-action="ide-tab-main.py"]').exists()).toBe(false);
+  });
+
+  test('titles the window after the open file and workspace', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The scratch desktop workspace opens main.py from `ws` on load.
+    expect(document.title).toBe('main.py \u2014 ws \u2014 Sandkasten');
+
+    await wrapper.get('[data-path="pkg/util.py"] .ide-tree__open').trigger('click');
+    await flushPromises();
+    expect(document.title).toBe('util.py \u2014 ws \u2014 Sandkasten');
   });
 
   test('the panel header maximizes and closes the panel', async () => {
