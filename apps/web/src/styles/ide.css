@@ -6,6 +6,9 @@
   --ide-activity-width: 48px;
   --ide-sidebar-width: 248px;
   --ide-status-height: 26px;
+  /* The VS Code arrangement keeps the status bar a slim, full-width strip, so
+     the IDE status row is its own height token rather than the sheet rhythm. */
+  --vscode-status-height: 22px;
 }
 
 /* The IDE shell owns the viewport: panes scroll inside it instead of stretching
@@ -64,10 +67,12 @@
   background: var(--surface-subtle);
 }
 
+/* VS Code marks the active view with a rail on the left edge of the icon,
+   which keeps the strip quiet instead of filling the whole button. */
 .ide-activity__button[aria-pressed="true"] {
   box-shadow: inset 2px 0 0 var(--accent);
-  color: var(--accent-strong);
-  background: var(--accent-soft);
+  color: var(--text);
+  background: transparent;
 }
 
 .ide-activity__button--footer {
@@ -160,7 +165,7 @@
 
 .ide-section__heading {
   display: flex;
-  min-height: 34px;
+  min-height: 30px;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
@@ -273,7 +278,7 @@
   min-width: 0;
   align-items: center;
   gap: 2px;
-  min-height: 24px;
+  min-height: 22px;
   padding-right: 4px;
 }
 
@@ -290,7 +295,7 @@
 .ide-tree__open {
   display: flex;
   min-width: 0;
-  min-height: 24px;
+  min-height: 22px;
   flex: 1 1 auto;
   align-items: center;
   gap: 6px;
@@ -388,8 +393,8 @@
 }
 
 .ide-tab--active {
-  box-shadow: inset 0 2px 0 var(--accent);
-  background: var(--surface);
+  box-shadow: inset 0 1px 0 var(--accent);
+  background: var(--canvas);
 }
 
 .ide-tab__select {
@@ -398,7 +403,7 @@
   max-width: 220px;
   align-items: center;
   gap: 6px;
-  padding: 8px 4px 8px 12px;
+  padding: 7px 4px 7px 12px;
   border: 0;
   border-radius: 0;
   color: var(--text-muted);
@@ -518,18 +523,21 @@
   background: var(--surface);
 }
 
+/* The status bar is the one surface that carries the accent as a background.
+   Every palette was checked for AA contrast against the text token it puts on
+   top, so the strip stays legible in both themes and all five schemes. */
 .ide-status {
   display: flex;
   min-width: 0;
-  min-height: var(--ide-status-height);
-  flex: 0 0 var(--ide-status-height);
+  min-height: var(--vscode-status-height);
+  flex: 0 0 var(--vscode-status-height);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 0 10px;
   border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  background: var(--surface-subtle);
+  background: var(--accent);
+  color: var(--surface);
   font-size: 11.5px;
 }
 
@@ -551,26 +559,26 @@
 
 .ide-status__badge {
   display: inline-flex;
-  min-height: 18px;
+  min-height: 16px;
   align-items: center;
   gap: 5px;
   padding: 0 6px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid color-mix(in srgb, var(--surface) 42%, transparent);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: var(--surface);
   font-weight: 650;
 }
 
 .ide-status[data-backend="local"] .ide-status__badge {
-  border-color: var(--warning);
-  color: var(--warning);
-  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--surface) 46%, transparent);
+  color: var(--surface);
+  background: color-mix(in srgb, var(--surface) 18%, transparent);
 }
 
 .ide-status[data-backend="api"] .ide-status__badge {
-  border-color: var(--accent);
-  color: var(--accent-strong);
-  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--surface) 32%, transparent);
+  color: var(--surface);
+  background: transparent;
 }
 
 .ide-status__item {
@@ -581,7 +589,7 @@
 }
 
 .ide-status__item--dirty {
-  color: var(--warning);
+  color: var(--warning-soft);
   font-weight: 650;
 }
 

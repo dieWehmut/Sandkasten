@@ -152,7 +152,9 @@ describe('workbench controls', () => {
 
     expect(api.submitJob).toHaveBeenCalledWith('python', 'print("first")');
     expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>');
-    expect(wrapper.find('img').exists()).toBe(false);
+    // The brand mark is the only image the shell renders; backend output must
+    // never become markup, so nothing outside the header may add an image.
+    expect(wrapper.findAll('img').map((node) => node.attributes('class'))).toEqual(['brand__mark']);
 
     editorView().dispatch({
       changes: { from: 0, to: editorView().state.doc.length, insert: 'print("second")' },
