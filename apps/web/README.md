@@ -13,6 +13,18 @@ file tree and recent runs, open-file tabs, a CodeMirror editor, a bottom output
 panel, and a status bar. Narrower windows fall back to the single-column
 layout with history and inspector sheets.
 
+The sidebar owns one header row: the view title on the left, the view actions
+(new file, open folder, refresh) and the collapse control on the right. The
+collapse button sits flush with the sidebar's top-right corner, hides the whole
+sidebar, and matches `Ctrl+B`; selecting the active activity in the activity bar
+collapses it too.
+
+The desktop shell is bounded to the viewport (`100dvh`), so the file tree, the
+editor, and the output panel scroll inside their own panes with the mouse wheel
+while the status bar and the activity bar stay pinned. The document itself does
+not grow with the workspace or the output, so a large tree or a noisy program
+never pushes the panel or the status bar out of reach.
+
 The workspace holds one or more open files. In the browser the workspace is an
 in-memory scratch workspace persisted under `sandkasten-workspace-v1`; in the
 desktop app the same UI reads and writes a real folder through the preload
@@ -99,21 +111,19 @@ active pairing:
 - `data-color-scheme`: `green`, `purple`, `pink`, `white`, or `black`,
   persisted as `sandkasten-color-scheme`.
 
-`green` is the historical default: its token values are unchanged, so an
-untouched install renders exactly as before. On a first visit without a stored
-preference the interface picks a random chromatic scheme (`green`, `purple`,
-or `pink`) and does not persist it, so a reload can land on a different
-accent. The monochrome `white` and `black` schemes stay opt-in: `white` is a
-deep gray in the light theme and pure white in the dark theme, so it reads as
-the strongest available contrast in either theme. Only an explicit pick is
-written to `localStorage`.
+`green` is the historical default and stays the deterministic first-visit
+accent: an untouched install renders green in both themes, and nothing is
+persisted until the user picks a scheme. The monochrome `white` and `black`
+schemes stay opt-in: `white` is a deep gray in the light theme and pure white in
+the dark theme, so it reads as the strongest available contrast in either
+theme. Only an explicit pick is written to `localStorage`.
 
 The accent tokens live in `src/styles/schemes.css`; `tokens.css` keeps the
 neutral surfaces, text, borders, and semantic states. Every scheme overrides
 the same three tokens (`--accent`, `--accent-strong`, `--accent-soft`) in both
 themes, and a final `color-mix()` block derives `--selection` and
 `--focus-ring` from the active accent, so components never learn which scheme
-is active. The catalog and the random pick live in `src/theme/colorScheme.ts`;
+is active. The catalog lives in `src/theme/colorScheme.ts`;
 `src/composables/useColorScheme.ts` restores storage, applies the document
 attribute, and persists explicit choices.
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { DeepReadonly } from 'vue';
+import { FilePlus, FolderOpen, PanelLeftClose, RefreshCw } from '@lucide/vue';
 import type { OutputTab } from '../composables/useRunner';
 import type { ConnectionState } from '../composables/useRunner';
 import type { ExecutionBackend, ExecutionPhase } from '../composables/execution';
@@ -91,6 +92,7 @@ const emit = defineEmits<{
   closeHistory: [];
   closeInspector: [];
   selectActivity: [activity: IdeActivity];
+  toggleSidebar: [];
   openSetup: [];
   selectFile: [path: string];
   closeFile: [path: string];
@@ -105,6 +107,11 @@ const t = useTranslation();
 
 const isIde = computed(() => props.layoutMode === 'desktop');
 const dirtyPaths = computed(() => props.files.filter((file) => file.dirty).map((file) => file.path));
+const sidebarTitle = computed(() => {
+  if (props.activity === 'runs') return t('history.title');
+  if (props.activity === 'context') return t('inspector.title');
+  return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
+});
 const styles = computed(() => (isIde.value
   ? ['layout-ide', {
     'without-sidebar': !props.sidebarVisible,
@@ -126,6 +133,32 @@ const styles = computed(() => (isIde.value
         @open-setup="emit('openSetup')"
       />
       <aside v-if="sidebarVisible" class="ide-sidebar" :aria-label="t('ide.sidebar.label')">
+        <header class="ide-sidebar__header">
+          <span class="ide-sidebar__title" :title="workspaceRoot?.path ?? sidebarTitle">{{ sidebarTitle }}</span>
+          <span class="ide-sidebar__actions">
+            <template v-if="activity === 'explorer'">
+              <button type="button" data-action="ide-new-file" :aria-label="t('ide.explorer.newFile')" :title="t('ide.explorer.newFile')" @click="emit('update:creatingFile', true)">
+                <FilePlus :size="15" aria-hidden="true" />
+              </button>
+              <button v-if="workspaceKind === 'desktop'" type="button" data-action="ide-open-folder" :aria-label="t('ide.explorer.openFolder')" :title="t('ide.explorer.openFolder')" @click="emit('openFolder')">
+                <FolderOpen :size="15" aria-hidden="true" />
+              </button>
+              <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="workspaceBusy" @click="emit('refreshTree')">
+                <RefreshCw :size="15" aria-hidden="true" />
+              </button>
+            </template>
+            <button
+              type="button"
+              class="ide-sidebar__collapse"
+              data-action="ide-collapse-sidebar"
+              :aria-label="t('ide.sidebar.collapse')"
+              :title="t('ide.sidebar.collapse')"
+              @click="emit('toggleSidebar')"
+            >
+              <PanelLeftClose :size="15" aria-hidden="true" />
+            </button>
+          </span>
+        </header>
         <template v-if="activity === 'explorer'">
           <WorkspaceExplorer
             :tree="tree"
@@ -137,6 +170,7 @@ const styles = computed(() => (isIde.value
             :error="workspaceError"
             :runtimes="runtimes"
             :creating="creatingFile"
+            hide-heading
             @update:creating="emit('update:creatingFile', $event)"
             @select="emit('selectFile', $event)"
             @open-folder="emit('openFolder')"
@@ -145,13 +179,13 @@ const styles = computed(() => (isIde.value
             @remove="emit('removeFile', $event)"
           />
           <section class="ide-sidebar__section" :aria-label="t('history.title')">
-            <RunHistory :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
+            <RunHistory :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
           </section>
         </template>
-        <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
-        <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" />
+        <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
+        <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />
       </aside>
-      <section class="ide-main">
+      <section class="ide-main" :aria-label="t('workbench.source')">
         <EditorTabs :files="files" :active-path="activePath" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
         <IdeEditorToolbar
           :runtimes="runtimes"
@@ -169,26 +203,28 @@ const styles = computed(() => (isIde.value
           @stop="emit('stop')"
           @resume="emit('resume')"
         />
-        <section class="ide-editor" :aria-label="t('workbench.editor')">
-          <SourceEditor
-            v-if="files.length"
-            :model-value="source"
-            :language="language"
-            :label="t('workbench.programSource')"
-            @update:model-value="emit('update:source', $event)"
-            @update:cursor="emit('update:cursor', $event)"
-          />
-          <p v-else class="empty-state ide-editor__empty">{{ t('ide.editor.empty') }}</p>
-        </section>
-        <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
-        <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
-          <OutputTabs
-            :result="result"
-            :error="error"
-            :model-value="activeOutputTab"
-            @update:model-value="emit('update:activeOutputTab', $event)"
-          />
-        </section>
+        <div class="ide-body">
+          <section class="ide-editor" :aria-label="t('workbench.editor')">
+            <SourceEditor
+              v-if="files.length"
+              :model-value="source"
+              :language="language"
+              :label="t('workbench.programSource')"
+              @update:model-value="emit('update:source', $event)"
+              @update:cursor="emit('update:cursor', $event)"
+            />
+            <p v-else class="empty-state ide-editor__empty">{{ t('ide.editor.empty') }}</p>
+          </section>
+          <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
+          <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
+            <OutputTabs
+              :result="result"
+              :error="error"
+              :model-value="activeOutputTab"
+              @update:model-value="emit('update:activeOutputTab', $event)"
+            />
+          </section>
+        </div>
         <IdeStatusBar
           :backend="backend"
           :language="language"

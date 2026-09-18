@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   API_ENDPOINT_STORAGE_KEY,
   LOCAL_API_BASE_URL,
@@ -7,6 +7,7 @@ import {
   readConfiguredApiBaseUrl,
   saveConfiguredApiBaseUrl,
 } from '../src/services/apiEndpoint';
+import { apiBaseUrlFor, resolveApiUrl } from '../src/services/sandkastenApi';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -17,6 +18,10 @@ function memoryStorage(initial: Record<string, string> = {}) {
     removeItem: (key: string) => { data.delete(key); },
   };
 }
+
+afterEach(() => {
+  window.localStorage.clear();
+});
 
 describe('API endpoint configuration', () => {
   test('keeps a stable storage key and the local default', () => {
@@ -85,5 +90,17 @@ describe('API endpoint configuration', () => {
   test('lets an explicit override win over the desktop local default', () => {
     expect(effectiveApiBaseUrl({ desktop: true, configured: 'https://team.example.com' })).toBe('https://team.example.com');
     expect(effectiveApiBaseUrl({ desktop: true, bundled: 'https://pages.example.com' })).toBe('https://pages.example.com');
+  });
+
+  test('routes API requests through the stored override', () => {
+    window.localStorage.setItem(API_ENDPOINT_STORAGE_KEY, 'https://run.example.com/');
+    expect(apiBaseUrlFor(undefined)).toBe('https://run.example.com');
+    expect(resolveApiUrl('/v1/runtimes')).toBe('https://run.example.com/v1/runtimes');
+  });
+
+  test('ignores a malformed stored override and keeps the bundled default', () => {
+    window.localStorage.setItem(API_ENDPOINT_STORAGE_KEY, 'not-a-url');
+    expect(apiBaseUrlFor({ apiBaseUrl: 'https://pages.example.com' })).toBe('https://pages.example.com');
+    expect(resolveApiUrl('/v1/runtimes', { apiBaseUrl: 'https://pages.example.com' })).toBe('https://pages.example.com/v1/runtimes');
   });
 });

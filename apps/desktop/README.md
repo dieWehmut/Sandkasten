@@ -6,6 +6,12 @@ an activity bar, a workspace file explorer, open-file tabs, a CodeMirror editor,
 an output panel, and a status bar — the VS Code arrangement, kept deliberately
 plain.
 
+The window is bounded to the viewport: the file tree, the editor, and the output
+panel scroll inside their own panes with the mouse wheel, while the activity bar
+and the status bar stay pinned and the document never grows. The sidebar header
+carries the view actions and a collapse control at its top-right corner, next to
+`Ctrl+B`. The accent scheme is green unless the user picks another one.
+
 The desktop build adds three things the browser cannot do:
 
 1. **A real workspace folder.** `File > Open Folder…` (or the explorer button)

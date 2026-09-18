@@ -227,6 +227,55 @@ describe('desktop workbench', () => {
     expect(wrapper.find('[data-action="ide-tab-main.py"]').exists()).toBe(false);
   });
 
+  test('keeps the sidebar collapse control at the top-right of the sidebar header', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const header = wrapper.get('.ide-sidebar__header');
+    expect(header.get('.ide-sidebar__title').text()).toBe('ws');
+    const controls = header.findAll('button').map((button) => button.attributes('data-action'));
+    expect(controls.at(-1)).toBe('ide-collapse-sidebar');
+    expect(controls).toEqual(['ide-new-file', 'ide-open-folder', 'ide-refresh-tree', 'ide-collapse-sidebar']);
+    expect(header.get('[data-action="ide-collapse-sidebar"]').attributes('aria-label')).toContain('Collapse sidebar');
+
+    await header.get('[data-action="ide-collapse-sidebar"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(false);
+    expect(wrapper.find('[data-action="ide-refresh-tree"]').exists()).toBe(false);
+
+    await wrapper.get('[data-activity="runs"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
+    expect(wrapper.get('[data-action="ide-collapse-sidebar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-action="ide-refresh-tree"]').exists()).toBe(false);
+    expect(wrapper.find('.run-history .pane-heading').exists()).toBe(false);
+
+    await wrapper.get('[data-activity="context"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Inspector');
+    expect(wrapper.get('#inspector-panel').exists()).toBe(true);
+    expect(wrapper.find('.inspector-panel .pane-heading').exists()).toBe(false);
+  });
+
+  test('keeps every workbench region reachable through the scrollable body', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const body = wrapper.get('.ide-body');
+    expect(body.find('.ide-editor').exists()).toBe(true);
+    expect(body.find('.job-timeline').exists()).toBe(true);
+    expect(body.find('.ide-panel').exists()).toBe(true);
+    expect(body.find('.ide-status').exists()).toBe(false);
+
+    const main = wrapper.get('.ide-main');
+    expect(main.attributes('aria-label')).toBe('Source workbench');
+    expect(main.element.lastElementChild?.className).toContain('ide-status');
+  });
+
   test('runs the active file with the local toolchain and shows its output', async () => {
     const bridge = stubBridge();
     installBridge(bridge);

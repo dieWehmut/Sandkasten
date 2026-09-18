@@ -24,6 +24,9 @@ sandboxed API.
   the local toolchains installed on the machine.
 - Keep the existing browser behaviour, tests, and the four-file distribution
   contract intact.
+- Keep the surface plain and green by default: the accent scheme is
+  deterministic (`green`) on a first visit, and the shell never grows the
+  document, so every region stays reachable with the wheel.
 
 ## Non-goals
 
@@ -39,22 +42,34 @@ Desktop (≥1200 px) renders `workbench-shell layout-ide`:
 ```
 app-header (unchanged: brand, connection, header actions)
 ├ activity bar (48 px)  explorer | runs | inspector | setup guide
-├ sidebar (248 px)      workspace tree + recent runs, or the selected activity
+├ sidebar (248 px)      header: view title · view actions · collapse
+│                       workspace tree + recent runs, or the selected activity
 └ main
   ├ editor tabs
   ├ editor toolbar      runtime select · execution backend · save · run/stop
-  ├ editor              CodeMirror
-  ├ job timeline        phase / error strip
-  ├ output panel        Output · Errors · Compile · Diagnostics
-  └ status bar          backend badge · workspace · file · language · status · cursor
+  ├ body (scrolls)      editor · job timeline · output panel
+  └ status bar (pinned)
 ```
 
 Narrower windows keep the existing single-column layout with history and
 inspector sheets, so the mobile and tablet contracts are unchanged.
 
 The activity bar follows the editor-first rule: selecting the active activity
-collapses the sidebar instead of re-rendering it. Menu commands and `Ctrl+N`
-force the explorer visible again.
+collapses the sidebar instead of re-rendering it. The sidebar header owns the
+view title, the view actions, and an explicit collapse control placed flush with
+its top-right corner, so the sidebar can always be collapsed from inside itself.
+Menu commands and `Ctrl+N` force the explorer visible again.
+
+### Viewport contract
+
+The IDE shell is bounded to the viewport (`height: 100dvh`, `overflow: hidden`,
+`flex: 1 1 0`) instead of growing with its content. Tree, editor, and output
+panel therefore scroll inside their own panes with the mouse wheel, the status
+bar stays pinned to the bottom edge, and the document never gains a scrollbar —
+a large workspace or a verbose program cannot push the panel or the status bar
+out of reach. Every scroll container also sets `overscroll-behavior: contain`
+so a wheel gesture never chains into the surrounding layout. The compact layouts
+keep document-level scrolling, which they were designed around.
 
 ## Workspace model
 
@@ -142,11 +157,20 @@ user-data directory; `SANDKASTEN_WORKSPACE_ROOT` overrides it for scripted runs.
 ## Verification
 
 - `apps/web/tests/ide.test.ts` covers the store, layout state, explorer tree,
-  tabs, local run, backend switching, save/create/delete, and menu commands.
+  tabs, the sidebar header and collapse control, the scrolling body, local run,
+  backend switching, save/create/delete, and menu commands.
+- `apps/web/tests/colorScheme.test.ts` pins green as the deterministic default
+  and asserts that a first visit stores nothing.
 - `apps/desktop/tests/*.test.mjs` cover the path guard, tree limits, local run
   lifecycle (success, compile failure, timeout, cancel, truncation), IPC
   validation, the menu template, and the preload contract.
 - `npm run e2e` in `apps/desktop` launches the real app against a temporary
-  workspace, asserts the tree, a local Python run, `Ctrl+S` persistence, file
-  creation, panel toggling, and both themes, and writes light/dark screenshots.
+  workspace and asserts the tree, a local Python run, `Ctrl+S` persistence, file
+  creation, panel toggling, wheel scrolling in the tree/editor/panel with the
+  document staying bounded, the collapse-button geometry, green accents in both
+  themes, and the minimum window; it writes light/dark screenshots.
   `SANDKASTEN_E2E_EXECUTABLE` runs the same script against a packaged build.
+- `npm run test:browser` in `apps/web` drives installed Chrome against the built
+  distribution at 1440x900, 1024x768, and 390x844, asserting the four primary
+  regions, no horizontal overflow, no overlapping controls, scheme switching,
+  and the run/output flow.

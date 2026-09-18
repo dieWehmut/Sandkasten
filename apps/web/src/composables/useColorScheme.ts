@@ -1,7 +1,7 @@
 import { computed, readonly, ref, type ComputedRef, type Ref } from 'vue';
 import {
   COLOR_SCHEME_IDS,
-  pickRandomColorScheme,
+  DEFAULT_COLOR_SCHEME,
   resolveColorScheme,
   type ColorScheme,
 } from '../theme/colorScheme';
@@ -20,7 +20,6 @@ export interface ColorSchemeRoot {
 interface ColorSchemeEnvironment {
   root?: ColorSchemeRoot;
   storage?: ColorSchemeStorage;
-  random?: () => number;
 }
 
 export interface ColorSchemeController {
@@ -56,7 +55,7 @@ export function useColorScheme(environment: ColorSchemeEnvironment = {}): ColorS
   }
 
   const explicitScheme: ColorScheme | undefined = stored === null ? undefined : (resolveColorScheme(stored) === stored ? stored : undefined);
-  const initialScheme = explicitScheme ?? pickRandomColorScheme(environment.random);
+  const initialScheme = explicitScheme ?? DEFAULT_COLOR_SCHEME;
   const colorScheme = ref<ColorScheme>(initialScheme);
   const hasExplicitPreference = ref(Boolean(explicitScheme));
 

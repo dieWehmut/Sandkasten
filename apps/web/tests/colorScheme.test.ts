@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import {
   COLOR_SCHEME_STORAGE_KEY,
@@ -8,9 +10,7 @@ import {
   COLOR_SCHEME_IDS,
   DEFAULT_COLOR_SCHEME,
   isColorScheme,
-  pickRandomColorScheme,
   resolveColorScheme,
-  RANDOM_COLOR_SCHEME_IDS,
 } from '../src/theme/colorScheme';
 
 function createStorage(saved?: string) {
@@ -36,10 +36,6 @@ describe('color scheme catalog', () => {
     expect(DEFAULT_COLOR_SCHEME).toBe('green');
   });
 
-  test('keeps monochrome schemes out of the random rotation', () => {
-    expect(RANDOM_COLOR_SCHEME_IDS).toEqual(['green', 'purple', 'pink']);
-  });
-
   test('recognizes only supported scheme values', () => {
     expect(isColorScheme('green')).toBe(true);
     expect(isColorScheme('purple')).toBe(true);
@@ -49,23 +45,23 @@ describe('color scheme catalog', () => {
     expect(resolveColorScheme('pink')).toBe('pink');
   });
 
-  test('picks a chromatic scheme from an injected random source', () => {
-    expect(pickRandomColorScheme(() => 0)).toBe('green');
-    expect(pickRandomColorScheme(() => 0.5)).toBe('purple');
-    expect(pickRandomColorScheme(() => 0.999999)).toBe('pink');
+  test('keeps the focus and selection tokens derived from the active accent', () => {
+    const schemes = readFileSync(resolve(import.meta.dirname, '../src/styles/schemes.css'), 'utf8');
+    expect(schemes).toMatch(/--selection:\s*color-mix\(in srgb, var\(--accent\)/);
+    expect(schemes).toMatch(/--focus-ring:\s*color-mix\(in srgb, var\(--accent\)/);
   });
 });
 
 describe('useColorScheme', () => {
-  test('applies a randomized chromatic scheme on a first visit without persisting it', () => {
+  test('applies green on a first visit without persisting it', () => {
     const root = createRoot();
     const storage = createStorage();
 
-    const controller = useColorScheme({ root, storage, random: () => 0.5 });
+    const controller = useColorScheme({ root, storage });
 
-    expect(controller.colorScheme.value).toBe('purple');
+    expect(controller.colorScheme.value).toBe('green');
     expect(controller.hasExplicitPreference.value).toBe(false);
-    expect(root.attributes.get('data-color-scheme')).toBe('purple');
+    expect(root.attributes.get('data-color-scheme')).toBe('green');
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
@@ -73,7 +69,7 @@ describe('useColorScheme', () => {
     const root = createRoot();
     const storage = createStorage('pink');
 
-    const controller = useColorScheme({ root, storage, random: () => 0 });
+    const controller = useColorScheme({ root, storage });
     expect(controller.colorScheme.value).toBe('pink');
     expect(controller.hasExplicitPreference.value).toBe(true);
 
@@ -84,11 +80,11 @@ describe('useColorScheme', () => {
     expect(storage.setItem).toHaveBeenCalledWith(COLOR_SCHEME_STORAGE_KEY, 'black');
   });
 
-  test('ignores unsupported stored values and falls back to the random rotation', () => {
+  test('ignores unsupported stored values and falls back to green', () => {
     const root = createRoot();
     const storage = createStorage('chartreuse');
 
-    const controller = useColorScheme({ root, storage, random: () => 0 });
+    const controller = useColorScheme({ root, storage });
 
     expect(controller.colorScheme.value).toBe('green');
     expect(controller.hasExplicitPreference.value).toBe(false);
@@ -104,7 +100,7 @@ describe('useColorScheme', () => {
       }),
     } satisfies ColorSchemeStorage;
 
-    const controller = useColorScheme({ root, storage, random: () => 0 });
+    const controller = useColorScheme({ root, storage });
 
     expect(() => controller.setColorScheme('white')).not.toThrow();
     expect(controller.colorScheme.value).toBe('white');
@@ -112,7 +108,7 @@ describe('useColorScheme', () => {
   });
 
   test('exposes the ordered scheme list for the picker', () => {
-    const controller = useColorScheme({ root: createRoot(), storage: createStorage(), random: () => 0 });
+    const controller = useColorScheme({ root: createRoot(), storage: createStorage() });
     expect(controller.options.value).toEqual(['green', 'purple', 'pink', 'white', 'black']);
   });
 });

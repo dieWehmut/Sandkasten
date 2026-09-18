@@ -1,0 +1,100 @@
+.api-endpoint-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+
+.api-endpoint-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: var(--overlay);
+}
+
+.api-endpoint-backdrop:hover:not(:disabled) {
+  border: 0;
+  background: var(--overlay);
+}
+
+.api-endpoint {
+  position: relative;
+  width: min(26rem, 92vw);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sheet);
+}
+
+.api-endpoint h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.api-endpoint__hint {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.api-endpoint__field {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.api-endpoint__field input {
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.api-endpoint__error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.api-endpoint__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.api-endpoint__actions button {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+
+.api-endpoint__save {
+  border-color: var(--accent-strong);
+  color: #fff;
+  background: var(--accent-strong);
+}
+
+:root[data-theme="dark"] .api-endpoint__save {
+  color: var(--surface);
+  background: var(--accent);
+}
+
+.api-endpoint__save:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-endpoint__actions button {
+    transition: none;
+  }
+}
