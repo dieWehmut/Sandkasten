@@ -16,7 +16,7 @@ The window icon, the packaged executable, and every shortcut use one brand
 mark, generated from the source artwork into `build/icon.ico` (multi-size)
 and `build/icon.png` (512 px, also staged into the packaged resources).
 
-The desktop build adds three things the browser cannot do:
+The desktop build adds four things the browser cannot do:
 
 1. **A real workspace folder.** `File > Open Folder…` (or the explorer button)
    picks a directory with the native dialog; files are listed, opened, edited,
@@ -26,7 +26,13 @@ The desktop build adds three things the browser cannot do:
    `java`, `ruby`, `php`, `bash`, `lua`, `perl`), unsandboxed, with a 20 s
    default timeout and a 1 MiB output cap. The status bar always shows which
    backend ran the code (`Local run` vs `Sandbox API`).
-3. **A desktop menu.** File / Run / View / Help forward stable command ids to
+3. **Isolated execution.** `Execution > Isolated` runs the same workspace file
+   through `unshare` inside a WSL2 distro, in a fresh user, network, and PID
+   namespace. The payload sees uid 0 but holds no host privilege, cannot reach
+   the LAN or the internet, and cannot see or signal host processes. The option
+   stays disabled unless a distro answers the probe and can create the
+   namespaces.
+4. **A desktop menu.** File / Run / View / Help forward stable command ids to
    the renderer, so the same shortcuts work from the menu and from the page.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
@@ -74,6 +80,12 @@ directory and exits instead of starting an empty window.
   directory that is removed after the run.
 - Local execution is not sandboxed. It is opt-in per run through the backend
   selector and unavailable in the browser build.
+- Isolated runs need WSL2 with a distro that ships `unshare` (`Ubuntu-22.04`,
+  `Ubuntu`, and `Debian` are probed in that order; the first working one wins).
+  Without one the backend reports itself unavailable instead of failing a run.
+  The sandbox bounds what the payload can reach, not what it may read: the
+  distro mounts the workspace through `/mnt/<drive>/…`, so workspace files stay
+  reachable while host processes and the network do not.
 
 ## Security defaults
 
@@ -82,8 +94,8 @@ directory and exits instead of starting an empty window.
   be ES modules; `tests/preload.test.mjs` fails when the preload and the IPC
   registry drift apart.
 - The preload exposes one `sandkastenDesktop` bridge: promise-based workspace
-  file access, local run/detect/stop, and a menu-command subscription. The raw
-  `ipcRenderer` never reaches the renderer.
+  file access, local and isolated run/detect/stop, and a menu-command
+  subscription. The raw `ipcRenderer` never reaches the renderer.
 - Navigations stay on `file:` URLs under the bundled distribution directory.
 - External `http(s)` links are denied in the window and handed to the OS
   browser; `file:` paths outside the distribution and other schemes are

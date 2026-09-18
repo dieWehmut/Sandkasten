@@ -35,7 +35,7 @@ desktop app the same UI reads and writes a real folder through the preload
 bridge described below. Files are never sent anywhere except the execution
 backend the user selected, and `Ctrl+S` writes the active buffer.
 
-Two execution backends share one output surface:
+Three execution backends share one output surface:
 
 - **Sandboxed API** (`Sandbox API`): the remote Sandkasten service, unchanged
   from the browser contract above.
@@ -43,6 +43,10 @@ Two execution backends share one output surface:
   installed on the machine through `window.sandkastenDesktop.runner`. This
   backend is unsandboxed, unavailable in the browser, and offered only when the
   file's runtime is installed.
+- **Isolated** (`Isolated`): the desktop app runs the same file through
+  `window.sandkastenDesktop.isolated`, which executes it inside a WSL2 user,
+  network, and PID namespace. Offered only when a distro can create those
+  namespaces; the status bar labels the run `Isolated run`.
 
 Keyboard: `Ctrl+S` save, `Ctrl+Enter` run, `Ctrl+N` new file, `Ctrl+W` close
 editor, `Ctrl+B` toggle sidebar, `Ctrl+J` toggle the output panel.
@@ -59,6 +63,7 @@ window.sandkastenDesktop = {
   platform, versions,
   workspace: { openFolder, root, list, read, write, create, remove },
   runner: { detect, run, stop },
+  isolated: { detect, run, stop },
   onMenuCommand(handler),
 };
 ```
