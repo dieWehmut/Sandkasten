@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ChevronDown, ChevronRight, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
 import type { WorkspaceRoot, WorkspaceTreeNode } from '../../services/desktopBridge';
 import type { Runtime } from '../../services/sandkastenApi';
@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
   runtimes?: Runtime[];
   creating?: boolean;
   hideHeading?: boolean;
+  revealRequest?: { path: string; token: number };
 }>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false });
 
 const emit = defineEmits<{
@@ -33,6 +34,16 @@ const t = useTranslation();
 const collapsed = ref<string[]>([]);
 const draftName = ref('');
 const draftLanguage = ref('python');
+
+// A breadcrumb click asks the tree to show a directory that may be folded, so
+// the request opens that directory and everything above it.
+watch(() => props.revealRequest?.token, () => {
+  const path = props.revealRequest?.path;
+  if (!path) return;
+  collapsed.value = collapsed.value.filter((entry) => (
+    entry !== path && !path.startsWith(`${entry}/`)
+  ));
+});
 
 const FALLBACK_LANGUAGES = ['python', 'javascript', 'typescript', 'go', 'rust', 'c', 'cpp', 'java', 'bash'];
 
