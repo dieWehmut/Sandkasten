@@ -24,8 +24,8 @@ sandboxed API.
   the local toolchains installed on the machine.
 - Keep the existing browser behaviour, tests, and the four-file distribution
   contract intact.
-- Keep the surface plain and green by default: the accent scheme is
-  deterministic (`green`) on a first visit, and the shell never grows the
+- Keep the surface plain and pink by default: the accent scheme is
+  deterministic (`pink`) on a first visit, and the shell never grows the
   document, so every region stays reachable with the wheel.
 
 ## Non-goals
@@ -176,7 +176,7 @@ user-data directory; `SANDKASTEN_WORKSPACE_ROOT` overrides it for scripted runs.
 - `apps/web/tests/ide.test.ts` covers the store, layout state, explorer tree,
   tabs, the sidebar header and collapse control, the scrolling body, local run,
   backend switching, save/create/delete, and menu commands.
-- `apps/web/tests/colorScheme.test.ts` pins green as the deterministic default
+- `apps/web/tests/colorScheme.test.ts` pins pink as the deterministic default
   and asserts that a first visit stores nothing.
 - `apps/desktop/tests/*.test.mjs` cover the path guard, tree limits, local run
   lifecycle (success, compile failure, timeout, cancel, truncation), IPC
@@ -184,7 +184,7 @@ user-data directory; `SANDKASTEN_WORKSPACE_ROOT` overrides it for scripted runs.
 - `npm run e2e` in `apps/desktop` launches the real app against a temporary
   workspace and asserts the tree, a local Python run, `Ctrl+S` persistence, file
   creation, panel toggling, wheel scrolling in the tree/editor/panel with the
-  document staying bounded, the collapse-button geometry, green accents in both
+  document staying bounded, the collapse-button geometry, the default accents in both
   themes, and the minimum window; it writes light/dark screenshots.
   `SANDKASTEN_E2E_EXECUTABLE` runs the same script against a packaged build.
 - `npm run test:browser` in `apps/web` drives installed Chrome against the built
