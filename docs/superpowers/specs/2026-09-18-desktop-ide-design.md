@@ -31,7 +31,9 @@ sandboxed API.
 ## Non-goals
 
 - No language server, debugging, multi-root workspaces, or extensions.
-- No terminals, package installation, or network access from local runs.
+- No package installation UI or network access from local runs. Interactive
+  terminals were added by the follow-up desktop refinement design and use the
+  user's normal local shell permissions.
 - No sandboxing of *local* runs: that backend executes workspace files with the
   user's own toolchain, and the UI says so. The isolated backend is the
   sandboxed desktop path and needs WSL2.

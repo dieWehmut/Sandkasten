@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { verifyTerminal } from './e2e-terminal.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -70,7 +71,10 @@ try {
   await page.waitForSelector('[data-testid="workbench-shell"]');
   await page.click('[data-testid="open-setup-guide"]');
   await verifyGuideScroll('reopened desktop');
+  await resize(1000, 720);
+  await verifyGuideScroll('reopened compact');
   await page.click('[data-testid="setup-dismiss"]');
+  await resize(1440, 900);
   await page.waitForSelector('[data-testid="ide-backend-select"]');
   await page.selectOption('[data-testid="ide-backend-select"]', 'api');
   await page.waitForSelector('.connection-status[data-state="unavailable"]');
@@ -80,6 +84,31 @@ try {
   await page.keyboard.press('Escape');
   report.connectionFailureHasNoBanner = true;
   report.endpointSettingsReachable = true;
+
+  while (await page.locator('.ide-tab__close').count()) await page.locator('.ide-tab__close').first().click();
+  await page.waitForSelector('[data-testid="editor-welcome"]');
+  assert.equal(await page.locator('[data-testid="editor-tabs"]').count(), 0);
+  assert.equal(await page.locator('[data-testid="ide-backend-select"]').count(), 0);
+  await page.click('[data-action="ide-collapse-sidebar"]');
+  await page.click('[data-action="welcome-new-file"]');
+  await page.waitForSelector('[data-testid="ide-new-file-form"]');
+  await page.locator('[data-testid="ide-new-file-form"] input').fill('welcome.py');
+  await page.click('[data-action="ide-create-file"]');
+  await page.waitForSelector('[data-action="ide-tab-welcome.py"]');
+  await page.click('[data-action="ide-close-welcome.py"]');
+  await page.waitForSelector('[data-testid="editor-welcome"]');
+  await page.click('[data-action="welcome-open-setup"]');
+  await page.waitForSelector('[data-testid="setup-welcome"]');
+  await page.click('[data-testid="setup-dismiss"]');
+  for (const theme of ['light', 'dark']) {
+    if (await page.getAttribute('html', 'data-theme') !== theme) {
+      await page.click('[data-action="toggle-theme"]');
+      await page.waitForFunction((value) => document.documentElement.dataset.theme === value, theme);
+    }
+    await page.screenshot({ path: path.join(outputRoot, `desktop-welcome-${theme}.png`) });
+  }
+  report.welcome = { createFile: true, restoreAfterLastTab: true, setupAction: true };
+  report.terminal = await verifyTerminal({ page, app, outputRoot });
   assert.deepEqual(report.errors, [], 'the renderer must not raise uncaught errors');
 } catch (error) {
   report.failure = error.stack ?? String(error);

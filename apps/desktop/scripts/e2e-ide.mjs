@@ -417,6 +417,7 @@ async function main() {
     // contract so a broken layout or tray behavior makes the command fail.
     assert.equal(checks.bridgeExposed, true);
     assert.equal(checks.localRunOutput, 'E2E-LOCAL-RUN-OK');
+    assert.equal(checks.savedRemotely, true);
     assert.equal(checks.createdOnDisk, true);
     assert.equal(checks.panelHidden, true);
     assert.equal(checks.sidebarHiddenByButton, true);
