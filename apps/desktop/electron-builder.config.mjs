@@ -17,6 +17,10 @@ process.env.ELECTRON_BUILDER_7Z_FILTER ??= NSIS_ARCHIVE_FILTER;
 export default {
   appId: 'tech.diesw.sandkasten',
   productName: 'Sandkasten',
+  // node-pty 1.1 ships N-API prebuilds for both Windows targets. Rebuilding on
+  // the host would discard these and make cross-architecture packages fragile.
+  npmRebuild: process.platform !== 'win32',
+  asarUnpack: ['node_modules/node-pty/**/*', 'src/terminal-worker.mjs'],
   directories: {
     output: path.join(repositoryRoot, 'tmp', 'desktop-dist'),
     buildResources: path.join(appRoot, 'build'),
