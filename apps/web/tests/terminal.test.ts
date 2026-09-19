@@ -26,6 +26,7 @@ function fakeBridge() {
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++count}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'initial prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
+    setFocused: vi.fn(async (_focused: boolean) => {}),
     onData: vi.fn((handler) => { data = handler; return offData; }),
     onExit: vi.fn((handler) => { exit = handler; return offExit; }),
   } satisfies TerminalBridge;

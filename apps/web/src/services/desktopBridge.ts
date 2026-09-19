@@ -109,6 +109,8 @@ export interface TerminalBridge {
   write(request: { id: string; data: string }): Promise<void>;
   resize(request: { id: string; cols: number; rows: number }): Promise<void>;
   close(id: string): Promise<void>;
+  /** Give shell control keys to xterm while its input owns keyboard focus. */
+  setFocused(focused: boolean): Promise<void>;
   onData(handler: (event: { id: string; data: string }) => void): () => void;
   onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
 }

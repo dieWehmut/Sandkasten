@@ -28,6 +28,7 @@ function installDesktop() {
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
+    setFocused: vi.fn(async (_focused: boolean) => {}),
     onData: vi.fn((handler) => { data = handler; return vi.fn(); }), onExit: vi.fn(() => vi.fn()),
   } satisfies TerminalBridge;
   const bridge: DesktopBridge = {
@@ -112,5 +113,22 @@ describe('desktop terminal panel', () => {
     expect(bridge.close.mock.calls).toEqual([['s1'], ['s2']]);
     expect(bridge.onData.mock.results[0].value).toHaveBeenCalledOnce();
     expect(bridge.onExit.mock.results[0].value).toHaveBeenCalledOnce();
+  });
+
+  test('suppresses native menu shortcuts only while a terminal owns keyboard focus', async () => {
+    const bridge = installDesktop(); const app = await mountApp();
+    menu('terminal.new'); await flushPromises();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(true);
+    menu('view.togglePanel'); await flushPromises();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(false);
+    menu('terminal.toggle'); await flushPromises();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(true);
+    menu('view.toggleSetup'); await flushPromises();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(false);
+    await app.get('[data-testid="setup-dismiss"]').trigger('click'); await flushPromises();
+    (app.get('.xterm-helper-textarea').element as HTMLElement).focus();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(true);
+    (app.get('[data-action="select-output-output"]').element as HTMLElement).focus();
+    expect(bridge.setFocused).toHaveBeenLastCalledWith(false);
   });
 });

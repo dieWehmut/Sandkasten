@@ -291,6 +291,14 @@ function toggleTerminal(): void {
   else void openTerminal();
 }
 
+function syncTerminalFocus(event?: FocusEvent): void {
+  const target = event?.type === 'focusout' ? event.relatedTarget : (event?.target ?? document.activeElement);
+  terminal?.setFocused(Boolean(
+    !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
+    && target instanceof Element && target.closest('.terminal-pane'),
+  ));
+}
+
 const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'workspace.open': openFolder,
   'file.new': requestNewFile,
@@ -355,11 +363,14 @@ watch(language, (value) => { if (value) runner.setLanguage(value); });
 watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
 watch([theme.theme, colorScheme.colorScheme], () => { void nextTick(() => terminal?.syncTheme()); });
+if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen], () => syncTerminalFocus(), { flush: 'post' });
 
 onMounted(() => {
   void terminal?.loadProfiles();
   if (!setupWelcome.isGuideOpen.value) loadRunnerOnce();
   window.addEventListener('keydown', onKeydown);
+  window.addEventListener('focusin', syncTerminalFocus);
+  window.addEventListener('focusout', syncTerminalFocus);
   bridge?.onMenuCommand?.((command) => MENU_COMMANDS[command]?.());
   void (async () => {
     await workspace.initialize();
@@ -372,6 +383,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   void terminal?.dispose();
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('focusin', syncTerminalFocus);
+  window.removeEventListener('focusout', syncTerminalFocus);
   theme.dispose();
   layout.dispose();
 });

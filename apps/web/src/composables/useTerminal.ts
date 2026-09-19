@@ -24,6 +24,7 @@ export function useTerminal(bridge: TerminalBridge) {
   const error = ref('');
   const views = new Map<string, SessionView>();
   let disposed = false;
+  let focused = false;
 
   const offData = bridge.onData(({ id, data }) => { views.get(id)?.terminal.write(data); });
   const offExit = bridge.onExit(({ id, exitCode }) => {
@@ -34,6 +35,12 @@ export function useTerminal(bridge: TerminalBridge) {
 
   function report(cause: unknown): void {
     if (!disposed) error.value = cause instanceof Error ? cause.message : String(cause);
+  }
+
+  function setFocused(next: boolean): void {
+    if (disposed || focused === next) return;
+    focused = next;
+    void bridge.setFocused(next).catch(report);
   }
 
   function terminalTheme(): ITheme {
@@ -59,6 +66,7 @@ export function useTerminal(bridge: TerminalBridge) {
 
   function removeView(id: string): void {
     const view = views.get(id);
+    if (view?.host.contains(document.activeElement)) setFocused(false);
     view?.subscriptions.forEach((subscription) => subscription.dispose());
     view?.terminal.dispose();
     view?.host.remove();
@@ -150,7 +158,11 @@ export function useTerminal(bridge: TerminalBridge) {
     if (activeId.value === id && shown.value) view.terminal.focus();
   }
 
-  function unmount(id: string): void { views.get(id)?.host.remove(); }
+  function unmount(id: string): void {
+    const view = views.get(id);
+    if (view?.host.contains(document.activeElement)) setFocused(false);
+    view?.host.remove();
+  }
 
   async function close(id = activeId.value): Promise<void> {
     if (!views.has(id)) return;
@@ -163,13 +175,13 @@ export function useTerminal(bridge: TerminalBridge) {
     offData(); offExit();
     const ids = [...views.keys()];
     ids.forEach(removeView);
-    await Promise.allSettled(ids.map((id) => bridge.close(id)));
+    await Promise.allSettled([bridge.setFocused(false), ...ids.map((id) => bridge.close(id))]);
   }
 
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
-    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose,
+    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
   };
