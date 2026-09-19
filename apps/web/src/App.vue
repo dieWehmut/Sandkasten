@@ -270,6 +270,11 @@ function requestNewFile(): void {
   creatingFile.value = true;
 }
 
+function setCreatingFile(value: boolean): void {
+  if (value) requestNewFile();
+  else creatingFile.value = false;
+}
+
 const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'workspace.open': openFolder,
   'file.new': requestNewFile,
@@ -403,6 +408,7 @@ onBeforeUnmount(() => {
       :tree="workspace.tree.value"
       :workspace-root="workspace.root.value"
       :workspace-kind="workspace.store.kind"
+      :platform="bridge?.platform"
       :workspace-busy="workspace.status.value === 'loading'"
       :workspace-error="workspace.error.value"
       :creating-file="creatingFile"
@@ -437,7 +443,7 @@ onBeforeUnmount(() => {
       @close-file="closeFile"
       @reveal-file="revealInExplorer"
       @create-file="createFile"
-      @update:creating-file="creatingFile = $event"
+      @update:creating-file="setCreatingFile"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"
