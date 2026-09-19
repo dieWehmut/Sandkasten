@@ -4,6 +4,7 @@
 // with the local toolchain, and captures screenshots. Playwright's Electron
 // driver lives in the web app because it is already a WebUI dev dependency.
 import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -40,7 +41,9 @@ async function main() {
   const driver = await loadElectronDriver();
   const electronExecutable = (await import('electron')).default;
 
-  const workspace = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-e2e-'));
+  const testRoot = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-e2e-'));
+  const workspace = path.join(testRoot, 'workspace');
+  await mkdir(workspace);
   await mkdir(path.join(workspace, 'pkg'), { recursive: true });
   await mkdir(path.join(workspace, 'many'), { recursive: true });
   await writeFile(path.join(workspace, 'hello.py'), 'print("E2E-LOCAL-RUN-OK")\n');
@@ -64,9 +67,10 @@ async function main() {
   await mkdir(path.join(outputRoot), { recursive: true });
 
   const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
+  const profileArgument = `--user-data-dir=${path.join(testRoot, 'profile')}`;
   const app = packagedExecutable
-    ? await driver.launch({ executablePath: packagedExecutable, args: [], env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } })
-    : await driver.launch({ executablePath: electronExecutable, args: ['.'], cwd: appRoot, env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } });
+    ? await driver.launch({ executablePath: packagedExecutable, args: [profileArgument], env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } })
+    : await driver.launch({ executablePath: electronExecutable, args: ['.', profileArgument], cwd: appRoot, env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } });
 
   const checks = { workspace, python: true, mode: packagedExecutable ? 'packaged' : 'development' };
   let failure;
@@ -409,11 +413,42 @@ async function main() {
 
     const errors = await page.evaluate(() => window.__sandkastenErrors ?? []);
     checks.rendererErrors = errors;
+    // A report alone is not a release gate: enforce each externally visible
+    // contract so a broken layout or tray behavior makes the command fail.
+    assert.equal(checks.bridgeExposed, true);
+    assert.equal(checks.localRunOutput, 'E2E-LOCAL-RUN-OK');
+    assert.equal(checks.createdOnDisk, true);
+    assert.equal(checks.panelHidden, true);
+    assert.equal(checks.sidebarHiddenByButton, true);
+    assert.equal(checks.collapseButton?.insideHeader, true);
+    assert.equal(checks.collapseButton?.lastControl, true);
+    assert.ok(checks.collapseButton?.rightGap <= 12);
+    assert.ok(checks.treeScrollable && checks.treeScrollTop > 0, 'workspace tree must scroll');
+    assert.ok(checks.editorScrollable && checks.editorScrollTop > 0, 'editor must scroll');
+    assert.ok(checks.panelScrollable && checks.panelScrollTop > 0, 'output panel must scroll');
+    assert.equal(checks.documentScrollY, 0);
+    assert.equal(checks.minimap?.present, true);
+    assert.equal(checks.minimap?.painted, true);
+    assert.equal(checks.minimumWindow?.statusVisible, true);
+    assert.equal(checks.minimumWindow?.documentBounded, true);
+    assert.equal(checks.colorScheme, 'pink');
+    assert.equal(checks.storedColorScheme, null);
+    assert.equal(checks.titleRow?.headerIntegrated, true);
+    assert.equal(checks.titleRow?.headerHeight, 40);
+    assert.equal(checks.titleRow?.dragRegion, 'drag');
+    assert.equal(checks.titleRow?.menus.length, 5);
+    assert.equal(checks.titleRowMenu?.expanded, true);
+    assert.equal(checks.titleRowMenu?.dismissed, true);
+    assert.deepEqual(checks.closeToTray, { windowCount: 1, visible: false, destroyed: false });
+    assert.equal(checks.layout?.noPageScroll, true);
+    assert.equal(checks.layout?.fullHeight, true);
+    assert.deepEqual(checks.rendererErrors, []);
+    assert.ok(!checks.consoleMessages.some((message) => message.startsWith('pageerror:')), 'renderer must not raise uncaught errors');
   } catch (error) {
     failure = error;
   } finally {
     await app.close().catch(() => {});
-    await rm(workspace, { recursive: true, force: true }).catch(() => {});
+    await rm(testRoot, { recursive: true, force: true }).catch(() => {});
   }
 
   process.stdout.write(`${JSON.stringify(checks, null, 2)}\n`);
