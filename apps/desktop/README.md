@@ -43,7 +43,7 @@ The desktop build adds four things the browser cannot do:
 6. **A tray that owns the exit.** Closing the window hides it instead of
    ending the app, so a running job keeps going. The tray's left click
    restores and focuses the window, its right click opens a small settings
-   menu (setup guide, API endpoint, theme), and only its quit entry exits.
+   menu (setup guide, API endpoint), and only its quit entry exits.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.

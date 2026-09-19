@@ -181,7 +181,7 @@ Closing the window hides it into the taskbar tray instead of ending the app,
 so a running job keeps going. `tray.mjs` builds the tray from the shared brand
 mark and owns the only real exit: a left click restores and focuses the
 window, a right click opens a small localized settings menu (setup guide, API
-endpoint, theme), and its quit entry calls `app.quit()`. `before-quit` marks
+endpoint), and its quit entry calls `app.quit()`. `before-quit` marks
 the app as quitting so the close handler stops hiding the window, which keeps
 the packaged smoke run and the OS shutdown sequence working.
 

@@ -9,7 +9,6 @@ const LABELS = {
     settings: 'Settings',
     setup: 'Setup Guide',
     apiEndpoint: 'API Endpoint',
-    toggleTheme: 'Toggle Theme',
     quit: 'Quit Sandkasten',
   },
   'zh-CN': {
@@ -18,7 +17,6 @@ const LABELS = {
     settings: '设置',
     setup: '安装指南',
     apiEndpoint: 'API 地址',
-    toggleTheme: '切换主题',
     quit: '退出 Sandkasten',
   },
 };
@@ -26,7 +24,6 @@ const LABELS = {
 export const TRAY_COMMANDS = {
   setup: 'view.toggleSetup',
   apiEndpoint: 'apiEndpoint.open',
-  toggleTheme: 'theme.toggle',
 };
 
 function labelsFor(locale) {
@@ -66,8 +63,6 @@ export function trayMenuTemplate({ locale = 'en', showWindow, sendCommand, quit 
       submenu: [
         { label: labels.setup, click: command(TRAY_COMMANDS.setup) },
         { label: labels.apiEndpoint, click: command(TRAY_COMMANDS.apiEndpoint) },
-        { type: 'separator' },
-        { label: labels.toggleTheme, click: command(TRAY_COMMANDS.toggleTheme) },
       ],
     },
     { type: 'separator' },
