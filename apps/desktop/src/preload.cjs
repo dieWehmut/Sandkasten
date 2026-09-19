@@ -20,8 +20,24 @@ const CHANNELS = {
   isolatedStop: 'sandkasten:isolated:stop',
   chromeSetTheme: 'sandkasten:chrome:set-theme',
   chromeShowMenu: 'sandkasten:chrome:show-menu',
+  terminalProfiles: 'sandkasten:terminal:profiles',
+  terminalCreate: 'sandkasten:terminal:create',
+  terminalAttach: 'sandkasten:terminal:attach',
+  terminalWrite: 'sandkasten:terminal:write',
+  terminalResize: 'sandkasten:terminal:resize',
+  terminalClose: 'sandkasten:terminal:close',
+  terminalSetFocused: 'sandkasten:terminal:set-focused',
+  terminalData: 'sandkasten:terminal:data',
+  terminalExit: 'sandkasten:terminal:exit',
   menu: 'sandkasten:menu',
 };
+
+function subscribe(channel, handler) {
+  if (typeof handler !== 'function') throw new TypeError('A terminal event handler is required.');
+  const listener = (_event, payload) => handler(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
 
 // The renderer stays sandboxed: it only sees this narrow, promise-based bridge.
 contextBridge.exposeInMainWorld('sandkastenDesktop', {
@@ -34,6 +50,17 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     integrated: true,
     setTheme: (theme) => ipcRenderer.invoke(CHANNELS.chromeSetTheme, theme),
     showMenu: (request) => ipcRenderer.invoke(CHANNELS.chromeShowMenu, request),
+  },
+  terminal: {
+    profiles: () => ipcRenderer.invoke(CHANNELS.terminalProfiles),
+    create: (request) => ipcRenderer.invoke(CHANNELS.terminalCreate, request),
+    attach: (id) => ipcRenderer.invoke(CHANNELS.terminalAttach, id),
+    write: (request) => ipcRenderer.invoke(CHANNELS.terminalWrite, request),
+    resize: (request) => ipcRenderer.invoke(CHANNELS.terminalResize, request),
+    close: (id) => ipcRenderer.invoke(CHANNELS.terminalClose, id),
+    setFocused: (focused) => ipcRenderer.invoke(CHANNELS.terminalSetFocused, focused),
+    onData: (handler) => subscribe(CHANNELS.terminalData, handler),
+    onExit: (handler) => subscribe(CHANNELS.terminalExit, handler),
   },
   workspace: {
     openFolder: () => ipcRenderer.invoke(CHANNELS.workspaceOpenFolder),

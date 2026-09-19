@@ -91,10 +91,10 @@ test('the right click menu offers localized settings and never quits on its own'
   assert.equal(shown, 1);
   const settings = template[1].submenu;
   assert.deepEqual(settings.map((entry) => entry.label), [
-    'Setup Guide', 'API Endpoint', undefined, 'Toggle Theme',
+    'Setup Guide', 'API Endpoint',
   ]);
   for (const entry of settings.filter((item) => item.click)) entry.click();
-  assert.deepEqual(commands, ['view.toggleSetup', 'apiEndpoint.open', 'theme.toggle']);
+  assert.deepEqual(commands, ['view.toggleSetup', 'apiEndpoint.open']);
   assert.deepEqual(quits, [], 'only the explicit quit entry may exit');
   template.at(-1).click();
   assert.deepEqual(quits, [true]);
@@ -109,7 +109,7 @@ test('Chinese tray menus are localized', () => {
   });
   assert.deepEqual(template.map((entry) => entry.label), ['打开 Sandkasten', '设置', undefined, '退出 Sandkasten']);
   assert.deepEqual(template[1].submenu.filter((entry) => entry.click).map((entry) => entry.label), [
-    '安装指南', 'API 地址', '切换主题',
+    '安装指南', 'API 地址',
   ]);
 });
 

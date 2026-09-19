@@ -272,28 +272,6 @@
   background: var(--scheme-swatch);
 }
 
-.connection-error {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--danger);
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.connection-error span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.connection-error button {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-}
-
 .workbench-shell {
   display: grid;
   min-width: 0;
@@ -663,10 +641,6 @@
 
   .color-scheme-switcher__menu {
     min-width: 132px;
-  }
-
-  .connection-error {
-    align-items: flex-start;
   }
 
   .workbench-shell {

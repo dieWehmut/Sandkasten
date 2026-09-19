@@ -29,3 +29,9 @@ test('bundles the web distribution next to the packaged app', () => {
   assert.equal(config.extraResources[1].to, 'icon.png');
   assert.match(config.extraResources[1].from, /apps[\\/]desktop[\\/]build[\\/]icon\.png$/);
 });
+
+test('native PTY modules and helper executables remain outside asar', () => {
+  assert.ok(config.asarUnpack.includes('node_modules/node-pty/**/*'));
+  assert.ok(config.asarUnpack.includes('src/terminal-worker.mjs'), 'native Workers must start from a real unpacked path');
+  if (process.platform === 'win32') assert.equal(config.npmRebuild, false, 'use shipped N-API x64 and ARM64 binaries instead of rebuilding for the host');
+});

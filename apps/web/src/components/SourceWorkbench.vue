@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { OutputTab } from '../composables/useRunner';
+import type { TerminalController } from '../composables/useTerminal';
 import type { ExecutionPhase } from '../composables/execution';
 import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import JobTimeline from './JobTimeline.vue';
@@ -21,6 +22,8 @@ defineProps<{
   canRun: boolean;
   canResume?: boolean;
   disabled?: boolean;
+  terminal?: TerminalController;
+  panelVisible?: boolean;
 }>();
 const emit = defineEmits<{
   'update:language': [language: string];
@@ -50,8 +53,8 @@ const t = useTranslation();
       <SourceEditor :model-value="source" :language="language" :disabled="disabled" :label="t('workbench.programSource')" @update:model-value="emit('update:source', $event)" />
     </section>
     <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
-    <section class="output-region" :aria-label="t('workbench.resultOutput')">
-      <OutputTabs :result="result" :error="error" :model-value="activeOutputTab" @update:model-value="emit('update:activeOutputTab', $event)" />
+    <section v-if="panelVisible !== false" class="output-region" :aria-label="t('workbench.resultOutput')">
+      <OutputTabs :terminal="terminal" :result="result" :error="error" :model-value="activeOutputTab" @update:model-value="emit('update:activeOutputTab', $event)" />
     </section>
   </main>
 </template>

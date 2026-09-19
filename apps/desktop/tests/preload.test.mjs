@@ -45,9 +45,38 @@ test('every desktop module the main process imports exists', () => {
   const imports = Array.from(main.matchAll(/from '\.\/([\w.-]+)'/g), (match) => match[1]);
   assert.deepEqual(
     imports.slice().sort(),
-    ['config-override.mjs', 'distribution.mjs', 'ipc.mjs', 'isolated-runner.mjs', 'local-runner.mjs', 'menu.mjs', 'navigation.mjs', 'tray.mjs', 'workspace.mjs'],
+    ['config-override.mjs', 'distribution.mjs', 'ipc.mjs', 'isolated-runner.mjs', 'local-runner.mjs', 'menu.mjs', 'navigation.mjs', 'terminal-ipc.mjs', 'terminal-profiles.mjs', 'terminal-pty.mjs', 'terminal.mjs', 'tray.mjs', 'workspace.mjs'],
   );
   for (const name of imports) assert.ok(read(name).length > 0, `${name} must not be empty`);
+});
+
+test('terminal bridge supports attach and removable subscriptions without exposing Electron events', async () => {
+  let bridge;
+  const calls = [];
+  const listeners = new Map();
+  runInNewContext(read('preload.cjs'), {
+    process: { platform: 'win32', versions: {} },
+    require: () => ({
+      contextBridge: { exposeInMainWorld: (_key, value) => { bridge = value; } },
+      ipcRenderer: {
+        invoke: async (...args) => calls.push(args),
+        on: (channel, listener) => listeners.set(channel, listener),
+        removeListener: (channel, listener) => { if (listeners.get(channel) === listener) listeners.delete(channel); },
+      },
+    }),
+  });
+  assert.ok(bridge.terminal, 'desktop must expose the terminal capability');
+  await bridge.terminal.attach('id-1');
+  assert.deepEqual(calls, [[IPC_CHANNELS.terminalAttach, 'id-1']]);
+  const received = [];
+  const unsubscribeData = bridge.terminal.onData((...args) => received.push(args));
+  const unsubscribeExit = bridge.terminal.onExit((...args) => received.push(args));
+  listeners.get(IPC_CHANNELS.terminalData)({ secret: 'ipc event' }, { id: 'id-1', data: 'prompt' });
+  listeners.get(IPC_CHANNELS.terminalExit)({ secret: 'ipc event' }, { id: 'id-1', exitCode: 0 });
+  assert.deepEqual(received, [[{ id: 'id-1', data: 'prompt' }], [{ id: 'id-1', exitCode: 0 }]]);
+  unsubscribeData();
+  unsubscribeExit();
+  assert.equal(listeners.size, 0);
 });
 
 test('the sandbox exposes only narrow promise-based window chrome operations', async () => {

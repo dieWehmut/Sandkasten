@@ -26,6 +26,38 @@ beforeEach(() => {
 });
 
 describe('App setup and locale integration', () => {
+  test('keeps connection settings available without a standalone runtime failure banner', async () => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
+    api.loadRuntimes.mockRejectedValue(new Error('Failed to fetch'));
+    const wrapper = mount(App);
+    try {
+      await flushPromises();
+      expect(wrapper.find('.connection-error').exists()).toBe(false);
+      expect(wrapper.find('.connection-status[data-state="unavailable"]').exists()).toBe(true);
+      await wrapper.get('[data-action="open-api-endpoint"]').trigger('click');
+      expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  test('releases the desktop viewport lock for first-visit and reopened setup', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    const wrapper = mount(App);
+    try {
+      expect(wrapper.get('[data-testid="app-shell"]').classes()).not.toContain('workbench-app--ide');
+      await wrapper.get('[data-testid="setup-dismiss"]').trigger('click');
+      await flushPromises();
+      expect(wrapper.get('[data-testid="app-shell"]').classes()).toContain('workbench-app--ide');
+      await wrapper.get('[data-testid="open-setup-guide"]').trigger('click');
+      expect(wrapper.get('[data-testid="app-shell"]').classes()).not.toContain('workbench-app--ide');
+    } finally {
+      wrapper.unmount();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
+  });
+
   test('shows setup before loading runtimes, then persists dismissal and enters the workbench', async () => {
     const wrapper = mount(App);
 

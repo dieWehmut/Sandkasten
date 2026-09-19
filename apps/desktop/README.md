@@ -16,7 +16,7 @@ The window icon, the packaged executable, and every shortcut use one brand
 mark, generated from the source artwork into `build/icon.ico` (multi-size)
 and `build/icon.png` (512 px, also staged into the packaged resources).
 
-The desktop build adds four things the browser cannot do:
+The desktop build adds these things the browser cannot do:
 
 1. **A real workspace folder.** `File > Open Folder…` (or the explorer button)
    picks a directory with the native dialog; files are listed, opened, edited,
@@ -43,7 +43,14 @@ The desktop build adds four things the browser cannot do:
 6. **A tray that owns the exit.** Closing the window hides it instead of
    ending the app, so a running job keeps going. The tray's left click
    restores and focuses the window, its right click opens a small settings
-   menu (setup guide, API endpoint, theme), and only its quit entry exits.
+   menu (setup guide, API endpoint), and only its quit entry exits.
+7. **A real interactive terminal.** The bottom panel gains a Terminal tab
+   beside Output, Errors, Compile, and Diagnostics. It lists the installed
+   shells (PowerShell, cmd, Git Bash, and WSL when present), starts sessions
+   with xterm.js over a real PTY in the main process, and supports new
+   sessions, switching, split panes, close, resize, and Ctrl+C. Hiding the
+   panel, switching tabs, or visiting setup keeps the shell, its buffer, and
+   its working directory alive; quitting the app disposes them.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
@@ -111,14 +118,18 @@ directory and exits instead of starting an empty window.
   browser; `file:` paths outside the distribution and other schemes are
   rejected outright.
 - `<webview>` attachment is disabled.
+- Terminal access requires the trusted bundled top-level frame; the renderer
+  picks discovered profile ids and never executable paths, requests are
+  validated and bounded, and each session belongs to its creating window.
 
 ## Test and package
 
 ```sh
 cd apps/desktop
-npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, window policy
+npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, terminal host, window policy
 npm run smoke       # headless Electron launch against apps/web/dist
 npm run e2e         # drives the real app: open folder, edit, save, run, screenshots
+npm run e2e:refinement  # setup scrolling, welcome actions, and the real terminal
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
 npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
@@ -131,9 +142,21 @@ and both themes; it writes `tmp/desktop-ide-light.png` and
 to run the same checks against a packaged build. It needs Python on `PATH` and
 reuses the `playwright-core` already installed in `apps/web/node_modules`.
 
+`npm run e2e:refinement` additionally wheel-scrolls the setup guide at desktop
+and compact sizes, drives the empty-editor welcome actions, and exercises a real
+Command Prompt session: state and directory retention across panel and setup
+changes, a split shell, an actual resize reaching the PTY, Ctrl+C on a running
+program, session close, and the rejection of a closed session. The same command
+runs against the packaged executable through `SANDKASTEN_E2E_EXECUTABLE`.
+
 `package:dir` produces an unsigned unpacked build. The bundled WebUI is copied
 into `resources/web-dist`, which the main process resolves through
 `process.resourcesPath` when the app is packaged.
+
+`node-pty` is the only desktop runtime dependency. Its shipped N-API prebuilds
+for Windows x64 and arm64 are kept as-is (`npmRebuild` stays off on Windows)
+and unpacked beside the asar together with `src/terminal-worker.mjs`, because a
+native Worker cannot start from inside an archive.
 
 ## Windows installer
 

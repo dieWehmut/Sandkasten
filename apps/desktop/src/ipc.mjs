@@ -30,6 +30,15 @@ export const IPC_CHANNELS = {
   isolatedStop: 'sandkasten:isolated:stop',
   chromeSetTheme: 'sandkasten:chrome:set-theme',
   chromeShowMenu: 'sandkasten:chrome:show-menu',
+  terminalProfiles: 'sandkasten:terminal:profiles',
+  terminalCreate: 'sandkasten:terminal:create',
+  terminalAttach: 'sandkasten:terminal:attach',
+  terminalWrite: 'sandkasten:terminal:write',
+  terminalResize: 'sandkasten:terminal:resize',
+  terminalClose: 'sandkasten:terminal:close',
+  terminalSetFocused: 'sandkasten:terminal:set-focused',
+  terminalData: 'sandkasten:terminal:data',
+  terminalExit: 'sandkasten:terminal:exit',
   menu: 'sandkasten:menu',
 };
 
