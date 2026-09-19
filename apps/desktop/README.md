@@ -10,7 +10,7 @@ The window is bounded to the viewport: the file tree, the editor, and the output
 panel scroll inside their own panes with the mouse wheel, while the activity bar
 and the status bar stay pinned and the document never grows. The sidebar header
 carries the view actions and a collapse control at its top-right corner, next to
-`Ctrl+B`. The accent scheme is green unless the user picks another one.
+`Ctrl+B`. The accent scheme matches the browser build.
 
 The window icon, the packaged executable, and every shortcut use one brand
 mark, generated from the source artwork into `build/icon.ico` (multi-size)
@@ -40,6 +40,10 @@ The desktop build adds four things the browser cannot do:
    the real native popup below its button in the active locale, and the
    caption buttons follow the light/dark theme. macOS keeps its traffic
    lights and system menu.
+6. **A tray that owns the exit.** Closing the window hides it instead of
+   ending the app, so a running job keeps going. The tray's left click
+   restores and focuses the window, its right click opens a small settings
+   menu (setup guide, API endpoint, theme), and only its quit entry exits.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
@@ -112,7 +116,7 @@ directory and exits instead of starting an empty window.
 
 ```sh
 cd apps/desktop
-npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, title row, window policy
+npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, window policy
 npm run smoke       # headless Electron launch against apps/web/dist
 npm run e2e         # drives the real app: open folder, edit, save, run, screenshots
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
