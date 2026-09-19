@@ -346,7 +346,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="workbench-app"
-    :class="{ 'workbench-app--ide': layout.isDesktop.value, 'workbench-app--integrated': Boolean(bridge?.windowChrome?.integrated) }"
+    :class="{ 'workbench-app--ide': layout.isDesktop.value && !setupWelcome.isGuideOpen.value, 'workbench-app--integrated': Boolean(bridge?.windowChrome?.integrated) }"
     data-testid="app-shell"
   >
     <AppHeader
