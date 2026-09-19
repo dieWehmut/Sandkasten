@@ -12,6 +12,7 @@ import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../services/desktopBridge';
 import type { LayoutMode } from '../composables/useMediaLayout';
 import EdgeSheet from './EdgeSheet.vue';
+import EditorWelcome from './EditorWelcome.vue';
 import InspectorPanel from './InspectorPanel.vue';
 import JobTimeline from './JobTimeline.vue';
 import OutputTabs from './OutputTabs.vue';
@@ -53,6 +54,7 @@ const props = withDefaults(defineProps<{
   tree?: WorkspaceTreeNode[];
   workspaceRoot?: WorkspaceRoot;
   workspaceKind?: 'memory' | 'desktop';
+  platform?: string;
   workspaceBusy?: boolean;
   workspaceError?: string;
   creatingFile?: boolean;
@@ -198,13 +200,15 @@ const styles = computed(() => (isIde.value
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />
       </aside>
       <section class="ide-main" :aria-label="t('workbench.source')">
-        <EditorTabs :files="files" :active-path="activePath" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
+        <EditorTabs v-if="files.length" :files="files" :active-path="activePath" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
         <IdeBreadcrumbs
+          v-if="files.length"
           :file-path="activePath"
           :root-path="workspaceRoot?.path"
           @reveal="emit('revealFile', $event)"
         />
         <IdeEditorToolbar
+          v-if="files.length"
           :runtimes="runtimes"
           :language="language"
           :backend="backend"
@@ -222,7 +226,7 @@ const styles = computed(() => (isIde.value
           @resume="emit('resume')"
         />
         <div class="ide-body">
-          <section class="ide-editor" :aria-label="t('workbench.editor')">
+          <section class="ide-editor" :class="{ 'ide-editor--welcome': !files.length }" :aria-label="t('workbench.editor')">
             <SourceEditor
               v-if="files.length"
               :model-value="source"
@@ -232,7 +236,14 @@ const styles = computed(() => (isIde.value
               @update:model-value="emit('update:source', $event)"
               @update:cursor="emit('update:cursor', $event)"
             />
-            <p v-else class="empty-state ide-editor__empty">{{ t('ide.editor.empty') }}</p>
+            <EditorWelcome
+              v-else
+              :desktop="workspaceKind === 'desktop'"
+              :platform="platform"
+              @new-file="emit('update:creatingFile', true)"
+              @open-folder="emit('openFolder')"
+              @open-setup="emit('openSetup')"
+            />
           </section>
           <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
           <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">

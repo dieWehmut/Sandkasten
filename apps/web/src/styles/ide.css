@@ -509,9 +509,8 @@
   border-radius: 0;
 }
 
-.ide-editor__empty {
-  padding: 18px 14px;
-  font-size: 13px;
+.ide-editor--welcome {
+  min-height: 22rem;
 }
 
 .ide-panel {
