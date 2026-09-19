@@ -21,5 +21,8 @@
   "devDependencies": {
     "electron": "38.8.6",
     "electron-builder": "26.15.3"
+  },
+  "dependencies": {
+    "node-pty": "1.1.0"
   }
 }
