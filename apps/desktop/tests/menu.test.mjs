@@ -13,7 +13,7 @@ test('the application menu forwards stable command ids', () => {
   const sent = [];
   const template = buildMenuTemplate({ send: (command) => sent.push(command), platform: 'win32' });
 
-  assert.deepEqual(template.map((entry) => entry.label), ['File', 'Run', 'View', 'Help']);
+  assert.deepEqual(template.map((entry) => entry.label), ['File', 'Edit', 'Run', 'View', 'Help']);
   assert.equal(template.some((entry) => entry.role === 'appMenu'), false);
 
   const file = menuOf(template, 'File');
@@ -49,4 +49,30 @@ test('macOS keeps the standard application menu in front', () => {
 
 test('a menu template requires a command sender', () => {
   assert.throws(() => buildMenuTemplate({}), /command sender/);
+});
+
+test('each header menu has a stable id and Edit uses native editing roles', () => {
+  const template = buildMenuTemplate({ send: () => {}, platform: 'win32' });
+  assert.deepEqual(template.map((entry) => entry.id), ['file', 'edit', 'run', 'view', 'help']);
+  assert.deepEqual(
+    menuOf(template, 'Edit').filter((entry) => entry.role).map((entry) => entry.role),
+    ['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'],
+  );
+});
+
+test('Chinese menus preserve native roles, accelerators, and renderer commands', () => {
+  const sent = [];
+  const template = buildMenuTemplate({ send: (command) => sent.push(command), platform: 'win32', locale: 'zh-CN' });
+  assert.deepEqual(template.map((entry) => entry.label), ['文件', '编辑', '运行', '视图', '帮助']);
+  const file = template.find((entry) => entry.id === 'file').submenu;
+  assert.equal(file[0].label, '打开文件夹…');
+  assert.equal(file[0].accelerator, 'CmdOrCtrl+O');
+  file[0].click();
+  assert.deepEqual(sent, [MENU_COMMANDS.openWorkspace]);
+  assert.equal(file.at(-1).label, '退出');
+  assert.equal(file.at(-1).role, 'quit');
+  const edit = template.find((entry) => entry.id === 'edit').submenu;
+  assert.equal(edit.find((entry) => entry.role === 'paste').label, '粘贴');
+  const view = template.find((entry) => entry.id === 'view').submenu;
+  assert.equal(view.find((entry) => entry.role === 'togglefullscreen').label, '切换全屏');
 });

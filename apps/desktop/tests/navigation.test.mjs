@@ -33,3 +33,21 @@ test('window options keep isolation, sandboxing, and no Node integration', () =>
   assert.equal(options.webPreferences.webSecurity, true);
   assert.equal(options.show, false);
 });
+
+test('Windows and Linux place native window controls in the integrated header', () => {
+  for (const platform of ['win32', 'linux']) {
+    const options = createWindowOptions({ platform });
+    assert.equal(options.titleBarStyle, 'hidden');
+    assert.equal(options.autoHideMenuBar, true);
+    assert.deepEqual(options.titleBarOverlay, { color: '#f0f5f1', symbolColor: '#1a1c1f', height: 40 });
+    assert.equal(options.backgroundColor, '#f0f5f1');
+    assert.equal(options.frame, undefined, 'keep native resize and window controls');
+  }
+});
+
+test('macOS retains native traffic lights inside the integrated header', () => {
+  const options = createWindowOptions({ platform: 'darwin' });
+  assert.equal(options.titleBarStyle, 'hidden');
+  assert.deepEqual(options.trafficLightPosition, { x: 12, y: 13 });
+  assert.equal(options.titleBarOverlay, undefined, 'macOS uses the native traffic lights');
+});
