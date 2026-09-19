@@ -88,6 +88,31 @@ export interface WindowChromeBridge {
   showMenu(request: WindowMenuRequest): Promise<void>;
 }
 
+export interface TerminalProfile {
+  id: string;
+  label: string;
+  isDefault?: boolean;
+}
+
+export interface TerminalSession {
+  id: string;
+  profileId: string;
+  title: string;
+  cwd: string;
+}
+
+export interface TerminalBridge {
+  profiles(): Promise<TerminalProfile[]>;
+  create(request: { profileId?: string; cols: number; rows: number }): Promise<TerminalSession>;
+  /** Release initial output only once the renderer owns the session buffer. */
+  attach(id: string): Promise<void>;
+  write(request: { id: string; data: string }): Promise<void>;
+  resize(request: { id: string; cols: number; rows: number }): Promise<void>;
+  close(id: string): Promise<void>;
+  onData(handler: (event: { id: string; data: string }) => void): () => void;
+  onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
+}
+
 export interface DesktopBridge {
   platform: string;
   versions: { chrome?: string; electron?: string };
@@ -112,6 +137,7 @@ export interface DesktopBridge {
   };
   onMenuCommand(handler: (command: string) => void): void;
   windowChrome?: WindowChromeBridge;
+  terminal?: TerminalBridge;
 }
 
 export function desktopBridge(): DesktopBridge | undefined {
