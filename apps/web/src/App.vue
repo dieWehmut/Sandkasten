@@ -385,10 +385,6 @@ onBeforeUnmount(() => {
       @change-locale="locale.setLocale"
       @dismiss="dismissSetup"
     />
-    <section v-else-if="runner.connectionState.value === 'unavailable' && backend === 'api'" class="connection-error" role="alert">
-      <span>{{ runner.error.value }}</span>
-      <button type="button" @click="runner.load">{{ locale.t('connection.retry') }}</button>
-    </section>
     <WorkbenchShell
       v-if="!setupWelcome.isGuideOpen.value"
       :history-open="compactHistoryOpen"

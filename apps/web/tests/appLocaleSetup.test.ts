@@ -26,6 +26,21 @@ beforeEach(() => {
 });
 
 describe('App setup and locale integration', () => {
+  test('keeps connection settings available without a standalone runtime failure banner', async () => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
+    api.loadRuntimes.mockRejectedValue(new Error('Failed to fetch'));
+    const wrapper = mount(App);
+    try {
+      await flushPromises();
+      expect(wrapper.find('.connection-error').exists()).toBe(false);
+      expect(wrapper.find('.connection-status[data-state="unavailable"]').exists()).toBe(true);
+      await wrapper.get('[data-action="open-api-endpoint"]').trigger('click');
+      expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   test('releases the desktop viewport lock for first-visit and reopened setup', async () => {
     const previousWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
