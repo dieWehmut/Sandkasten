@@ -212,8 +212,10 @@ the packaged smoke run and the OS shutdown sequence working.
 - `npm run e2e` in `apps/desktop` launches the real app against a temporary
   workspace and asserts the tree, a local Python run, `Ctrl+S` persistence, file
   creation, panel toggling, wheel scrolling in the tree/editor/panel with the
-  document staying bounded, the collapse-button geometry, the default accents in both
-  themes, and the minimum window; it writes light/dark screenshots.
+  document staying bounded, the collapse-button geometry, the 40 px integrated
+  title row with its drag region and native menu popup, close-to-tray so the
+  window hides without ending the app, the default accents in both themes, and
+  the minimum window; it writes light/dark screenshots.
   `SANDKASTEN_E2E_EXECUTABLE` runs the same script against a packaged build.
 - `npm run test:browser` in `apps/web` drives installed Chrome against the built
   distribution at 1440x900, 1024x768, and 390x844, asserting the four primary
