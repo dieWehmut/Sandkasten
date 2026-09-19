@@ -98,6 +98,15 @@ describe('workbench style boundaries', () => {
     }
   });
 
+  test('the integrated title row matches the native overlay and stays draggable except for its controls', () => {
+    const workbench = style('workbench.css');
+    expect(workbench).toMatch(/\.workbench-app--integrated \{\s*--header-height: 40px;\s*\}/);
+    expect(workbench).toMatch(/\.app-header--integrated \{[^}]*-webkit-app-region: drag;/s);
+    expect(workbench).toMatch(/\.app-header--integrated button,[\s\S]*?-webkit-app-region: no-drag;/);
+    expect(workbench).toContain('var(--window-controls-inset, 14px)');
+    expect(workbench).toMatch(/\.desktop-menu__button\[aria-expanded="true"\]/);
+  });
+
   test('uses the VS Code editing conventions without cloning them', () => {
     const ide = style('ide.css');
     expect(ide).toContain('--vscode-status-height: 22px');

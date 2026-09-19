@@ -32,7 +32,12 @@ export function shouldOpenExternally(target) {
   return parsed.protocol === 'https:' || parsed.protocol === 'http:';
 }
 
-export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten', icon = APP_ICON_PATH } = {}) {
+export const WINDOW_CHROME_THEMES = {
+  light: { color: '#f0f5f1', symbolColor: '#1a1c1f', height: 40 },
+  dark: { color: '#1e211f', symbolColor: '#f1f1f1', height: 40 },
+};
+
+export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten', icon = APP_ICON_PATH, platform = process.platform } = {}) {
   return {
     show: false,
     title,
@@ -41,7 +46,12 @@ export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandka
     height: 860,
     minWidth: 960,
     minHeight: 640,
-    backgroundColor: '#101314',
+    backgroundColor: WINDOW_CHROME_THEMES.light.color,
+    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
+    ...(platform === 'darwin'
+      ? { trafficLightPosition: { x: 12, y: 13 } }
+      : { titleBarOverlay: { ...WINDOW_CHROME_THEMES.light } }),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -51,6 +61,16 @@ export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandka
       additionalArguments: bundledIndex ? [`--sandkasten-index=${pathToFileURL(bundledIndex).href}`] : [],
     },
   };
+}
+
+export function applyWindowChromePolicy({ window, platform = process.platform }) {
+  if (platform === 'darwin') return;
+  window.setMenuBarVisibility(false);
+  window.webContents.on('before-input-event', (event, input) => {
+    // autoHideMenuBar otherwise restores a second row on bare Alt. Suppress only
+    // that toggle; command shortcuts and AltGr/IME combinations keep working.
+    if (input.key === 'Alt' && !input.control && !input.meta && !input.shift) event.preventDefault();
+  });
 }
 
 export function applyNavigationPolicy({ webContents, bundledIndex, openExternal }) {

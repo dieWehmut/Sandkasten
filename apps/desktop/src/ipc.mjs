@@ -1,6 +1,10 @@
 // IPC surface between the sandboxed renderer and the main process. Every
 // handler validates its arguments and every filesystem call is confined to the
 // folder the user opened through the native dialog.
+import { pathToFileURL } from 'node:url';
+
+import { buildMenuTemplate } from './menu.mjs';
+import { WINDOW_CHROME_THEMES } from './navigation.mjs';
 import {
   createWorkspaceFile,
   deleteWorkspaceFile,
@@ -24,6 +28,8 @@ export const IPC_CHANNELS = {
   isolatedDetect: 'sandkasten:isolated:detect',
   isolatedRun: 'sandkasten:isolated:run',
   isolatedStop: 'sandkasten:isolated:stop',
+  chromeSetTheme: 'sandkasten:chrome:set-theme',
+  chromeShowMenu: 'sandkasten:chrome:show-menu',
   menu: 'sandkasten:menu',
 };
 
@@ -46,6 +52,66 @@ export async function resolveInitialWorkspace(session, environment = process.env
     return session.setRoot(requested.trim());
   }
   return session.restore();
+}
+
+export function registerWindowChromeIpc({ ipcMain, Menu, getWindowForContents, bundledIndex, platform = process.platform }) {
+  const bundledUrl = pathToFileURL(bundledIndex).href;
+  const trustedWindow = (event) => {
+    const sender = event?.sender;
+    const window = sender && getWindowForContents(sender);
+    let frameUrl;
+    try {
+      const url = new URL(event?.senderFrame?.url);
+      url.hash = '';
+      frameUrl = url.href;
+    } catch {
+      // Malformed or missing frame URLs are never trusted.
+    }
+    if (!window || window.isDestroyed() || window.webContents !== sender
+        || event?.senderFrame !== sender.mainFrame || frameUrl !== bundledUrl) {
+      throw new Error('Window chrome requires a trusted application frame.');
+    }
+    return window;
+  };
+
+  ipcMain.handle(IPC_CHANNELS.chromeSetTheme, async (event, theme) => {
+    const window = trustedWindow(event);
+    if (theme !== 'light' && theme !== 'dark') throw new Error('Invalid window chrome theme.');
+    const overlay = WINDOW_CHROME_THEMES[theme];
+    if (platform !== 'darwin') window.setTitleBarOverlay({ ...overlay });
+    window.setBackgroundColor(overlay.color);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.chromeShowMenu, async (event, request) => {
+    const window = trustedWindow(event);
+    if (!request || typeof request !== 'object' || Array.isArray(request)
+        || !['file', 'edit', 'run', 'view', 'help'].includes(request.id)) {
+      throw new Error('Invalid window menu.');
+    }
+    if (request.locale !== 'en' && request.locale !== 'zh-CN') throw new Error('Invalid menu locale.');
+    const zoom = window.webContents.getZoomFactor();
+    const [width, height] = window.getContentSize();
+    if (![request.x, request.y].every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0)
+        || request.x * zoom > width || request.y * zoom > height) {
+      throw new Error('Invalid menu anchor.');
+    }
+    const template = buildMenuTemplate({
+      locale: request.locale,
+      platform,
+      send: (command) => {
+        if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.menu, command);
+      },
+    });
+    const submenu = template.find((entry) => entry.id === request.id).submenu;
+    const menu = Menu.buildFromTemplate(submenu);
+    await new Promise((resolve) => menu.popup({
+      window,
+      frame: event.senderFrame,
+      x: Math.min(width - 1, Math.round(request.x * zoom)),
+      y: Math.min(height - 1, Math.round(request.y * zoom)),
+      callback: resolve,
+    }));
+  });
 }
 
 export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow }) {
