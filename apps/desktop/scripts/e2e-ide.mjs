@@ -290,7 +290,7 @@ async function main() {
     });
     await page.waitForTimeout(400);
 
-    // Green is the default accent; nothing may randomize it on a fresh start.
+    // Pink is the default accent; nothing may randomize it on a fresh start.
     await page.evaluate(() => window.localStorage.removeItem('sandkasten-color-scheme'));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="workbench-shell"]');
@@ -298,10 +298,10 @@ async function main() {
     await page.waitForSelector('[data-testid="workbench-shell"]');
     checks.colorScheme = await page.getAttribute('html', 'data-color-scheme');
     checks.theme = await page.getAttribute('html', 'data-theme');
-    checks.greenAccentByTheme = {};
+    checks.defaultAccentByTheme = {};
     for (const theme of ['light', 'dark']) {
       await ensureTheme(theme);
-      checks.greenAccentByTheme[theme] = await page.evaluate(() => ({
+      checks.defaultAccentByTheme[theme] = await page.evaluate(() => ({
         accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
         strong: getComputedStyle(document.documentElement).getPropertyValue('--accent-strong').trim(),
         canvas: getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim(),
