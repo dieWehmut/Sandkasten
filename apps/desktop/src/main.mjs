@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { resolveVerifiedDistribution } from './distribution.mjs';
 import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
-import { applyNavigationPolicy, createWindowOptions, APP_ICON_PATH } from './navigation.mjs';
+import { applyNavigationPolicy, applyWindowChromePolicy, createWindowOptions, APP_ICON_PATH } from './navigation.mjs';
 import { registerDesktopIpc, registerWindowChromeIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
 import { createLocalRunner } from './local-runner.mjs';
 import { createIsolatedRunner } from './isolated-runner.mjs';
@@ -21,7 +21,7 @@ function createWindow(bundledIndex) {
       icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : APP_ICON_PATH,
     }),
   );
-  window.setMenuBarVisibility(false);
+  applyWindowChromePolicy({ window });
 
   applyNavigationPolicy({
     webContents: window.webContents,

@@ -63,6 +63,16 @@ export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandka
   };
 }
 
+export function applyWindowChromePolicy({ window, platform = process.platform }) {
+  if (platform === 'darwin') return;
+  window.setMenuBarVisibility(false);
+  window.webContents.on('before-input-event', (event, input) => {
+    // autoHideMenuBar otherwise restores a second row on bare Alt. Suppress only
+    // that toggle; command shortcuts and AltGr/IME combinations keep working.
+    if (input.key === 'Alt' && !input.control && !input.meta && !input.shift) event.preventDefault();
+  });
+}
+
 export function applyNavigationPolicy({ webContents, bundledIndex, openExternal }) {
   webContents.setWindowOpenHandler(({ url }) => {
     if (shouldOpenExternally(url)) openExternal(url);
