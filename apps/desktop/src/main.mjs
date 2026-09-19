@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { resolveVerifiedDistribution } from './distribution.mjs';
 import { prepareDistribution, resolveApiBaseUrl } from './config-override.mjs';
 import { applyNavigationPolicy, createWindowOptions, APP_ICON_PATH } from './navigation.mjs';
-import { registerDesktopIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
+import { registerDesktopIpc, registerWindowChromeIpc, resolveInitialWorkspace, IPC_CHANNELS } from './ipc.mjs';
 import { createLocalRunner } from './local-runner.mjs';
 import { createIsolatedRunner } from './isolated-runner.mjs';
 import { buildMenuTemplate } from './menu.mjs';
@@ -21,6 +21,7 @@ function createWindow(bundledIndex) {
       icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : APP_ICON_PATH,
     }),
   );
+  window.setMenuBarVisibility(false);
 
   applyNavigationPolicy({
     webContents: window.webContents,
@@ -60,6 +61,13 @@ async function start() {
   };
 
   registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow });
+  const bundledIndex = path.join(activeDistribution, 'index.html');
+  registerWindowChromeIpc({
+    ipcMain,
+    Menu,
+    getWindowForContents: (webContents) => BrowserWindow.fromWebContents(webContents),
+    bundledIndex,
+  });
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
 
   app.on('before-quit', () => {
@@ -67,7 +75,7 @@ async function start() {
     void isolated.stopAll();
   });
 
-  return createWindow(path.join(activeDistribution, 'index.html'));
+  return createWindow(bundledIndex);
 }
 
 app.whenReady().then(start).catch((error) => {

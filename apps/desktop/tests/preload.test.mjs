@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
+
+import { IPC_CHANNELS } from '../src/ipc.mjs';
 
 const sourceDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
@@ -45,4 +48,28 @@ test('every desktop module the main process imports exists', () => {
     ['config-override.mjs', 'distribution.mjs', 'ipc.mjs', 'isolated-runner.mjs', 'local-runner.mjs', 'menu.mjs', 'navigation.mjs', 'workspace.mjs'],
   );
   for (const name of imports) assert.ok(read(name).length > 0, `${name} must not be empty`);
+});
+
+test('the sandbox exposes only narrow promise-based window chrome operations', async () => {
+  let bridge;
+  const calls = [];
+  runInNewContext(read('preload.cjs'), {
+    process: { platform: 'win32', versions: { chrome: 'test', electron: 'test' } },
+    require(name) {
+      assert.equal(name, 'electron');
+      return {
+        contextBridge: { exposeInMainWorld: (key, value) => { assert.equal(key, 'sandkastenDesktop'); bridge = value; } },
+        ipcRenderer: { invoke: async (...args) => { calls.push(args); }, on: () => {} },
+      };
+    },
+  });
+  assert.ok(bridge.windowChrome, 'the renderer can detect integrated chrome');
+  assert.equal(bridge.windowChrome.integrated, true);
+  assert.deepEqual(Object.keys(bridge.windowChrome).sort(), ['integrated', 'setTheme', 'showMenu']);
+  await bridge.windowChrome.setTheme('dark');
+  const request = { id: 'edit', locale: 'en', x: 120, y: 40 };
+  await bridge.windowChrome.showMenu(request);
+  assert.deepEqual(calls, [[IPC_CHANNELS.chromeSetTheme, 'dark'], [IPC_CHANNELS.chromeShowMenu, request]]);
+  assert.equal(bridge.ipcRenderer, undefined);
+  assert.equal(bridge.invoke, undefined);
 });

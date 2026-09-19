@@ -18,6 +18,8 @@ const CHANNELS = {
   isolatedDetect: 'sandkasten:isolated:detect',
   isolatedRun: 'sandkasten:isolated:run',
   isolatedStop: 'sandkasten:isolated:stop',
+  chromeSetTheme: 'sandkasten:chrome:set-theme',
+  chromeShowMenu: 'sandkasten:chrome:show-menu',
   menu: 'sandkasten:menu',
 };
 
@@ -27,6 +29,11 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
   versions: {
     chrome: process.versions.chrome,
     electron: process.versions.electron,
+  },
+  windowChrome: {
+    integrated: true,
+    setTheme: (theme) => ipcRenderer.invoke(CHANNELS.chromeSetTheme, theme),
+    showMenu: (request) => ipcRenderer.invoke(CHANNELS.chromeShowMenu, request),
   },
   workspace: {
     openFolder: () => ipcRenderer.invoke(CHANNELS.workspaceOpenFolder),
