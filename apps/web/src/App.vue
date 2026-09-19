@@ -280,6 +280,8 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'view.toggleSidebar': ide.toggleSidebar,
   'view.togglePanel': ide.togglePanel,
   'view.toggleSetup': setupWelcome.reopen,
+  'apiEndpoint.open': openApiEndpoint,
+  'theme.toggle': theme.toggleTheme,
   'help.github': openGithub,
 };
 

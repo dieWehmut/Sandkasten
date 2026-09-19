@@ -45,7 +45,7 @@ test('every desktop module the main process imports exists', () => {
   const imports = Array.from(main.matchAll(/from '\.\/([\w.-]+)'/g), (match) => match[1]);
   assert.deepEqual(
     imports.slice().sort(),
-    ['config-override.mjs', 'distribution.mjs', 'ipc.mjs', 'isolated-runner.mjs', 'local-runner.mjs', 'menu.mjs', 'navigation.mjs', 'workspace.mjs'],
+    ['config-override.mjs', 'distribution.mjs', 'ipc.mjs', 'isolated-runner.mjs', 'local-runner.mjs', 'menu.mjs', 'navigation.mjs', 'tray.mjs', 'workspace.mjs'],
   );
   for (const name of imports) assert.ok(read(name).length > 0, `${name} must not be empty`);
 });

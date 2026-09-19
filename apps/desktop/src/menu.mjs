@@ -33,8 +33,9 @@ export function buildMenuTemplate({ send, platform = process.platform, locale = 
       { label: label('New File', '新建文件'), accelerator: 'CmdOrCtrl+N', click: command(MENU_COMMANDS.newFile) },
       { label: label('Save File', '保存文件'), accelerator: 'CmdOrCtrl+S', click: command(MENU_COMMANDS.save) },
       { label: label('Close Editor', '关闭编辑器'), accelerator: 'CmdOrCtrl+W', click: command(MENU_COMMANDS.closeTab) },
-      { type: 'separator' },
-      platform === 'darwin' ? { role: 'close', label: label('Close Window', '关闭窗口') } : { role: 'quit', label: label('Quit', '退出') },
+      // No quit entry off macOS: closing the window hides the app into the tray
+      // so a running job survives, and the tray menu owns the real exit.
+      ...(platform === 'darwin' ? [{ role: 'close', label: label('Close Window', '关闭窗口') }] : []),
     ],
   });
 
