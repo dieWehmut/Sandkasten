@@ -160,6 +160,31 @@ Main-process boundary:
 The last opened folder is stored in `workspace.json` under the Electron
 user-data directory; `SANDKASTEN_WORKSPACE_ROOT` overrides it for scripted runs.
 
+## Window chrome and the tray
+
+The window runs with `titleBarStyle: 'hidden'`, so the renderer paints the
+whole title row: the brand, the five application menus, the composed window
+title, and the header actions. The row is 40 px tall to match the native
+overlay and reserves the caption-button inset so dragging never covers the
+window controls. macOS keeps its traffic lights and the system menu.
+
+`windowChrome` is the only surface that can change native chrome. Both
+handlers require the trusted bundled top-level frame, so a subframe or a
+remote URL cannot restyle the window or pop a menu. `chromeShowMenu` validates
+the menu id, the locale, and the anchor (scaled by the zoom factor) before it
+builds the submenu with `Menu.buildFromTemplate` and pops it below the
+button; the renderer keeps the button expanded until the popup reports that it
+closed. The native overlay colors follow the active theme through
+`chromeSetTheme`, which also repaints the window background.
+
+Closing the window hides it into the taskbar tray instead of ending the app,
+so a running job keeps going. `tray.mjs` builds the tray from the shared brand
+mark and owns the only real exit: a left click restores and focuses the
+window, a right click opens a small localized settings menu (setup guide, API
+endpoint, theme), and its quit entry calls `app.quit()`. `before-quit` marks
+the app as quitting so the close handler stops hiding the window, which keeps
+the packaged smoke run and the OS shutdown sequence working.
+
 ## Keyboard and menu
 
 | Action | Shortcut |
@@ -180,7 +205,10 @@ user-data directory; `SANDKASTEN_WORKSPACE_ROOT` overrides it for scripted runs.
   and asserts that a first visit stores nothing.
 - `apps/desktop/tests/*.test.mjs` cover the path guard, tree limits, local run
   lifecycle (success, compile failure, timeout, cancel, truncation), IPC
-  validation, the menu template, and the preload contract.
+  validation, the menu template, the preload contract, and window chrome.
+- `apps/desktop/tests/window-chrome.test.mjs` covers overlay theming, the frame
+  and payload validation, and the menu popup anchor; `apps/desktop/tests/tray.test.mjs`
+  covers the tray clicks, the localized settings menu, and close-to-tray.
 - `npm run e2e` in `apps/desktop` launches the real app against a temporary
   workspace and asserts the tree, a local Python run, `Ctrl+S` persistence, file
   creation, panel toggling, wheel scrolling in the tree/editor/panel with the
