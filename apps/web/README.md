@@ -140,21 +140,30 @@ active pairing:
 - `data-color-scheme`: `green`, `purple`, `pink`, `white`, or `black`,
   persisted as `sandkasten-color-scheme`.
 
-`green` is the historical default and stays the deterministic first-visit
-accent: an untouched install renders green in both themes, and nothing is
-persisted until the user picks a scheme. The monochrome `white` and `black`
-schemes stay opt-in: `white` is a deep gray in the light theme and pure white in
-the dark theme, so it reads as the strongest available contrast in either
-theme. Only an explicit pick is written to `localStorage`.
+`pink` is the deterministic first-visit accent and matches the neutral shell
+the reference uses: an untouched install renders pink in both themes, and
+nothing is persisted until the user picks a scheme. A previously saved choice
+still wins. The monochrome `white` and `black` schemes stay opt-in: `white` is
+a deep gray in the light theme and pure white in the dark theme, so it reads as
+the strongest available contrast in either theme. Only an explicit pick is
+written to `localStorage`.
 
 The accent tokens live in `src/styles/schemes.css`; `tokens.css` keeps the
 neutral surfaces, text, borders, and semantic states. Every scheme overrides
-the same three tokens (`--accent`, `--accent-strong`, `--accent-soft`) in both
-themes, and a final `color-mix()` block derives `--selection` and
-`--focus-ring` from the active accent, so components never learn which scheme
-is active. The catalog lives in `src/theme/colorScheme.ts`;
-`src/composables/useColorScheme.ts` restores storage, applies the document
-attribute, and persists explicit choices.
+the same accent family (`--accent`, `--accent-strong`, `--accent-soft`,
+`--accent-fill`, `--on-accent`) in both themes, and a final `color-mix()`
+block derives `--selection` and `--focus-ring` from the active accent, so
+components never learn which scheme is active. Filled buttons and badges paint
+`--accent-fill` and put `--on-accent` on top, which lets a soft reference hue
+carry small labels without weakening contrast. The catalog lives in
+`src/theme/colorScheme.ts`; `src/composables/useColorScheme.ts` restores
+storage, applies the document attribute, and persists explicit choices.
+
+The neutral surfaces keep a soft, low-contrast feel instead of hard separators:
+`--chrome` paints the activity bar, the sidebar, and the status row, the editor
+sits on a raised rounded surface, and selection states use a quiet
+`--surface-subtle` fill rather than an accent rail. `--radius-sm`,
+`--radius-md`, and `--radius-lg` scale the rounded corners across the shell.
 
 The header palette button opens a menu with one swatch per scheme. The choice
 persists across reloads, and `apps/web/tests/colorScheme.test.ts`,
