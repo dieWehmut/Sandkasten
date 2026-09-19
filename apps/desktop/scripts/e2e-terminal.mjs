@@ -72,8 +72,10 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await enter(secondId, 'echo E2E^_SECOND^_SHELL');
   await waitScreen(secondId, 'E2E_SECOND_SHELL');
 
+  // ConPTY hands a child an invalid stdin handle, so the dimensions must
+  // come from stdout instead of fd 0.
   const shellSize = async (label) => {
-    await enter(firstId, `python -c "import os; s=os.get_terminal_size(0); print('E2E_SIZE_'+'${label}',s.columns,s.lines)"`);
+    await enter(firstId, `python -c "import sys,os; s=os.get_terminal_size(sys.stdout.fileno()); print('E2E_SIZE_'+'${label}',s.columns,s.lines)"`);
     await waitScreen(firstId, `E2E_SIZE_${label}`);
     const match = (await readScreen(firstId)).match(new RegExp(`E2E_SIZE_${label}\\s+(\\d+)\\s+(\\d+)`));
     assert.ok(match, 'the actual shell must report terminal dimensions');
