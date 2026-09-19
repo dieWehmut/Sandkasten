@@ -342,7 +342,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="workbench-app" :class="{ 'workbench-app--ide': layout.isDesktop.value }" data-testid="app-shell">
+  <div
+    class="workbench-app"
+    :class="{ 'workbench-app--ide': layout.isDesktop.value, 'workbench-app--integrated': Boolean(bridge?.windowChrome?.integrated) }"
+    data-testid="app-shell"
+  >
     <AppHeader
       v-if="!setupWelcome.isGuideOpen.value"
       :connection-state="connectionState"
@@ -352,6 +356,9 @@ onBeforeUnmount(() => {
       :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"
+      :window-title="documentTitle"
+      :chrome="bridge?.windowChrome"
+      :platform="bridge?.platform"
       @toggle-history="toggleHistory"
       @toggle-inspector="toggleInspector"
       @toggle-theme="theme.toggleTheme"

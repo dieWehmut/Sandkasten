@@ -20,6 +20,77 @@
   background: var(--surface);
 }
 
+/* The integrated desktop title row. The window runs with a hidden title bar,
+   so this row is the whole title bar: it matches the native overlay height and
+   keeps the caption buttons clickable by reserving their inset. */
+.workbench-app--integrated {
+  --header-height: 40px;
+}
+
+.app-header--integrated {
+  padding-right: var(--window-controls-inset, 14px);
+  -webkit-app-region: drag;
+}
+
+/* Only the controls inside the title row stay interactive; the rest of the
+   row drags the window like a native title bar. */
+.app-header--integrated button,
+.app-header--integrated a,
+.app-header--integrated nav,
+.app-header--integrated input,
+.app-header--integrated select {
+  -webkit-app-region: no-drag;
+}
+
+.app-header--mac {
+  padding-left: var(--window-controls-inset-mac, 76px);
+}
+
+.app-header__title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A quiet menu bar that mirrors the native menu, styled for both themes. */
+.desktop-menu {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.desktop-menu__button {
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font: 500 12px/1 var(--font-ui);
+  background: transparent;
+}
+
+.desktop-menu__button:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.desktop-menu__button[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.desktop-menu__error {
+  margin-left: 6px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
 .brand,
 .connection-status,
 .header-actions,
