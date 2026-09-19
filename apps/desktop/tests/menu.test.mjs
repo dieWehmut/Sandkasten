@@ -51,6 +51,21 @@ test('a menu template requires a command sender', () => {
   assert.throws(() => buildMenuTemplate({}), /command sender/);
 });
 
+test('native terminal commands use stable IDs and VS Code-style accelerators', () => {
+  const sent = [];
+  const template = buildMenuTemplate({ send: (id) => sent.push(id), platform: 'win32' });
+  const create = menuOf(template, 'Run').find((entry) => entry.label === 'New Terminal');
+  const split = menuOf(template, 'Run').find((entry) => entry.label === 'Split Terminal');
+  const toggle = menuOf(template, 'View').find((entry) => entry.label === 'Toggle Terminal');
+  assert.ok(create && split && toggle);
+  assert.equal(create.accelerator, 'Ctrl+Shift+`');
+  assert.equal(toggle.accelerator, 'Ctrl+`');
+  create.click();
+  split.click();
+  toggle.click();
+  assert.deepEqual(sent, ['terminal.new', 'terminal.split', 'terminal.toggle']);
+});
+
 test('each header menu has a stable id and Edit uses native editing roles', () => {
   const template = buildMenuTemplate({ send: () => {}, platform: 'win32' });
   assert.deepEqual(template.map((entry) => entry.id), ['file', 'edit', 'run', 'view', 'help']);

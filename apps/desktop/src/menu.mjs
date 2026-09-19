@@ -10,6 +10,9 @@ export const MENU_COMMANDS = {
   stop: 'run.stop',
   toggleSidebar: 'view.toggleSidebar',
   togglePanel: 'view.togglePanel',
+  terminalNew: 'terminal.new',
+  terminalSplit: 'terminal.split',
+  terminalToggle: 'terminal.toggle',
   setup: 'view.toggleSetup',
   github: 'help.github',
 };
@@ -59,6 +62,9 @@ export function buildMenuTemplate({ send, platform = process.platform, locale = 
     submenu: [
       { label: label('Run Active File', '运行当前文件'), accelerator: 'F5', click: command(MENU_COMMANDS.run) },
       { label: label('Stop Run', '停止运行'), accelerator: 'Shift+F5', click: command(MENU_COMMANDS.stop) },
+      { type: 'separator' },
+      { label: label('New Terminal', '新建终端'), accelerator: platform === 'darwin' ? 'Command+Shift+`' : 'Ctrl+Shift+`', click: command(MENU_COMMANDS.terminalNew) },
+      { label: label('Split Terminal', '拆分终端'), click: command(MENU_COMMANDS.terminalSplit) },
     ],
   });
 
@@ -68,6 +74,7 @@ export function buildMenuTemplate({ send, platform = process.platform, locale = 
     submenu: [
       { label: label('Toggle Sidebar', '切换侧边栏'), accelerator: 'CmdOrCtrl+B', click: command(MENU_COMMANDS.toggleSidebar) },
       { label: label('Toggle Output Panel', '切换输出面板'), accelerator: 'CmdOrCtrl+J', click: command(MENU_COMMANDS.togglePanel) },
+      { label: label('Toggle Terminal', '切换终端'), accelerator: platform === 'darwin' ? 'Control+`' : 'Ctrl+`', click: command(MENU_COMMANDS.terminalToggle) },
       { type: 'separator' },
       { role: 'reload', label: label('Reload', '重新加载') },
       { role: 'toggleDevTools', label: label('Toggle Developer Tools', '切换开发者工具') },
