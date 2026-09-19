@@ -83,6 +83,32 @@ async function main() {
       checks.setupGuideDismissed = true;
     }
     await page.waitForSelector('[data-testid="workbench-shell"]', { timeout: 30_000 });
+    // The window hides its native title bar, so the renderer owns the whole
+    // title row: the five application menus, the composed window title, and
+    // the native menu popup that opens below the clicked button.
+    {
+      await page.waitForSelector('[data-testid="desktop-menu"]', { timeout: 20_000 });
+      checks.titleRow = await page.evaluate(() => {
+        const header = document.querySelector('[data-testid="app-header"]');
+        const buttons = Array.from(document.querySelectorAll('[data-testid="desktop-menu"] .desktop-menu__button'));
+        const rect = header?.getBoundingClientRect();
+        return {
+          headerIntegrated: header?.classList.contains('app-header--integrated') ?? false,
+          headerHeight: Math.round(rect?.height ?? 0),
+          dragRegion: header ? getComputedStyle(header).webkitAppRegion : null,
+          menus: buttons.map((button) => button.textContent?.trim()),
+          title: document.querySelector('[data-testid="window-title"]')?.textContent?.trim() ?? null,
+        };
+      });
+      const runButton = page.locator('[data-menu="run"]');
+      const runBox = await runButton.boundingBox();
+      await runButton.click();
+      await page.waitForFunction(() => document.querySelector('[data-menu="run"]')?.getAttribute('aria-expanded') === 'true', null, { timeout: 10_000 });
+      checks.titleRowMenu = { anchorX: Math.round(runBox?.x ?? 0), expanded: true };
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => document.querySelector('[data-menu="run"]')?.getAttribute('aria-expanded') === 'false', null, { timeout: 10_000 });
+      checks.titleRowMenu.dismissed = true;
+    }
 
     const ensureTheme = async (theme) => {
       if ((await page.getAttribute('html', 'data-theme')) === theme) return;
@@ -362,6 +388,24 @@ async function main() {
     checks.darkScreenshot = darkShot;
     checks.darkScreenshotBytes = statSync(darkShot).size;
     checks.darkStatusBackground = await page.evaluate(() => getComputedStyle(document.querySelector('.ide-status')).backgroundColor);
+
+    // Closing the window must hide it into the tray instead of ending the app,
+    // so a running job keeps going; only the tray quit may exit.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
+    await page.waitForTimeout(1_500);
+    checks.closeToTray = await app.evaluate(({ BrowserWindow }) => {
+      const windows = BrowserWindow.getAllWindows();
+      return {
+        windowCount: windows.length,
+        visible: windows[0]?.isVisible() ?? null,
+        destroyed: windows[0]?.isDestroyed() ?? null,
+      };
+    });
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (window) { window.show(); window.focus(); }
+    });
+    await page.waitForTimeout(400);
 
     const errors = await page.evaluate(() => window.__sandkastenErrors ?? []);
     checks.rendererErrors = errors;
