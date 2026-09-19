@@ -94,6 +94,46 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test.each([0, 7])('closes the retained tab after exit %i even when the host no longer owns the session', async (exitCode) => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    host.exit('s1', exitCode);
+    // The main process removes a naturally exited PTY before forwarding onExit.
+    host.bridge.close.mockRejectedValue(new Error('Unknown terminal session'));
+    await terminal.close('s1');
+    expect(terminal.sessions.value).toEqual([]);
+    expect(terminal.visibleIds.value).toEqual([]);
+    expect(terminal.activeId.value).toBe('');
+    expect(terminal.error.value).toBe('');
+    expect(host.bridge.close).not.toHaveBeenCalled();
+    expect(mocks.terminals[0].dispose).toHaveBeenCalledOnce();
+    await terminal.dispose();
+  });
+
+  test('finishes closing a tab when natural exit wins the pending close IPC race', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    let rejectClose!: (error: Error) => void;
+    host.bridge.close.mockImplementationOnce(() => new Promise<void>((_resolve, reject) => { rejectClose = reject; }));
+    const closing = terminal.close('s1');
+    host.exit('s1', 0);
+    rejectClose(new Error('Unknown terminal session'));
+    await closing;
+    expect(terminal.sessions.value).toEqual([]);
+    expect(terminal.error.value).toBe('');
+    expect(host.bridge.close).toHaveBeenCalledTimes(1);
+    expect(mocks.terminals[0].dispose).toHaveBeenCalledOnce();
+    await terminal.dispose();
+  });
+
+  test('preserves the live session and reports an actual host close failure', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    host.bridge.close.mockRejectedValueOnce(new Error('Close denied'));
+    await terminal.close('s1');
+    expect(terminal.sessions.value.map((session) => session.id)).toEqual(['s1']);
+    expect(terminal.error.value).toBe('Close denied');
+    expect(mocks.terminals[0].dispose).not.toHaveBeenCalled();
+    await terminal.dispose();
+  });
+
   test('closes a shell created while the app is disposing, without attaching it', async () => {
     const host = fakeBridge(); let resolve!: (value: any) => void;
     host.bridge.create.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
