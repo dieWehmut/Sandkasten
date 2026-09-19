@@ -23,7 +23,7 @@ test('the application menu forwards stable command ids', () => {
   assert.equal(open.accelerator, 'CmdOrCtrl+O');
   assert.equal(save.accelerator, 'CmdOrCtrl+S');
   assert.equal(close.accelerator, 'CmdOrCtrl+W');
-  assert.equal(file.at(-1).role, 'quit');
+  assert.equal(file.some((entry) => entry.role === 'quit'), false, 'the tray owns the real exit');
 
   const run = menuOf(template, 'Run');
   assert.equal(run.find((entry) => entry.label === 'Run Active File').accelerator, 'F5');
@@ -69,8 +69,7 @@ test('Chinese menus preserve native roles, accelerators, and renderer commands',
   assert.equal(file[0].accelerator, 'CmdOrCtrl+O');
   file[0].click();
   assert.deepEqual(sent, [MENU_COMMANDS.openWorkspace]);
-  assert.equal(file.at(-1).label, '退出');
-  assert.equal(file.at(-1).role, 'quit');
+  assert.equal(file.some((entry) => entry.role === 'quit'), false, 'the tray owns the real exit');
   const edit = template.find((entry) => entry.id === 'edit').submenu;
   assert.equal(edit.find((entry) => entry.role === 'paste').label, '粘贴');
   const view = template.find((entry) => entry.id === 'view').submenu;
