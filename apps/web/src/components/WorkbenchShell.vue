@@ -11,6 +11,7 @@ import type { RunHistoryItem } from '../composables/useRunHistory';
 import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../services/desktopBridge';
 import type { LayoutMode } from '../composables/useMediaLayout';
+import type { TerminalController } from '../composables/useTerminal';
 import EdgeSheet from './EdgeSheet.vue';
 import InspectorPanel from './InspectorPanel.vue';
 import JobTimeline from './JobTimeline.vue';
@@ -65,6 +66,7 @@ const props = withDefaults(defineProps<{
   statusText?: string;
   connectionState?: ConnectionState;
   workspaceLabel?: string;
+  terminal?: TerminalController;
 }>(), {
   layoutMode: 'desktop',
   activity: 'explorer',
@@ -242,6 +244,7 @@ const styles = computed(() => (isIde.value
               @close="emit('closePanel')"
             />
             <OutputTabs
+              :terminal="terminal"
               :result="result"
               :error="error"
               :model-value="activeOutputTab"
@@ -268,6 +271,8 @@ const styles = computed(() => (isIde.value
     <template v-else>
       <RunHistory v-if="layoutMode === 'desktop' && historyOpen" :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
       <SourceWorkbench
+        :terminal="terminal"
+        :panel-visible="terminal ? panelVisible : true"
         :runtimes="runtimes"
         :language="language"
         :source="source"

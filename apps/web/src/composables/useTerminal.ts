@@ -82,7 +82,7 @@ export function useTerminal(bridge: TerminalBridge) {
       const terminal = new Terminal({
         cols: 80, rows: 24, cursorBlink: true, fontSize: 13,
         fontFamily: 'Cascadia Code, Consolas, monospace', scrollback: 5000,
-        theme: terminalTheme(), allowProposedApi: false,
+        theme: terminalTheme(), allowProposedApi: false, screenReaderMode: true,
       });
       const fit = new FitAddon();
       terminal.loadAddon(fit);

@@ -109,4 +109,26 @@ describe('app-owned terminal sessions', () => {
     expect(terminal.sessions.value).toEqual([]); expect(host.bridge.close).toHaveBeenCalledWith('s1');
     await terminal.dispose();
   });
+
+  test('updates existing xterm colors from live theme tokens without replacing the buffer', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    document.documentElement.style.setProperty('--surface', '#123456');
+    document.documentElement.style.setProperty('--text', '#abcdef');
+    terminal.syncTheme();
+    expect(mocks.terminals[0].options.theme).toMatchObject({ background: '#123456', foreground: '#abcdef', cursor: '#abcdef' });
+    expect(mocks.terminals).toHaveLength(1);
+    document.documentElement.style.removeProperty('--surface'); document.documentElement.style.removeProperty('--text');
+    await terminal.dispose();
+  });
+
+  test('fits attached visible hosts and skips zero-sized or detached panel hosts', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    const container = document.createElement('div'); document.body.append(container);
+    terminal.mount('s1', container);
+    expect(mocks.fits[0].fit).not.toHaveBeenCalled();
+    Object.defineProperties(container.firstElementChild!, { clientWidth: { value: 640 }, clientHeight: { value: 320 } });
+    terminal.fit('s1'); expect(mocks.fits[0].fit).toHaveBeenCalledOnce();
+    terminal.unmount('s1'); terminal.fit('s1'); expect(mocks.fits[0].fit).toHaveBeenCalledOnce();
+    container.remove(); await terminal.dispose();
+  });
 });

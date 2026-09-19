@@ -9,5 +9,7 @@ import './styles/output.css';
 import './styles/sheets.css';
 import './styles/ide.css';
 import './styles/apiEndpoint.css';
+import '@xterm/xterm/css/xterm.css';
+import './styles/terminal.css';
 
 createApp(App).mount('#app');
