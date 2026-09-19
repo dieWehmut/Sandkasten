@@ -166,7 +166,17 @@ export function useTerminal(bridge: TerminalBridge) {
 
   async function close(id = activeId.value): Promise<void> {
     if (!views.has(id)) return;
-    try { await bridge.close(id); removeView(id); } catch (cause) { report(cause); }
+    const exited = () => sessions.value.find((session) => session.id === id)?.exitCode !== undefined;
+    // Natural exit removes the PTY in the host, but its output remains here until closed.
+    if (exited()) { removeView(id); return; }
+    try {
+      await bridge.close(id);
+      removeView(id);
+    } catch (cause) {
+      // Exit may also win the race while the close IPC is in flight.
+      if (exited()) removeView(id);
+      else if (views.has(id)) report(cause);
+    }
   }
 
   async function dispose(): Promise<void> {
