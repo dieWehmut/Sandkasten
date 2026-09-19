@@ -10,6 +10,10 @@ import { createLocalRunner } from './local-runner.mjs';
 import { createIsolatedRunner } from './isolated-runner.mjs';
 import { buildMenuTemplate } from './menu.mjs';
 import { createWorkspaceSession } from './workspace.mjs';
+import { createTerminalHost } from './terminal.mjs';
+import { spawnPty, shutdownPtyWorkers } from './terminal-pty.mjs';
+import { discoverTerminalProfiles } from './terminal-profiles.mjs';
+import { registerTerminalIpc } from './terminal-ipc.mjs';
 import { applyCloseToTrayPolicy, createAppTray, trayIconPath } from './tray.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,6 +72,17 @@ async function start() {
 
   registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow });
   const bundledIndex = path.join(activeDistribution, 'index.html');
+  const terminal = createTerminalHost({
+    spawn: spawnPty,
+    profiles: await discoverTerminalProfiles(),
+    getCwd: () => session.root,
+    onData: (owner, event) => { if (!owner.isDestroyed()) owner.send(IPC_CHANNELS.terminalData, event); },
+    onExit: (owner, event) => { if (!owner.isDestroyed()) owner.send(IPC_CHANNELS.terminalExit, event); },
+  });
+  registerTerminalIpc({
+    ipcMain, terminal, bundledIndex,
+    getWindowForContents: (contents) => BrowserWindow.fromWebContents(contents),
+  });
   registerWindowChromeIpc({
     ipcMain,
     Menu,
@@ -76,10 +91,18 @@ async function start() {
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
 
-  app.on('before-quit', () => {
+  let quitPrepared = false;
+  app.on('before-quit', (event) => {
     quitting = true;
+    if (quitPrepared) return;
+    event.preventDefault();
+    terminal.dispose();
     void runner.stopAll();
     void isolated.stopAll();
+    void shutdownPtyWorkers().finally(() => {
+      quitPrepared = true;
+      app.quit();
+    });
   });
 
   // The tray keeps the app alive after the window is closed so a running job is
