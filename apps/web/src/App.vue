@@ -15,6 +15,7 @@ import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './c
 import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
 import { useMediaLayout } from './composables/useMediaLayout';
+import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
 import { desktopBridge } from './services/desktopBridge';
 import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl } from './services/apiEndpoint';
 import { windowTitle } from './editor/windowTitle';
@@ -23,6 +24,7 @@ import type { MessageKey } from './i18n/messages';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
 
 const bridge = desktopBridge();
+const terminal = bridge?.terminal ? useTerminal(bridge.terminal) : undefined;
 const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
@@ -219,6 +221,7 @@ function updateBackend(value: ExecutionBackend): void {
 }
 
 function selectHistoryItem(item: Parameters<typeof runner.selectHistoryItem>[0]): void {
+  terminal?.showOutput();
   runner.selectHistoryItem(item);
   updateSource(item.source);
   updateLanguage(item.language);
@@ -228,6 +231,7 @@ function selectHistoryItem(item: Parameters<typeof runner.selectHistoryItem>[0])
 async function runActive(): Promise<void> {
   const file = activeFile.value;
   if (!file || !canRun.value) return;
+  terminal?.showOutput();
   ide.showPanel();
   cursor.value = { line: 1, column: 1 };
   if (usesDesktop.value) {
@@ -275,6 +279,31 @@ function setCreatingFile(value: boolean): void {
   else creatingFile.value = false;
 }
 
+async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
+  if (!terminal) return;
+  if (setupWelcome.isGuideOpen.value) dismissSetup();
+  ide.showPanel();
+  terminal.show();
+  if (mode === 'split') await terminal.split();
+  else if (mode === 'new' || (!terminal.sessions.value.length && !terminal.pending.value)) await terminal.create();
+  await nextTick();
+  terminal.focus();
+}
+
+function toggleTerminal(): void {
+  if (!terminal) return;
+  if (!setupWelcome.isGuideOpen.value && terminal.shown.value && ide.panelVisible.value) ide.togglePanel();
+  else void openTerminal();
+}
+
+function syncTerminalFocus(event?: FocusEvent): void {
+  const target = event?.type === 'focusout' ? event.relatedTarget : (event?.target ?? document.activeElement);
+  terminal?.setFocused(Boolean(
+    !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
+    && target instanceof Element && target.closest('.terminal-pane'),
+  ));
+}
+
 const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'workspace.open': openFolder,
   'file.new': requestNewFile,
@@ -288,9 +317,19 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'apiEndpoint.open': openApiEndpoint,
   'theme.toggle': theme.toggleTheme,
   'help.github': openGithub,
+  'terminal.new': () => { void openTerminal('new'); },
+  'terminal.toggle': toggleTerminal,
+  'terminal.split': () => { void openTerminal('split'); },
 };
 
 function onKeydown(event: KeyboardEvent): void {
+  if (terminal && isTerminalShortcut(event)) {
+    event.preventDefault();
+    if (event.shiftKey) void openTerminal('new');
+    else toggleTerminal();
+    return;
+  }
+  if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
   const key = event.key.toLowerCase();
   if (key === 's') {
@@ -328,10 +367,15 @@ watch(source, (value) => { runner.setSource(value); });
 watch(language, (value) => { if (value) runner.setLanguage(value); });
 watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
+watch([theme.theme, colorScheme.colorScheme], () => { void nextTick(() => terminal?.syncTheme()); });
+if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen], () => syncTerminalFocus(), { flush: 'post' });
 
 onMounted(() => {
+  void terminal?.loadProfiles();
   if (!setupWelcome.isGuideOpen.value) loadRunnerOnce();
   window.addEventListener('keydown', onKeydown);
+  window.addEventListener('focusin', syncTerminalFocus);
+  window.addEventListener('focusout', syncTerminalFocus);
   bridge?.onMenuCommand?.((command) => MENU_COMMANDS[command]?.());
   void (async () => {
     await workspace.initialize();
@@ -342,7 +386,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  void terminal?.dispose();
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('focusin', syncTerminalFocus);
+  window.removeEventListener('focusout', syncTerminalFocus);
   theme.dispose();
   layout.dispose();
 });
@@ -391,6 +438,7 @@ onBeforeUnmount(() => {
       @dismiss="dismissSetup"
     />
     <WorkbenchShell
+      :terminal="terminal"
       v-if="!setupWelcome.isGuideOpen.value"
       :history-open="compactHistoryOpen"
       :inspector-open="compactInspectorOpen"
