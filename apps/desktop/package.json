@@ -13,6 +13,7 @@
     "test": "node --test tests/*.test.mjs",
     "smoke": "node scripts/smoke.mjs",
     "e2e": "node scripts/e2e-ide.mjs",
+    "e2e:refinement": "node scripts/e2e-refinement.mjs",
     "package:dir": "electron-builder --dir --config electron-builder.config.mjs",
     "package:win": "electron-builder --win --config electron-builder.config.mjs",
     "verify:installer": "node scripts/verify-installer.mjs",
