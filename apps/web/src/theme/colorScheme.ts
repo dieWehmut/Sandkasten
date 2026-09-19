@@ -1,12 +1,8 @@
 /**
  * Color schemes for the workbench.
  *
- * The default `green` scheme keeps the token values the interface shipped with,
- * so switching schemes is purely additive: every scheme must satisfy the same
- * contrast contract the green palette already met.
- *
- * Green is also the deterministic first-visit scheme. A fresh install must never
- * land on an accent the user did not pick, so only an explicit choice is stored.
+ * Pink is the first-visit accent for the neutral workbench. Existing saved
+ * choices still take precedence, and only explicit choices are persisted.
  */
 
 export const COLOR_SCHEMES = ['green', 'purple', 'pink', 'white', 'black'] as const;
@@ -21,12 +17,12 @@ export interface ColorSchemeOption {
   tone: ColorSchemeTone;
 }
 
-export const DEFAULT_COLOR_SCHEME: ColorScheme = 'green';
+export const DEFAULT_COLOR_SCHEME: ColorScheme = 'pink';
 
 export const colorSchemeOptions: readonly ColorSchemeOption[] = [
   { id: 'green', preview: '#23834a', tone: 'chromatic' },
   { id: 'purple', preview: '#7c3aed', tone: 'chromatic' },
-  { id: 'pink', preview: '#db2777', tone: 'chromatic' },
+  { id: 'pink', preview: '#f077af', tone: 'chromatic' },
   { id: 'white', preview: '#e8e8e8', tone: 'monochrome' },
   { id: 'black', preview: '#1a1a1a', tone: 'monochrome' },
 ];

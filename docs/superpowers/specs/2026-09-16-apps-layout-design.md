@@ -89,7 +89,7 @@ and proxies no API traffic itself: the renderer keeps using the same runtime
 `SANDKASTEN_API_BASE_URL` is set.
 
 Structure follows the deepseek-harness desktop app conventions: a `src/main.mjs`
-main process, a `src/preload.mjs` context-isolated bridge, a renderer that loads
+main process, a CommonJS `src/preload.cjs` context-isolated bridge, a renderer that loads
 `apps/web/dist`, and packaging metadata. Security defaults are Electron's
 hardened set: `contextIsolation: true`, `nodeIntegration: false`,
 `sandbox: true`, a strict `will-navigate`/`setWindowOpenHandler` deny list for

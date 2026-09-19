@@ -46,8 +46,7 @@
   align-items: center;
   gap: 2px;
   padding: 6px 0;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--chrome);
 }
 
 .ide-activity__button {
@@ -67,12 +66,10 @@
   background: var(--surface-subtle);
 }
 
-/* VS Code marks the active view with a rail on the left edge of the icon,
-   which keeps the strip quiet instead of filling the whole button. */
+/* A quiet rounded selection keeps the sidebar distinct from the editor. */
 .ide-activity__button[aria-pressed="true"] {
-  box-shadow: inset 2px 0 0 var(--accent);
   color: var(--text);
-  background: transparent;
+  background: var(--surface-subtle);
 }
 
 .ide-activity__button--footer {
@@ -85,8 +82,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--chrome);
 }
 
 .ide-sidebar > * {
@@ -103,8 +99,7 @@
   justify-content: space-between;
   gap: 6px;
   padding: 4px 6px 4px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: transparent;
 }
 
 .ide-sidebar__title {
@@ -170,7 +165,6 @@
   justify-content: space-between;
   gap: 6px;
   padding: 4px 6px 4px 10px;
-  border-bottom: 1px solid var(--border);
 }
 
 .ide-section__title {
@@ -279,7 +273,9 @@
   align-items: center;
   gap: 2px;
   min-height: 22px;
+  margin-inline: 4px;
   padding-right: 4px;
+  border-radius: 6px;
 }
 
 .ide-tree__row:hover {
@@ -287,8 +283,7 @@
 }
 
 .ide-tree__row--active {
-  box-shadow: inset 2px 0 0 var(--accent);
-  background: var(--accent-soft);
+  background: var(--surface-subtle);
 }
 
 .ide-tree__toggle,
@@ -301,7 +296,7 @@
   gap: 6px;
   padding: 0 6px;
   border: 0;
-  border-radius: 0;
+  border-radius: 6px;
   color: var(--text);
   font-size: 12.5px;
   text-align: left;
@@ -350,8 +345,12 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
+  margin-right: 8px;
   overflow: hidden;
-  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
 }
 
 /* Editor, timeline, and panel live in one scrollable body so a short window
@@ -373,9 +372,11 @@
   min-width: 0;
   flex: 0 0 auto;
   align-items: stretch;
+  gap: 4px;
+  padding: 6px 8px 0;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-subtle);
+  background: var(--surface);
   scrollbar-width: thin;
 }
 
@@ -390,13 +391,13 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  border-right: 1px solid var(--border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: transparent;
 }
 
 .ide-tab--active {
-  box-shadow: inset 0 1px 0 var(--accent);
-  background: var(--canvas);
+  box-shadow: inset 0 -2px 0 var(--accent-fill);
+  background: var(--surface-subtle);
 }
 
 .ide-tab__select {
@@ -407,7 +408,7 @@
   gap: 6px;
   padding: 7px 4px 7px 12px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   color: var(--text-muted);
   font-size: 12.5px;
   background: transparent;
@@ -525,9 +526,8 @@
   background: var(--surface);
 }
 
-/* The status bar is the one surface that carries the accent as a background.
-   Every palette was checked for AA contrast against the text token it puts on
-   top, so the strip stays legible in both themes and all five schemes. */
+/* The accent is concentrated in the backend badge; the full-width status row
+   shares the neutral chrome and stays quiet beside the editor. */
 .ide-status {
   display: flex;
   min-width: 0;
@@ -538,8 +538,8 @@
   gap: 10px;
   padding: 0 10px;
   border-top: 1px solid var(--border);
-  background: var(--accent);
-  color: var(--surface);
+  background: var(--chrome);
+  color: var(--text-muted);
   font-size: 11.5px;
 }
 
@@ -565,22 +565,11 @@
   align-items: center;
   gap: 5px;
   padding: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--surface) 42%, transparent);
-  border-radius: var(--radius-sm);
-  color: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--on-accent);
+  background: var(--accent-fill);
   font-weight: 650;
-}
-
-.ide-status[data-backend="local"] .ide-status__badge {
-  border-color: color-mix(in srgb, var(--surface) 46%, transparent);
-  color: var(--surface);
-  background: color-mix(in srgb, var(--surface) 18%, transparent);
-}
-
-.ide-status[data-backend="api"] .ide-status__badge {
-  border-color: color-mix(in srgb, var(--surface) 32%, transparent);
-  color: var(--surface);
-  background: transparent;
 }
 
 .ide-status__item {
@@ -591,7 +580,7 @@
 }
 
 .ide-status__item--dirty {
-  color: var(--warning-soft);
+  color: var(--warning);
   font-weight: 650;
 }
 
@@ -661,7 +650,7 @@
   gap: 5px;
   padding: 2px 5px;
   border: 0;
-  border-radius: 3px;
+  border-radius: 6px;
   color: var(--text-muted);
   font-size: 12px;
   background: transparent;
@@ -701,7 +690,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: 6px;
   color: var(--text-muted);
   background: transparent;
 }

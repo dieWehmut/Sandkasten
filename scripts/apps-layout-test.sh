@@ -56,7 +56,7 @@ check_all_app_entrypoints() {
     "apps/cli/src/api.mjs"
     "apps/desktop/package.json"
     "apps/desktop/src/main.mjs"
-    "apps/desktop/src/preload.mjs"
+    "apps/desktop/src/preload.cjs"
   )
   local entry
   for entry in "${entries[@]}"; do

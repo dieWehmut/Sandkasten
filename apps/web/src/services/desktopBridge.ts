@@ -65,6 +65,29 @@ export interface LocalRunOutput {
   command?: string;
 }
 
+/** Menu identifiers the native chrome accepts; keep in sync with the main process. */
+export const WINDOW_MENU_IDS = ['file', 'edit', 'run', 'view', 'help'] as const;
+export type WindowMenuId = typeof WINDOW_MENU_IDS[number];
+
+export interface WindowMenuRequest {
+  id: WindowMenuId;
+  /** Anchor in CSS pixels; the main process scales it by the zoom factor. */
+  x: number;
+  y: number;
+  locale: 'en' | 'zh-CN';
+}
+
+/**
+ * The Electron window runs with a hidden title bar, so the renderer owns the
+ * title row: it themes the native overlay controls and opens the real native
+ * menus below its own buttons.
+ */
+export interface WindowChromeBridge {
+  integrated: true;
+  setTheme(theme: 'light' | 'dark'): Promise<void>;
+  showMenu(request: WindowMenuRequest): Promise<void>;
+}
+
 export interface DesktopBridge {
   platform: string;
   versions: { chrome?: string; electron?: string };
@@ -88,6 +111,7 @@ export interface DesktopBridge {
     stop(jobId: string): Promise<boolean>;
   };
   onMenuCommand(handler: (command: string) => void): void;
+  windowChrome?: WindowChromeBridge;
 }
 
 export function desktopBridge(): DesktopBridge | undefined {

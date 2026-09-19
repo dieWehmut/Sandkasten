@@ -8,7 +8,6 @@ import {
 } from '../src/composables/useColorScheme';
 import {
   COLOR_SCHEME_IDS,
-  DEFAULT_COLOR_SCHEME,
   isColorScheme,
   resolveColorScheme,
 } from '../src/theme/colorScheme';
@@ -31,9 +30,8 @@ function createRoot() {
 }
 
 describe('color scheme catalog', () => {
-  test('exposes the five supported schemes with green as the default', () => {
+  test('exposes the five supported schemes', () => {
     expect(COLOR_SCHEME_IDS).toEqual(['green', 'purple', 'pink', 'white', 'black']);
-    expect(DEFAULT_COLOR_SCHEME).toBe('green');
   });
 
   test('recognizes only supported scheme values', () => {
@@ -41,7 +39,7 @@ describe('color scheme catalog', () => {
     expect(isColorScheme('purple')).toBe(true);
     expect(isColorScheme('blue')).toBe(false);
     expect(isColorScheme(null)).toBe(false);
-    expect(resolveColorScheme('nope')).toBe('green');
+    expect(resolveColorScheme('nope')).toBe('pink');
     expect(resolveColorScheme('pink')).toBe('pink');
   });
 
@@ -53,24 +51,25 @@ describe('color scheme catalog', () => {
 });
 
 describe('useColorScheme', () => {
-  test('applies green on a first visit without persisting it', () => {
+  test('applies pink on a first visit without persisting it', () => {
     const root = createRoot();
     const storage = createStorage();
 
     const controller = useColorScheme({ root, storage });
 
-    expect(controller.colorScheme.value).toBe('green');
+    expect(controller.colorScheme.value).toBe('pink');
     expect(controller.hasExplicitPreference.value).toBe(false);
-    expect(root.attributes.get('data-color-scheme')).toBe('green');
+    expect(root.attributes.get('data-color-scheme')).toBe('pink');
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
   test('restores a stored scheme and persists later user changes', () => {
     const root = createRoot();
-    const storage = createStorage('pink');
+    const storage = createStorage('green');
 
     const controller = useColorScheme({ root, storage });
-    expect(controller.colorScheme.value).toBe('pink');
+    expect(controller.colorScheme.value).toBe('green');
+    expect(root.attributes.get('data-color-scheme')).toBe('green');
     expect(controller.hasExplicitPreference.value).toBe(true);
 
     controller.setColorScheme('black');
@@ -80,13 +79,13 @@ describe('useColorScheme', () => {
     expect(storage.setItem).toHaveBeenCalledWith(COLOR_SCHEME_STORAGE_KEY, 'black');
   });
 
-  test('ignores unsupported stored values and falls back to green', () => {
+  test('ignores unsupported stored values and falls back to pink', () => {
     const root = createRoot();
     const storage = createStorage('chartreuse');
 
     const controller = useColorScheme({ root, storage });
 
-    expect(controller.colorScheme.value).toBe('green');
+    expect(controller.colorScheme.value).toBe('pink');
     expect(controller.hasExplicitPreference.value).toBe(false);
     expect(storage.setItem).not.toHaveBeenCalled();
   });

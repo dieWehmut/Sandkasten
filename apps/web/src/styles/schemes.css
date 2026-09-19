@@ -3,7 +3,7 @@
  *
  * `tokens.css` owns the neutral surfaces (canvas, text, borders, semantic
  * states); this file owns the accent family only. Every scheme overrides the
- * same three accent tokens in both themes, so each component keeps referencing
+ * same accent tokens in both themes, so each component keeps referencing
  * `--accent*` and never learns which scheme is active.
  *
  * Each palette was checked for WCAG AA (>= 4.5:1) on the pairs the interface
@@ -14,46 +14,61 @@
  *   - dark: `--surface` text on `--accent` used as a button background
  *   - dark: `--accent-strong` text on `--accent-soft`
  *   - dark: `--accent` used as an icon/text color on `--surface`
+ *   - both: `--on-accent` text on `--accent-fill` for filled controls
+ *
+ * The filled-control pair is separate from accent text: a soft pink fill can
+ * keep its reference hue while small labels still have enough contrast.
  */
 
-/* Green is the historical default. Its values are the tokens the workbench
-   shipped with, so an untouched install renders exactly as before. */
+/* Pink also covers the first paint, before the saved preference is applied. */
 :root,
+:root[data-color-scheme="pink"] {
+  --accent: #b12a69;
+  --accent-strong: #a5215e;
+  --accent-soft: #fcedf3;
+  --accent-fill: #f077af;
+  --on-accent: #1a1c1f;
+}
+
+:root[data-theme="dark"],
+:root[data-theme="dark"][data-color-scheme="pink"] {
+  --accent: #f077af;
+  --accent-strong: #ffa4cd;
+  --accent-soft: #34232b;
+  --accent-fill: #f077af;
+  --on-accent: #1a1c1f;
+}
+
 :root[data-color-scheme="green"] {
   --accent: #23834a;
   --accent-strong: #176235;
   --accent-soft: #e1f2e6;
+  --accent-fill: #176235;
+  --on-accent: #ffffff;
 }
 
-:root[data-theme="dark"],
 :root[data-theme="dark"][data-color-scheme="green"] {
   --accent: #63d58a;
   --accent-strong: #8be8a8;
   --accent-soft: #1f422d;
+  --accent-fill: #63d58a;
+  --on-accent: #181818;
 }
 
 :root[data-color-scheme="purple"] {
   --accent: #7c3aed;
   --accent-strong: #5b21b6;
   --accent-soft: #ede9fe;
+  --accent-fill: #5b21b6;
+  --on-accent: #ffffff;
 }
 
 :root[data-theme="dark"][data-color-scheme="purple"] {
   --accent: #b79bfd;
   --accent-strong: #cdb6ff;
   --accent-soft: #2c2145;
-}
-
-:root[data-color-scheme="pink"] {
-  --accent: #db2777;
-  --accent-strong: #9d174d;
-  --accent-soft: #fce7f3;
-}
-
-:root[data-theme="dark"][data-color-scheme="pink"] {
-  --accent: #f591bd;
-  --accent-strong: #ffb3d4;
-  --accent-soft: #40202f;
+  --accent-fill: #b79bfd;
+  --on-accent: #181818;
 }
 
 /* Monochrome schemes keep the interface usable without introducing a hue. */
@@ -61,24 +76,32 @@
   --accent: #767676;
   --accent-strong: #4f4f4f;
   --accent-soft: #ececec;
+  --accent-fill: #4f4f4f;
+  --on-accent: #ffffff;
 }
 
 :root[data-theme="dark"][data-color-scheme="white"] {
   --accent: #ffffff;
   --accent-strong: #d4d4d4;
   --accent-soft: #2a2a2a;
+  --accent-fill: #ffffff;
+  --on-accent: #181818;
 }
 
 :root[data-color-scheme="black"] {
   --accent: #1a1a1a;
   --accent-strong: #000000;
   --accent-soft: #e6e6e6;
+  --accent-fill: #000000;
+  --on-accent: #ffffff;
 }
 
 :root[data-theme="dark"][data-color-scheme="black"] {
   --accent: #9a9a9a;
   --accent-strong: #cfcfcf;
   --accent-soft: #262626;
+  --accent-fill: #9a9a9a;
+  --on-accent: #181818;
 }
 
 /* Selection and focus ring follow the accent so the active scheme reads as one
