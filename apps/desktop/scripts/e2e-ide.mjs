@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { selectTheme } from './e2e-theme.mjs';
+import { verifyTrayUpdate } from './e2e-tray-update.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -70,9 +71,18 @@ async function main() {
 
   const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
   const profileArgument = `--user-data-dir=${path.join(testRoot, 'profile')}`;
+  // The tray update flow is driven through the app's own probe: the scripted
+  // release keeps the check off the network and lets the run assert what the
+  // dialog would have shown.
+  const e2eEnv = {
+    ...process.env,
+    SANDKASTEN_WORKSPACE_ROOT: workspace,
+    SANDKASTEN_E2E_PROBE: '1',
+    SANDKASTEN_E2E_RELEASE: process.env.SANDKASTEN_E2E_RELEASE ?? 'v9.9.9',
+  };
   const app = packagedExecutable
-    ? await driver.launch({ executablePath: packagedExecutable, args: [profileArgument], env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } })
-    : await driver.launch({ executablePath: electronExecutable, args: ['.', profileArgument], cwd: appRoot, env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace } });
+    ? await driver.launch({ executablePath: packagedExecutable, args: [profileArgument], env: e2eEnv })
+    : await driver.launch({ executablePath: electronExecutable, args: ['.', profileArgument], cwd: appRoot, env: e2eEnv });
 
   const checks = { workspace, python: true, mode: packagedExecutable ? 'packaged' : 'development' };
   let failure;
@@ -472,6 +482,15 @@ async function main() {
     // so a running job keeps going; only the tray quit may exit.
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
     await page.waitForTimeout(1_500);
+    // The tray owns the release check, so the run drives the real menu item
+    // after the window has hidden: the hidden window must not block it.
+    checks.trayUpdate = await verifyTrayUpdate({
+      app,
+      scriptedTag: e2eEnv.SANDKASTEN_E2E_RELEASE,
+      locale: checks.titleRow?.menus?.includes('文件') ? 'zh' : 'en',
+      currentVersion: await app.evaluate(({ app: electronApp }) => electronApp.getVersion()),
+      report: checks,
+    });
     checks.closeToTray = await app.evaluate(({ BrowserWindow }) => {
       const windows = BrowserWindow.getAllWindows();
       return {
@@ -548,6 +567,9 @@ async function main() {
     }
     assert.equal(checks.settingsSetupGuide, true);
     assert.deepEqual(checks.closeToTray, { windowCount: 1, visible: false, destroyed: false });
+    assert.equal(checks.trayUpdate?.initial.enabled, true);
+    assert.equal(checks.trayUpdate?.busy.enabled, false, 'the tray reports progress while the check runs');
+    assert.equal(checks.trayUpdate?.settled.menu.enabled, true, 'the tray accepts another check once it settles');
     assert.equal(checks.layout?.noPageScroll, true);
     assert.equal(checks.layout?.fullHeight, true);
     assert.deepEqual(checks.rendererErrors, []);

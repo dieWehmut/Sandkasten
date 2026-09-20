@@ -43,7 +43,10 @@ The desktop build adds these things the browser cannot do:
 6. **A tray that owns the exit.** Closing the window hides it instead of
    ending the app, so a running job keeps going. The tray's left click
    restores and focuses the window, its right click opens a small settings
-   menu (setup guide, API endpoint), and only its quit entry exits.
+   menu (setup guide, API endpoint), and only its quit entry exits. The same
+   menu carries `Check for updates…`, which asks GitHub for the latest stable
+   release, reports the running and published versions, and opens the release
+   page only when an update exists and its download button is chosen.
 7. **A real interactive terminal.** The bottom panel gains a Terminal tab
    beside Output, Errors, Compile, and Diagnostics. It lists the installed
    shells (PowerShell, cmd, Git Bash, and WSL when present), starts sessions
@@ -137,10 +140,19 @@ npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 `npm run e2e` launches the app against a temporary workspace and asserts the
 explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel
 toggling, the integrated title row with its native menu popup, close-to-tray,
-and both themes; it writes `tmp/desktop-ide-light.png` and
+the tray update entry, and both themes; it writes `tmp/desktop-ide-light.png` and
 `tmp/desktop-ide-dark.png`. Set `SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/win-unpacked/Sandkasten.exe`
 to run the same checks against a packaged build. It needs Python on `PATH` and
 reuses the `playwright-core` already installed in `apps/web/node_modules`.
+
+The tray update check is native, so the run cannot click it through the page.
+The app publishes its live tray menu and answers the update dialog when
+`SANDKASTEN_E2E_PROBE=1` is set, and the run reads the recorded rebuilds to
+assert the progress label, the settled entry, and the reported versions. It
+checks against a scripted `v9.9.9` release by default; set
+`SANDKASTEN_E2E_RELEASE=<tag>` to pick another, `none` for a repository without
+a stable release, or `live` to let the run reach the real GitHub API. The probe
+is inert unless that variable is set, so a normal launch never exposes it.
 
 `npm run e2e:refinement` additionally wheel-scrolls the setup guide at desktop
 and compact sizes, drives the empty-editor welcome actions, and exercises a real

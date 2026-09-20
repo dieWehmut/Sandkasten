@@ -161,3 +161,24 @@ test('closing the window hides it while a real quit is allowed to close', () => 
   assert.equal(prevented.value, false, 'the tray quit must be able to close for real');
   assert.deepEqual(closed, ['hide']);
 });
+
+test('reports every menu rebuild so the running app can expose its live tray state', async () => {
+  const seen = [];
+  let finish;
+  createAppTray({
+    Tray: class { setToolTip() {} setContextMenu() {} on() {} },
+    Menu: { buildFromTemplate: (template) => template },
+    nativeImage: { createFromPath: () => ({}) }, iconPath: 'icon.png',
+    checkForUpdates: () => new Promise((resolve) => { finish = resolve; }),
+    onMenuChange: (template) => seen.push(template),
+  });
+  assert.equal(seen.length, 1, 'the initial menu is reported');
+  const check = seen[0].find((item) => item.id === 'check-for-updates');
+  const pending = check.click();
+  assert.equal(seen.length, 2, 'entering the checking state is reported');
+  assert.equal(seen[1].find((item) => item.id === 'check-for-updates').enabled, false);
+  finish();
+  await pending;
+  assert.equal(seen.length, 3, 'leaving the checking state is reported');
+  assert.equal(seen[2].find((item) => item.id === 'check-for-updates').enabled, true);
+});

@@ -16,6 +16,7 @@ import { discoverTerminalProfiles } from './terminal-profiles.mjs';
 import { registerTerminalIpc } from './terminal-ipc.mjs';
 import { applyCloseToTrayPolicy, createAppTray, trayIconPath } from './tray.mjs';
 import { createUpdateChecker } from './updates.mjs';
+import { createTrayProbe } from './tray-probe.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -70,6 +71,7 @@ async function start() {
     const target = focusedWindow();
     if (target && !target.isDestroyed()) target.webContents.send(IPC_CHANNELS.menu, command);
   };
+  const trayProbe = createTrayProbe();
 
   registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow });
   const bundledIndex = path.join(activeDistribution, 'index.html');
@@ -92,14 +94,19 @@ async function start() {
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
 
+  // The end-to-end run cannot read a native modal, so the probe answers the
+  // update dialog instead of leaving the check waiting on a click.
   const updateChecker = createUpdateChecker({
     currentVersion: app.getVersion(),
     locale: trayLocale(),
-    showMessageBox: (options) => {
-      const window = focusedWindow();
-      return window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options);
-    },
-    openExternal: (url) => shell.openExternal(url),
+    fetchImpl: trayProbe.enabled ? trayProbe.fetch : undefined,
+    showMessageBox: trayProbe.enabled
+      ? trayProbe.showMessageBox
+      : (options) => {
+        const window = focusedWindow();
+        return window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options);
+      },
+    openExternal: trayProbe.enabled ? trayProbe.openExternal : (url) => shell.openExternal(url),
   });
 
   let quitPrepared = false;
@@ -134,6 +141,7 @@ async function start() {
     createWindow: () => createWindow(bundledIndex),
     sendCommand: sendToWindow,
     checkForUpdates: () => updateChecker.check(),
+    onMenuChange: trayProbe.onMenuChange,
     quit: () => app.quit(),
   });
 
