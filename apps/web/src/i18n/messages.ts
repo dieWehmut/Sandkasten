@@ -1,4 +1,7 @@
 const en = {
+  'navigation.label': 'Editor navigation',
+  'navigation.back': 'Go back',
+  'navigation.forward': 'Go forward',
   'terminal.title': 'Terminal',
   'terminal.new': 'New terminal',
   'terminal.profile': 'New terminal with profile',
@@ -254,6 +257,9 @@ const en = {
 type EnglishMessages = typeof en;
 
 const zhCN: { [Key in keyof EnglishMessages]: string } = {
+  'navigation.label': '编辑器导航',
+  'navigation.back': '后退',
+  'navigation.forward': '前进',
   'terminal.title': '终端',
   'terminal.new': '新建终端',
   'terminal.profile': '选择 Shell 新建终端',

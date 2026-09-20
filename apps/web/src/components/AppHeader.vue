@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
+import { ArrowLeft, ArrowRight } from '@lucide/vue';
 // Inlined as a data URI so the four-file distribution contract keeps holding.
 import brandMark from '../assets/brand-88.png?inline';
 import type { Theme } from '../composables/useTheme';
@@ -15,7 +16,11 @@ const props = withDefaults(defineProps<{
   /** Present only inside the Electron shell with the integrated window chrome. */
   chrome?: WindowChromeBridge;
   platform?: string;
+  canBack?: boolean;
+  canForward?: boolean;
 }>(), { theme: 'light', locale: 'en' });
+
+const emit = defineEmits<{ navigateBack: []; navigateForward: [] }>();
 
 const englishTranslator = createTranslator('en');
 const translate = computed(() => props.t ?? englishTranslator);
@@ -42,6 +47,18 @@ const isMac = computed(() => props.platform === 'darwin');
     <a class="brand" href="./" :aria-label="translate('brand.home')">
       <img class="brand__mark" :src="brandMark" alt="" aria-hidden="true" />
     </a>
+    <nav class="editor-navigation" :aria-label="translate('navigation.label')">
+      <button type="button" data-action="navigate-back" :disabled="!canBack"
+        :aria-label="translate('navigation.back')" :title="`${translate('navigation.back')} (Alt+Left)`"
+        aria-keyshortcuts="Alt+ArrowLeft" @click="emit('navigateBack')">
+        <ArrowLeft :size="18" aria-hidden="true" />
+      </button>
+      <button type="button" data-action="navigate-forward" :disabled="!canForward"
+        :aria-label="translate('navigation.forward')" :title="`${translate('navigation.forward')} (Alt+Right)`"
+        aria-keyshortcuts="Alt+ArrowRight" @click="emit('navigateForward')">
+        <ArrowRight :size="18" aria-hidden="true" />
+      </button>
+    </nav>
     <DesktopMenu
       v-if="integrated"
       :chrome="chrome"

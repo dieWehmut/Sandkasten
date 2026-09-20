@@ -114,6 +114,34 @@
   object-fit: cover;
 }
 
+.editor-navigation {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.editor-navigation button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.editor-navigation button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.editor-navigation button:disabled {
+  opacity: .38;
+}
+
 
 
 .connection-status {

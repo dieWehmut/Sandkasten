@@ -10,6 +10,8 @@ import { useRunner, type OutputTab } from './composables/useRunner';
 import { useLocalRunner } from './composables/useLocalRunner';
 import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
+import { useEditorHistory } from './composables/useEditorHistory';
+import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
@@ -63,6 +65,16 @@ const PHASE_KEYS: Readonly<Record<ExecutionPhase, MessageKey>> = {
 };
 
 const activeFile = workspace.activeFile;
+function filePaths(nodes: readonly WorkspaceTreeNode[]): string[] {
+  return nodes.flatMap((node) => node.type === 'file' ? [node.path] : filePaths(node.children ?? []));
+}
+const workspacePaths = computed(() => [...new Set([
+  ...filePaths(workspace.tree.value), ...workspace.files.value.map((file) => file.path),
+])]);
+const editorHistory = useEditorHistory({
+  activePath: workspace.activePath, paths: workspacePaths, openFile: workspace.openFile,
+});
+watch(() => workspace.root.value?.path, () => editorHistory.reset(), { flush: 'sync' });
 // The document title names the open file and workspace, so the desktop window
 // and a browser tab both identify what is being edited rather than the app
 // alone.
@@ -323,6 +335,11 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
 };
 
 function onKeydown(event: KeyboardEvent): void {
+  if (event.altKey && !event.ctrlKey && !event.metaKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    void (event.key === 'ArrowLeft' ? editorHistory.back() : editorHistory.forward());
+    return;
+  }
   if (terminal && isTerminalShortcut(event)) {
     event.preventDefault();
     if (event.shiftKey) void openTerminal('new');
@@ -409,6 +426,10 @@ onBeforeUnmount(() => {
       :window-title="documentTitle"
       :chrome="bridge?.windowChrome"
       :platform="bridge?.platform"
+      :can-back="editorHistory.canBack.value"
+      :can-forward="editorHistory.canForward.value"
+      @navigate-back="editorHistory.back"
+      @navigate-forward="editorHistory.forward"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"
