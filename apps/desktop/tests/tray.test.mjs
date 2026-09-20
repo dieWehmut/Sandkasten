@@ -86,15 +86,12 @@ test('the right click menu offers localized settings and never quits on its own'
     sendCommand: (command) => commands.push(command),
     quit: () => quits.push(true),
   });
-  assert.deepEqual(template.map((entry) => entry.label), ['Open Sandkasten', 'Settings', undefined, 'Quit Sandkasten']);
+  assert.deepEqual(template.map((entry) => entry.label), ['Open Sandkasten', 'Settings', 'Check for updates…', undefined, 'Quit Sandkasten']);
   template[0].click();
   assert.equal(shown, 1);
-  const settings = template[1].submenu;
-  assert.deepEqual(settings.map((entry) => entry.label), [
-    'Setup Guide', 'API Endpoint',
-  ]);
-  for (const entry of settings.filter((item) => item.click)) entry.click();
-  assert.deepEqual(commands, ['view.toggleSetup', 'apiEndpoint.open']);
+  template[1].click();
+  assert.equal(shown, 2, 'settings must restore the hidden window before sending the command');
+  assert.deepEqual(commands, ['settings.open']);
   assert.deepEqual(quits, [], 'only the explicit quit entry may exit');
   template.at(-1).click();
   assert.deepEqual(quits, [true]);
@@ -107,10 +104,37 @@ test('Chinese tray menus are localized', () => {
     sendCommand: () => {},
     quit: () => {},
   });
-  assert.deepEqual(template.map((entry) => entry.label), ['打开 Sandkasten', '设置', undefined, '退出 Sandkasten']);
-  assert.deepEqual(template[1].submenu.filter((entry) => entry.click).map((entry) => entry.label), [
-    '安装指南', 'API 地址',
-  ]);
+  assert.deepEqual(template.map((entry) => entry.label), ['打开 Sandkasten', '设置', '检查更新…', undefined, '退出 Sandkasten']);
+});
+
+test('the tray update action invokes the checker and shows a disabled progress entry', async () => {
+  let checks = 0;
+  const options = { checkForUpdates: async () => { checks++; } };
+  await trayMenuTemplate(options).find((item) => item.id === 'check-for-updates').click();
+  assert.equal(checks, 1);
+  const checking = trayMenuTemplate({ ...options, locale: 'zh-CN', checkingForUpdates: true }).find((item) => item.id === 'check-for-updates');
+  assert.equal(checking.label, '正在检查更新…');
+  assert.equal(checking.enabled, false);
+});
+
+test('the real tray menu refreshes around the asynchronous check and prevents duplicate clicks', async () => {
+  const menus = [];
+  let finish;
+  let calls = 0;
+  createAppTray({
+    Tray: class { setToolTip() {} setContextMenu(menu) { menus.push(menu); } on() {} },
+    Menu: { buildFromTemplate: (template) => template },
+    nativeImage: { createFromPath: () => ({}) }, iconPath: 'icon.png',
+    checkForUpdates: () => { calls++; return new Promise((resolve) => { finish = resolve; }); },
+  });
+  const original = menus[0].find((item) => item.id === 'check-for-updates');
+  const pending = original.click();
+  original.click();
+  assert.equal(calls, 1);
+  assert.equal(menus.at(-1).find((item) => item.id === 'check-for-updates').enabled, false);
+  finish();
+  await pending;
+  assert.equal(menus.at(-1).find((item) => item.id === 'check-for-updates').enabled, true);
 });
 
 test('closing the window hides it while a real quit is allowed to close', () => {

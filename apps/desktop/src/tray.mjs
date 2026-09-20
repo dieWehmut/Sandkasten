@@ -7,23 +7,22 @@ const LABELS = {
     tooltip: 'Sandkasten',
     open: 'Open Sandkasten',
     settings: 'Settings',
-    setup: 'Setup Guide',
-    apiEndpoint: 'API Endpoint',
+    checkForUpdates: 'Check for updates…',
+    checkingForUpdates: 'Checking for updates…',
     quit: 'Quit Sandkasten',
   },
   'zh-CN': {
     tooltip: 'Sandkasten',
     open: '打开 Sandkasten',
     settings: '设置',
-    setup: '安装指南',
-    apiEndpoint: 'API 地址',
+    checkForUpdates: '检查更新…',
+    checkingForUpdates: '正在检查更新…',
     quit: '退出 Sandkasten',
   },
 };
 
 export const TRAY_COMMANDS = {
-  setup: 'view.toggleSetup',
-  apiEndpoint: 'apiEndpoint.open',
+  settings: 'settings.open',
 };
 
 function labelsFor(locale) {
@@ -53,32 +52,40 @@ export function showMainWindow({ getAllWindows, createWindow } = {}) {
   return false;
 }
 
-export function trayMenuTemplate({ locale = 'en', showWindow, sendCommand, quit } = {}) {
+export function trayMenuTemplate({
+  locale = 'en',
+  showWindow,
+  sendCommand,
+  checkForUpdates,
+  checkingForUpdates = false,
+  quit,
+} = {}) {
   const labels = labelsFor(locale);
-  const command = (id) => () => sendCommand?.(id);
   return [
     { label: labels.open, click: () => showWindow?.() },
     {
       label: labels.settings,
-      submenu: [
-        { label: labels.setup, click: command(TRAY_COMMANDS.setup) },
-        { label: labels.apiEndpoint, click: command(TRAY_COMMANDS.apiEndpoint) },
-      ],
+      click: () => {
+        showWindow?.();
+        sendCommand?.(TRAY_COMMANDS.settings);
+      },
+    },
+    {
+      id: 'check-for-updates',
+      label: checkingForUpdates ? labels.checkingForUpdates : labels.checkForUpdates,
+      enabled: !checkingForUpdates,
+      click: () => checkForUpdates?.(),
     },
     { type: 'separator' },
     { label: labels.quit, click: () => quit?.() },
   ];
 }
 
-export function applyCloseToTrayPolicy({ window, isQuitting }) {
-  window.on('close', (event) => {
-    // A real quit (tray menu, system shutdown, or app.quit()) must proceed.
-    if (typeof isQuitting === 'function' && isQuitting()) return;
-    event.preventDefault();
-    window.hide();
-  });
-}
-
+/*
+ * Keep the native menu in sync with the asynchronous release check. Rebuilding
+ * the template is cheap and avoids stale enabled/disabled state in Electron's
+ * native menu object.
+ */
 export function createAppTray({
   Tray,
   Menu,
@@ -88,14 +95,55 @@ export function createAppTray({
   getAllWindows,
   createWindow,
   sendCommand,
+  checkForUpdates,
   quit,
 } = {}) {
   const icon = nativeImage.createFromPath(iconPath);
   const tray = new Tray(icon);
   const open = () => showMainWindow({ getAllWindows, createWindow });
+  let checkingForUpdates = false;
+  let inFlight;
+
+  const renderMenu = () => {
+    tray.setContextMenu(Menu.buildFromTemplate(trayMenuTemplate({
+      locale,
+      showWindow: open,
+      sendCommand,
+      checkingForUpdates,
+      checkForUpdates: () => {
+        if (inFlight) return inFlight;
+        if (typeof checkForUpdates !== 'function') return undefined;
+        checkingForUpdates = true;
+        renderMenu();
+        try {
+          inFlight = Promise.resolve(checkForUpdates());
+        } catch (error) {
+          inFlight = Promise.reject(error);
+        }
+        inFlight = inFlight
+          .finally(() => {
+            inFlight = undefined;
+            checkingForUpdates = false;
+            renderMenu();
+          });
+        return inFlight;
+      },
+      quit,
+    })));
+  };
+
   tray.setToolTip(labelsFor(locale).tooltip);
-  tray.setContextMenu(Menu.buildFromTemplate(trayMenuTemplate({ locale, showWindow: open, sendCommand, quit })));
+  renderMenu();
   tray.on('click', open);
   tray.on('right-click', () => tray.popUpContextMenu?.());
   return tray;
+}
+
+export function applyCloseToTrayPolicy({ window, isQuitting }) {
+  window.on('close', (event) => {
+    // A real quit (tray menu, system shutdown, or app.quit()) must proceed.
+    if (typeof isQuitting === 'function' && isQuitting()) return;
+    event.preventDefault();
+    window.hide();
+  });
 }
