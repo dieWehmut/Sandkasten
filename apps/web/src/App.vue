@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
+import CommandPalette from './components/CommandPalette.vue';
 import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
@@ -10,6 +11,9 @@ import { useRunner, type OutputTab } from './composables/useRunner';
 import { useLocalRunner } from './composables/useLocalRunner';
 import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
+import { useEditorHistory } from './composables/useEditorHistory';
+import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
+import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
@@ -63,6 +67,16 @@ const PHASE_KEYS: Readonly<Record<ExecutionPhase, MessageKey>> = {
 };
 
 const activeFile = workspace.activeFile;
+function filePaths(nodes: readonly WorkspaceTreeNode[]): string[] {
+  return nodes.flatMap((node) => node.type === 'file' ? [node.path] : filePaths(node.children ?? []));
+}
+const workspacePaths = computed(() => [...new Set([
+  ...filePaths(workspace.tree.value), ...workspace.files.value.map((file) => file.path),
+])]);
+const editorHistory = useEditorHistory({
+  activePath: workspace.activePath, paths: workspacePaths, openFile: workspace.openFile,
+});
+watch(() => workspace.root.value?.path, () => editorHistory.reset(), { flush: 'sync' });
 // The document title names the open file and workspace, so the desktop window
 // and a browser tab both identify what is being edited rather than the app
 // alone.
@@ -138,8 +152,11 @@ function loadRunnerOnce(): void {
 function dismissSetup(): void {
   setupWelcome.dismiss();
   loadRunnerOnce();
+  // The reduced title row dropped the setup button, so the guide is reopened
+  // from the command palette or the welcome screen. Focus the always-present
+  // search control rather than leaving focus on a detached element.
   void nextTick(() => {
-    document.querySelector<HTMLElement>('[data-testid="open-setup-guide"]')?.focus();
+    document.querySelector<HTMLElement>('[data-action="quick-open"]')?.focus();
   });
 }
 
@@ -320,9 +337,93 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'terminal.new': () => { void openTerminal('new'); },
   'terminal.toggle': toggleTerminal,
   'terminal.split': () => { void openTerminal('split'); },
+  'view.history': toggleHistory,
+  'view.inspector': toggleInspector,
+  'locale.en': () => locale.setLocale('en'),
+  'locale.zh-CN': () => locale.setLocale('zh-CN'),
+  'navigation.back': () => { void editorHistory.back(); },
+  'navigation.forward': () => { void editorHistory.forward(); },
 };
 
+const commandPaletteError = ref('');
+const paletteCommands = computed<PaletteCommand[]>(() => {
+  const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
+  const command = (id: string, key: MessageKey, accelerator?: string, enabled = true): PaletteCommand => ({
+    id, label: locale.t(key), accelerator, enabled: enabled && Boolean(MENU_COMMANDS[id]), execute: MENU_COMMANDS[id],
+  });
+  return [
+    command('settings.open', 'palette.settings', `${modifier},`),
+    command('workspace.open', 'ide.explorer.openFolder', `${modifier}O`, workspace.isDesktop.value),
+    command('file.new', 'ide.explorer.newFile', `${modifier}N`),
+    command('file.save', 'ide.workspace.save', `${modifier}S`, Boolean(activeFile.value)),
+    command('file.closeTab', 'palette.closeEditor', `${modifier}W`, Boolean(activeFile.value)),
+    command('run.start', 'palette.run', 'F5', canRun.value),
+    command('run.stop', 'palette.stop', 'Shift+F5', isExecutionBusy(executionPhase.value)),
+    command('navigation.back', 'navigation.back', 'Alt+Left', editorHistory.canBack.value),
+    command('navigation.forward', 'navigation.forward', 'Alt+Right', editorHistory.canForward.value),
+    command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
+    command('view.togglePanel', 'palette.panel', `${modifier}J`, ideMode.value),
+    command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
+    command('view.inspector', !ideMode.value && inspectorOpen.value ? 'header.inspector.hide' : 'header.inspector.show'),
+    command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
+    command('terminal.new', 'terminal.new', `${modifier}Shift+\``, Boolean(terminal?.profiles.value.length) && !terminal?.pending.value),
+    command('terminal.split', 'terminal.split', undefined, Boolean(terminal?.sessions.value.length) && !terminal?.pending.value),
+    command('view.toggleSetup', 'header.setup'),
+    command('apiEndpoint.open', 'apiEndpoint.open'),
+    command('theme.toggle', theme.theme.value === 'light' ? 'header.theme.useDark' : 'header.theme.useLight'),
+    command('locale.en', 'locale.switchToEnglish', undefined, locale.locale.value !== 'en'),
+    command('locale.zh-CN', 'locale.switchToChinese', undefined, locale.locale.value !== 'zh-CN'),
+    command('help.github', 'header.github'),
+  ];
+});
+const commandCenter = useCommandCenter({
+  paths: workspacePaths, recentPaths: editorHistory.recentPaths, commands: paletteCommands,
+  t: locale.t, platform: bridge?.platform,
+});
+
+function openPalette(mode: 'files' | 'commands' = 'files'): void {
+  commandPaletteError.value = '';
+  commandCenter.openPalette(mode);
+}
+
+async function selectPaletteItem(id: string): Promise<void> {
+  const item = commandCenter.items.value.find((candidate) => candidate.id === id);
+  if (!item) return;
+  if (item.kind === 'mode') { openPalette('commands'); return; }
+  const command = item.kind === 'command' ? commandCenter.availableCommands.value.find((candidate) => candidate.id === id) : undefined;
+  commandCenter.close();
+  // Restore the previous focus before executing an action that opens another view.
+  await nextTick();
+  try {
+    if (item.kind === 'file') await workspace.openFile(id);
+    else await command?.execute();
+  } catch {
+    commandCenter.openPalette(item.kind === 'command' ? 'commands' : 'files');
+    commandPaletteError.value = locale.t('palette.failed');
+  }
+}
+
 function onKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented) return;
+  const key = event.key.toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'p' || (key === 'e' && !event.shiftKey))) {
+    if (setupWelcome.isGuideOpen.value) return;
+    event.preventDefault();
+    openPalette(event.shiftKey ? 'commands' : 'files');
+    return;
+  }
+  if (commandCenter.open.value) return;
+  if (event.key === 'F5' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    if (event.shiftKey) stopActive();
+    else void runActive();
+    return;
+  }
+  if (event.altKey && !event.ctrlKey && !event.metaKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    void (event.key === 'ArrowLeft' ? editorHistory.back() : editorHistory.forward());
+    return;
+  }
   if (terminal && isTerminalShortcut(event)) {
     event.preventDefault();
     if (event.shiftKey) void openTerminal('new');
@@ -331,7 +432,6 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
-  const key = event.key.toLowerCase();
   if (key === 's') {
     event.preventDefault();
     saveActive();
@@ -403,24 +503,28 @@ onBeforeUnmount(() => {
   >
     <AppHeader
       v-if="!setupWelcome.isGuideOpen.value"
-      :connection-state="connectionState"
-      :history-open="historyOpen"
-      :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
-      :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"
       :window-title="documentTitle"
       :chrome="bridge?.windowChrome"
       :platform="bridge?.platform"
-      @toggle-history="toggleHistory"
-      @toggle-inspector="toggleInspector"
-      @toggle-theme="theme.toggleTheme"
-      @change-color-scheme="colorScheme.setColorScheme"
-      @open-github="openGithub"
-      @open-setup="setupWelcome.reopen"
-      @open-api-endpoint="openApiEndpoint"
-      @change-locale="locale.setLocale"
+      :can-back="editorHistory.canBack.value"
+      :can-forward="editorHistory.canForward.value"
+      @navigate-back="editorHistory.back"
+      @navigate-forward="editorHistory.forward"
+      :palette-open="commandCenter.open.value"
+      @quick-open="openPalette()"
+    />
+    <CommandPalette
+      :open="commandCenter.open.value"
+      :query="commandCenter.query.value"
+      :items="commandCenter.items.value"
+      :error="commandPaletteError"
+      :t="locale.t"
+      @update:query="commandCenter.query.value = $event"
+      @select="selectPaletteItem"
+      @close="commandCenter.close"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"

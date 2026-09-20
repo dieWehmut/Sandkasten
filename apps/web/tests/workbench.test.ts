@@ -137,7 +137,9 @@ describe('workbench controls', () => {
     await flushPromises();
 
     expect(wrapper.get('[data-testid="app-shell"]').classes()).toContain('workbench-app');
-    expect(wrapper.text()).toContain('Connected');
+    // The reduced title row dropped the status line, so the run bar's badge
+    // carries the connection state instead.
+    expect(wrapper.get('.ide-status__badge').attributes('data-connection')).toBe('connected');
     wrapper.get('[data-testid="workbench-shell"]');
 
     await wrapper.get('[aria-label="Runtime"]').setValue('python');

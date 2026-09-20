@@ -57,6 +57,140 @@
   white-space: nowrap;
 }
 
+/* Equal side tracks keep search at the center of the window even when native
+   menus occupy the left side. At smaller sizes it uses the available space. */
+.app-header {
+  gap: 8px;
+}
+
+.command-center {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  width: min(40%, 580px);
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  transform: translateX(-50%);
+}
+
+.command-center:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.command-center .app-header__title {
+  flex: 0 1 auto;
+}
+
+.command-palette {
+  position: fixed;
+  z-index: 80;
+  top: calc(var(--header-height) + 6px);
+  left: 50%;
+  width: min(640px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 10px);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 12px 36px rgb(0 0 0 / .24);
+  transform: translateX(-50%);
+  -webkit-app-region: no-drag;
+}
+
+.command-palette__input {
+  width: 100%;
+  height: 34px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--canvas);
+  font: 13px var(--font-ui);
+}
+
+.command-palette__list {
+  max-height: min(430px, calc(100dvh - var(--header-height) - 84px));
+  overflow-y: auto;
+}
+
+.command-palette__item {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.command-palette__item[aria-selected="true"] {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.command-palette__item > svg,
+.command-palette__item > .file-icon {
+  flex: 0 0 auto;
+}
+
+.command-palette__label,
+.command-palette__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette__detail {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.command-palette__recent,
+.command-palette kbd {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font: 11px var(--font-ui);
+  white-space: nowrap;
+}
+
+.command-palette kbd {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-subtle);
+}
+
+.command-palette__empty,
+.command-palette__error {
+  margin: 4px 8px;
+  font-size: 13px;
+}
+
+.command-palette__error { color: var(--danger); }
+
+@media (max-width: 1199px) {
+  .command-center {
+    position: static;
+    width: auto;
+    min-width: 70px;
+    flex: 1 1 auto;
+    margin-left: 8px;
+    transform: none;
+  }
+}
+
 /* A quiet menu bar that mirrors the native menu, styled for both themes. */
 .desktop-menu {
   display: flex;
@@ -93,7 +227,6 @@
 
 .brand,
 .connection-status,
-.header-actions,
 .run-controls,
 .history-item__primary,
 .history-item__meta {
@@ -115,15 +248,35 @@
   object-fit: cover;
 }
 
-.brand svg {
-  color: var(--accent-strong);
+.editor-navigation {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
 }
 
-.brand strong {
-  overflow: hidden;
-  font-size: 15px;
-  text-overflow: ellipsis;
+.editor-navigation button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
 }
+
+.editor-navigation button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.editor-navigation button:disabled {
+  opacity: .38;
+}
+
+
 
 .connection-status {
   gap: 6px;
@@ -149,9 +302,6 @@
   to { rotate: 1turn; }
 }
 
-.header-actions {
-  gap: 6px;
-}
 
 .locale-switcher {
   display: inline-flex;
@@ -163,7 +313,6 @@
   background: var(--surface-subtle);
 }
 
-.header-actions button,
 .output-viewer > button,
 .edge-sheet__header button {
   display: inline-grid;
@@ -176,30 +325,9 @@
   background: transparent;
 }
 
-.header-actions .locale-switcher button {
-  width: auto;
-  min-width: 34px;
-  height: 28px;
-  flex-basis: auto;
-  padding-inline: 7px;
-  border: 0;
-  font: 700 10px/1 var(--font-ui);
-}
 
-.header-actions .locale-switcher button[aria-pressed="true"] {
-  color: #fff;
-  background: var(--accent-strong);
-}
 
-:root[data-theme="dark"] .header-actions .locale-switcher button[aria-pressed="true"] {
-  color: var(--surface);
-}
 
-.header-actions button[aria-expanded="true"] {
-  border-color: var(--accent);
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-}
 
 .color-scheme-switcher {
   position: relative;
@@ -618,20 +746,8 @@
     clip-path: inset(50%);
   }
 
-  .header-actions {
-    gap: 3px;
-  }
 
-  .header-actions .locale-switcher button {
-    min-width: 28px;
-    padding-inline: 5px;
-  }
 
-  .header-actions button {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-  }
 
   .color-scheme-switcher > button {
     width: 32px;
@@ -698,15 +814,7 @@
 }
 
 @media (max-width: 420px) {
-  .brand strong {
-    max-width: 76px;
-  }
 
-  .header-actions button {
-    width: 30px;
-    height: 30px;
-    flex-basis: 30px;
-  }
 
   .color-scheme-switcher > button {
     width: 30px;
@@ -714,11 +822,4 @@
     flex-basis: 30px;
   }
 
-  .header-actions .locale-switcher button {
-    min-width: 26px;
-    width: auto;
-    height: 26px;
-    flex-basis: auto;
-    padding-inline: 4px;
-  }
 }

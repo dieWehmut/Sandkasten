@@ -4,6 +4,21 @@ import AppHeader from '../src/components/AppHeader.vue';
 import { createTranslator } from '../src/i18n/locale';
 
 describe('integrated desktop header', () => {
+  test('labels and enables editor history arrows from the navigation state', async () => {
+    const wrapper = mount(AppHeader, { props: { canBack: false, canForward: true, t: createTranslator('en') } });
+    const back = wrapper.get('[data-action="navigate-back"]');
+    const forward = wrapper.get('[data-action="navigate-forward"]');
+    expect(back.attributes('disabled')).toBeDefined();
+    expect(back.attributes('aria-keyshortcuts')).toBe('Alt+ArrowLeft');
+    expect(forward.attributes('aria-label')).toBe('Go forward');
+    await forward.trigger('click');
+    expect(wrapper.emitted('navigateForward')).toHaveLength(1);
+    await wrapper.setProps({ canBack: true, canForward: false });
+    await back.trigger('click');
+    expect(wrapper.emitted('navigateBack')).toHaveLength(1);
+    expect(forward.attributes('disabled')).toBeDefined();
+    wrapper.unmount();
+  });
   test('opens the localized native menu below its button and clears the active state on dismissal', async () => {
     let dismiss!: () => void;
     const showMenu = vi.fn(() => new Promise<void>((resolve) => { dismiss = resolve; }));
@@ -11,6 +26,7 @@ describe('integrated desktop header', () => {
     const wrapper = mount(AppHeader, {
       props: { connectionState: 'connected', chrome, platform: 'win32', locale: 'zh-CN', t: createTranslator('zh-CN'), windowTitle: 'hello.py — demo — Sandkasten' },
     });
+    expect(wrapper.findAll('[data-menu]').map((button) => button.attributes('data-menu'))).toEqual(['file', 'edit', 'view', 'help']);
     const button = wrapper.get('[data-menu="file"]');
     vi.spyOn(button.element, 'getBoundingClientRect').mockReturnValue({ left: 42, bottom: 36 } as DOMRect);
     expect(button.text()).toBe('文件');
@@ -38,8 +54,10 @@ describe('integrated desktop header', () => {
   test('keeps browser and older desktop bundles usable without a native menu bridge', () => {
     const wrapper = mount(AppHeader, { props: { connectionState: 'connected' } });
     expect(wrapper.find('[data-testid="desktop-menu"]').exists()).toBe(false);
-    expect(wrapper.get('.brand strong').text()).toBe('Sandkasten');
-    expect(wrapper.find('[data-action="toggle-theme"]').exists()).toBe(true);
+    expect(wrapper.get('.brand').attributes('aria-label')).toBe('Sandkasten home');
+    expect(wrapper.find('.brand strong').exists()).toBe(false);
+    expect(wrapper.find('.header-actions').exists()).toBe(false);
+    expect(wrapper.find('.connection-status').exists()).toBe(false);
     wrapper.unmount();
   });
 

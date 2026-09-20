@@ -57,21 +57,13 @@ export function buildMenuTemplate({ send, platform = process.platform, locale = 
   });
 
   template.push({
-    id: 'run',
-    label: label('Run', '运行'),
-    submenu: [
-      { label: label('Run Active File', '运行当前文件'), accelerator: 'F5', click: command(MENU_COMMANDS.run) },
-      { label: label('Stop Run', '停止运行'), accelerator: 'Shift+F5', click: command(MENU_COMMANDS.stop) },
-      { type: 'separator' },
-      { label: label('New Terminal', '新建终端'), accelerator: platform === 'darwin' ? 'Command+Shift+`' : 'Ctrl+Shift+`', click: command(MENU_COMMANDS.terminalNew) },
-      { label: label('Split Terminal', '拆分终端'), click: command(MENU_COMMANDS.terminalSplit) },
-    ],
-  });
-
-  template.push({
     id: 'view',
     label: label('View', '视图'),
     submenu: [
+      { label: label('Run Active File', '运行当前文件'), accelerator: 'F5', visible: false, acceleratorWorksWhenHidden: true, click: command(MENU_COMMANDS.run) },
+      { label: label('Stop Run', '停止运行'), accelerator: 'Shift+F5', visible: false, acceleratorWorksWhenHidden: true, click: command(MENU_COMMANDS.stop) },
+      { label: label('New Terminal', '新建终端'), accelerator: platform === 'darwin' ? 'Command+Shift+`' : 'Ctrl+Shift+`', click: command(MENU_COMMANDS.terminalNew) },
+      { label: label('Split Terminal', '拆分终端'), click: command(MENU_COMMANDS.terminalSplit) },
       { label: label('Toggle Sidebar', '切换侧边栏'), accelerator: 'CmdOrCtrl+B', click: command(MENU_COMMANDS.toggleSidebar) },
       { label: label('Toggle Output Panel', '切换输出面板'), accelerator: 'CmdOrCtrl+J', click: command(MENU_COMMANDS.togglePanel) },
       { label: label('Toggle Terminal', '切换终端'), accelerator: platform === 'darwin' ? 'Control+`' : 'Ctrl+`', click: command(MENU_COMMANDS.terminalToggle) },

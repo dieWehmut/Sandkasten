@@ -327,6 +327,9 @@ describe('workspace explorer', () => {
 
 describe('desktop workbench', () => {
   beforeEach(() => {
+    // Start from a clean store: a previous test's persisted workspace would
+    // otherwise decide which file this test opens on load.
+    window.localStorage.clear();
     window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
     api.loadRuntimes.mockReset().mockResolvedValue(runtimes);
     api.submitJob.mockReset();
@@ -402,27 +405,31 @@ describe('desktop workbench', () => {
     expect(wrapper.get('[data-testid="workbench-shell"]').classes()).toContain('without-panel');
   });
 
-  test('header section buttons switch the sidebar section without collapsing it', async () => {
+  test('activity bar buttons switch the sidebar section without collapsing it', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
     const wrapper = mount(App);
     await flushPromises();
 
-    const historyButton = wrapper.get('[data-action="toggle-history"]');
-    await historyButton.trigger('click');
+    // The reduced title row has no section buttons, so the activity bar is the
+    // route that switches the sidebar section. Switching between two different
+    // sections keeps the sidebar open; re-selecting the active one is the
+    // collapse gesture, which the next test covers.
+    await wrapper.get('[data-activity="runs"]').trigger('click');
     await flushPromises();
     expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
-
-    await historyButton.trigger('click');
-    await flushPromises();
     expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
-    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
 
-    await wrapper.get('[data-action="toggle-inspector"]').trigger('click');
+    await wrapper.get('[data-activity="context"]').trigger('click');
     await flushPromises();
     expect(wrapper.get('.ide-sidebar__title').text()).toBe('Inspector');
     expect(wrapper.get('#inspector-panel').exists()).toBe(true);
     expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
+
+    await wrapper.get('[data-activity="explorer"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar').exists()).toBe(true);
+    expect(wrapper.get('[data-activity="explorer"]').attributes('aria-pressed')).toBe('true');
   });
 
   test('keeps the sidebar collapse control at the top-right of the sidebar header', async () => {

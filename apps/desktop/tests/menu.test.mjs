@@ -13,7 +13,7 @@ test('the application menu forwards stable command ids', () => {
   const sent = [];
   const template = buildMenuTemplate({ send: (command) => sent.push(command), platform: 'win32' });
 
-  assert.deepEqual(template.map((entry) => entry.label), ['File', 'Edit', 'Run', 'View', 'Help']);
+  assert.deepEqual(template.map((entry) => entry.label), ['File', 'Edit', 'View', 'Help']);
   assert.equal(template.some((entry) => entry.role === 'appMenu'), false);
 
   const file = menuOf(template, 'File');
@@ -25,9 +25,13 @@ test('the application menu forwards stable command ids', () => {
   assert.equal(close.accelerator, 'CmdOrCtrl+W');
   assert.equal(file.some((entry) => entry.role === 'quit'), false, 'the tray owns the real exit');
 
-  const run = menuOf(template, 'Run');
+  const run = menuOf(template, 'View');
   assert.equal(run.find((entry) => entry.label === 'Run Active File').accelerator, 'F5');
   assert.equal(run.find((entry) => entry.label === 'Stop Run').accelerator, 'Shift+F5');
+  for (const label of ['Run Active File', 'Stop Run']) {
+    assert.equal(run.find((entry) => entry.label === label).visible, false);
+    assert.equal(run.find((entry) => entry.label === label).acceleratorWorksWhenHidden, true);
+  }
 
   const view = menuOf(template, 'View');
   assert.equal(view.find((entry) => entry.label === 'Toggle Sidebar').accelerator, 'CmdOrCtrl+B');
@@ -54,8 +58,8 @@ test('a menu template requires a command sender', () => {
 test('native terminal commands use stable IDs and VS Code-style accelerators', () => {
   const sent = [];
   const template = buildMenuTemplate({ send: (id) => sent.push(id), platform: 'win32' });
-  const create = menuOf(template, 'Run').find((entry) => entry.label === 'New Terminal');
-  const split = menuOf(template, 'Run').find((entry) => entry.label === 'Split Terminal');
+  const create = menuOf(template, 'View').find((entry) => entry.label === 'New Terminal');
+  const split = menuOf(template, 'View').find((entry) => entry.label === 'Split Terminal');
   const toggle = menuOf(template, 'View').find((entry) => entry.label === 'Toggle Terminal');
   assert.ok(create && split && toggle);
   assert.equal(create.accelerator, 'Ctrl+Shift+`');
@@ -68,7 +72,7 @@ test('native terminal commands use stable IDs and VS Code-style accelerators', (
 
 test('each header menu has a stable id and Edit uses native editing roles', () => {
   const template = buildMenuTemplate({ send: () => {}, platform: 'win32' });
-  assert.deepEqual(template.map((entry) => entry.id), ['file', 'edit', 'run', 'view', 'help']);
+  assert.deepEqual(template.map((entry) => entry.id), ['file', 'edit', 'view', 'help']);
   assert.deepEqual(
     menuOf(template, 'Edit').filter((entry) => entry.role).map((entry) => entry.role),
     ['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'],
@@ -78,7 +82,7 @@ test('each header menu has a stable id and Edit uses native editing roles', () =
 test('Chinese menus preserve native roles, accelerators, and renderer commands', () => {
   const sent = [];
   const template = buildMenuTemplate({ send: (command) => sent.push(command), platform: 'win32', locale: 'zh-CN' });
-  assert.deepEqual(template.map((entry) => entry.label), ['文件', '编辑', '运行', '视图', '帮助']);
+  assert.deepEqual(template.map((entry) => entry.label), ['文件', '编辑', '视图', '帮助']);
   const file = template.find((entry) => entry.id === 'file').submenu;
   assert.equal(file[0].label, '打开文件夹…');
   assert.equal(file[0].accelerator, 'CmdOrCtrl+O');
