@@ -4,6 +4,8 @@ import AppHeader from './components/AppHeader.vue';
 import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
+import SettingsView from './components/SettingsView.vue';
+import { Settings } from '@lucide/vue';
 import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner, type OutputTab } from './composables/useRunner';
@@ -14,6 +16,7 @@ import { useIdeLayout } from './composables/useIdeLayout';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
+import { useAppearance } from './composables/useAppearance';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
 import { desktopBridge } from './services/desktopBridge';
@@ -32,6 +35,7 @@ const workspace = useWorkspace();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
+const appearance = useAppearance(theme.theme, colorScheme.colorScheme);
 const layout = useMediaLayout();
 const locale = useLocale();
 const setupWelcome = useSetupWelcome();
@@ -46,6 +50,8 @@ const creatingFile = ref(false);
 const revealRequest = ref<{ path: string; token: number }>();
 let revealToken = 0;
 const apiEndpointOpen = ref(false);
+const settingsOpen = ref(false);
+let settingsTrigger: HTMLElement | null = null;
 const configuredApiBaseUrl = ref(readConfiguredApiBaseUrl());
 
 provide(TRANSLATOR_KEY, locale.t);
@@ -114,6 +120,36 @@ function openGithub(): void {
 
 function openApiEndpoint(): void {
   apiEndpointOpen.value = true;
+}
+
+function openSettings(): void {
+  settingsTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  settingsOpen.value = true;
+}
+
+function closeSettings(): void {
+  settingsOpen.value = false;
+  void nextTick(() => {
+    if (settingsTrigger?.isConnected) settingsTrigger.focus();
+    else document.querySelector<HTMLElement>('[data-action="open-settings"]')?.focus();
+  });
+}
+
+function showSettingsHistory(): void {
+  settingsOpen.value = false;
+  if (ideMode.value) ide.showActivity('runs');
+  else { compactHistoryOpen.value = true; compactInspectorOpen.value = false; }
+}
+
+function showSettingsInspector(): void {
+  settingsOpen.value = false;
+  if (ideMode.value) ide.showActivity('context');
+  else { compactInspectorOpen.value = true; compactHistoryOpen.value = false; }
+}
+
+function openSetupFromSettings(): void {
+  settingsOpen.value = false;
+  setupWelcome.reopen();
 }
 
 // Saving a new endpoint updates the stored override and reloads the runtime
@@ -281,6 +317,7 @@ function setCreatingFile(value: boolean): void {
 
 async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
   if (!terminal) return;
+  settingsOpen.value = false;
   if (setupWelcome.isGuideOpen.value) dismissSetup();
   ide.showPanel();
   terminal.show();
@@ -299,12 +336,13 @@ function toggleTerminal(): void {
 function syncTerminalFocus(event?: FocusEvent): void {
   const target = event?.type === 'focusout' ? event.relatedTarget : (event?.target ?? document.activeElement);
   terminal?.setFocused(Boolean(
-    !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
+    !settingsOpen.value && !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
     && target instanceof Element && target.closest('.terminal-pane'),
   ));
 }
 
 const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
+  'settings.open': openSettings,
   'workspace.open': openFolder,
   'file.new': requestNewFile,
   'file.save': saveActive,
@@ -323,6 +361,11 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
 };
 
 function onKeydown(event: KeyboardEvent): void {
+  if (settingsOpen.value && event.key === 'Escape' && !apiEndpointOpen.value) {
+    event.preventDefault();
+    closeSettings();
+    return;
+  }
   if (terminal && isTerminalShortcut(event)) {
     event.preventDefault();
     if (event.shiftKey) void openTerminal('new');
@@ -367,8 +410,8 @@ watch(source, (value) => { runner.setSource(value); });
 watch(language, (value) => { if (value) runner.setLanguage(value); });
 watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
-watch([theme.theme, colorScheme.colorScheme], () => { void nextTick(() => terminal?.syncTheme()); });
-if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen], () => syncTerminalFocus(), { flush: 'post' });
+watch([theme.theme, colorScheme.colorScheme, appearance.colors], () => { void nextTick(() => terminal?.syncTheme()); });
+if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen, settingsOpen], () => syncTerminalFocus(), { flush: 'post' });
 
 onMounted(() => {
   void terminal?.loadProfiles();
@@ -391,6 +434,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('focusin', syncTerminalFocus);
   window.removeEventListener('focusout', syncTerminalFocus);
   theme.dispose();
+  appearance.dispose();
   layout.dispose();
 });
 </script>
@@ -440,6 +484,7 @@ onBeforeUnmount(() => {
     <WorkbenchShell
       :terminal="terminal"
       v-if="!setupWelcome.isGuideOpen.value"
+      v-show="!settingsOpen"
       :history-open="compactHistoryOpen"
       :inspector-open="compactInspectorOpen"
       :layout-mode="layout.mode.value"
@@ -483,6 +528,7 @@ onBeforeUnmount(() => {
       @toggle-panel-maximize="ide.togglePanelMaximize"
       @close-panel="ide.togglePanel"
       @open-setup="setupWelcome.reopen"
+      @open-settings="openSettings"
       @select-file="selectFile"
       @close-file="closeFile"
       @reveal-file="revealInExplorer"
@@ -503,6 +549,29 @@ onBeforeUnmount(() => {
       @resume="resumeActive"
       @close-history="compactHistoryOpen = false"
       @close-inspector="compactInspectorOpen = false"
+    />
+    <button v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    <SettingsView
+      v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
+      :preference="theme.preference.value"
+      :theme="theme.theme.value"
+      :colors="appearance.colors.value"
+      :color-scheme="colorScheme.colorScheme.value"
+      :locale="locale.locale.value"
+      :t="locale.t"
+      :connection-state="runner.connectionState.value"
+      :api-endpoint="configuredApiBaseUrl"
+      @back="closeSettings"
+      @change-theme="theme.setTheme"
+      @change-color="appearance.setColor"
+      @reset-colors="appearance.resetColors"
+      @change-color-scheme="colorScheme.setColorScheme"
+      @change-locale="locale.setLocale"
+      @open-api-endpoint="openApiEndpoint"
+      @open-setup="openSetupFromSettings"
+      @show-history="showSettingsHistory"
+      @show-inspector="showSettingsInspector"
+      @open-github="openGithub"
     />
   </div>
 </template>

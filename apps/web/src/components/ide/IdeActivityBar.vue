@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { BookOpen, Clock, Files, Info } from '@lucide/vue';
+import { Settings, Clock, Files, Info } from '@lucide/vue';
 import type { Component } from 'vue';
 import type { IdeActivity } from '../../composables/useIdeLayout';
 import { useTranslation } from '../../i18n/useTranslation';
 
 defineProps<{ active: IdeActivity; sidebarVisible: boolean }>();
-const emit = defineEmits<{ select: [activity: IdeActivity]; openSetup: [] }>();
+const emit = defineEmits<{ select: [activity: IdeActivity]; openSettings: [] }>();
 const t = useTranslation();
 
 const items: Array<{ id: IdeActivity; labelKey: Parameters<typeof t>[0]; icon: Component }> = [
@@ -33,12 +33,12 @@ const items: Array<{ id: IdeActivity; labelKey: Parameters<typeof t>[0]; icon: C
     <button
       type="button"
       class="ide-activity__button ide-activity__button--footer"
-      data-action="ide-open-setup"
-      :aria-label="t('ide.activity.setup')"
-      :title="t('ide.activity.setup')"
-      @click="emit('openSetup')"
+      data-action="open-settings"
+      :aria-label="t('settings.title')"
+      :title="t('settings.title')"
+      @click="emit('openSettings')"
     >
-      <BookOpen :size="19" aria-hidden="true" />
+      <Settings :size="19" aria-hidden="true" />
     </button>
   </nav>
 </template>
