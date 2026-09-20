@@ -2,14 +2,15 @@
 import { computed } from 'vue';
 import { ChevronRight } from '@lucide/vue';
 import { breadcrumbSegments } from '../../editor/breadcrumbs';
-import { languageForPath } from '../../editor/language';
+import type { IconTheme } from '../../editor/fileIcon';
 import { useTranslation } from '../../i18n/useTranslation';
 import FileIcon from '../FileIcon.vue';
 
 const props = withDefaults(defineProps<{
   filePath?: string;
   rootPath?: string;
-}>(), { filePath: '', rootPath: '' });
+  iconTheme?: IconTheme;
+}>(), { filePath: '', rootPath: '', iconTheme: 'dark' });
 
 const emit = defineEmits<{ reveal: [path: string] }>();
 
@@ -35,7 +36,7 @@ const segments = computed(() => breadcrumbSegments(props.filePath, props.rootPat
         @click="emit('reveal', segment.path)"
       >{{ segment.name }}</button>
       <span v-else class="ide-breadcrumbs__step ide-breadcrumbs__step--static" :data-segment="segment.name">
-        <FileIcon v-if="segment.kind === 'file'" :language="languageForPath(filePath)" :name="segment.name" :size="14" />
+        <FileIcon v-if="segment.kind === 'file'" :path="filePath" :name="segment.name" :theme="iconTheme" :size="14" />
         {{ segment.name }}
       </span>
     </template>

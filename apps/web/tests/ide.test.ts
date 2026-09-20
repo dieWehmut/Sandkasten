@@ -245,7 +245,7 @@ describe('workspace explorer', () => {
     const steps = wrapper.findAll('.ide-breadcrumbs__step');
     expect(steps.map((step) => step.text())).toEqual(['ws', 'pkg', 'deep', 'util.py']);
     expect(wrapper.findAll('button.ide-breadcrumbs__step').map((step) => step.text())).toEqual(['pkg', 'deep']);
-    expect(wrapper.get('.ide-breadcrumbs__step--static .file-icon').attributes('data-tone')).toBe('blue');
+    expect(wrapper.get('.ide-breadcrumbs__step--static .file-icon').attributes('data-icon')).toBe('_f_python');
 
     await wrapper.get('[data-segment="pkg"]').trigger('click');
     expect(wrapper.emitted('reveal')).toEqual([['pkg']]);
@@ -278,7 +278,27 @@ describe('workspace explorer', () => {
     expect(wrapper.emitted('remove')).toEqual([['main.py']]);
   });
 
-  test('marks each file with its language hue and kind in the tree and the tab strip', async () => {
+  test('marks each folder with the upstream folder glyph while it is collapsed and open', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{ path: 'src', name: 'src', type: 'directory', children: [{ path: 'src/main.py', name: 'main.py', type: 'file' }] }],
+        kind: 'desktop',
+        activePath: 'src/main.py',
+      },
+    });
+
+    // A directory starts expanded, so it shows the upstream open glyph and
+    // switches to the closed one when it is folded.
+    const folder = wrapper.get('[data-path="src"] .file-icon');
+    expect(folder.attributes('data-kind')).toBe('folder');
+    expect(folder.attributes('data-icon')).toBe('_fd_src_open');
+    expect(folder.get('img').attributes('src')).toMatch(/^data:image\/svg\+xml,/);
+
+    await wrapper.get('[data-path="src"] button').trigger('click');
+    expect(wrapper.get('[data-path="src"] .file-icon').attributes('data-icon')).toBe('_fd_src');
+  });
+
+  test('marks each file with its vscode-icons glyph in the tree and the tab strip', async () => {
     const wrapper = mount(WorkspaceExplorer, {
       props: {
         tree: [
@@ -291,14 +311,17 @@ describe('workspace explorer', () => {
       },
     });
 
-    expect(wrapper.get('[data-path="main.py"] .file-icon').attributes('data-tone')).toBe('blue');
-    expect(wrapper.get('[data-path="app.ts"] .file-icon').attributes('data-tone')).toBe('blue');
-    expect(wrapper.get('[data-path="LICENSE"] .file-icon').attributes('data-tone')).toBe('slate');
+    expect(wrapper.get('[data-path="main.py"] .file-icon').attributes('data-icon')).toBe('_f_python');
+    expect(wrapper.get('[data-path="app.ts"] .file-icon').attributes('data-icon')).toBe('_f_typescript');
+    expect(wrapper.get('[data-path="LICENSE"] .file-icon').attributes('data-icon')).toBe('_f_license');
+    // Folders carry the upstream folder glyphs too, closed and expanded.
+    expect(wrapper.get('[data-path="main.py"] .file-icon img').attributes('src')).toMatch(/^data:image\/svg\+xml,/);
+    expect(wrapper.get('[data-path="main.py"] .file-icon').attributes('data-kind')).toBe('file');
 
     const tabs = mount(EditorTabs, {
       props: { files: [{ path: 'main.py', name: 'main.py', dirty: false }], activePath: 'main.py' },
     });
-    expect(tabs.get('.ide-tab__select .file-icon').attributes('data-tone')).toBe('blue');
+    expect(tabs.get('.ide-tab__select .file-icon').attributes('data-icon')).toBe('_f_python');
   });
 });
 
