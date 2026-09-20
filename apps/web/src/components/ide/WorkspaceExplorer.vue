@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { ChevronDown, ChevronRight, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
 import type { WorkspaceRoot, WorkspaceTreeNode } from '../../services/desktopBridge';
 import type { Runtime } from '../../services/sandkastenApi';
-import { languageForPath } from '../../editor/language';
+import type { IconTheme } from '../../editor/fileIcon';
 import { useTranslation } from '../../i18n/useTranslation';
 import FileIcon from '../FileIcon.vue';
 
@@ -19,7 +19,8 @@ const props = withDefaults(defineProps<{
   creating?: boolean;
   hideHeading?: boolean;
   revealRequest?: { path: string; token: number };
-}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false });
+  iconTheme?: IconTheme;
+}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false, iconTheme: 'dark' });
 
 const emit = defineEmits<{
   select: [path: string];
@@ -145,6 +146,7 @@ function submitNewFile(): void {
           <button type="button" class="ide-tree__toggle" :aria-expanded="!isCollapsed(row.node.path)" @click="toggleDirectory(row.node.path)">
             <ChevronDown v-if="!isCollapsed(row.node.path)" :size="14" aria-hidden="true" />
             <ChevronRight v-else :size="14" aria-hidden="true" />
+            <FileIcon kind="folder" :name="row.node.name" :expanded="!isCollapsed(row.node.path)" :theme="iconTheme" :size="15" />
             <span class="ide-tree__name">{{ row.node.name }}</span>
           </button>
         </div>
@@ -155,7 +157,7 @@ function submitNewFile(): void {
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
         >
           <button type="button" class="ide-tree__open" :data-action="`ide-open-${row.node.path}`" @click="emit('select', row.node.path)">
-            <FileIcon :language="languageForPath(row.node.path)" :name="row.node.name" :size="14" />
+            <FileIcon :path="row.node.path" :name="row.node.name" :theme="iconTheme" :size="14" />
             <span class="ide-tree__name">{{ row.node.name }}</span>
             <span v-if="dirtyPaths.includes(row.node.path)" class="ide-tree__dirty" :aria-label="t('ide.tabs.unsaved')">*</span>
           </button>

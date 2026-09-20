@@ -464,6 +464,7 @@ onBeforeUnmount(() => {
       :cursor="cursor"
       :status-text="statusText"
       :connection-state="connectionState"
+      :icon-theme="theme.theme.value"
       :workspace-label="workspace.root.value?.name"
       :history="runHistory.history.value"
       :runtimes="runner.runtimes.value"

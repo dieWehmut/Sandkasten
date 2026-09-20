@@ -595,25 +595,23 @@
     display: none;
   }
 }
-/* File-type marks: one silhouette per file kind, one hue per language family.
-   The tones are set per theme because a hue that reads on the light surface is
-   too dark on the dark one; both sets clear 4.5:1 against their surface so the
-   marks stay legible without competing with the active-row accent. */
+/* File marks are the real vscode-icons glyphs, inlined as SVG markup so the
+   shipped distribution stays four files. The box is fixed so a wide glyph and a
+   narrow one keep the tree, tab strip, and breadcrumbs aligned. */
 .file-icon {
-  display: inline-grid;
+  display: inline-flex;
   flex: 0 0 auto;
-  place-items: center;
-  color: var(--file-icon-tone, var(--text-muted));
+  width: var(--file-icon-size, 16px);
+  height: var(--file-icon-size, 16px);
+  align-items: center;
+  justify-content: center;
 }
 
-.file-icon[data-tone="blue"] { --file-icon-tone: var(--file-blue); }
-.file-icon[data-tone="yellow"] { --file-icon-tone: var(--file-yellow); }
-.file-icon[data-tone="green"] { --file-icon-tone: var(--file-green); }
-.file-icon[data-tone="orange"] { --file-icon-tone: var(--file-orange); }
-.file-icon[data-tone="purple"] { --file-icon-tone: var(--file-purple); }
-.file-icon[data-tone="red"] { --file-icon-tone: var(--file-red); }
-.file-icon[data-tone="cyan"] { --file-icon-tone: var(--file-cyan); }
-.file-icon[data-tone="slate"] { --file-icon-tone: var(--text-muted); }
+.file-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
 .ide-tree__open .file-icon,
 .ide-tab__select .file-icon {

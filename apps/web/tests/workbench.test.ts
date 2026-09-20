@@ -152,9 +152,8 @@ describe('workbench controls', () => {
 
     expect(api.submitJob).toHaveBeenCalledWith('python', 'print("first")');
     expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>');
-    // The brand mark is the only image the shell renders; backend output must
-    // never become markup, so nothing outside the header may add an image.
-    expect(wrapper.findAll('img').map((node) => node.attributes('class'))).toEqual(['brand__mark']);
+    // Backend output stays text even though the shell renders real file glyphs.
+    expect(wrapper.findAll('.output-viewer img')).toHaveLength(0);
 
     editorView().dispatch({
       changes: { from: 0, to: editorView().state.doc.length, insert: 'print("second")' },
