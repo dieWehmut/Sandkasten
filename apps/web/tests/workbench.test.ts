@@ -3,7 +3,6 @@ import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { EditorView } from '@codemirror/view';
 import App from '../src/App.vue';
-import ConnectionStatus from '../src/components/ConnectionStatus.vue';
 import InspectorPanel from '../src/components/InspectorPanel.vue';
 import RunControls from '../src/components/RunControls.vue';
 import RuntimeSelect from '../src/components/RuntimeSelect.vue';
@@ -70,15 +69,11 @@ describe('workbench controls', () => {
     api.pollJob.mockReset();
   });
 
-  test('selects an exact backend runtime value and exposes live connection text', async () => {
+  test('selects an exact backend runtime value', async () => {
     const select = mount(RuntimeSelect, { props: { modelValue: 'python', runtimes } });
     await select.get('select').setValue('go');
     expect(select.emitted('update:modelValue')).toEqual([['go']]);
     expect(select.text()).toContain('python 3.13');
-
-    expect(mount(ConnectionStatus, { props: { state: 'connecting' } }).text()).toContain('Connecting');
-    expect(mount(ConnectionStatus, { props: { state: 'connected' } }).get('[aria-live="polite"]').text()).toContain('Connected');
-    expect(mount(ConnectionStatus, { props: { state: 'unavailable' } }).text()).toContain('Unavailable');
   });
 
   test('offers Run, Stop polling, and Resume polling for the matching phases', async () => {

@@ -1,6 +1,4 @@
-import { mount } from '@vue/test-utils';
 import { describe, expect, test, vi } from 'vitest';
-import HeaderActions from '../src/components/HeaderActions.vue';
 import { useTheme, type ThemeMediaQuery, type ThemeStorage } from '../src/composables/useTheme';
 
 function createStorage(saved?: string) {
@@ -98,11 +96,5 @@ describe('useTheme', () => {
     expect(system.mediaQuery.removeEventListener).toHaveBeenCalledOnce();
   });
 
-  test('gives the theme action a specific accessible target', async () => {
-    const actions = mount(HeaderActions, { props: { theme: 'light' } });
 
-    await actions.get('button[aria-label="Use dark theme"]').trigger('click');
-
-    expect(actions.emitted('toggleTheme')).toHaveLength(1);
-  });
 });

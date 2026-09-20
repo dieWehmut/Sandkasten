@@ -35,4 +35,15 @@ describe('settings view', () => {
     await wrapper.get('[data-action="settings-back"]').trigger('click');
     expect(wrapper.emitted('back')).toHaveLength(1);
   });
+  test('shows the live connection state that the title row no longer carries', async () => {
+    const connected = mount(SettingsView, { props });
+    await connected.get('[data-section="connection"]').trigger('click');
+    expect(connected.get('.settings-connection').attributes('data-state')).toBe('connected');
+    expect(connected.get('.settings-connection').text()).toBe(props.t('connection.connected'));
+
+    const unavailable = mount(SettingsView, { props: { ...props, connectionState: 'unavailable' } });
+    await unavailable.get('[data-section="connection"]').trigger('click');
+    expect(unavailable.get('.settings-connection').attributes('data-state')).toBe('unavailable');
+    expect(unavailable.get('.settings-connection').text()).toBe(props.t('connection.unavailable'));
+  });
 });
