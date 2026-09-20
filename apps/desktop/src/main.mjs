@@ -15,6 +15,7 @@ import { spawnPty, shutdownPtyWorkers } from './terminal-pty.mjs';
 import { discoverTerminalProfiles } from './terminal-profiles.mjs';
 import { registerTerminalIpc } from './terminal-ipc.mjs';
 import { applyCloseToTrayPolicy, createAppTray, trayIconPath } from './tray.mjs';
+import { createUpdateChecker } from './updates.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -91,6 +92,16 @@ async function start() {
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildMenuTemplate({ send: sendToWindow })));
 
+  const updateChecker = createUpdateChecker({
+    currentVersion: app.getVersion(),
+    locale: trayLocale(),
+    showMessageBox: (options) => {
+      const window = focusedWindow();
+      return window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options);
+    },
+    openExternal: (url) => shell.openExternal(url),
+  });
+
   let quitPrepared = false;
   app.on('before-quit', (event) => {
     quitting = true;
@@ -122,6 +133,7 @@ async function start() {
     getAllWindows: () => BrowserWindow.getAllWindows(),
     createWindow: () => createWindow(bundledIndex),
     sendCommand: sendToWindow,
+    checkForUpdates: () => updateChecker.check(),
     quit: () => app.quit(),
   });
 
