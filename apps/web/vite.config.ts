@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 
 import { readdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import type { Plugin, ResolvedConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
@@ -44,6 +45,7 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
+        banner: `/*!\n${readFileSync(new URL('../../THIRD_PARTY_NOTICES.md', import.meta.url), 'utf8')}\n*/`,
         entryFileNames: 'app.js',
         chunkFileNames: 'app.js',
         assetFileNames: (assetInfo) => assetInfo.names.some((name) => name.endsWith('.css')) ? 'styles.css' : '[name][extname]',
