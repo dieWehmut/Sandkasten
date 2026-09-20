@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronDown, Columns2, Plus, TerminalSquare, Trash2 } from '@lucide/vue';
+import { ChevronDown, Columns2, Plus, SquareTerminal, Trash2 } from '@lucide/vue';
 import type { TerminalController } from '../../composables/useTerminal';
 import TerminalPane from './TerminalPane.vue';
 import { useTranslation } from '../../i18n/useTranslation';

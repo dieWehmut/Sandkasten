@@ -25,6 +25,15 @@ beforeEach(() => {
   api.pollJob.mockReset();
 });
 
+// The reduced title row dropped the setup button, so the palette command is
+// the user's route back into the guide.
+async function openSetupFromPalette(wrapper: ReturnType<typeof mount>): Promise<void> {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+  await flushPromises();
+  await wrapper.get('[data-command="view.toggleSetup"]').trigger('click');
+  await flushPromises();
+}
+
 describe('App setup and locale integration', () => {
   test('keeps connection settings available without a standalone runtime failure banner', async () => {
     window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
@@ -32,9 +41,14 @@ describe('App setup and locale integration', () => {
     const wrapper = mount(App);
     try {
       await flushPromises();
+      // The header no longer carries the status line, so the run bar owns it
+      // and the failure still must not add a standalone banner.
       expect(wrapper.find('.connection-error').exists()).toBe(false);
-      expect(wrapper.find('.connection-status[data-state="unavailable"]').exists()).toBe(true);
-      await wrapper.get('[data-action="open-api-endpoint"]').trigger('click');
+      expect(wrapper.get('.ide-status__badge').attributes('data-connection')).toBe('unavailable');
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+      await flushPromises();
+      await wrapper.get('[data-command="apiEndpoint.open"]').trigger('click');
+      await flushPromises();
       expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
     } finally {
       wrapper.unmount();
@@ -50,14 +64,13 @@ describe('App setup and locale integration', () => {
       await wrapper.get('[data-testid="setup-dismiss"]').trigger('click');
       await flushPromises();
       expect(wrapper.get('[data-testid="app-shell"]').classes()).toContain('workbench-app--ide');
-      await wrapper.get('[data-testid="open-setup-guide"]').trigger('click');
+      await openSetupFromPalette(wrapper);
       expect(wrapper.get('[data-testid="app-shell"]').classes()).not.toContain('workbench-app--ide');
     } finally {
       wrapper.unmount();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     }
   });
-
   test('shows setup before loading runtimes, then persists dismissal and enters the workbench', async () => {
     const wrapper = mount(App);
 
@@ -91,7 +104,7 @@ describe('App setup and locale integration', () => {
     await flushPromises();
 
     wrapper.get('[data-testid="workbench-shell"]');
-    await wrapper.get('[data-testid="open-setup-guide"]').trigger('click');
+    await openSetupFromPalette(wrapper);
 
     wrapper.get('[data-testid="setup-welcome"]');
     expect(window.localStorage.getItem(SETUP_WELCOME_STORAGE_KEY)).toBe('true');

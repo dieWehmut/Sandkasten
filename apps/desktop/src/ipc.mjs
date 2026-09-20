@@ -94,7 +94,7 @@ export function registerWindowChromeIpc({ ipcMain, Menu, getWindowForContents, b
   ipcMain.handle(IPC_CHANNELS.chromeShowMenu, async (event, request) => {
     const window = trustedWindow(event);
     if (!request || typeof request !== 'object' || Array.isArray(request)
-        || !['file', 'edit', 'run', 'view', 'help'].includes(request.id)) {
+        || !['file', 'edit', 'view', 'help'].includes(request.id)) {
       throw new Error('Invalid window menu.');
     }
     if (request.locale !== 'en' && request.locale !== 'zh-CN') throw new Error('Invalid menu locale.');

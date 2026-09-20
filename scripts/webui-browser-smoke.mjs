@@ -27,7 +27,8 @@ export const SETUP_FLOW_SELECTORS = Object.freeze({
   installCommand: '[data-testid="install-command"] code',
   dismiss: '[data-testid="setup-dismiss"][data-action="dismiss-setup"]',
   workbench: '[data-testid="workbench-shell"]',
-  reopen: '[data-testid="open-setup-guide"][data-action="open-setup-guide"]',
+  palette: '[data-testid="command-palette"]',
+  settings: '[data-testid="settings-view"]',
 });
 
 export function setupLocaleActionSelector(locale) {
@@ -58,15 +59,16 @@ export async function runFirstVisitSetupFlow(driver) {
   await driver.waitForLocale('zh-CN');
   await driver.expectStoredValue('sandkasten-locale', 'zh-CN');
   await driver.expectEditorLabel('编辑器');
-  await driver.click(setupLocaleActionSelector('en'));
+  await driver.setLocaleThroughSettings('en');
   await driver.waitForLocale('en');
   await driver.expectStoredValue('sandkasten-locale', 'en');
   await driver.expectEditorLabel('Editor');
 }
 
+// The reduced title row removed the header setup button, so the palette
+// command is the user's route back into the guide.
 export async function runReopenedSetupFlow(driver) {
-  await driver.waitForVisible(SETUP_FLOW_SELECTORS.reopen);
-  await driver.click(SETUP_FLOW_SELECTORS.reopen);
+  await driver.openSetupGuide();
   await driver.waitForVisible(SETUP_FLOW_SELECTORS.guide);
   await driver.assertNoHorizontalOverflow('reopened setup guide');
   await driver.click(SETUP_FLOW_SELECTORS.dismiss);
@@ -119,6 +121,20 @@ export function createPlaywrightSetupDriver(page, viewportName, options = {}) {
     },
     assertNoHorizontalOverflow(stage) {
       return assertNoOverflow(page, `${viewportName} ${stage}`);
+    },
+    async openSetupGuide() {
+      await page.keyboard.press('Control+Shift+P');
+      await page.locator(SETUP_FLOW_SELECTORS.palette).waitFor({ state: 'visible', timeout });
+      await page.locator('[data-command="view.toggleSetup"]').click();
+      await page.locator(SETUP_FLOW_SELECTORS.welcome).waitFor({ state: 'visible', timeout });
+    },
+    async setLocaleThroughSettings(locale) {
+      await page.locator('[data-action="open-settings"]').first().click();
+      await page.locator(SETUP_FLOW_SELECTORS.settings).waitFor({ state: 'visible', timeout });
+      await page.locator('[data-section="general"]').click();
+      await page.locator(setupLocaleActionSelector(locale)).click();
+      await page.locator('[data-action="settings-back"]').click();
+      await page.locator(SETUP_FLOW_SELECTORS.settings).waitFor({ state: 'hidden', timeout });
     },
   };
 }
@@ -212,7 +228,9 @@ async function assertScreenshot(page, name, expectedWidth, expectedHeight) {
 }
 
 async function waitForConnected(page) {
-  await page.getByText('Connected', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
+  // The header no longer carries a connection status line, so readiness is read
+  // from the run bar: a runnable phase appears only after the runtimes load.
+  await page.getByRole('button', { name: 'Run source' }).waitFor({ state: 'visible', timeout: 5000 });
   await page.locator('[aria-label="Editor"] .cm-content').waitFor({ state: 'visible', timeout: 5000 });
 }
 
@@ -253,29 +271,28 @@ async function runAndInspectOutput(page, viewportName) {
 }
 
 async function inspectCompactSheets(page, viewportName) {
-  await page.getByRole('button', { name: 'Show history' }).click();
+  await openSettingsSection(page, 'workbench');
+  await page.locator('[data-action="settings-show-history"]').click();
   const historyDialog = page.getByRole('dialog', { name: 'Recent runs' });
   await historyDialog.waitFor({ state: 'visible', timeout: 2000 });
   assert.ok(await historyDialog.getByText('python', { exact: true }).count(), viewportName + ' history sheet has no run');
   await page.getByRole('button', { name: 'Close Recent runs' }).click();
   await historyDialog.waitFor({ state: 'hidden', timeout: 2000 });
-  await page.getByRole('button', { name: 'Show inspector' }).click();
+  await openSettingsSection(page, 'workbench');
+  await page.locator('[data-action="settings-show-inspector"]').click();
   const inspectorDialog = page.getByRole('dialog', { name: 'Inspector' });
   await inspectorDialog.waitFor({ state: 'visible', timeout: 2000 });
   assert.ok(await inspectorDialog.getByText('Runtime', { exact: true }).count(), viewportName + ' inspector sheet has no runtime section');
-  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Close Inspector' }).click();
   await inspectorDialog.waitFor({ state: 'hidden', timeout: 2000 });
 }
 
 async function inspectColorScheme(page, viewportName) {
-  const toggle = page.locator('[data-action="toggle-color-scheme"]');
-  await toggle.waitFor({ state: 'visible', timeout: 3000 });
-  await toggle.click();
-  const menu = page.locator('[data-testid="color-scheme-menu"]');
-  await menu.waitFor({ state: 'visible', timeout: 3000 });
-  assert.equal(await menu.locator('button').count(), 5, viewportName + ' scheme menu must expose five schemes');
-  await page.locator('[data-action="set-color-scheme-purple"]').click();
-  await menu.waitFor({ state: 'hidden', timeout: 3000 });
+  await openSettingsSection(page, 'appearance');
+  const select = page.locator('[data-testid="settings-color-scheme"]');
+  await select.waitFor({ state: 'visible', timeout: 3000 });
+  assert.equal(await select.locator('option').count(), 5, viewportName + ' settings must expose five schemes');
+  await select.selectOption('purple');
   await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'purple');
   assert.equal(
     await page.evaluate(() => window.localStorage.getItem('sandkasten-color-scheme')),
@@ -287,9 +304,18 @@ async function inspectColorScheme(page, viewportName) {
     '#7c3aed',
     viewportName + ' scheme did not change the accent token',
   );
-  await toggle.click();
-  await page.locator('[data-action="set-color-scheme-green"]').click();
+  await select.selectOption('green');
   await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'green');
+  await page.locator('[data-action="settings-back"]').click();
+  await page.locator('[data-testid="settings-view"]').waitFor({ state: 'hidden', timeout: 3000 });
+}
+
+// The reduced title row moved the displaced controls into the settings screen,
+// which both layouts open from the activity bar or the compact entry button.
+async function openSettingsSection(page, section) {
+  await page.locator('[data-action="open-settings"]').first().click();
+  await page.locator('[data-testid="settings-view"]').waitFor({ state: 'visible', timeout: 3000 });
+  await page.locator(`[data-section="${section}"]`).click();
 }
 
 async function inspectViewport(browser, appUrl, viewport) {
@@ -306,8 +332,11 @@ async function inspectViewport(browser, appUrl, viewport) {
   await runAndInspectOutput(page, viewport.name);
   if (viewport.name !== 'desktop') await inspectCompactSheets(page, viewport.name);
   const light = await assertScreenshot(page, viewport.name, viewport.width, viewport.height);
-  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  await openSettingsSection(page, 'appearance');
+  await page.locator('[data-theme-choice="dark"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await page.locator('[data-action="settings-back"]').click();
+  await page.locator('[data-testid="settings-view"]').waitFor({ state: 'hidden', timeout: 3000 });
   await assertNoHorizontalOverflow(page, viewport.name + ' dark theme');
   const dark = await assertScreenshot(page, viewport.name + '-dark', viewport.width, viewport.height);
   const difference = measurePixelDifference(light.buffer, dark.buffer);

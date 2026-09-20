@@ -3,7 +3,6 @@ import { nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { EditorView } from '@codemirror/view';
 import App from '../src/App.vue';
-import ConnectionStatus from '../src/components/ConnectionStatus.vue';
 import InspectorPanel from '../src/components/InspectorPanel.vue';
 import RunControls from '../src/components/RunControls.vue';
 import RuntimeSelect from '../src/components/RuntimeSelect.vue';
@@ -70,15 +69,11 @@ describe('workbench controls', () => {
     api.pollJob.mockReset();
   });
 
-  test('selects an exact backend runtime value and exposes live connection text', async () => {
+  test('selects an exact backend runtime value', async () => {
     const select = mount(RuntimeSelect, { props: { modelValue: 'python', runtimes } });
     await select.get('select').setValue('go');
     expect(select.emitted('update:modelValue')).toEqual([['go']]);
     expect(select.text()).toContain('python 3.13');
-
-    expect(mount(ConnectionStatus, { props: { state: 'connecting' } }).text()).toContain('Connecting');
-    expect(mount(ConnectionStatus, { props: { state: 'connected' } }).get('[aria-live="polite"]').text()).toContain('Connected');
-    expect(mount(ConnectionStatus, { props: { state: 'unavailable' } }).text()).toContain('Unavailable');
   });
 
   test('offers Run, Stop polling, and Resume polling for the matching phases', async () => {
@@ -137,7 +132,9 @@ describe('workbench controls', () => {
     await flushPromises();
 
     expect(wrapper.get('[data-testid="app-shell"]').classes()).toContain('workbench-app');
-    expect(wrapper.text()).toContain('Connected');
+    // The reduced title row dropped the status line, so the run bar's badge
+    // carries the connection state instead.
+    expect(wrapper.get('.ide-status__badge').attributes('data-connection')).toBe('connected');
     wrapper.get('[data-testid="workbench-shell"]');
 
     await wrapper.get('[aria-label="Runtime"]').setValue('python');
@@ -152,9 +149,8 @@ describe('workbench controls', () => {
 
     expect(api.submitJob).toHaveBeenCalledWith('python', 'print("first")');
     expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>');
-    // The brand mark is the only image the shell renders; backend output must
-    // never become markup, so nothing outside the header may add an image.
-    expect(wrapper.findAll('img').map((node) => node.attributes('class'))).toEqual(['brand__mark']);
+    // Backend output stays text even though the shell renders real file glyphs.
+    expect(wrapper.findAll('.output-viewer img')).toHaveLength(0);
 
     editorView().dispatch({
       changes: { from: 0, to: editorView().state.doc.length, insert: 'print("second")' },

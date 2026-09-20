@@ -8,10 +8,20 @@ as text; components do not inject them as HTML.
 ## Workbench layout
 
 Above 1200 px the workbench renders an editor-first layout: an activity bar
-(explorer, recent runs, inspector, setup guide), a sidebar with the workspace
+(explorer, recent runs, inspector, settings), a sidebar with the workspace
 file tree and recent runs, open-file tabs, a CodeMirror editor, a bottom output
 panel, and a status bar. Narrower windows fall back to the single-column
-layout with history and inspector sheets.
+layout with history and inspector sheets, and open settings from the floating
+entry at the bottom-right, since they have no activity bar.
+
+The title row starts with the product mark alone, then the editor back and
+forward arrows, then a centered search control that opens the command palette
+(`Ctrl+P` for files, `Ctrl+Shift+P` for commands). The palette lists the real
+commands with their accelerators, searches the workspace files, and shows
+recently opened files before a query. The connection status, setup guide,
+locale switcher, history, inspector, and theme buttons are gone from the title
+row; their entry points live in the settings screen, the palette, and the
+native menus.
 
 The sidebar owns one header row: the view title on the left, the view actions
 (new file, open folder, refresh) and the collapse control on the right. The
@@ -19,18 +29,31 @@ collapse button sits flush with the sidebar's top-right corner, hides the whole
 sidebar, and matches `Ctrl+B`; selecting the active activity in the activity bar
 collapses it too.
 
-Files carry a language mark in the explorer and the tab strip: one silhouette
-per file kind and one hue per language family, resolved from the same table in
-`src/editor/fileIcon.ts`. The tones are declared per theme because a hue that
-reads on the light surface disappears on the dark one; every value is checked at
-4.5:1 against the surfaces it renders on.
+Files carry the real `vscode-icons` glyphs in the explorer, the tab strip, and
+the breadcrumbs. `scripts/generate-file-icons.mjs` builds the extension, exact
+file name, and folder name maps plus the inlined SVG table from the upstream
+manifests at a pinned commit, and `src/editor/fileIcon.ts` resolves a path to
+its icon id with a neutral default for unknown names. The distribution stays
+four files because each reachable glyph ships inline in the bundle.
 
 Under the tab strip, a breadcrumb trail names the open file's location: the
-workspace root, then each folder, then the file with its language mark. Folder
+workspace root, then each folder, then the file with its glyph. Folder
 steps are buttons that reveal themselves in the explorer, unfolding the tree
 when the folder was collapsed. The editor adds an optional minimap that
 overviews the whole file and the current viewport; it is enabled in the IDE
 shell only and hidden on the narrow layout.
+
+## Settings screen
+
+The settings button at the foot of the activity bar (and the compact floating
+entry) opens a full-screen settings view modelled on the Codex reference: a
+section sidebar with a search box, and sections for general,
+appearance, and workbench. Appearance offers system/light/dark theme previews
+and per-theme accent, background, and foreground colors, all persisted and
+applied to the running workbench. General holds the language choice, the setup
+guide, and the GitHub link; workbench moves the API endpoint and color scheme
+controls, and links to the history and inspector sheets. Escape and the back
+button both leave the screen and return focus to the control that opened it.
 
 The output panel carries its own maximize and close controls, so it can be
 expanded or dismissed from the panel itself instead of only through the menu or
@@ -45,9 +68,10 @@ while the status bar and the activity bar stay pinned. The document itself does
 not grow with the workspace or the output, so a large tree or a noisy program
 never pushes the panel or the status bar out of reach.
 
-The header shows the product mark next to the name. Both the header icon and
-the favicon are inlined as data URIs, so the shipped distribution stays
-exactly four files (`app.js`, `config.js`, `index.html`, `styles.css`).
+The title row shows the product mark alone, without the wordmark beside it.
+Both the mark and the favicon are inlined as data URIs, so the shipped
+distribution stays exactly four files (`app.js`, `config.js`, `index.html`,
+`styles.css`).
 
 The workspace holds one or more open files. In the browser the workspace is an
 in-memory scratch workspace persisted under `sandkasten-workspace-v1`; in the
@@ -69,7 +93,8 @@ Three execution backends share one output surface:
   namespaces; the status bar labels the run `Isolated run`.
 
 Keyboard: `Ctrl+S` save, `Ctrl+Enter` run, `Ctrl+N` new file, `Ctrl+W` close
-editor, `Ctrl+B` toggle sidebar, `Ctrl+J` toggle the output panel.
+editor, `Ctrl+B` toggle sidebar, `Ctrl+J` toggle the output panel, `Ctrl+P`
+open a file from the palette, and `Ctrl+Shift+P` run a command from it.
 
 ### Desktop bridge contract
 
@@ -136,7 +161,9 @@ theme and a five-color accent scheme. Both reach the document as attributes on
 `<html>` before the workbench renders, so the first paint already uses the
 active pairing:
 
-- `data-theme`: `light` or `dark`, persisted as `sandkasten-theme`.
+- `data-theme`: `light` or `dark`, persisted as `sandkasten-theme`. The
+  settings screen also offers `system`, which follows the OS preference and
+  updates while the app runs.
 - `data-color-scheme`: `green`, `purple`, `pink`, `white`, or `black`,
   persisted as `sandkasten-color-scheme`.
 
@@ -165,10 +192,11 @@ sits on a raised rounded surface, and selection states use a quiet
 `--surface-subtle` fill rather than an accent rail. `--radius-sm`,
 `--radius-md`, and `--radius-lg` scale the rounded corners across the shell.
 
-The header palette button opens a menu with one swatch per scheme. The choice
-persists across reloads, and `apps/web/tests/colorScheme.test.ts`,
-`apps/web/tests/styles.test.ts`, and the browser smoke cover the catalog,
-contrast, persistence, and switch behavior.
+The settings screen holds the scheme selector, alongside the theme previews and
+the per-theme accent, background, and foreground colors. The choice persists
+across reloads, and `apps/web/tests/colorScheme.test.ts`,
+`apps/web/tests/appearance.test.ts`, `apps/web/tests/styles.test.ts`, and the
+browser smoke cover the catalog, contrast, persistence, and switch behavior.
 
 ## Production distribution
 

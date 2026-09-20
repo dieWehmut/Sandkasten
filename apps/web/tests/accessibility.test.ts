@@ -57,30 +57,32 @@ describe('Setup welcome focus management', () => {
     wrapper.unmount();
   });
 
-  test('focuses the setup title and restores the rebuilt opening control after dismissal', async () => {
+  test('focuses the setup title when reopened and hands focus to the search control after dismissal', async () => {
     const wrapper = mount(App, { attachTo: document.body });
     await flushPromises();
 
-    const opener = wrapper.get('[data-testid="open-setup-guide"]');
-    (opener.element as HTMLElement).focus();
-    expect(document.activeElement).toBe(opener.element);
-
-    await opener.trigger('click');
+    // The reduced title row has no setup button, so the guide opens from the
+    // command palette the way a keyboard user would reach it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    await wrapper.get('[data-command="view.toggleSetup"]').trigger('click');
     await nextTick();
 
     const title = wrapper.get('[data-testid="setup-title"]');
     expect(title.attributes('tabindex')).toBe('-1');
     expect(document.activeElement).toBe(title.element);
-    expect(opener.element.isConnected).toBe(false);
+    expect(wrapper.find('[data-testid="app-header"]').exists()).toBe(false);
 
     const dismiss = wrapper.get('[data-testid="setup-dismiss"]');
     (dismiss.element as HTMLElement).focus();
     await dismiss.trigger('click');
     await nextTick();
 
-    const restoredOpener = wrapper.get('[data-testid="open-setup-guide"]');
-    expect(restoredOpener.element).not.toBe(opener.element);
-    expect(document.activeElement).toBe(restoredOpener.element);
+    // Dismissal rebuilds the title row; focus lands on the search control it
+    // now owns instead of being dropped on a detached button.
+    const search = wrapper.get('[data-action="quick-open"]');
+    expect(search.element.isConnected).toBe(true);
+    expect(document.activeElement).toBe(search.element);
 
     wrapper.unmount();
   });
@@ -122,20 +124,24 @@ describe('EdgeSheet', () => {
     wrapper.unmount();
   });
 
-  test('wires compact header actions to one active sheet at a time', async () => {
+  test('wires the compact history and inspector commands to one active sheet at a time', async () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
     const wrapper = mount(App, { attachTo: document.body });
     await flushPromises();
 
-    const historyAction = wrapper.get('button[aria-label="Show history"]');
-    expect(historyAction.attributes('aria-expanded')).toBe('false');
-    expect(historyAction.attributes('aria-controls')).toBe('history-panel');
+    // The compact title row no longer carries the sheet buttons, so the
+    // palette commands are the user's route to the same panels.
+    const runCommand = async (id: string) => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+      await flushPromises();
+      await wrapper.get(`[data-command="${id}"]`).trigger('click');
+      await nextTick();
+    };
 
-    await historyAction.trigger('click');
+    await runCommand('view.history');
     expect(wrapper.get('[role="dialog"]').text()).toContain('Recent runs');
-    expect(wrapper.get('button[aria-label="Hide history"]').attributes('aria-expanded')).toBe('true');
 
-    await wrapper.get('button[aria-label="Show inspector"]').trigger('click');
+    await runCommand('view.inspector');
     expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
     const inspectorSheet = wrapper.get('[role="dialog"]');
     expect(inspectorSheet.text()).toContain('Inspector');
@@ -151,12 +157,18 @@ describe('EdgeSheet', () => {
     const wrapper = mount(App, { attachTo: document.body });
     await flushPromises();
 
-    await wrapper.get('button[aria-label="Show inspector"]').trigger('click');
+    const runCommand = async (id: string) => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+      await flushPromises();
+      await wrapper.get(`[data-command="${id}"]`).trigger('click');
+      await nextTick();
+    };
+
+    await runCommand('view.inspector');
     expect(wrapper.get('[role="dialog"]').text()).toContain('Inspector');
     expect(document.body.style.overflow).toBe('hidden');
 
-    await wrapper.get('button[aria-label="Show history"]').trigger('click');
-    await nextTick();
+    await runCommand('view.history');
     expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
     const historySheet = wrapper.get('[role="dialog"]');
     expect(historySheet.text()).toContain('Recent runs');

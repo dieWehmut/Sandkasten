@@ -11,6 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { selectTheme } from './e2e-theme.mjs';
+
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
 const outputRoot = path.join(repositoryRoot, 'tmp');
@@ -104,21 +106,94 @@ async function main() {
           title: document.querySelector('[data-testid="window-title"]')?.textContent?.trim() ?? null,
         };
       });
-      const runButton = page.locator('[data-menu="run"]');
-      const runBox = await runButton.boundingBox();
-      await runButton.click();
-      await page.waitForFunction(() => document.querySelector('[data-menu="run"]')?.getAttribute('aria-expanded') === 'true', null, { timeout: 10_000 });
-      checks.titleRowMenu = { anchorX: Math.round(runBox?.x ?? 0), expanded: true };
+      // The Run menu was removed from the native bar, so the check anchors on
+      // the View menu, which must still open and dismiss in place.
+      const viewButton = page.locator('[data-menu="view"]');
+      const viewBox = await viewButton.boundingBox();
+      await viewButton.click();
+      await page.waitForFunction(() => document.querySelector('[data-menu="view"]')?.getAttribute('aria-expanded') === 'true', null, { timeout: 10_000 });
+      checks.titleRowMenu = { anchorX: Math.round(viewBox?.x ?? 0), expanded: true };
       await page.keyboard.press('Escape');
-      await page.waitForFunction(() => document.querySelector('[data-menu="run"]')?.getAttribute('aria-expanded') === 'false', null, { timeout: 10_000 });
+      await page.waitForFunction(() => document.querySelector('[data-menu="view"]')?.getAttribute('aria-expanded') === 'false', null, { timeout: 10_000 });
       checks.titleRowMenu.dismissed = true;
+      checks.titleRowRunMenuRemoved = (await page.locator('[data-menu="run"]').count()) === 0;
     }
 
-    const ensureTheme = async (theme) => {
-      if ((await page.getAttribute('html', 'data-theme')) === theme) return;
-      await page.click('[data-action="toggle-theme"]');
-      await page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, theme, { timeout: 5_000 });
-    };
+    // The reduced title row moved the theme control into the settings screen,
+    // so each theme is chosen through the real appearance previews.
+    const ensureTheme = (theme) => selectTheme(page, theme);
+
+    // The reduced title row removed the header's setup, locale, history,
+    // inspector, and theme controls. Each one must still be reachable: the
+    // centered search control opens the palette, and the activity bar's footer
+    // opens the settings screen that now owns the displaced controls.
+    {
+      checks.titleRowRemovedControls = await page.evaluate(() => {
+        const header = document.querySelector('[data-testid="app-header"]');
+        const missing = ['toggle-theme', 'toggle-history', 'toggle-inspector', 'open-setup-guide', 'open-api-endpoint', 'open-github'];
+        return {
+          controls: missing.filter((action) => header?.querySelector(`[data-action="${action}"]`)),
+          localeSwitcher: header?.querySelector('[data-testid="locale-switcher"]') !== null,
+          connectionStatus: header?.querySelector('.connection-status') !== null,
+          wordmark: header?.querySelector('.brand strong') !== null,
+          history: header?.querySelector('.editor-navigation') !== null,
+          search: header?.querySelector('[data-action="quick-open"]') !== null,
+        };
+      });
+
+      const search = page.locator('[data-action="quick-open"]');
+      await search.click();
+      await page.waitForSelector('[data-testid="command-palette"]');
+      checks.palette = await page.evaluate(() => {
+        const palette = document.querySelector('[data-testid="command-palette"]');
+        const box = palette?.getBoundingClientRect();
+        return {
+          centered: box ? Math.abs((box.left + box.width / 2) - window.innerWidth / 2) <= 2 : false,
+          files: Array.from(palette?.querySelectorAll('[data-kind="file"]') ?? []).map((item) => item.querySelector('.command-palette__label')?.textContent?.trim() ?? ''),
+          recents: Array.from(palette?.querySelectorAll('[data-kind="file"] [data-recent]') ?? []).length,
+          recentNames: Array.from(palette?.querySelectorAll('[data-kind="file"]') ?? []).filter((item) => item.querySelector('.command-palette__recent')).map((item) => item.querySelector('.command-palette__label')?.textContent?.trim() ?? ''),
+          mode: palette?.querySelector('[data-kind="mode"]')?.querySelector('.command-palette__label')?.textContent?.trim() ?? null,
+          modeAccelerator: palette?.querySelector('[data-kind="mode"] kbd')?.textContent?.trim() ?? null,
+          modeExpected: document.documentElement.lang === 'zh-CN' ? '显示并运行命令' : 'Show and Run Commands',
+        };
+      });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('[data-testid="command-palette"]', { state: 'detached', timeout: 5_000 });
+
+      // The palette lists the real commands with their accelerators, and never
+      // offers one the app cannot perform.
+      await page.keyboard.press('Control+Shift+P');
+      await page.waitForSelector('[data-testid="command-palette"]');
+      checks.paletteCommands = await page.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('[data-testid="command-palette"] [data-command]'));
+        return items.map((item) => ({
+          command: item.getAttribute('data-command'),
+          label: item.querySelector('.command-palette__label')?.textContent?.trim() ?? null,
+          accelerator: item.querySelector('kbd')?.textContent?.trim() ?? null,
+        }));
+      });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('[data-testid="command-palette"]', { state: 'detached', timeout: 5_000 });
+
+      // The settings screen is the surviving home of the removed controls.
+      await page.click('[data-action="open-settings"]');
+      await page.waitForSelector('[data-testid="settings-view"]');
+      checks.settings = await page.evaluate(() => {
+        const sections = Array.from(document.querySelectorAll('[data-section]')).map((button) => button.getAttribute('data-section'));
+        return {
+          sections,
+          search: document.querySelector('.settings-search input') !== null,
+          themes: Array.from(document.querySelectorAll('[data-theme-choice]')).map((button) => button.getAttribute('data-theme-choice')),
+          colors: Array.from(document.querySelectorAll('[data-color]')).map((input) => input.getAttribute('data-color')),
+        };
+      });
+      await page.click('[data-section="general"]');
+      await page.click('[data-testid="settings-open-setup"]');
+      await page.waitForSelector('[data-testid="setup-welcome"]');
+      checks.settingsSetupGuide = true;
+      await page.click('[data-testid="setup-dismiss"]');
+      await page.waitForSelector('[data-testid="workbench-shell"]');
+    }
 
     checks.bridgeExposed = await page.evaluate(() => typeof window.sandkastenDesktop?.workspace?.read === 'function');
     checks.workspaceRoot = await page.evaluate(() => window.sandkastenDesktop?.workspace?.root?.() ?? null);
@@ -437,9 +512,41 @@ async function main() {
     assert.equal(checks.titleRow?.headerIntegrated, true);
     assert.equal(checks.titleRow?.headerHeight, 40);
     assert.equal(checks.titleRow?.dragRegion, 'drag');
-    assert.equal(checks.titleRow?.menus.length, 5);
+    assert.equal(checks.titleRow?.menus.length, 4);
     assert.equal(checks.titleRowMenu?.expanded, true);
     assert.equal(checks.titleRowMenu?.dismissed, true);
+    assert.equal(checks.titleRowRunMenuRemoved, true);
+    // The reduced title row keeps the brand mark, the history pair, and the
+    // centered search; the displaced controls live in settings and the palette.
+    assert.deepEqual(checks.titleRowRemovedControls, {
+      controls: [],
+      localeSwitcher: false,
+      connectionStatus: false,
+      wordmark: false,
+      history: true,
+      search: true,
+    });
+    assert.equal(checks.palette?.centered, true);
+    assert.ok(checks.palette?.files.includes('hello.py'), 'the palette must search the opened workspace');
+    assert.ok(checks.palette?.files.includes('util.py'), 'the palette must search nested workspace files');
+    assert.deepEqual(checks.palette?.recentNames, ['hello.py'], 'the recently opened file must lead the list');
+    assert.equal(checks.palette?.mode, checks.palette?.modeExpected, 'the palette must offer the command mode before a query');
+    assert.equal(checks.palette?.modeAccelerator, 'Ctrl+Shift+P');
+    assert.ok(checks.paletteCommands?.length, 'the palette must list the real commands');
+    const listed = new Map(checks.paletteCommands.map((entry) => [entry.command, entry.accelerator]));
+    assert.equal(listed.has('run.start'), false, 'a command the app cannot perform must not be listed');
+    assert.equal(listed.has('run.stop'), false, 'a command the app cannot perform must not be listed');
+    for (const [id, accelerator] of [['file.new', 'Ctrl+N'], ['file.save', 'Ctrl+S'], ['view.toggleSidebar', 'Ctrl+B'], ['view.togglePanel', 'Ctrl+J'], ['terminal.toggle', 'Ctrl+`']]) {
+      assert.equal(listed.get(id), accelerator, id + ' must keep its accelerator');
+    }
+    assert.equal(listed.has('theme.toggle'), true, 'the removed header theme control stays reachable from the palette');
+    assert.deepEqual(checks.settings?.themes, ['system', 'light', 'dark']);
+    assert.deepEqual(checks.settings?.colors, ['accent', 'background', 'foreground']);
+    assert.equal(checks.settings?.search, true);
+    for (const section of ['general', 'appearance', 'connection', 'workbench']) {
+      assert.ok(checks.settings?.sections.includes(section), 'settings must keep the ' + section + ' section');
+    }
+    assert.equal(checks.settingsSetupGuide, true);
     assert.deepEqual(checks.closeToTray, { windowCount: 1, visible: false, destroyed: false });
     assert.equal(checks.layout?.noPageScroll, true);
     assert.equal(checks.layout?.fullHeight, true);

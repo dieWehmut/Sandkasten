@@ -1,37 +1,38 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import {
-  Braces, FileCode, FileJson, FileTerminal, FileText, Hash, Palette, WholeWord,
-  type Component,
-} from '@lucide/vue';
-import { fileVisualFor, type FileIconShape } from '../editor/fileIcon';
+import { fileIconFor, fileIconGlyph, folderIconFor, folderIconGlyph, type IconTheme } from '../editor/fileIcon';
 
 const props = withDefaults(defineProps<{
-  language?: string;
+  /** File path or bare name; the extension and name rules both read it. */
+  path?: string;
+  /** Folder name, used when `kind` is a folder. */
   name?: string;
+  kind?: 'file' | 'folder';
+  expanded?: boolean;
+  theme?: IconTheme;
   size?: number;
-}>(), { language: '', name: '', size: 14 });
+}>(), { path: '', name: '', kind: 'file', expanded: false, theme: 'dark', size: 16 });
 
-// One glyph per shape keeps the tree and the tab strip visually aligned: the
-// hue tells the language family apart, the silhouette tells the file kind.
-const SHAPE_ICONS: Readonly<Record<FileIconShape, Component>> = {
-  code: FileCode,
-  braces: Braces,
-  json: FileJson,
-  text: FileText,
-  terminal: FileTerminal,
-  markup: Hash,
-  style: Palette,
-  data: WholeWord,
-};
-
-const visual = computed(() => fileVisualFor(props.language));
-const icon = computed(() => SHAPE_ICONS[visual.value.shape]);
-const label = computed(() => props.name || props.language);
+const label = computed(() => props.name || props.path);
+const iconId = computed(() => (props.kind === 'folder'
+  ? folderIconFor(props.name, props.expanded, props.theme)
+  : fileIconFor(props.path, props.theme)));
+const glyph = computed(() => (props.kind === 'folder'
+  ? folderIconGlyph(props.name, props.expanded, props.theme)
+  : fileIconGlyph(props.path, props.theme)));
+// Isolate each SVG document so repeated icons cannot collide through SVG ids.
+const source = computed(() => `data:image/svg+xml,${encodeURIComponent(glyph.value)}`);
 </script>
 
 <template>
-  <span class="file-icon" :data-tone="visual.tone" :data-shape="visual.shape" :title="label || undefined">
-    <component :is="icon" :size="size" aria-hidden="true" />
+  <span
+    class="file-icon"
+    :data-icon="iconId"
+    :data-kind="kind"
+    :style="{ '--file-icon-size': `${size}px` }"
+    :title="label || undefined"
+    aria-hidden="true"
+  >
+    <img :src="source" alt="" draggable="false" />
   </span>
 </template>

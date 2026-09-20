@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
+import CommandPalette from './components/CommandPalette.vue';
 import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
+import SettingsView from './components/SettingsView.vue';
+import { Settings } from '@lucide/vue';
 import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner, type OutputTab } from './composables/useRunner';
 import { useLocalRunner } from './composables/useLocalRunner';
 import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
+import { useEditorHistory } from './composables/useEditorHistory';
+import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
+import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
+import { useAppearance } from './composables/useAppearance';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
 import { desktopBridge } from './services/desktopBridge';
@@ -32,6 +39,7 @@ const workspace = useWorkspace();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
+const appearance = useAppearance(theme.theme, colorScheme.colorScheme);
 const layout = useMediaLayout();
 const locale = useLocale();
 const setupWelcome = useSetupWelcome();
@@ -46,6 +54,8 @@ const creatingFile = ref(false);
 const revealRequest = ref<{ path: string; token: number }>();
 let revealToken = 0;
 const apiEndpointOpen = ref(false);
+const settingsOpen = ref(false);
+let settingsTrigger: HTMLElement | null = null;
 const configuredApiBaseUrl = ref(readConfiguredApiBaseUrl());
 
 provide(TRANSLATOR_KEY, locale.t);
@@ -63,6 +73,16 @@ const PHASE_KEYS: Readonly<Record<ExecutionPhase, MessageKey>> = {
 };
 
 const activeFile = workspace.activeFile;
+function filePaths(nodes: readonly WorkspaceTreeNode[]): string[] {
+  return nodes.flatMap((node) => node.type === 'file' ? [node.path] : filePaths(node.children ?? []));
+}
+const workspacePaths = computed(() => [...new Set([
+  ...filePaths(workspace.tree.value), ...workspace.files.value.map((file) => file.path),
+])]);
+const editorHistory = useEditorHistory({
+  activePath: workspace.activePath, paths: workspacePaths, openFile: workspace.openFile,
+});
+watch(() => workspace.root.value?.path, () => editorHistory.reset(), { flush: 'sync' });
 // The document title names the open file and workspace, so the desktop window
 // and a browser tab both identify what is being edited rather than the app
 // alone.
@@ -116,6 +136,36 @@ function openApiEndpoint(): void {
   apiEndpointOpen.value = true;
 }
 
+function openSettings(): void {
+  settingsTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  settingsOpen.value = true;
+}
+
+function closeSettings(): void {
+  settingsOpen.value = false;
+  void nextTick(() => {
+    if (settingsTrigger?.isConnected) settingsTrigger.focus();
+    else document.querySelector<HTMLElement>('[data-action="open-settings"]')?.focus();
+  });
+}
+
+function showSettingsHistory(): void {
+  settingsOpen.value = false;
+  if (ideMode.value) ide.showActivity('runs');
+  else { compactHistoryOpen.value = true; compactInspectorOpen.value = false; }
+}
+
+function showSettingsInspector(): void {
+  settingsOpen.value = false;
+  if (ideMode.value) ide.showActivity('context');
+  else { compactInspectorOpen.value = true; compactHistoryOpen.value = false; }
+}
+
+function openSetupFromSettings(): void {
+  settingsOpen.value = false;
+  setupWelcome.reopen();
+}
+
 // Saving a new endpoint updates the stored override and reloads the runtime
 // list, because the previous runtimes came from the old origin.
 function saveApiEndpoint(value: string): void {
@@ -138,8 +188,11 @@ function loadRunnerOnce(): void {
 function dismissSetup(): void {
   setupWelcome.dismiss();
   loadRunnerOnce();
+  // The reduced title row dropped the setup button, so the guide is reopened
+  // from the command palette or the welcome screen. Focus the always-present
+  // search control rather than leaving focus on a detached element.
   void nextTick(() => {
-    document.querySelector<HTMLElement>('[data-testid="open-setup-guide"]')?.focus();
+    document.querySelector<HTMLElement>('[data-action="quick-open"]')?.focus();
   });
 }
 
@@ -281,6 +334,7 @@ function setCreatingFile(value: boolean): void {
 
 async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
   if (!terminal) return;
+  settingsOpen.value = false;
   if (setupWelcome.isGuideOpen.value) dismissSetup();
   ide.showPanel();
   terminal.show();
@@ -299,12 +353,13 @@ function toggleTerminal(): void {
 function syncTerminalFocus(event?: FocusEvent): void {
   const target = event?.type === 'focusout' ? event.relatedTarget : (event?.target ?? document.activeElement);
   terminal?.setFocused(Boolean(
-    !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
+    !settingsOpen.value && !setupWelcome.isGuideOpen.value && ide.panelVisible.value && terminal.shown.value
     && target instanceof Element && target.closest('.terminal-pane'),
   ));
 }
 
 const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
+  'settings.open': openSettings,
   'workspace.open': openFolder,
   'file.new': requestNewFile,
   'file.save': saveActive,
@@ -320,9 +375,100 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'terminal.new': () => { void openTerminal('new'); },
   'terminal.toggle': toggleTerminal,
   'terminal.split': () => { void openTerminal('split'); },
+  'view.history': toggleHistory,
+  'view.inspector': toggleInspector,
+  'locale.en': () => locale.setLocale('en'),
+  'locale.zh-CN': () => locale.setLocale('zh-CN'),
+  'navigation.back': () => { void editorHistory.back(); },
+  'navigation.forward': () => { void editorHistory.forward(); },
 };
 
+const commandPaletteError = ref('');
+const paletteCommands = computed<PaletteCommand[]>(() => {
+  const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
+  const command = (id: string, key: MessageKey, accelerator?: string, enabled = true): PaletteCommand => ({
+    id, label: locale.t(key), accelerator, enabled: enabled && Boolean(MENU_COMMANDS[id]), execute: MENU_COMMANDS[id],
+  });
+  return [
+    command('settings.open', 'palette.settings', `${modifier},`),
+    command('workspace.open', 'ide.explorer.openFolder', `${modifier}O`, workspace.isDesktop.value),
+    command('file.new', 'ide.explorer.newFile', `${modifier}N`),
+    command('file.save', 'ide.workspace.save', `${modifier}S`, Boolean(activeFile.value)),
+    command('file.closeTab', 'palette.closeEditor', `${modifier}W`, Boolean(activeFile.value)),
+    command('run.start', 'palette.run', 'F5', canRun.value),
+    command('run.stop', 'palette.stop', 'Shift+F5', isExecutionBusy(executionPhase.value)),
+    command('navigation.back', 'navigation.back', 'Alt+Left', editorHistory.canBack.value),
+    command('navigation.forward', 'navigation.forward', 'Alt+Right', editorHistory.canForward.value),
+    command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
+    command('view.togglePanel', 'palette.panel', `${modifier}J`, ideMode.value),
+    command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
+    command('view.inspector', !ideMode.value && inspectorOpen.value ? 'header.inspector.hide' : 'header.inspector.show'),
+    command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
+    command('terminal.new', 'terminal.new', `${modifier}Shift+\``, Boolean(terminal?.profiles.value.length) && !terminal?.pending.value),
+    command('terminal.split', 'terminal.split', undefined, Boolean(terminal?.sessions.value.length) && !terminal?.pending.value),
+    command('view.toggleSetup', 'header.setup'),
+    command('apiEndpoint.open', 'apiEndpoint.open'),
+    command('theme.toggle', theme.theme.value === 'light' ? 'header.theme.useDark' : 'header.theme.useLight'),
+    command('locale.en', 'locale.switchToEnglish', undefined, locale.locale.value !== 'en'),
+    command('locale.zh-CN', 'locale.switchToChinese', undefined, locale.locale.value !== 'zh-CN'),
+    command('help.github', 'header.github'),
+  ];
+});
+const commandCenter = useCommandCenter({
+  paths: workspacePaths, recentPaths: editorHistory.recentPaths, commands: paletteCommands,
+  t: locale.t, platform: bridge?.platform,
+});
+
+function openPalette(mode: 'files' | 'commands' = 'files'): void {
+  commandPaletteError.value = '';
+  commandCenter.openPalette(mode);
+}
+
+async function selectPaletteItem(id: string): Promise<void> {
+  const item = commandCenter.items.value.find((candidate) => candidate.id === id);
+  if (!item) return;
+  if (item.kind === 'mode') { openPalette('commands'); return; }
+  const command = item.kind === 'command' ? commandCenter.availableCommands.value.find((candidate) => candidate.id === id) : undefined;
+  commandCenter.close();
+  // Restore the previous focus before executing an action that opens another view.
+  await nextTick();
+  try {
+    if (item.kind === 'file') await workspace.openFile(id);
+    else await command?.execute();
+  } catch {
+    commandCenter.openPalette(item.kind === 'command' ? 'commands' : 'files');
+    commandPaletteError.value = locale.t('palette.failed');
+  }
+}
+
 function onKeydown(event: KeyboardEvent): void {
+  // The settings screen owns Escape while it is up, before any global handler
+  // gets a chance to act on the same key.
+  if (settingsOpen.value && event.key === 'Escape' && !apiEndpointOpen.value) {
+    event.preventDefault();
+    closeSettings();
+    return;
+  }
+  if (event.defaultPrevented) return;
+  const key = event.key.toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'p' || (key === 'e' && !event.shiftKey))) {
+    if (setupWelcome.isGuideOpen.value) return;
+    event.preventDefault();
+    openPalette(event.shiftKey ? 'commands' : 'files');
+    return;
+  }
+  if (commandCenter.open.value) return;
+  if (event.key === 'F5' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    if (event.shiftKey) stopActive();
+    else void runActive();
+    return;
+  }
+  if (event.altKey && !event.ctrlKey && !event.metaKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    void (event.key === 'ArrowLeft' ? editorHistory.back() : editorHistory.forward());
+    return;
+  }
   if (terminal && isTerminalShortcut(event)) {
     event.preventDefault();
     if (event.shiftKey) void openTerminal('new');
@@ -331,7 +477,6 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
-  const key = event.key.toLowerCase();
   if (key === 's') {
     event.preventDefault();
     saveActive();
@@ -367,8 +512,8 @@ watch(source, (value) => { runner.setSource(value); });
 watch(language, (value) => { if (value) runner.setLanguage(value); });
 watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
-watch([theme.theme, colorScheme.colorScheme], () => { void nextTick(() => terminal?.syncTheme()); });
-if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen], () => syncTerminalFocus(), { flush: 'post' });
+watch([theme.theme, colorScheme.colorScheme, appearance.colors], () => { void nextTick(() => terminal?.syncTheme()); });
+if (terminal) watch([terminal.shown, ide.panelVisible, setupWelcome.isGuideOpen, settingsOpen], () => syncTerminalFocus(), { flush: 'post' });
 
 onMounted(() => {
   void terminal?.loadProfiles();
@@ -391,6 +536,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('focusin', syncTerminalFocus);
   window.removeEventListener('focusout', syncTerminalFocus);
   theme.dispose();
+  appearance.dispose();
   layout.dispose();
 });
 </script>
@@ -403,24 +549,28 @@ onBeforeUnmount(() => {
   >
     <AppHeader
       v-if="!setupWelcome.isGuideOpen.value"
-      :connection-state="connectionState"
-      :history-open="historyOpen"
-      :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
-      :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"
       :window-title="documentTitle"
       :chrome="bridge?.windowChrome"
       :platform="bridge?.platform"
-      @toggle-history="toggleHistory"
-      @toggle-inspector="toggleInspector"
-      @toggle-theme="theme.toggleTheme"
-      @change-color-scheme="colorScheme.setColorScheme"
-      @open-github="openGithub"
-      @open-setup="setupWelcome.reopen"
-      @open-api-endpoint="openApiEndpoint"
-      @change-locale="locale.setLocale"
+      :can-back="editorHistory.canBack.value"
+      :can-forward="editorHistory.canForward.value"
+      @navigate-back="editorHistory.back"
+      @navigate-forward="editorHistory.forward"
+      :palette-open="commandCenter.open.value"
+      @quick-open="openPalette()"
+    />
+    <CommandPalette
+      :open="commandCenter.open.value"
+      :query="commandCenter.query.value"
+      :items="commandCenter.items.value"
+      :error="commandPaletteError"
+      :t="locale.t"
+      @update:query="commandCenter.query.value = $event"
+      @select="selectPaletteItem"
+      @close="commandCenter.close"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"
@@ -440,6 +590,7 @@ onBeforeUnmount(() => {
     <WorkbenchShell
       :terminal="terminal"
       v-if="!setupWelcome.isGuideOpen.value"
+      v-show="!settingsOpen"
       :history-open="compactHistoryOpen"
       :inspector-open="compactInspectorOpen"
       :layout-mode="layout.mode.value"
@@ -464,6 +615,7 @@ onBeforeUnmount(() => {
       :cursor="cursor"
       :status-text="statusText"
       :connection-state="connectionState"
+      :icon-theme="theme.theme.value"
       :workspace-label="workspace.root.value?.name"
       :history="runHistory.history.value"
       :runtimes="runner.runtimes.value"
@@ -483,6 +635,7 @@ onBeforeUnmount(() => {
       @toggle-panel-maximize="ide.togglePanelMaximize"
       @close-panel="ide.togglePanel"
       @open-setup="setupWelcome.reopen"
+      @open-settings="openSettings"
       @select-file="selectFile"
       @close-file="closeFile"
       @reveal-file="revealInExplorer"
@@ -503,6 +656,29 @@ onBeforeUnmount(() => {
       @resume="resumeActive"
       @close-history="compactHistoryOpen = false"
       @close-inspector="compactInspectorOpen = false"
+    />
+    <button v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    <SettingsView
+      v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
+      :preference="theme.preference.value"
+      :theme="theme.theme.value"
+      :colors="appearance.colors.value"
+      :color-scheme="colorScheme.colorScheme.value"
+      :locale="locale.locale.value"
+      :t="locale.t"
+      :connection-state="runner.connectionState.value"
+      :api-endpoint="configuredApiBaseUrl"
+      @back="closeSettings"
+      @change-theme="theme.setTheme"
+      @change-color="appearance.setColor"
+      @reset-colors="appearance.resetColors"
+      @change-color-scheme="colorScheme.setColorScheme"
+      @change-locale="locale.setLocale"
+      @open-api-endpoint="openApiEndpoint"
+      @open-setup="openSetupFromSettings"
+      @show-history="showSettingsHistory"
+      @show-inspector="showSettingsInspector"
+      @open-github="openGithub"
     />
   </div>
 </template>

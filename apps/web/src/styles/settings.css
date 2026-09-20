@@ -1,0 +1,63 @@
+.settings-view { display: grid; grid-template-columns: 246px minmax(0, 1fr); flex: 1; min-height: 0; overflow: hidden; background: var(--surface); }
+.settings-sidebar { padding: 20px 12px; background: var(--canvas); border-right: 1px solid var(--border); overflow: auto; }
+.settings-back, .settings-sections button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; text-align: left; }
+.settings-back { margin-bottom: 22px; font-size: 15px; }
+.settings-search { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, var(--canvas)); color: var(--text-muted); }
+.settings-search input { min-width: 0; width: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--text); }
+.settings-search:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-sidebar__label { margin: 26px 12px 10px; color: var(--text-muted); font-size: 12px; }
+.settings-sections { display: grid; gap: 5px; }
+.settings-sections button[aria-current="page"] { background: color-mix(in srgb, var(--text) 7%, var(--canvas)); }
+.settings-back:hover, .settings-sections button:hover { background: color-mix(in srgb, var(--text) 5%, var(--canvas)); }
+.settings-content { overflow: auto; min-width: 0; padding: clamp(28px, 5vw, 76px) clamp(24px, 6vw, 100px); }
+.settings-content__inner { max-width: 1060px; margin: 0 auto; }
+.settings-content h1 { margin: 0 0 46px; font-size: 28px; font-weight: 550; outline: none; }
+.settings-theme-picker { border: 0; padding: 0; margin: 0 0 32px; min-width: 0; }
+.settings-theme-picker legend { margin-bottom: 20px; font-size: 16px; font-weight: 600; }
+.settings-theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.settings-theme-options button { border: 0; padding: 0; background: transparent; color: var(--text-muted); font-size: 14px; }
+.settings-theme-options button > span:last-child { display: block; margin-top: 12px; }
+.settings-theme-options button[aria-pressed="true"] { color: var(--text); }
+.settings-theme-preview { position: relative; display: block; overflow: hidden; aspect-ratio: 1.43; border-radius: 12px; border: 1px solid #dddddd; background: #f2f2f2; isolation: isolate; }
+.settings-theme-options button[aria-pressed="true"] .settings-theme-preview { outline: 3px solid var(--accent-fill); outline-offset: 3px; border-color: var(--text); }
+.settings-theme-preview__toolbar { position: absolute; top: 21%; left: 29%; width: 42%; height: 5%; border-radius: 20px; background: #ccc; }
+.settings-theme-preview__toolbar::after { content: ''; position: absolute; left: -25%; top: 170%; width: 150%; height: 60%; border-radius: 20px; background: #dedede; }
+.settings-theme-preview__window { display: grid; position: absolute; inset: 39% 9% -8%; padding: 7% 5%; gap: 15%; border-radius: 14px 14px 0 0; background: #fff; }
+.settings-theme-preview__window i { display: block; width: 45%; border-top: 8px solid #dedede; border-bottom: 3px solid #f3f3f3; border-radius: 4px; }
+.settings-theme-preview--dark { background: #353535; border-color: #555; }
+.settings-theme-preview--dark .settings-theme-preview__window { background: #202020; }
+.settings-theme-preview--dark .settings-theme-preview__window i { border-top-color: #666; border-bottom-color: #353535; }
+.settings-theme-preview--dark .settings-theme-preview__toolbar, .settings-theme-preview--dark .settings-theme-preview__toolbar::after { background: #797979; }
+.settings-theme-preview__split { position: absolute; inset: 0 0 0 50%; background: #fff; mix-blend-mode: difference; }
+.settings-card { padding: 0 22px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-raised); }
+.settings-card__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; }
+.settings-card h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.settings-card p { margin: 5px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.settings-row { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid var(--border); }
+.settings-row:first-child { border-top: 0; }
+.settings-row select, .settings-text-button { border: 1px solid var(--border); border-radius: 9px; padding: 7px 12px; background: var(--surface); color: var(--text); }
+.settings-row select { min-width: 126px; }
+.settings-color-control { display: flex; align-items: center; gap: 9px; padding: 7px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+.settings-color-control input[type="color"] { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; overflow: hidden; cursor: pointer; background: transparent; }
+.settings-color-control input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.settings-color-control input[type="color"]::-webkit-color-swatch { border-radius: 50%; border: 1px solid var(--border-strong); }
+.settings-color-control input:not([type="color"]) { width: 82px; padding: 0; border: 0; background: transparent; color: var(--text); font-family: var(--font-mono); font-size: 12px; }
+.settings-card .settings-card__note { margin: 0; padding: 15px 0 18px; border-top: 1px solid var(--border); }
+.settings-card .settings-error { color: var(--danger); margin-bottom: 12px; }
+.settings-link-row { display: flex; align-items: center; width: 100%; gap: 12px; min-height: 68px; border: 0; border-top: 1px solid var(--border); background: transparent; text-align: left; }
+.settings-link-row:first-child { border-top: 0; }
+.settings-link-row > span { margin-left: auto; color: var(--text-muted); }
+.settings-connection { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.settings-connection i { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
+.settings-connection[data-state="connected"] i { background: var(--success); }
+.settings-connection[data-state="unavailable"] i { background: var(--danger); }
+.settings-row--endpoint { padding: 14px 0; }
+.settings-row--endpoint > div { min-width: 0; overflow-wrap: anywhere; }
+.settings-empty { color: var(--text-muted); text-align: center; }
+/* The compact layouts have no activity bar, so the settings entry floats above
+   the workbench at the bottom-right. In the document flow it pushed the page
+   past the viewport, and the sticky title row then covered the run bar controls
+   once the page scrolled. */
+.compact-settings-entry { position: fixed; right: 14px; bottom: 14px; z-index: 25; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 7px 12px; background: var(--surface); box-shadow: var(--shadow-sheet); }
+@media (max-width: 900px) { .settings-view { grid-template-columns: 195px minmax(0, 1fr); } .settings-content { padding: 30px 24px; } .settings-theme-options { gap: 12px; } .settings-theme-preview { aspect-ratio: 1.15; } }
+@media (max-width: 600px) { .settings-view { display: flex; flex-direction: column; overflow: visible; } .settings-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 12px; overflow: visible; } .settings-back { margin-bottom: 8px; } .settings-sidebar__label { display: none; } .settings-sections { display: flex; overflow-x: auto; margin-top: 12px; gap: 5px; } .settings-sections button { width: auto; flex: 0 0 auto; gap: 7px; min-height: 38px; padding: 8px; font-size: 12px; } .settings-sections svg { width: 16px; } .settings-content { padding: 26px 18px; overflow: visible; } .settings-content h1 { margin-bottom: 28px; font-size: 24px; } .settings-theme-options { gap: 12px; } .settings-theme-options button { font-size: 12px; } .settings-theme-preview { border-radius: 8px; } .settings-theme-preview__window i { border-top-width: 5px; border-bottom-width: 2px; } .settings-card { padding: 0 14px; border-radius: 13px; } .settings-card__header { align-items: flex-start; } .settings-row { gap: 12px; } }

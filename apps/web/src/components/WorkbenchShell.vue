@@ -12,6 +12,7 @@ import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../services/desktopBridge';
 import type { LayoutMode } from '../composables/useMediaLayout';
 import type { TerminalController } from '../composables/useTerminal';
+import type { IconTheme } from '../editor/fileIcon';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
 import InspectorPanel from './InspectorPanel.vue';
@@ -69,6 +70,7 @@ const props = withDefaults(defineProps<{
   connectionState?: ConnectionState;
   workspaceLabel?: string;
   terminal?: TerminalController;
+  iconTheme?: IconTheme;
 }>(), {
   layoutMode: 'desktop',
   activity: 'explorer',
@@ -88,6 +90,7 @@ const props = withDefaults(defineProps<{
   cursor: () => ({ line: 1, column: 1 }),
   statusText: 'Ready',
   connectionState: 'connecting',
+  iconTheme: 'dark',
 });
 
 const emit = defineEmits<{
@@ -107,6 +110,7 @@ const emit = defineEmits<{
   togglePanelMaximize: [];
   closePanel: [];
   openSetup: [];
+  openSettings: [];
   selectFile: [path: string];
   revealFile: [path: string];
   closeFile: [path: string];
@@ -145,7 +149,7 @@ const styles = computed(() => (isIde.value
         :active="activity"
         :sidebar-visible="sidebarVisible"
         @select="emit('selectActivity', $event)"
-        @open-setup="emit('openSetup')"
+        @open-settings="emit('openSettings')"
       />
       <aside v-if="sidebarVisible" class="ide-sidebar" :aria-label="t('ide.sidebar.label')">
         <header class="ide-sidebar__header">
@@ -186,6 +190,7 @@ const styles = computed(() => (isIde.value
             :runtimes="runtimes"
             :creating="creatingFile"
             :reveal-request="revealRequest"
+            :icon-theme="iconTheme"
             hide-heading
             @update:creating="emit('update:creatingFile', $event)"
             @select="emit('selectFile', $event)"
@@ -202,11 +207,12 @@ const styles = computed(() => (isIde.value
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />
       </aside>
       <section class="ide-main" :aria-label="t('workbench.source')">
-        <EditorTabs v-if="files.length" :files="files" :active-path="activePath" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
+        <EditorTabs v-if="files.length" :files="files" :active-path="activePath" :icon-theme="iconTheme" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
         <IdeBreadcrumbs
           v-if="files.length"
           :file-path="activePath"
           :root-path="workspaceRoot?.path"
+          :icon-theme="iconTheme"
           @reveal="emit('revealFile', $event)"
         />
         <IdeEditorToolbar
