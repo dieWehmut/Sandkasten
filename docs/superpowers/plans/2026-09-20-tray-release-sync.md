@@ -56,4 +56,18 @@ Files: desktop README, design docs, installer, installed build.
       end-to-end suites.
 - [x] Install the verified build on this computer and prove the installed copy
       reaches the real release API from the tray.
-- [ ] Merge the branches into main, push, and publish the refreshed release.
+- [x] Merge the branches into main, push main with both feature branches, and
+      refresh the published release with the installer built from that revision.
+
+## Delivery boundary
+
+The pushed state is `main` at the merge above, plus
+`feat/vscode-release-sync` and `feat/desktop-tray-update-e2e`. The Pages
+workflow deployed the pushed revision.
+
+The installer in the published `v0.1.0` release was rebuilt from the pushed
+`main` revision and re-uploaded, so the download and this computer carry the
+same build. The desktop version stays `0.1.0`, which is why the tray check
+reports the running build as the latest release: a machine that installed the
+earlier `0.1.0` build cannot be told apart from this one by version number
+alone, so a later build that must reach those installs needs its own version.
