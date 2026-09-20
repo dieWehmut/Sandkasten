@@ -74,7 +74,8 @@ test('defines stable setup and locale selectors for the first-visit browser flow
     installCommand: '[data-testid="install-command"] code',
     dismiss: '[data-testid="setup-dismiss"][data-action="dismiss-setup"]',
     workbench: '[data-testid="workbench-shell"]',
-    reopen: '[data-testid="open-setup-guide"][data-action="open-setup-guide"]',
+    palette: '[data-testid="command-palette"]',
+    settings: '[data-testid="settings-view"]',
   });
 });
 
@@ -104,6 +105,7 @@ test('drives the first-visit setup, locale, copy, persistence, and dismissal con
     reload() { calls.push(['reload']); },
     expectEditorLabel(label) { calls.push(['editor', label]); },
     assertNoHorizontalOverflow(stage) { calls.push(['overflow', stage]); },
+    setLocaleThroughSettings(locale) { calls.push(['settings-locale', locale]); },
   };
 
   await runFirstVisitSetupFlow(driver);
@@ -129,27 +131,27 @@ test('drives the first-visit setup, locale, copy, persistence, and dismissal con
     ['locale', 'zh-CN'],
     ['storage', 'sandkasten-locale', 'zh-CN'],
     ['editor', '编辑器'],
-    ['click', setupLocaleActionSelector('en')],
+    ['settings-locale', 'en'],
     ['locale', 'en'],
     ['storage', 'sandkasten-locale', 'en'],
     ['editor', 'Editor'],
   ]);
 });
 
-test('drives the header action that reopens and dismisses the setup guide', async () => {
+test('drives the palette command that reopens and dismisses the setup guide', async () => {
   const calls = [];
   const driver = {
     waitForVisible(selector) { calls.push(['visible', selector]); },
     waitForHidden(selector) { calls.push(['hidden', selector]); },
     click(selector) { calls.push(['click', selector]); },
     assertNoHorizontalOverflow(stage) { calls.push(['overflow', stage]); },
+    openSetupGuide() { calls.push(['open-setup-guide']); },
   };
 
   await runReopenedSetupFlow(driver);
 
   assert.deepEqual(calls, [
-    ['visible', SETUP_FLOW_SELECTORS.reopen],
-    ['click', SETUP_FLOW_SELECTORS.reopen],
+    ['open-setup-guide'],
     ['visible', SETUP_FLOW_SELECTORS.guide],
     ['overflow', 'reopened setup guide'],
     ['click', SETUP_FLOW_SELECTORS.dismiss],
