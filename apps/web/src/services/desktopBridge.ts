@@ -66,7 +66,7 @@ export interface LocalRunOutput {
 }
 
 /** Menu identifiers the native chrome accepts; keep in sync with the main process. */
-export const WINDOW_MENU_IDS = ['file', 'edit', 'run', 'view', 'help'] as const;
+export const WINDOW_MENU_IDS = ['file', 'edit', 'view', 'help'] as const;
 export type WindowMenuId = typeof WINDOW_MENU_IDS[number];
 
 export interface WindowMenuRequest {

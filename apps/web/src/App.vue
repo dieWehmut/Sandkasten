@@ -403,24 +403,12 @@ onBeforeUnmount(() => {
   >
     <AppHeader
       v-if="!setupWelcome.isGuideOpen.value"
-      :connection-state="connectionState"
-      :history-open="historyOpen"
-      :inspector-open="inspectorOpen"
       :theme="theme.theme.value"
-      :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"
       :window-title="documentTitle"
       :chrome="bridge?.windowChrome"
       :platform="bridge?.platform"
-      @toggle-history="toggleHistory"
-      @toggle-inspector="toggleInspector"
-      @toggle-theme="theme.toggleTheme"
-      @change-color-scheme="colorScheme.setColorScheme"
-      @open-github="openGithub"
-      @open-setup="setupWelcome.reopen"
-      @open-api-endpoint="openApiEndpoint"
-      @change-locale="locale.setLocale"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"

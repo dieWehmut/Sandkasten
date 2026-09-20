@@ -19,7 +19,6 @@ const translate = computed(() => props.t ?? englishTranslator);
 const menuKeys: Readonly<Record<WindowMenuId, MessageKey>> = {
   file: 'menu.file',
   edit: 'menu.edit',
-  run: 'menu.run',
   view: 'menu.view',
   help: 'menu.help',
 };

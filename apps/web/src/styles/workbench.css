@@ -93,7 +93,6 @@
 
 .brand,
 .connection-status,
-.header-actions,
 .run-controls,
 .history-item__primary,
 .history-item__meta {
@@ -115,15 +114,7 @@
   object-fit: cover;
 }
 
-.brand svg {
-  color: var(--accent-strong);
-}
 
-.brand strong {
-  overflow: hidden;
-  font-size: 15px;
-  text-overflow: ellipsis;
-}
 
 .connection-status {
   gap: 6px;
@@ -149,9 +140,6 @@
   to { rotate: 1turn; }
 }
 
-.header-actions {
-  gap: 6px;
-}
 
 .locale-switcher {
   display: inline-flex;
@@ -163,7 +151,6 @@
   background: var(--surface-subtle);
 }
 
-.header-actions button,
 .output-viewer > button,
 .edge-sheet__header button {
   display: inline-grid;
@@ -176,30 +163,9 @@
   background: transparent;
 }
 
-.header-actions .locale-switcher button {
-  width: auto;
-  min-width: 34px;
-  height: 28px;
-  flex-basis: auto;
-  padding-inline: 7px;
-  border: 0;
-  font: 700 10px/1 var(--font-ui);
-}
 
-.header-actions .locale-switcher button[aria-pressed="true"] {
-  color: #fff;
-  background: var(--accent-strong);
-}
 
-:root[data-theme="dark"] .header-actions .locale-switcher button[aria-pressed="true"] {
-  color: var(--surface);
-}
 
-.header-actions button[aria-expanded="true"] {
-  border-color: var(--accent);
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-}
 
 .color-scheme-switcher {
   position: relative;
@@ -618,20 +584,8 @@
     clip-path: inset(50%);
   }
 
-  .header-actions {
-    gap: 3px;
-  }
 
-  .header-actions .locale-switcher button {
-    min-width: 28px;
-    padding-inline: 5px;
-  }
 
-  .header-actions button {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-  }
 
   .color-scheme-switcher > button {
     width: 32px;
@@ -698,15 +652,7 @@
 }
 
 @media (max-width: 420px) {
-  .brand strong {
-    max-width: 76px;
-  }
 
-  .header-actions button {
-    width: 30px;
-    height: 30px;
-    flex-basis: 30px;
-  }
 
   .color-scheme-switcher > button {
     width: 30px;
@@ -714,11 +660,4 @@
     flex-basis: 30px;
   }
 
-  .header-actions .locale-switcher button {
-    min-width: 26px;
-    width: auto;
-    height: 26px;
-    flex-basis: auto;
-    padding-inline: 4px;
-  }
 }
