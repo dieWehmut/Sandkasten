@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { ArrowLeft, ArrowRight } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, Search } from '@lucide/vue';
 // Inlined as a data URI so the four-file distribution contract keeps holding.
 import brandMark from '../assets/brand-88.png?inline';
 import type { Theme } from '../composables/useTheme';
@@ -18,9 +18,10 @@ const props = withDefaults(defineProps<{
   platform?: string;
   canBack?: boolean;
   canForward?: boolean;
+  paletteOpen?: boolean;
 }>(), { theme: 'light', locale: 'en' });
 
-const emit = defineEmits<{ navigateBack: []; navigateForward: [] }>();
+const emit = defineEmits<{ navigateBack: []; navigateForward: []; quickOpen: [] }>();
 
 const englishTranslator = createTranslator('en');
 const translate = computed(() => props.t ?? englishTranslator);
@@ -65,6 +66,12 @@ const isMac = computed(() => props.platform === 'darwin');
       :locale="locale"
       :t="translate"
     />
-    <span v-if="windowTitle" class="app-header__title" data-testid="window-title">{{ windowTitle }}</span>
+    <button class="command-center" type="button" data-action="quick-open"
+      :aria-label="translate('palette.title')" :title="`${translate('palette.title')} (${isMac ? '⌘P' : 'Ctrl+P'})`"
+      aria-haspopup="dialog" :aria-expanded="Boolean(paletteOpen)" :aria-keyshortcuts="isMac ? 'Meta+p Meta+e' : 'Control+p Control+e'"
+      @click="emit('quickOpen')">
+      <Search :size="14" aria-hidden="true" />
+      <span class="app-header__title" data-testid="window-title">{{ windowTitle || translate('brand.name') }}</span>
+    </button>
   </header>
 </template>
