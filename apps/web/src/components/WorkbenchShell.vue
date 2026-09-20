@@ -110,6 +110,7 @@ const emit = defineEmits<{
   togglePanelMaximize: [];
   closePanel: [];
   openSetup: [];
+  openSettings: [];
   selectFile: [path: string];
   revealFile: [path: string];
   closeFile: [path: string];
@@ -148,7 +149,7 @@ const styles = computed(() => (isIde.value
         :active="activity"
         :sidebar-visible="sidebarVisible"
         @select="emit('selectActivity', $event)"
-        @open-setup="emit('openSetup')"
+        @open-settings="emit('openSettings')"
       />
       <aside v-if="sidebarVisible" class="ide-sidebar" :aria-label="t('ide.sidebar.label')">
         <header class="ide-sidebar__header">
