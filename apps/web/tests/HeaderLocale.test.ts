@@ -9,7 +9,7 @@ import HeaderActions from '../src/components/HeaderActions.vue';
 import LocaleSwitcher from '../src/components/LocaleSwitcher.vue';
 import { createTranslator } from '../src/i18n/locale';
 import { TRANSLATOR_KEY } from '../src/i18n/useTranslation';
-import { COLOR_SCHEME_STORAGE_KEY } from '../src/composables/useColorScheme';
+import { COLOR_SCHEME_STORAGE_KEY, useColorScheme } from '../src/composables/useColorScheme';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
 
 afterEach(() => {
@@ -77,25 +77,29 @@ describe('localized header controls', () => {
     expect(wrapper.emitted('changeLocale')).toEqual([['en']]);
   });
 
-  test('passes locale and translated connection state through AppHeader', async () => {
+  test('passes locale and translated search metadata through AppHeader', async () => {
     const t = createTranslator('zh-CN');
     const wrapper = mount(AppHeader, {
-      props: {
-        connectionState: 'connected',
-        locale: 'zh-CN',
-        t,
-      },
+      props: { locale: 'zh-CN', t, windowTitle: 'main.py', canBack: true, canForward: false },
     });
 
+    // The reduced title row keeps the brand mark, the history arrows, and the
+    // centered search control; the removed status and setup controls are gone.
     expect(wrapper.get('.brand').attributes('aria-label')).toBe(t('brand.home'));
-    expect(wrapper.get('.brand strong').text()).toBe(t('brand.name'));
-    expect(wrapper.get('.connection-status').text()).toBe(t('connection.connected'));
+    expect(wrapper.find('.brand strong').exists()).toBe(false);
+    expect(wrapper.find('.connection-status').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="locale-switcher"]').exists()).toBe(false);
 
-    await wrapper.get('[data-testid="open-setup-guide"]').trigger('click');
-    await wrapper.get('button[data-locale="en"]').trigger('click');
+    const search = wrapper.get('[data-action="quick-open"]');
+    expect(search.attributes('aria-label')).toBe(t('palette.title'));
+    expect(search.attributes('aria-expanded')).toBe('false');
+    expect(search.text()).toBe('main.py');
+    expect(search.attributes('aria-keyshortcuts')).toBe('Control+p Control+e');
 
-    expect(wrapper.emitted('openSetup')).toHaveLength(1);
-    expect(wrapper.emitted('changeLocale')).toEqual([['en']]);
+    await search.trigger('click');
+
+    expect(wrapper.emitted('quickOpen')).toHaveLength(1);
+    expect(wrapper.emitted('navigateBack')).toBeUndefined();
   });
 });
 
@@ -167,16 +171,17 @@ describe('color scheme switcher', () => {
     expect(document.documentElement.getAttribute('data-color-scheme')).toBe('pink');
   });
 
-  test('persists a scheme picked from the workbench header', async () => {
+  test('persists and applies a scheme chosen through the color scheme controller', async () => {
     window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
-    const wrapper = mount(App);
-    await flushPromises();
+    const scheme = useColorScheme();
 
-    await wrapper.get('[data-action="toggle-color-scheme"]').trigger('click');
-    await wrapper.get('[data-action="set-color-scheme-white"]').trigger('click');
+    scheme.setColorScheme('white');
 
+    // The reduced title row moved the picker out of the header, so this
+    // covers the behaviour the picker itself still depends on: the document
+    // attribute and the stored preference both follow the choice.
     expect(document.documentElement.getAttribute('data-color-scheme')).toBe('white');
-    expect(window.localStorage.getItem('sandkasten-color-scheme')).toBe('white');
+    expect(window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY)).toBe('white');
   });
 });
 

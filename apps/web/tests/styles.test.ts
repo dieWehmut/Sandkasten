@@ -199,7 +199,7 @@ describe('color scheme palettes', () => {
     const themeBlocks = style('tokens.css').split(':root[data-theme="dark"]');
     const controls = [
       { file: 'workbench.css', selectors: ['.run-controls .run-source-action'] },
-      { file: 'workbench.css', selectors: ['.header-actions .locale-switcher button[aria-pressed="true"]'] },
+      { file: 'workbench.css', selectors: ['.command-center'] },
       { file: 'setup.css', selectors: ['.setup-welcome__toolbar .locale-switcher button[aria-pressed="true"]'] },
       { file: 'ide.css', selectors: ['.ide-status'] },
       { file: 'ide.css', selectors: ['.ide-status', '.ide-status__badge'] },
