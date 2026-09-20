@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { ArrowLeft, BookOpen, Clock, Github, Info, Palette, Search, Server, Settings } from '@lucide/vue';
+import { ArrowLeft, BookOpen, Clock, ExternalLink, Info, Palette, Search, Server, Settings } from '@lucide/vue';
 import type { AppearanceColor, AppearanceColors } from '../composables/useAppearance';
 import type { Theme, ThemePreference } from '../composables/useTheme';
 import type { ConnectionState } from '../composables/useRunner';
@@ -84,7 +84,7 @@ onMounted(() => heading.value?.focus());
         <section v-else-if="current.id === 'general'" class="settings-card">
           <div class="settings-row"><span>{{ t('locale.label') }}</span><LocaleSwitcher :locale="locale" :t="t" @change="emit('changeLocale', $event)" /></div>
           <button class="settings-link-row" type="button" data-action="open-setup-guide" data-testid="settings-open-setup" @click="emit('openSetup')"><BookOpen :size="19" aria-hidden="true" />{{ t('setup.guide') }}<span aria-hidden="true">→</span></button>
-          <button class="settings-link-row" type="button" data-action="open-github" @click="emit('openGithub')"><Github :size="19" aria-hidden="true" />{{ t('header.github') }}<span aria-hidden="true">↗</span></button>
+          <button class="settings-link-row" type="button" data-action="open-github" @click="emit('openGithub')"><ExternalLink :size="19" aria-hidden="true" />{{ t('header.github') }}<span aria-hidden="true">↗</span></button>
         </section>
         <section v-else-if="current.id === 'connection'" class="settings-card">
           <div class="settings-row"><span>{{ t('settings.connectionStatus') }}</span><span class="settings-connection" :data-state="connectionState"><i aria-hidden="true" />{{ t(`connection.${connectionState}`) }}</span></div>
