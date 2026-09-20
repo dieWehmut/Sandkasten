@@ -96,6 +96,7 @@ export function createAppTray({
   createWindow,
   sendCommand,
   checkForUpdates,
+  onMenuChange = () => {},
   quit,
 } = {}) {
   const icon = nativeImage.createFromPath(iconPath);
@@ -105,7 +106,7 @@ export function createAppTray({
   let inFlight;
 
   const renderMenu = () => {
-    tray.setContextMenu(Menu.buildFromTemplate(trayMenuTemplate({
+    const template = trayMenuTemplate({
       locale,
       showWindow: open,
       sendCommand,
@@ -129,7 +130,9 @@ export function createAppTray({
         return inFlight;
       },
       quit,
-    })));
+    });
+    tray.setContextMenu(Menu.buildFromTemplate(template));
+    onMenuChange(template);
   };
 
   tray.setToolTip(labelsFor(locale).tooltip);
