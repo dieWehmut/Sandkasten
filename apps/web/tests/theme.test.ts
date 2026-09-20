@@ -29,6 +29,25 @@ function createMediaQuery(matches: boolean) {
 }
 
 describe('useTheme', () => {
+  test('returning to system mode persists that choice and resumes following OS changes', () => {
+    const root = document.createElement('html');
+    const values = new Map<string, string>([['sandkasten-theme', 'dark']]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+    const system = createMediaQuery(false);
+    const controller = useTheme({ root, storage, mediaQuery: system.mediaQuery });
+    controller.setTheme('system');
+    expect(controller.preference.value).toBe('system');
+    expect(root.dataset.theme).toBe('light');
+    expect(values.get('sandkasten-theme')).toBe('system');
+    system.change(true);
+    expect(root.dataset.theme).toBe('dark');
+    controller.dispose();
+    const restored = useTheme({ root, storage, mediaQuery: system.mediaQuery });
+    expect(restored.preference.value).toBe('system');
+    system.change(false);
+    expect(root.dataset.theme).toBe('light');
+    restored.dispose();
+  });
   test('honors the system theme initially without persisting an implicit choice', () => {
     const root = document.createElement('html');
     const storage = createStorage();

@@ -1,6 +1,7 @@
 import { computed, readonly, ref, type ComputedRef, type Ref } from 'vue';
 
 export type Theme = 'light' | 'dark';
+export type ThemePreference = Theme | 'system';
 
 export interface ThemeStorage {
   getItem(key: string): string | null;
@@ -21,9 +22,10 @@ interface ThemeEnvironment {
 
 export interface ThemeController {
   theme: Readonly<Ref<Theme>>;
+  preference: Readonly<Ref<ThemePreference>>;
   hasExplicitPreference: Readonly<Ref<boolean>>;
   toggleLabel: ComputedRef<string>;
-  setTheme(theme: Theme): void;
+  setTheme(theme: ThemePreference): void;
   toggleTheme(): void;
   dispose(): void;
 }
@@ -66,6 +68,7 @@ export function useTheme(environment: ThemeEnvironment = {}): ThemeController {
   }
 
   const explicitTheme = isTheme(storedTheme) ? storedTheme : undefined;
+  const preference = ref<ThemePreference>(explicitTheme ?? 'system');
   const theme = ref<Theme>(explicitTheme ?? (mediaQuery?.matches ? 'dark' : 'light'));
   const hasExplicitPreference = ref(Boolean(explicitTheme));
   const toggleLabel = computed(() => `Use ${theme.value === 'light' ? 'dark' : 'light'} theme`);
@@ -77,9 +80,10 @@ export function useTheme(environment: ThemeEnvironment = {}): ThemeController {
     root.style.colorScheme = nextTheme;
   }
 
-  function setTheme(nextTheme: Theme): void {
-    hasExplicitPreference.value = true;
-    applyTheme(nextTheme);
+  function setTheme(nextTheme: ThemePreference): void {
+    preference.value = nextTheme;
+    hasExplicitPreference.value = nextTheme !== 'system';
+    applyTheme(nextTheme === 'system' ? (mediaQuery?.matches ? 'dark' : 'light') : nextTheme);
     try {
       storage?.setItem(STORAGE_KEY, nextTheme);
     } catch {
@@ -100,6 +104,7 @@ export function useTheme(environment: ThemeEnvironment = {}): ThemeController {
 
   return {
     theme: readonly(theme),
+    preference: readonly(preference),
     hasExplicitPreference: readonly(hasExplicitPreference),
     toggleLabel,
     setTheme,
