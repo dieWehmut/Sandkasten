@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 
+import { selectTheme } from './e2e-theme.mjs';
+
 // This drives xterm through its real input element. Output assertions read its
 // accessibility tree, which represents the same screen painted on the canvas.
 export async function verifyTerminal({ page, app, outputRoot }) {
@@ -54,7 +56,10 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Control+Backquote');
   await page.keyboard.press('Control+Backquote');
   await page.waitForSelector(`${pane(firstId)}:visible`);
-  await page.click('[data-testid="open-setup-guide"]');
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-testid="command-palette"]');
+  await page.click('[data-command="view.toggleSetup"]');
+  await page.waitForSelector('[data-testid="setup-welcome"]');
   await page.click('[data-testid="setup-dismiss"]');
   await page.waitForSelector(`${pane(firstId)}:visible`);
   await enter(firstId, 'echo E2E^_AFTER^_%SANDKASTEN_E2E_STATE%');
@@ -105,10 +110,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await waitScreen(firstId, 'E2E_INTERRUPT_OK');
 
   for (const theme of ['light', 'dark']) {
-    if (await page.getAttribute('html', 'data-theme') !== theme) {
-      await page.click('[data-action="toggle-theme"]');
-      await page.waitForFunction((value) => document.documentElement.dataset.theme === value, theme);
-    }
+    await selectTheme(page, theme);
     await page.screenshot({ path: path.join(outputRoot, `desktop-terminal-${theme}.png`) });
   }
 

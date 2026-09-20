@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyTerminal } from './e2e-terminal.mjs';
+import { selectTheme } from './e2e-theme.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -69,7 +70,10 @@ try {
   await page.click('[data-testid="setup-dismiss"]');
   await resize(1440, 900);
   await page.waitForSelector('[data-testid="workbench-shell"]');
-  await page.click('[data-testid="open-setup-guide"]');
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-testid="command-palette"]');
+  await page.click('[data-command="view.toggleSetup"]');
+  await page.waitForSelector('[data-testid="setup-welcome"]');
   await verifyGuideScroll('reopened desktop');
   await resize(1000, 720);
   await verifyGuideScroll('reopened compact');
@@ -77,11 +81,17 @@ try {
   await resize(1440, 900);
   await page.waitForSelector('[data-testid="ide-backend-select"]');
   await page.selectOption('[data-testid="ide-backend-select"]', 'api');
-  await page.waitForSelector('.connection-status[data-state="unavailable"]');
   assert.equal(await page.locator('.connection-error').count(), 0, 'the failed runtime connection must not add a banner');
+  await page.click('[data-action="open-settings"]');
+  await page.waitForSelector('[data-testid="settings-view"]');
+  await page.click('[data-section="connection"]');
+  await page.waitForSelector('[data-state="unavailable"]');
   await page.click('[data-action="open-api-endpoint"]');
   await page.waitForSelector('[role="dialog"]');
-  await page.keyboard.press('Escape');
+  await page.click('[data-action="api-endpoint-cancel"]');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  await page.click('[data-action="settings-back"]');
+  await page.waitForSelector('[data-testid="workbench-shell"]');
   report.connectionFailureHasNoBanner = true;
   report.endpointSettingsReachable = true;
 
@@ -101,10 +111,7 @@ try {
   await page.waitForSelector('[data-testid="setup-welcome"]');
   await page.click('[data-testid="setup-dismiss"]');
   for (const theme of ['light', 'dark']) {
-    if (await page.getAttribute('html', 'data-theme') !== theme) {
-      await page.click('[data-action="toggle-theme"]');
-      await page.waitForFunction((value) => document.documentElement.dataset.theme === value, theme);
-    }
+    await selectTheme(page, theme);
     await page.screenshot({ path: path.join(outputRoot, `desktop-welcome-${theme}.png`) });
   }
   report.welcome = { createFile: true, restoreAfterLastTab: true, setupAction: true };
