@@ -682,6 +682,48 @@ describe('desktop workbench', () => {
     expect(wrapper.get<HTMLInputElement>('[data-testid="workspace-search-input"]').element.disabled).toBe(true);
   });
 
+  test('lists the SSH hosts and hands a chosen one to the terminal session', async () => {
+    const bridge = stubBridge();
+    const opened: Array<{ host: string; directory?: string }> = [];
+    (bridge as unknown as { remote: Record<string, ReturnType<typeof vi.fn>> }).remote = {
+      list: vi.fn(async () => ({
+        available: true,
+        configPath: 'C:\\Users\\me\\.ssh\\config',
+        hosts: [{ alias: 'sandkasten', hostName: '192.168.50.11', user: 'root', port: '2222', directories: ['/root/sandkasten'] }],
+      })),
+      remember: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      forget: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      open: vi.fn(async (request: { host: string; directory?: string }) => {
+        opened.push(request);
+        return { host: request.host, command: `ssh ${request.host}`, directory: request.directory ?? '' };
+      }),
+    };
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="remote"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-explorer"]').exists()).toBe(true);
+    expect(wrapper.get('[data-host="sandkasten"]').text()).toContain('192.168.50.11');
+    expect(wrapper.find('[data-directory="/root/sandkasten"]').exists()).toBe(true);
+
+    // This bridge exposes no terminal, so the hand-off is a no-op rather than a
+    // half-connection: the app never pretends a session exists.
+    await wrapper.get('[data-open="sandkasten"]').trigger('click');
+    await flushPromises();
+    expect(opened).toEqual([]);
+  });
+
+  test('explains that the remote explorer needs the desktop app in the browser build', async () => {
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="remote"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="remote-desktop-only"]').text()).toMatch(/desktop/i);
+  });
+
   test('opens a folder from the File menu and replies to menu commands', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
