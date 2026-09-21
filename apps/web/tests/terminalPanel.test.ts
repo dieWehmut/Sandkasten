@@ -27,13 +27,27 @@ function installDesktop() {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', isDefault: true }, { id: 'cmd', label: 'Command Prompt' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
-    write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
+    write: vi.fn(async (_request: { id: string; data: string }) => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
     onData: vi.fn((handler) => { data = handler; return vi.fn(); }), onExit: vi.fn(() => vi.fn()),
   } satisfies TerminalBridge;
   const bridge: DesktopBridge = {
     platform: 'win32', versions: {}, terminal,
     workspace: { root: vi.fn(async () => null), list: vi.fn(async () => []), openFolder: vi.fn(async () => null), read: vi.fn(async () => ''), write: vi.fn(), create: vi.fn(), remove: vi.fn() },
+    remote: {
+      list: vi.fn(async () => ({
+        available: true,
+        configPath: 'C:\\Users\\me\\.ssh\\config',
+        hosts: [{ alias: 'sandkasten', hostName: '192.168.50.11', user: 'root', port: '2222', directories: ['/root/sandkasten'] }],
+      })),
+      remember: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      forget: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      open: vi.fn(async (request: { host: string; directory?: string }) => ({
+        host: request.host,
+        command: `ssh -p 2222 root@192.168.50.11` + (request.directory ? ` -t root@192.168.50.11 'cd ${request.directory} && exec \$SHELL -l'` : ''),
+        directory: request.directory ?? '',
+      })),
+    },
     runner: { detect: vi.fn(async () => []), run: vi.fn(), stop: vi.fn() },
     onMenuCommand: (handler) => { menu = handler; },
   };
@@ -131,4 +145,22 @@ describe('desktop terminal panel', () => {
     (app.get('[data-action="select-output-output"]').element as HTMLElement).focus();
     expect(bridge.setFocused).toHaveBeenLastCalledWith(false);
   });
+
+  test('hands a chosen remote host to a real terminal session by typing the ssh line', async () => {
+    const bridge = installDesktop(); const app = await mountApp();
+    await app.get('[data-activity="remote"]').trigger('click'); await flushPromises();
+    expect(app.get('[data-host="sandkasten"]').text()).toContain('192.168.50.11');
+
+    // Selecting the host opens the panel and types the composed line into the session.
+    await app.get('[data-open="sandkasten"]').trigger('click'); await flushPromises();
+    expect(bridge.create).toHaveBeenLastCalledWith({ profileId: 'pwsh', cols: 80, rows: 24 });
+    const typed = (needle: string) => vi.mocked(bridge.write).mock.calls
+      .some(([request]) => request.data.includes(needle));
+    expect(typed('ssh -p 2222 root@192.168.50.11')).toBe(true);
+
+    // A remembered directory reaches the shell with the cd command attached.
+    await app.get('[data-directory="/root/sandkasten"] .ide-remote__directory').trigger('click'); await flushPromises();
+    expect(typed('cd /root/sandkasten')).toBe(true);
+  });
+
 });

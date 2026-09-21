@@ -15,6 +15,7 @@ import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
 import { useEditorHistory } from './composables/useEditorHistory';
 import { useWorkspaceSearch } from './composables/useWorkspaceSearch';
+import { useRemoteHosts } from './composables/useRemoteHosts';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
@@ -38,6 +39,7 @@ const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
 const workspace = useWorkspace();
 const search = useWorkspaceSearch();
+const remote = useRemoteHosts(bridge?.remote);
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
@@ -223,6 +225,9 @@ function toggleInspector(): void {
 
 function selectActivity(activity: Parameters<typeof ide.selectActivity>[0]): void {
   ide.selectActivity(activity);
+  // The remote host list is read from the SSH config, so it is loaded when its
+  // view is opened rather than on every app start.
+  if (activity === 'remote' && ide.sidebarVisible.value) void remote.load();
 }
 
 function openFolder(): void {
@@ -356,14 +361,41 @@ function selectSearchResult(path: string): void {
   void workspace.openFile(path);
 }
 
-async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
+// The Remote Explorer never browses the remote machine itself: a chosen host or
+// directory opens the terminal panel with a session whose shell receives the
+// composed ssh line, which is exactly what the user would have typed.
+async function openRemoteSession(payload: { host: string; directory: string }): Promise<void> {
+  if (!terminal) return;
+  try {
+    // The profile is read before the ssh line is composed, because the shell's
+    // quoting rules differ per profile; it then owns the session so the line is
+    // typed into the very shell it was written for.
+    if (!terminal.profiles.value.length) await terminal.loadProfiles();
+    const profileId = terminal.profiles.value.find((profile) => profile.isDefault)?.id;
+    const session = await remote.open(payload.host, payload.directory || undefined, profileId);
+    await openTerminal('new', profileId);
+    await terminal.run(session.command);
+  } catch (cause) {
+    remote.error.value = cause instanceof Error ? cause.message : String(cause);
+  }
+}
+
+function rememberRemoteDirectory(host: string, directory: string): void {
+  void remote.remember(host, directory).catch(() => undefined);
+}
+
+function forgetRemoteDirectory(host: string, directory: string): void {
+  void remote.forget(host, directory).catch(() => undefined);
+}
+
+async function openTerminal(mode: 'show' | 'new' | 'split' = 'show', profileId?: string): Promise<void> {
   if (!terminal) return;
   settingsOpen.value = false;
   if (setupWelcome.isGuideOpen.value) dismissSetup();
   ide.showPanel();
   terminal.show();
   if (mode === 'split') await terminal.split();
-  else if (mode === 'new' || (!terminal.sessions.value.length && !terminal.pending.value)) await terminal.create();
+  else if (mode === 'new' || (!terminal.sessions.value.length && !terminal.pending.value)) await terminal.create(profileId);
   await nextTick();
   terminal.focus();
 }
@@ -633,6 +665,7 @@ onBeforeUnmount(() => {
       :creating-file="creatingFile"
       :creating-folder="creatingFolder"
       :search="search"
+      :remote="remote"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -674,6 +707,9 @@ onBeforeUnmount(() => {
       @update:search-query="search.query.value = $event"
       @update:search-case-sensitive="search.caseSensitive.value = $event"
       @clear-search="search.clear()"
+      @open-remote="openRemoteSession"
+      @remember-remote-directory="rememberRemoteDirectory($event.host, $event.directory)"
+      @forget-remote-directory="forgetRemoteDirectory($event.host, $event.directory)"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"

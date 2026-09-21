@@ -1,4 +1,4 @@
-// IPC surface between the sandboxed renderer and the main process. Every
+﻿// IPC surface between the sandboxed renderer and the main process. Every
 // handler validates its arguments and every filesystem call is confined to the
 // folder the user opened through the native dialog.
 import { pathToFileURL } from 'node:url';
@@ -26,6 +26,10 @@ export const IPC_CHANNELS = {
   workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
   workspaceSearch: 'sandkasten:workspace:search',
+  remoteList: 'sandkasten:remote:list',
+  remoteRemember: 'sandkasten:remote:remember',
+  remoteForget: 'sandkasten:remote:forget',
+  remoteOpen: 'sandkasten:remote:open',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
