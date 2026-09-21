@@ -374,11 +374,24 @@ async function main() {
     checks.savedFile = (await readFile(path.join(workspace, 'hello.py'), 'utf8')).trim();
     checks.savedRemotely = checks.savedFile === 'print("E2E-SAVED")';
 
+    // The creation row belongs to the selection: with a file inside pkg open,
+    // the row must land under pkg and carry pkg as its parent, the way VS Code
+    // places it, instead of appearing at the top of the panel.
+    await page.click('[data-path="pkg"] .ide-tree__toggle');
+    await page.waitForSelector('[data-path="pkg/util.py"]');
+    await page.click('[data-path="pkg/util.py"] .ide-tree__open');
     await page.keyboard.press('Control+n');
     await page.waitForSelector('[data-testid="ide-new-file-form"]');
+    checks.createRowParent = await page.locator('[data-testid="ide-inline-create"]').getAttribute('data-parent');
+    checks.createRowInsideTree = await page.evaluate(() => {
+      const row = document.querySelector('[data-testid="ide-inline-create"]');
+      const tree = document.querySelector('.ide-tree');
+      return Boolean(row && tree && tree.contains(row));
+    });
     await page.fill('input[name="fileName"]', 'extra.py');
     await page.click('[data-action="ide-create-file"]');
     await page.waitForSelector('[data-path="extra.py"]');
+    checks.createdInSelectedFolder = existsSync(path.join(workspace, 'pkg', 'extra.py'));
     checks.createdOnDisk = existsSync(path.join(workspace, 'extra.py'));
     checks.openTabs = await page.locator('.ide-tab__name').allInnerTexts();
 
@@ -626,7 +639,12 @@ async function main() {
     assert.equal(checks.bridgeExposed, true);
     assert.equal(checks.localRunOutput, 'E2E-LOCAL-RUN-OK');
     assert.equal(checks.savedRemotely, true);
-    assert.equal(checks.createdOnDisk, true);
+    // The row is inline and scoped to the selection, so the file lands in pkg
+    // rather than at the workspace root.
+    assert.equal(checks.createRowParent, 'pkg', 'the creation row must belong to the selected file directory');
+    assert.equal(checks.createRowInsideTree, true, 'the creation row must render inside the tree');
+    assert.equal(checks.createdInSelectedFolder, true, 'the new file must land in the selected directory');
+    assert.equal(checks.createdOnDisk, false);
     assert.equal(checks.panelHidden, true);
     assert.equal(checks.sidebarHiddenByButton, true);
     assert.equal(checks.collapseButton?.insideHeader, true);
