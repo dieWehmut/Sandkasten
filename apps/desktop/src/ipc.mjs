@@ -14,6 +14,7 @@ import {
   resolveInsideRoot,
   writeWorkspaceFile,
 } from './workspace.mjs';
+import { searchWorkspaceFiles } from './workspace-search.mjs';
 
 export const IPC_CHANNELS = {
   workspaceOpenFolder: 'sandkasten:workspace:open-folder',
@@ -24,6 +25,7 @@ export const IPC_CHANNELS = {
   workspaceCreate: 'sandkasten:workspace:create',
   workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
+  workspaceSearch: 'sandkasten:workspace:search',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
@@ -164,6 +166,14 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
 
   ipcMain.handle(IPC_CHANNELS.workspaceRemove, async (_event, relativePath) => (
     deleteWorkspaceFile(requireRoot(session), assertString(relativePath, 'path'))
+  ));
+
+  // The renderer names the query and whether it wants case sensitivity; the
+  // main process owns the walk, the bounds, and the ignored directories.
+  ipcMain.handle(IPC_CHANNELS.workspaceSearch, async (_event, request) => (
+    searchWorkspaceFiles(requireRoot(session), assertString(request?.query, 'query'), {
+      caseSensitive: request?.caseSensitive === true,
+    })
   ));
 
   ipcMain.handle(IPC_CHANNELS.localDetect, async () => runner.detect());

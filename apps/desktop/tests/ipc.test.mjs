@@ -66,6 +66,19 @@ test('workspace IPC requires an opened folder and confines every path', async (t
   assert.equal(await ipcMain.invoke(IPC_CHANNELS.workspaceRead, 'extra.py'), 'print("extra")\n');
   await ipcMain.invoke(IPC_CHANNELS.workspaceRemove, 'extra.py');
   await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceRead, 'extra.py'), /not found/);
+
+  // Search runs in the main process, so the renderer only sends the query and
+  // the case flag; the walk and its bounds never leave this side.
+  await ipcMain.invoke(IPC_CHANNELS.workspaceCreateFolder, 'pkg');
+  await ipcMain.invoke(IPC_CHANNELS.workspaceCreate, 'pkg/extra.py', 'print("needle")\n');
+  const found = await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'needle' });
+  assert.deepEqual(found.files.map((file) => file.path), ['pkg/extra.py']);
+  assert.equal(found.fileCount, 1);
+  assert.equal(found.matchCount, 1);
+  assert.equal((await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'NEEDLE' })).fileCount, 1);
+  assert.equal((await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'NEEDLE', caseSensitive: true })).fileCount, 0);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: '  ' }), /query/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceSearch, {}), /query/i);
 });
 
 test('the folder dialog opens exactly one directory and reports cancellation', async (t) => {
