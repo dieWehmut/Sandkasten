@@ -51,10 +51,10 @@ test('renderer themes synchronize native overlay controls and the window backgro
   await app.invoke(desktopIpc.IPC_CHANNELS.chromeSetTheme, 'dark');
   await app.invoke(desktopIpc.IPC_CHANNELS.chromeSetTheme, 'light');
   assert.deepEqual(app.overlays, [
-    { color: '#1e211f', symbolColor: '#f1f1f1', height: 40 },
-    { color: '#f0f5f1', symbolColor: '#1a1c1f', height: 40 },
+    { color: '#000000', symbolColor: '#f1f1f1', height: 40 },
+    { color: '#ffffff', symbolColor: '#1a1c1f', height: 40 },
   ]);
-  assert.deepEqual(app.backgrounds, ['#1e211f', '#f0f5f1']);
+  assert.deepEqual(app.backgrounds, ['#000000', '#ffffff']);
   await assert.rejects(() => app.invoke(desktopIpc.IPC_CHANNELS.chromeSetTheme, 'system'), /theme/i);
   await assert.rejects(() => app.invoke(desktopIpc.IPC_CHANNELS.chromeSetTheme, { color: '#ffffff' }), /theme/i);
   assert.equal(app.overlays.length, 2, 'invalid themes never reach native controls');
@@ -63,7 +63,7 @@ test('renderer themes synchronize native overlay controls and the window backgro
 test('macOS updates the background without calling the Windows/Linux overlay API', async () => {
   const app = harness({ platform: 'darwin' });
   await app.invoke(desktopIpc.IPC_CHANNELS.chromeSetTheme, 'dark');
-  assert.deepEqual(app.backgrounds, ['#1e211f']);
+  assert.deepEqual(app.backgrounds, ['#000000']);
   assert.deepEqual(app.overlays, []);
 });
 

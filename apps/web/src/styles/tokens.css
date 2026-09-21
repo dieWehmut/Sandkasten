@@ -1,15 +1,18 @@
 :root {
   color-scheme: light;
-  --canvas: #f0f5f1;
-  --chrome: #f0f5f1;
+  /* The workbench background is pure white, exactly as the reference asks:
+     the canvas, the chrome, and every surface carry no tint, so only the
+     borders and the subtle states separate one region from the next. */
+  --canvas: #ffffff;
+  --chrome: #ffffff;
   --surface: #ffffff;
-  --surface-subtle: #f3f4f3;
-  --surface-raised: #fafbfa;
+  --surface-subtle: #f3f3f3;
+  --surface-raised: #ffffff;
   --text: #1a1c1f;
   --text-muted: #606561;
-  --text-faint: #777d79;
-  --border: #e2e6e3;
-  --border-strong: #c5cdc7;
+  --text-faint: #6f7570;
+  --border: #e4e4e4;
+  --border-strong: #c9c9c9;
   --success: #1c7550;
   --success-soft: #e3f3ec;
   --warning: #92550b;
@@ -67,16 +70,19 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #1e211f;
-  --chrome: #1e211f;
-  --surface: #181818;
-  --surface-subtle: #252825;
-  --surface-raised: #222523;
+  /* The dark counterpart is pure black, so the window, the sidebar, and the
+     editor sit on #000000 and only borders and subtle states read as
+     layers. Text and hues keep their measured contrast on the new base. */
+  --canvas: #000000;
+  --chrome: #000000;
+  --surface: #000000;
+  --surface-subtle: #242424;
+  --surface-raised: #000000;
   --text: #f1f2f1;
   --text-muted: #a8aca9;
-  --text-faint: #818983;
-  --border: #313632;
-  --border-strong: #4b514c;
+  --text-faint: #8a908b;
+  --border: #2f2f2f;
+  --border-strong: #4a4a4a;
   --success: #62c897;
   --success-soft: #1c352b;
   --warning: #e4aa5c;

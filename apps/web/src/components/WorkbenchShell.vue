@@ -282,6 +282,7 @@ const styles = computed(() => (isIde.value
           @open="emit('openRemote', $event)"
           @remember="emit('rememberRemoteDirectory', $event)"
           @forget="emit('forgetRemoteDirectory', $event)"
+        />
         <SourceControlView
           v-else-if="activity === 'source-control'"
           :state="sourceControl?.state.value ?? 'idle'"
