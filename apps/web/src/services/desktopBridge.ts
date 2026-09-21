@@ -65,6 +65,30 @@ export interface LocalRunOutput {
   command?: string;
 }
 
+export interface WorkspaceChange {
+  path: string;
+  index: string;
+  worktree: string;
+  staged: boolean;
+  status: 'modified' | 'staged' | 'untracked' | 'added' | 'deleted' | 'renamed' | 'conflicted';
+}
+
+export interface WorkspaceCommit {
+  short: string;
+  full: string;
+  subject: string;
+  author: string;
+  date: string;
+}
+
+export interface WorkspaceRepositoryStatus {
+  isRepository: boolean;
+  branch: string;
+  changes: WorkspaceChange[];
+  stagedCount: number;
+  history: WorkspaceCommit[];
+}
+
 /** Menu identifiers the native chrome accepts; keep in sync with the main process. */
 export const WINDOW_MENU_IDS = ['file', 'edit', 'view', 'help'] as const;
 export type WindowMenuId = typeof WINDOW_MENU_IDS[number];
@@ -135,6 +159,9 @@ export interface DesktopBridge {
       matchCount: number;
       truncated: boolean;
     }>;
+    status(): Promise<WorkspaceRepositoryStatus>;
+    stage(request: { paths: string[] }): Promise<WorkspaceRepositoryStatus>;
+    commit(request: { message: string }): Promise<WorkspaceRepositoryStatus>;
   };
   runner: {
     detect(): Promise<LocalRuntimeInfo[]>;
