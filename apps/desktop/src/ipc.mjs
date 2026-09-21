@@ -15,6 +15,7 @@ import {
   writeWorkspaceFile,
 } from './workspace.mjs';
 import { searchWorkspaceFiles } from './workspace-search.mjs';
+import { commitWorkspaceChanges, readWorkspaceStatus, stageWorkspaceChanges } from './source-control.mjs';
 
 export const IPC_CHANNELS = {
   workspaceOpenFolder: 'sandkasten:workspace:open-folder',
@@ -26,6 +27,9 @@ export const IPC_CHANNELS = {
   workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
   workspaceSearch: 'sandkasten:workspace:search',
+  workspaceStatus: 'sandkasten:workspace:status',
+  workspaceStage: 'sandkasten:workspace:stage',
+  workspaceCommit: 'sandkasten:workspace:commit',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
@@ -175,6 +179,21 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
       caseSensitive: request?.caseSensitive === true,
     })
   ));
+
+  // Git access for the opened folder. The renderer names files inside the root
+  // and types a commit subject; every git argv is fixed here, so nothing the
+  // renderer sends can become a flag, a ref, or a shell string.
+  ipcMain.handle(IPC_CHANNELS.workspaceStatus, async () => readWorkspaceStatus(requireRoot(session)));
+
+  ipcMain.handle(IPC_CHANNELS.workspaceStage, async (_event, request) => {
+    await stageWorkspaceChanges(requireRoot(session), request?.paths);
+    return readWorkspaceStatus(requireRoot(session));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.workspaceCommit, async (_event, request) => {
+    await commitWorkspaceChanges(requireRoot(session), request?.message);
+    return readWorkspaceStatus(requireRoot(session));
+  });
 
   ipcMain.handle(IPC_CHANNELS.localDetect, async () => runner.detect());
 
