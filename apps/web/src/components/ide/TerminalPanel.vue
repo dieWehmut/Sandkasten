@@ -43,7 +43,7 @@ function createProfile(event: Event): void {
       </div>
       <nav class="terminal-sessions" :aria-label="t('terminal.sessions')">
         <button v-for="session in controller.sessions.value" :key="session.id" type="button" data-testid="terminal-session" :data-session-id="session.id" :aria-pressed="session.id === controller.activeId.value" :title="`${session.title} — ${session.cwd}`" @click="controller.select(session.id)">
-          <TerminalSquare :size="14" aria-hidden="true" /><span>{{ session.title }}</span><span v-if="session.exitCode !== undefined" class="terminal-session__exited">{{ t('terminal.finished') }}</span>
+          <SquareTerminal :size="14" aria-hidden="true" /><span>{{ session.title }}</span><span v-if="session.exitCode !== undefined" class="terminal-session__exited">{{ t('terminal.finished') }}</span>
         </button>
       </nav>
     </div>
