@@ -14,6 +14,9 @@ import { useLocalRunner } from './composables/useLocalRunner';
 import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
 import { useEditorHistory } from './composables/useEditorHistory';
+import { useWorkspaceSearch } from './composables/useWorkspaceSearch';
+import { useRemoteHosts } from './composables/useRemoteHosts';
+import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
@@ -36,6 +39,9 @@ const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
 const workspace = useWorkspace();
+const search = useWorkspaceSearch();
+const remote = useRemoteHosts(bridge?.remote);
+const sourceControl = useSourceControl();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
@@ -49,6 +55,7 @@ const runnerLoaded = ref(false);
 const backend = ref<ExecutionBackend>('api');
 const cursor = ref({ line: 1, column: 1 });
 const creatingFile = ref(false);
+const creatingFolder = ref(false);
 // The token lets a repeated click on the same folder re-open it after the user
 // folded it again; a bare path would not change and the watcher would stay put.
 const revealRequest = ref<{ path: string; token: number }>();
@@ -220,18 +227,26 @@ function toggleInspector(): void {
 
 function selectActivity(activity: Parameters<typeof ide.selectActivity>[0]): void {
   ide.selectActivity(activity);
+  // The remote host list is read from the SSH config, so it is loaded when its
+  // view is opened rather than on every app start.
+  if (activity === 'remote' && ide.sidebarVisible.value) void remote.load();
+  // The repository state is read from disk, so it is loaded when its view is
+  // opened rather than on every app start.
+  if (activity === 'source-control' && ide.sidebarVisible.value) void sourceControl.load();
 }
 
 function openFolder(): void {
-  void workspace.openFolder();
+  // Another folder means another repository, so the loaded state is replaced.
+  void workspace.openFolder().then(() => sourceControl.load()).catch(() => undefined);
 }
 
 function refreshTree(): void {
   void workspace.refreshTree();
+  void sourceControl.load();
 }
 
-function createFile(payload: { name: string; language: string }): void {
-  void workspace.createFile(payload.name, payload.language)
+function createFile(payload: { name: string; language: string; folder: string }): void {
+  void workspace.createFile(payload.name, payload.language, payload.folder)
     .then(() => { if (!language.value) runner.setLanguage(local.runtimes.value[0]?.language ?? ''); })
     .catch(() => undefined);
 }
@@ -332,14 +347,62 @@ function setCreatingFile(value: boolean): void {
   else creatingFile.value = false;
 }
 
-async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
+// The new-folder form lives in the explorer, so the explorer stays the visible
+// activity while the shell's header button opens it.
+function setCreatingFolder(value: boolean): void {
+  if (value) ide.showActivity('explorer');
+  creatingFolder.value = value;
+}
+
+function createFolder(path: string): void {
+  void workspace.createFolder(path).catch(() => undefined);
+}
+
+// Search reuses the same panel for every query, and a chosen match opens the
+// file in the editor without leaving the results behind.
+function runSearch(query: string): void {
+  void search.run(query);
+}
+
+function selectSearchResult(path: string): void {
+  void workspace.openFile(path);
+}
+
+// The Remote Explorer never browses the remote machine itself: a chosen host or
+// directory opens the terminal panel with a session whose shell receives the
+// composed ssh line, which is exactly what the user would have typed.
+async function openRemoteSession(payload: { host: string; directory: string }): Promise<void> {
+  if (!terminal) return;
+  try {
+    // The profile is read before the ssh line is composed, because the shell's
+    // quoting rules differ per profile; it then owns the session so the line is
+    // typed into the very shell it was written for.
+    if (!terminal.profiles.value.length) await terminal.loadProfiles();
+    const profileId = terminal.profiles.value.find((profile) => profile.isDefault)?.id;
+    const session = await remote.open(payload.host, payload.directory || undefined, profileId);
+    await openTerminal('new', profileId);
+    await terminal.run(session.command);
+  } catch (cause) {
+    remote.error.value = cause instanceof Error ? cause.message : String(cause);
+  }
+}
+
+function rememberRemoteDirectory(host: string, directory: string): void {
+  void remote.remember(host, directory).catch(() => undefined);
+}
+
+function forgetRemoteDirectory(host: string, directory: string): void {
+  void remote.forget(host, directory).catch(() => undefined);
+}
+
+async function openTerminal(mode: 'show' | 'new' | 'split' = 'show', profileId?: string): Promise<void> {
   if (!terminal) return;
   settingsOpen.value = false;
   if (setupWelcome.isGuideOpen.value) dismissSetup();
   ide.showPanel();
   terminal.show();
   if (mode === 'split') await terminal.split();
-  else if (mode === 'new' || (!terminal.sessions.value.length && !terminal.pending.value)) await terminal.create();
+  else if (mode === 'new' || (!terminal.sessions.value.length && !terminal.pending.value)) await terminal.create(profileId);
   await nextTick();
   terminal.focus();
 }
@@ -607,6 +670,10 @@ onBeforeUnmount(() => {
       :workspace-busy="workspace.status.value === 'loading'"
       :workspace-error="workspace.error.value"
       :creating-file="creatingFile"
+      :creating-folder="creatingFolder"
+      :search="search"
+      :remote="remote"
+      :source-control="sourceControl"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -641,6 +708,20 @@ onBeforeUnmount(() => {
       @reveal-file="revealInExplorer"
       @create-file="createFile"
       @update:creating-file="setCreatingFile"
+      @update:creating-folder="setCreatingFolder"
+      @create-folder="createFolder"
+      @search-files="runSearch"
+      @select-search-result="selectSearchResult"
+      @update:search-query="search.query.value = $event"
+      @update:search-case-sensitive="search.caseSensitive.value = $event"
+      @clear-search="search.clear()"
+      @open-remote="openRemoteSession"
+      @remember-remote-directory="rememberRemoteDirectory($event.host, $event.directory)"
+      @forget-remote-directory="forgetRemoteDirectory($event.host, $event.directory)"
+      @refresh-source-control="sourceControl.load()"
+      @update:source-control-message="sourceControl.message.value = $event"
+      @stage-source-control="sourceControl.stage($event)"
+      @commit-source-control="sourceControl.commit()"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"

@@ -32,7 +32,8 @@ export interface WorkspaceController {
   openFolder(): Promise<boolean>;
   refreshTree(): Promise<void>;
   openFile(path: string): Promise<void>;
-  createFile(name: string, language?: string): Promise<string>;
+  createFile(name: string, language?: string, folder?: string): Promise<string>;
+  createFolder(path: string): Promise<string>;
   closeFile(path: string): void;
   removeFile(path: string): Promise<void>;
   setActive(path: string): void;
@@ -89,6 +90,18 @@ function assertSimpleName(name: string): string {
   }
   if (trimmed === '.' || trimmed === '..') throw new Error('Enter a valid file name');
   return trimmed;
+}
+
+// A folder may be nested, so its path keeps separators; the store backend
+// re-validates every segment and still confines it to the opened folder.
+function assertFolderPath(path: string): string {
+  const normalized = path.trim().replaceAll('\\', '/').split('/').filter((segment) => segment !== '').join('/');
+  if (!normalized) throw new Error('Enter a folder name');
+  if (normalized.includes('\0')) throw new Error('Enter a valid folder name');
+  if (normalized.split('/').some((segment) => segment === '.' || segment === '..')) {
+    throw new Error('Folder names cannot contain path separators');
+  }
+  return normalized;
 }
 
 export function useWorkspace(): WorkspaceController {
@@ -166,10 +179,11 @@ export function useWorkspace(): WorkspaceController {
     }
   }
 
-  async function createFile(name: string, language = ''): Promise<string> {
+  async function createFile(name: string, language = '', folder = ''): Promise<string> {
     error.value = undefined;
     try {
-      const fileName = assertSimpleName(name);
+      const directory = folder ? assertFolderPath(folder) : '';
+      const fileName = directory ? `${directory}/${assertSimpleName(name)}` : assertSimpleName(name);
       if (openPaths().includes(fileName)) {
         await openFile(fileName);
         return fileName;
@@ -179,6 +193,19 @@ export function useWorkspace(): WorkspaceController {
       await refreshTree();
       await openFile(fileName);
       return fileName;
+    } catch (cause) {
+      error.value = messageFrom(cause);
+      throw cause instanceof Error ? cause : new Error(messageFrom(cause));
+    }
+  }
+
+  async function createFolder(path: string): Promise<string> {
+    error.value = undefined;
+    try {
+      const folderPath = assertFolderPath(path);
+      const created = await store.createFolder(folderPath);
+      await refreshTree();
+      return created.path;
     } catch (cause) {
       error.value = messageFrom(cause);
       throw cause instanceof Error ? cause : new Error(messageFrom(cause));
@@ -256,6 +283,7 @@ export function useWorkspace(): WorkspaceController {
     refreshTree,
     openFile,
     createFile,
+    createFolder,
     closeFile,
     removeFile,
     setActive,

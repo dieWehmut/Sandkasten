@@ -137,6 +137,21 @@ export async function createWorkspaceFile(root, relativePath, content = '') {
   return { path: normalizeRelativePath(relativePath), bytes: Buffer.byteLength(content, 'utf8') };
 }
 
+// Creating a folder never writes content, so it stays a separate call: the
+// renderer can make an empty directory without inventing a placeholder file.
+export async function createWorkspaceFolder(root, relativePath) {
+  const normalized = normalizeRelativePath(relativePath);
+  const segments = normalized.split('/');
+  if (segments.length > MAX_TREE_DEPTH) {
+    throw new Error(`the folder depth cannot exceed ${MAX_TREE_DEPTH} levels`);
+  }
+  const absolute = resolveInsideRoot(root, normalized);
+  const existing = await stat(absolute).catch(() => null);
+  if (existing) throw new Error(`a folder named ${normalized} already exists`);
+  await mkdir(absolute, { recursive: true });
+  return { path: normalized };
+}
+
 export async function deleteWorkspaceFile(root, relativePath) {
   const absolute = resolveInsideRoot(root, relativePath);
   const info = await stat(absolute).catch(() => null);

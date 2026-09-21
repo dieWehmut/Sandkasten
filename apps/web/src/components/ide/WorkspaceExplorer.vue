@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChevronDown, ChevronRight, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
+import { ChevronDown, ChevronRight, FilePlus, FolderPlus, ListCollapse, RefreshCw, Trash2, X } from '@lucide/vue';
 import type { WorkspaceRoot, WorkspaceTreeNode } from '../../services/desktopBridge';
 import type { Runtime } from '../../services/sandkastenApi';
 import type { IconTheme } from '../../editor/fileIcon';
@@ -17,24 +17,30 @@ const props = withDefaults(defineProps<{
   error?: string;
   runtimes?: Runtime[];
   creating?: boolean;
+  creatingFolder?: boolean;
   hideHeading?: boolean;
+  collapseRequest?: { token: number };
   revealRequest?: { path: string; token: number };
   iconTheme?: IconTheme;
-}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false, iconTheme: 'dark' });
+}>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, creatingFolder: false, hideHeading: false, collapseRequest: () => ({ token: 0 }), iconTheme: 'dark' });
 
 const emit = defineEmits<{
   select: [path: string];
   openFolder: [];
   refresh: [];
-  create: [payload: { name: string; language: string }];
+  create: [payload: { name: string; language: string; folder: string }];
+  createFolder: [path: string];
   remove: [path: string];
   'update:creating': [value: boolean];
+  'update:creatingFolder': [value: boolean];
 }>();
 
 const t = useTranslation();
 const collapsed = ref<string[]>([]);
 const draftName = ref('');
 const draftLanguage = ref('python');
+const draftFolder = ref('');
+const draftFolderPath = ref('');
 
 // A breadcrumb click asks the tree to show a directory that may be folded, so
 // the request opens that directory and everything above it.
@@ -81,32 +87,104 @@ function toggleDirectory(path: string): void {
 
 function startCreating(): void {
   draftName.value = '';
+  draftFolder.value = '';
   draftLanguage.value = languageOptions.value[0] ?? 'python';
   emit('update:creating', true);
+}
+
+// The panel keeps its own form flag so the folder form also opens when the
+// explorer is mounted on its own; the shell mirrors the flag for its button.
+const folderFormOpen = ref(false);
+
+function startCreatingFolder(): void {
+  draftFolderPath.value = '';
+  folderFormOpen.value = true;
+  emit('update:creatingFolder', true);
+}
+
+function cancelCreatingFolder(): void {
+  draftFolderPath.value = '';
+  folderFormOpen.value = false;
+  emit('update:creatingFolder', false);
 }
 
 function submitNewFile(): void {
   const name = draftName.value.trim();
   if (!name) return;
-  emit('create', { name, language: draftLanguage.value });
+  // A directory prefix turns the new file into a nested one without a second
+  // form; the store re-validates every segment of the resulting path.
+  const folder = draftFolder.value.trim().replaceAll('\\', '/').replace(/^[/]+|[/]+$/g, '');
+  emit('create', { name, language: draftLanguage.value, folder });
   emit('update:creating', false);
   draftName.value = '';
 }
+
+function submitNewFolder(): void {
+  const path = draftFolderPath.value.trim();
+  if (!path) return;
+  emit('createFolder', path);
+  folderFormOpen.value = false;
+  emit('update:creatingFolder', false);
+  draftFolderPath.value = '';
+}
+
+// Collapse folders is the reference's fourth header action: every directory
+// folds at once, including the nested ones a user opened inside a branch.
+const directoryPaths = computed(() => {
+  const output: string[] = [];
+  const walk = (nodes: readonly WorkspaceTreeNode[]): void => {
+    for (const node of nodes) {
+      if (node.type !== 'directory') continue;
+      output.push(node.path);
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(props.tree);
+  return output;
+});
+const allCollapsed = computed(() => directoryPaths.value.length > 0
+  && directoryPaths.value.every((path) => collapsed.value.includes(path)));
+
+function foldAll(): void {
+  collapsed.value = [...directoryPaths.value];
+}
+
+function collapseAll(): void {
+  if (allCollapsed.value) collapsed.value = [];
+  else foldAll();
+}
+
+// The shell header carries the same collapse action when it hides this heading,
+// so a bumped token folds the tree exactly like the button inside this panel.
+watch(() => props.collapseRequest.token, () => foldAll());
 </script>
 
 <template>
   <section class="ide-explorer" data-testid="workspace-explorer" :aria-label="t('ide.explorer.label')">
     <header v-if="!hideHeading" class="ide-section__heading">
       <span class="ide-section__title" :title="root?.path ?? root?.name">{{ root?.name ?? t('ide.explorer.scratch') }}</span>
-      <span class="ide-section__actions">
+      <span class="ide-section__actions ide-explorer__actions" data-testid="ide-explorer-actions">
         <button type="button" data-action="ide-new-file" :aria-label="t('ide.explorer.newFile')" :title="t('ide.explorer.newFile')" @click="startCreating">
           <FilePlus :size="15" aria-hidden="true" />
         </button>
-        <button v-if="kind === 'desktop'" type="button" data-action="ide-open-folder" :aria-label="t('ide.explorer.openFolder')" :title="t('ide.explorer.openFolder')" @click="emit('openFolder')">
-          <FolderOpen :size="15" aria-hidden="true" />
+        <button type="button" data-action="ide-new-folder" :aria-label="t('ide.explorer.newFolder')" :title="t('ide.explorer.newFolder')" @click="startCreatingFolder">
+          <FolderPlus :size="15" aria-hidden="true" />
         </button>
         <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="busy" @click="emit('refresh')">
           <RefreshCw :size="15" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="ide-explorer__collapse"
+          data-action="ide-collapse-folders"
+          :data-collapsed="allCollapsed ? 'true' : 'false'"
+          :aria-pressed="allCollapsed"
+          :aria-label="t('ide.explorer.collapseFolders')"
+          :title="t('ide.explorer.collapseFolders')"
+          :disabled="!directoryPaths.length"
+          @click="collapseAll"
+        >
+          <ListCollapse :size="15" aria-hidden="true" />
         </button>
       </span>
     </header>
@@ -120,12 +198,36 @@ function submitNewFile(): void {
         :aria-label="t('ide.explorer.fileName')"
         autofocus
       >
+      <input
+        v-model="draftFolder"
+        type="text"
+        name="fileFolder"
+        :placeholder="t('ide.explorer.folderNamePlaceholder')"
+        :aria-label="t('ide.explorer.targetFolder')"
+      >
       <div class="ide-new-file__row">
         <select v-model="draftLanguage" :aria-label="t('workbench.runtime')">
           <option v-for="language in languageOptions" :key="language" :value="language">{{ language }}</option>
         </select>
         <button type="submit" data-action="ide-create-file">{{ t('ide.explorer.create') }}</button>
         <button type="button" data-action="ide-cancel-create" :aria-label="t('ide.explorer.cancel')" @click="emit('update:creating', false)">
+          <X :size="15" aria-hidden="true" />
+        </button>
+      </div>
+    </form>
+
+    <form v-if="creatingFolder || folderFormOpen" class="ide-new-file" data-testid="ide-new-folder-form" @submit.prevent="submitNewFolder">
+      <input
+        v-model="draftFolderPath"
+        type="text"
+        name="folderName"
+        :placeholder="t('ide.explorer.folderNamePlaceholder')"
+        :aria-label="t('ide.explorer.folderName')"
+        autofocus
+      >
+      <div class="ide-new-file__row">
+        <button type="submit" data-action="ide-create-folder">{{ t('ide.explorer.create') }}</button>
+        <button type="button" data-action="ide-cancel-folder" :aria-label="t('ide.explorer.cancel')" @click="cancelCreatingFolder">
           <X :size="15" aria-hidden="true" />
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
+﻿import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +14,8 @@ import { createTerminalHost } from './terminal.mjs';
 import { spawnPty, shutdownPtyWorkers } from './terminal-pty.mjs';
 import { discoverTerminalProfiles } from './terminal-profiles.mjs';
 import { registerTerminalIpc } from './terminal-ipc.mjs';
+import { registerRemoteIpc } from './remote-ipc.mjs';
+import { sshConfigPath } from './remote.mjs';
 import { applyCloseToTrayPolicy, createAppTray, trayIconPath } from './tray.mjs';
 import { createUpdateChecker } from './updates.mjs';
 import { createTrayProbe } from './tray-probe.mjs';
@@ -85,6 +87,13 @@ async function start() {
   registerTerminalIpc({
     ipcMain, terminal, bundledIndex,
     getWindowForContents: (contents) => BrowserWindow.fromWebContents(contents),
+  });
+  // The SSH host list and the remembered remote directories come from the
+  // user's own files; this feature never writes the SSH config itself.
+  registerRemoteIpc({
+    ipcMain,
+    configPath: sshConfigPath(),
+    storePath: path.join(app.getPath('userData'), 'remote-hosts.json'),
   });
   registerWindowChromeIpc({
     ipcMain,

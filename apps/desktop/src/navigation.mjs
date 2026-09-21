@@ -33,8 +33,10 @@ export function shouldOpenExternally(target) {
 }
 
 export const WINDOW_CHROME_THEMES = {
-  light: { color: '#f0f5f1', symbolColor: '#1a1c1f', height: 40 },
-  dark: { color: '#1e211f', symbolColor: '#f1f1f1', height: 40 },
+  // The window chrome follows the pure workbench surfaces: pure white in
+  // light, pure black in dark, so the native title bar never sits on a tint.
+  light: { color: '#ffffff', symbolColor: '#1a1c1f', height: 40 },
+  dark: { color: '#000000', symbolColor: '#f1f1f1', height: 40 },
 };
 
 export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten', icon = APP_ICON_PATH, platform = process.platform } = {}) {

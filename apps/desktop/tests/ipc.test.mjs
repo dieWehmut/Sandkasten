@@ -66,6 +66,48 @@ test('workspace IPC requires an opened folder and confines every path', async (t
   assert.equal(await ipcMain.invoke(IPC_CHANNELS.workspaceRead, 'extra.py'), 'print("extra")\n');
   await ipcMain.invoke(IPC_CHANNELS.workspaceRemove, 'extra.py');
   await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceRead, 'extra.py'), /not found/);
+
+  // Search runs in the main process, so the renderer only sends the query and
+  // the case flag; the walk and its bounds never leave this side.
+  await ipcMain.invoke(IPC_CHANNELS.workspaceCreateFolder, 'pkg');
+  await ipcMain.invoke(IPC_CHANNELS.workspaceCreate, 'pkg/extra.py', 'print("needle")\n');
+  const found = await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'needle' });
+  assert.deepEqual(found.files.map((file) => file.path), ['pkg/extra.py']);
+  assert.equal(found.fileCount, 1);
+  assert.equal(found.matchCount, 1);
+  assert.equal((await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'NEEDLE' })).fileCount, 1);
+  assert.equal((await ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: 'NEEDLE', caseSensitive: true })).fileCount, 0);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceSearch, { query: '  ' }), /query/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceSearch, {}), /query/i);
+});
+
+test('source control IPC reports the repository and refuses anything outside the root', async (t) => {
+  const { root, ipcMain, session } = await harness(t);
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const run = promisify(execFile);
+  const git = (args) => run('git', ['-c', 'user.email=ipc@example.com', '-c', 'user.name=IPC Test', ...args], { cwd: root });
+  await git(['init', '--initial-branch=main']);
+  await git(['add', '.']);
+  await git(['commit', '-m', 'first commit']);
+  await writeFile(path.join(root, 'main.py'), 'print("changed")\n');
+  await session.setRoot(root);
+
+  const status = await ipcMain.invoke(IPC_CHANNELS.workspaceStatus);
+  assert.equal(status.isRepository, true);
+  assert.equal(status.branch, 'main');
+  assert.deepEqual(status.changes.map((change) => [change.path, change.status]), [['main.py', 'modified']]);
+  assert.deepEqual(status.history.map((entry) => entry.subject), ['first commit']);
+
+  // Staging returns the refreshed status, and a path outside the folder is refused.
+  const staged = await ipcMain.invoke(IPC_CHANNELS.workspaceStage, { paths: ['main.py'] });
+  assert.equal(staged.stagedCount, 1);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceStage, { paths: ['../escape.py'] }), /workspace/i);
+
+  const committed = await ipcMain.invoke(IPC_CHANNELS.workspaceCommit, { message: 'second commit' });
+  assert.equal(committed.stagedCount, 0);
+  assert.deepEqual(committed.history.map((entry) => entry.subject), ['second commit', 'first commit']);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceCommit, { message: '  ' }), /commit message/i);
 });
 
 test('the folder dialog opens exactly one directory and reports cancellation', async (t) => {

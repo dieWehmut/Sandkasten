@@ -145,6 +145,26 @@ describe('workspace store and language detection', () => {
     expect(workspace.error.value).toMatch(/path separators/);
   });
 
+  test('creates nested folders that the tree then lists', async () => {
+    const workspace = useWorkspace();
+    await workspace.initialize();
+
+    workspace.setActive(SCRATCH_FILE_NAME);
+    expect(await workspace.createFolder('pkg/deep')).toBe('pkg/deep');
+    // The folder itself never becomes the active editor, and the open scratch
+    // file stays untouched while the tree gains the new directory.
+    expect(workspace.activePath.value).toBe(SCRATCH_FILE_NAME);
+    expect(workspace.tree.value.map((node) => `${node.type}:${node.path}`)).toEqual([
+      'directory:pkg',
+      `file:${SCRATCH_FILE_NAME}`,
+    ]);
+    expect(workspace.tree.value[0].children?.map((node) => `${node.type}:${node.path}`)).toEqual(['directory:pkg/deep']);
+    expect(workspace.error.value).toBeUndefined();
+
+    await expect(workspace.createFolder('../escape')).rejects.toThrow(/workspace|path/i);
+    await expect(workspace.createFolder('')).rejects.toThrow(/folder name/i);
+  });
+
   test('closing a tab activates the neighbouring editor', async () => {
     const workspace = useWorkspace();
     await workspace.initialize();
@@ -249,6 +269,68 @@ describe('workspace explorer', () => {
 
     await wrapper.get('[data-segment="pkg"]').trigger('click');
     expect(wrapper.emitted('reveal')).toEqual([['pkg']]);
+  });
+
+  test('offers the reference header actions and folds every folder at once', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          {
+            path: 'pkg',
+            name: 'pkg',
+            type: 'directory',
+            children: [
+              {
+                path: 'pkg/deep',
+                name: 'deep',
+                type: 'directory',
+                children: [{ path: 'pkg/deep/util.py', name: 'util.py', type: 'file' }],
+              },
+            ],
+          },
+          { path: 'src', name: 'src', type: 'directory', children: [{ path: 'src/app.ts', name: 'app.ts', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'main.py',
+      },
+    });
+
+    // The reference header order: new file, new folder, refresh, collapse all.
+    expect(wrapper.findAll('.ide-explorer__actions button').map((button) => button.attributes('data-action'))).toEqual([
+      'ide-new-file',
+      'ide-new-folder',
+      'ide-refresh-tree',
+      'ide-collapse-folders',
+    ]);
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(6);
+
+    await wrapper.get('[data-action=ide-collapse-folders]').trigger('click');
+    // Collapsing folds the nested folder too, so only the top level remains.
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(3);
+    expect(wrapper.get('.ide-explorer__collapse').attributes('data-collapsed')).toBe('true');
+  });
+
+  test('creates a folder through the new-folder form', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: { tree: [{ path: 'main.py', name: 'main.py', type: 'file' }], kind: 'desktop', activePath: 'main.py' },
+    });
+
+    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
+    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
+    expect(wrapper.get('[data-testid=ide-new-folder-form]').exists()).toBe(true);
+
+    await wrapper.get('input[name=folderName]').setValue('pkg/deep');
+    await wrapper.get('[data-testid=ide-new-folder-form]').trigger('submit');
+    expect(wrapper.emitted('createFolder')).toEqual([['pkg/deep']]);
+    // Submitting closes the form itself, and the shell's mirrored flag is the
+    // only thing that keeps it open when the header button drives the form.
+    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
+
+    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
+    await wrapper.get('[data-action=ide-cancel-folder]').trigger('click');
+    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
   });
 
   test('renders folders, marks dirty files, and collapses directories', async () => {
@@ -442,7 +524,15 @@ describe('desktop workbench', () => {
     expect(header.get('.ide-sidebar__title').text()).toBe('ws');
     const controls = header.findAll('button').map((button) => button.attributes('data-action'));
     expect(controls.at(-1)).toBe('ide-collapse-sidebar');
-    expect(controls).toEqual(['ide-new-file', 'ide-open-folder', 'ide-refresh-tree', 'ide-collapse-sidebar']);
+    // The reference resource-manager header plus the sidebar collapse control:
+    // new file, new folder, refresh, collapse folders, then collapse sidebar.
+    expect(controls).toEqual([
+      'ide-new-file',
+      'ide-new-folder',
+      'ide-refresh-tree',
+      'ide-collapse-folders',
+      'ide-collapse-sidebar',
+    ]);
     expect(header.get('[data-action="ide-collapse-sidebar"]').attributes('aria-label')).toContain('Collapse sidebar');
 
     await header.get('[data-action="ide-collapse-sidebar"]').trigger('click');
@@ -552,13 +642,99 @@ describe('desktop workbench', () => {
     expect(bridge.workspace.remove).toHaveBeenCalledWith('helper.py');
   });
 
-  test('opens a folder from the explorer and replies to menu commands', async () => {
+  test('searches the open folder from the activity bar and opens a chosen match', async () => {
+    const bridge = stubBridge();
+    const results = {
+      query: 'disk', caseSensitive: false, truncated: false, fileCount: 1, matchCount: 1,
+      files: [{ path: 'main.py', name: 'main.py', matches: [{ line: 1, text: 'print("disk")' }] }],
+    };
+    (bridge.workspace as unknown as { search: ReturnType<typeof vi.fn> }).search = vi.fn(async () => results);
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="search"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="workspace-search-input"]').setValue('disk');
+    await wrapper.get('[data-testid="workspace-search-form"]').trigger('submit');
+    await flushPromises();
+    // The main-process search receives just the query and the case flag.
+    expect(bridge.workspace.search).toHaveBeenCalledWith({ query: 'disk', caseSensitive: false });
+    expect(wrapper.get('[data-match-path="main.py"]').text()).toContain('disk');
+
+    await wrapper.get('[data-match-path="main.py"] [data-line="1"]').trigger('click');
+    await flushPromises();
+    expect(bridge.workspace.read).toHaveBeenCalledWith('main.py');
+
+    await wrapper.get('[data-testid="workspace-search-case"]').setValue(true);
+    expect(wrapper.get('[data-testid="workspace-search-case"]').element.checked).toBe(true);
+  });
+
+  test('explains that search needs the desktop app in the browser build', async () => {
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="search"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search-unavailable"]').text()).toMatch(/desktop/i);
+    expect(wrapper.get<HTMLInputElement>('[data-testid="workspace-search-input"]').element.disabled).toBe(true);
+  });
+
+  test('lists the SSH hosts and hands a chosen one to the terminal session', async () => {
+    const bridge = stubBridge();
+    const opened: Array<{ host: string; directory?: string }> = [];
+    (bridge as unknown as { remote: Record<string, ReturnType<typeof vi.fn>> }).remote = {
+      list: vi.fn(async () => ({
+        available: true,
+        configPath: 'C:\\Users\\me\\.ssh\\config',
+        hosts: [{ alias: 'sandkasten', hostName: '192.168.50.11', user: 'root', port: '2222', directories: ['/root/sandkasten'] }],
+      })),
+      remember: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      forget: vi.fn(async () => ({ available: true, configPath: '', hosts: [] })),
+      open: vi.fn(async (request: { host: string; directory?: string }) => {
+        opened.push(request);
+        return { host: request.host, command: `ssh ${request.host}`, directory: request.directory ?? '' };
+      }),
+    };
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="remote"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-explorer"]').exists()).toBe(true);
+    expect(wrapper.get('[data-host="sandkasten"]').text()).toContain('192.168.50.11');
+    expect(wrapper.find('[data-directory="/root/sandkasten"]').exists()).toBe(true);
+
+    // This bridge exposes no terminal, so the hand-off is a no-op rather than a
+    // half-connection: the app never pretends a session exists.
+    await wrapper.get('[data-open="sandkasten"]').trigger('click');
+    await flushPromises();
+    expect(opened).toEqual([]);
+  });
+
+  test('explains that the remote explorer needs the desktop app in the browser build', async () => {
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="remote"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="remote-desktop-only"]').text()).toMatch(/desktop/i);
+  });
+
+  test('opens a folder from the File menu and replies to menu commands', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
     const wrapper = mount(App);
     await flushPromises();
 
-    await wrapper.get('[data-action="ide-open-folder"]').trigger('click');
+    // The Explorer header carries the reference's four resource actions, so
+    // "Open folder" stays reachable from the File menu and the palette instead.
+    expect(wrapper.find('[data-action="ide-open-folder"]').exists()).toBe(false);
+    const openFolderFromMenu = bridge.onMenuCommand.mock.calls[0][0] as (command: string) => void;
+    openFolderFromMenu('workspace.open');
     await flushPromises();
     expect(bridge.workspace.openFolder).toHaveBeenCalledTimes(1);
 

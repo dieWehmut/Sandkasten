@@ -1,4 +1,4 @@
-// IPC surface between the sandboxed renderer and the main process. Every
+﻿// IPC surface between the sandboxed renderer and the main process. Every
 // handler validates its arguments and every filesystem call is confined to the
 // folder the user opened through the native dialog.
 import { pathToFileURL } from 'node:url';
@@ -7,12 +7,15 @@ import { buildMenuTemplate } from './menu.mjs';
 import { WINDOW_CHROME_THEMES } from './navigation.mjs';
 import {
   createWorkspaceFile,
+  createWorkspaceFolder,
   deleteWorkspaceFile,
   listWorkspaceTree,
   readWorkspaceFile,
   resolveInsideRoot,
   writeWorkspaceFile,
 } from './workspace.mjs';
+import { searchWorkspaceFiles } from './workspace-search.mjs';
+import { commitWorkspaceChanges, readWorkspaceStatus, stageWorkspaceChanges } from './source-control.mjs';
 
 export const IPC_CHANNELS = {
   workspaceOpenFolder: 'sandkasten:workspace:open-folder',
@@ -21,7 +24,16 @@ export const IPC_CHANNELS = {
   workspaceRead: 'sandkasten:workspace:read',
   workspaceWrite: 'sandkasten:workspace:write',
   workspaceCreate: 'sandkasten:workspace:create',
+  workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
+  workspaceSearch: 'sandkasten:workspace:search',
+  remoteList: 'sandkasten:remote:list',
+  remoteRemember: 'sandkasten:remote:remember',
+  remoteForget: 'sandkasten:remote:forget',
+  remoteOpen: 'sandkasten:remote:open',
+  workspaceStatus: 'sandkasten:workspace:status',
+  workspaceStage: 'sandkasten:workspace:stage',
+  workspaceCommit: 'sandkasten:workspace:commit',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
@@ -156,9 +168,36 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
     createWorkspaceFile(requireRoot(session), assertString(relativePath, 'path'), assertString(content, 'content', { allowEmpty: true }))
   ));
 
+  ipcMain.handle(IPC_CHANNELS.workspaceCreateFolder, async (_event, relativePath) => (
+    createWorkspaceFolder(requireRoot(session), assertString(relativePath, 'path'))
+  ));
+
   ipcMain.handle(IPC_CHANNELS.workspaceRemove, async (_event, relativePath) => (
     deleteWorkspaceFile(requireRoot(session), assertString(relativePath, 'path'))
   ));
+
+  // The renderer names the query and whether it wants case sensitivity; the
+  // main process owns the walk, the bounds, and the ignored directories.
+  ipcMain.handle(IPC_CHANNELS.workspaceSearch, async (_event, request) => (
+    searchWorkspaceFiles(requireRoot(session), assertString(request?.query, 'query'), {
+      caseSensitive: request?.caseSensitive === true,
+    })
+  ));
+
+  // Git access for the opened folder. The renderer names files inside the root
+  // and types a commit subject; every git argv is fixed here, so nothing the
+  // renderer sends can become a flag, a ref, or a shell string.
+  ipcMain.handle(IPC_CHANNELS.workspaceStatus, async () => readWorkspaceStatus(requireRoot(session)));
+
+  ipcMain.handle(IPC_CHANNELS.workspaceStage, async (_event, request) => {
+    await stageWorkspaceChanges(requireRoot(session), request?.paths);
+    return readWorkspaceStatus(requireRoot(session));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.workspaceCommit, async (_event, request) => {
+    await commitWorkspaceChanges(requireRoot(session), request?.message);
+    return readWorkspaceStatus(requireRoot(session));
+  });
 
   ipcMain.handle(IPC_CHANNELS.localDetect, async () => runner.detect());
 

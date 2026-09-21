@@ -65,6 +65,30 @@ export interface LocalRunOutput {
   command?: string;
 }
 
+export interface WorkspaceChange {
+  path: string;
+  index: string;
+  worktree: string;
+  staged: boolean;
+  status: 'modified' | 'staged' | 'untracked' | 'added' | 'deleted' | 'renamed' | 'conflicted';
+}
+
+export interface WorkspaceCommit {
+  short: string;
+  full: string;
+  subject: string;
+  author: string;
+  date: string;
+}
+
+export interface WorkspaceRepositoryStatus {
+  isRepository: boolean;
+  branch: string;
+  changes: WorkspaceChange[];
+  stagedCount: number;
+  history: WorkspaceCommit[];
+}
+
 /** Menu identifiers the native chrome accepts; keep in sync with the main process. */
 export const WINDOW_MENU_IDS = ['file', 'edit', 'view', 'help'] as const;
 export type WindowMenuId = typeof WINDOW_MENU_IDS[number];
@@ -115,6 +139,33 @@ export interface TerminalBridge {
   onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
 }
 
+export interface RemoteHost {
+  alias: string;
+  hostName: string;
+  user: string;
+  port: string;
+  directories: string[];
+}
+
+export interface RemoteHostList {
+  available: boolean;
+  configPath: string;
+  hosts: RemoteHost[];
+}
+
+export interface RemoteSession {
+  host: string;
+  command: string;
+  directory: string;
+}
+
+export interface RemoteBridge {
+  list(): Promise<RemoteHostList>;
+  remember(request: { host: string; directory: string }): Promise<RemoteHostList>;
+  forget(request: { host: string; directory: string }): Promise<RemoteHostList>;
+  open(request: { host: string; directory?: string; profileId?: string }): Promise<RemoteSession>;
+}
+
 export interface DesktopBridge {
   platform: string;
   versions: { chrome?: string; electron?: string };
@@ -125,7 +176,19 @@ export interface DesktopBridge {
     read(path: string): Promise<string>;
     write(path: string, content: string): Promise<void>;
     create(path: string, content: string): Promise<void>;
+    createFolder(path: string): Promise<{ path: string }>;
     remove(path: string): Promise<void>;
+    search(request: { query: string; caseSensitive?: boolean }): Promise<{
+      query: string;
+      caseSensitive: boolean;
+      files: Array<{ path: string; name: string; matches: Array<{ line: number; text: string }> }>;
+      fileCount: number;
+      matchCount: number;
+      truncated: boolean;
+    }>;
+    status(): Promise<WorkspaceRepositoryStatus>;
+    stage(request: { paths: string[] }): Promise<WorkspaceRepositoryStatus>;
+    commit(request: { message: string }): Promise<WorkspaceRepositoryStatus>;
   };
   runner: {
     detect(): Promise<LocalRuntimeInfo[]>;
@@ -137,6 +200,7 @@ export interface DesktopBridge {
     run(request: IsolatedRunRequest): Promise<LocalRunOutput>;
     stop(jobId: string): Promise<boolean>;
   };
+  remote?: RemoteBridge;
   onMenuCommand(handler: (command: string) => void): void;
   windowChrome?: WindowChromeBridge;
   terminal?: TerminalBridge;
