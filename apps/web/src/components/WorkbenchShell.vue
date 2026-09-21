@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { DeepReadonly } from 'vue';
-import { FilePlus, FolderOpen, PanelLeftClose, RefreshCw } from '@lucide/vue';
+import { FilePlus, FolderPlus, ListCollapse, PanelLeftClose, RefreshCw } from '@lucide/vue';
 import type { OutputTab } from '../composables/useRunner';
 import type { ConnectionState } from '../composables/useRunner';
 import type { ExecutionBackend, ExecutionPhase } from '../composables/execution';
@@ -60,6 +60,8 @@ const props = withDefaults(defineProps<{
   workspaceBusy?: boolean;
   workspaceError?: string;
   creatingFile?: boolean;
+  creatingFolder?: boolean;
+  collapseRequest?: { token: number };
   revealRequest?: { path: string; token: number };
   backend?: ExecutionBackend;
   localAvailable?: boolean;
@@ -83,6 +85,8 @@ const props = withDefaults(defineProps<{
   workspaceKind: 'memory',
   workspaceBusy: false,
   creatingFile: false,
+  creatingFolder: false,
+  collapseRequest: () => ({ token: 0 }),
   backend: 'api',
   localAvailable: false,
   isolatedAvailable: false,
@@ -114,14 +118,23 @@ const emit = defineEmits<{
   selectFile: [path: string];
   revealFile: [path: string];
   closeFile: [path: string];
-  createFile: [payload: { name: string; language: string }];
+  createFile: [payload: { name: string; language: string; folder: string }];
+  createFolder: [path: string];
   'update:creatingFile': [value: boolean];
+  'update:creatingFolder': [value: boolean];
   removeFile: [path: string];
   openFolder: [];
   refreshTree: [];
   saveFile: [];
 }>();
 const t = useTranslation();
+
+// The explorer owns the tree, so the header's collapse action only bumps a
+// token: the explorer watches it and folds every open directory at once.
+const collapseToken = ref(0);
+function requestCollapse(): void {
+  collapseToken.value += 1;
+}
 
 const isIde = computed(() => props.layoutMode === 'desktop');
 const dirtyPaths = computed(() => props.files.filter((file) => file.dirty).map((file) => file.path));
@@ -159,11 +172,21 @@ const styles = computed(() => (isIde.value
               <button type="button" data-action="ide-new-file" :aria-label="t('ide.explorer.newFile')" :title="t('ide.explorer.newFile')" @click="emit('update:creatingFile', true)">
                 <FilePlus :size="15" aria-hidden="true" />
               </button>
-              <button v-if="workspaceKind === 'desktop'" type="button" data-action="ide-open-folder" :aria-label="t('ide.explorer.openFolder')" :title="t('ide.explorer.openFolder')" @click="emit('openFolder')">
-                <FolderOpen :size="15" aria-hidden="true" />
+              <button type="button" data-action="ide-new-folder" :aria-label="t('ide.explorer.newFolder')" :title="t('ide.explorer.newFolder')" @click="emit('update:creatingFolder', true)">
+                <FolderPlus :size="15" aria-hidden="true" />
               </button>
               <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="workspaceBusy" @click="emit('refreshTree')">
                 <RefreshCw :size="15" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="ide-sidebar__collapse-folders"
+                data-action="ide-collapse-folders"
+                :aria-label="t('ide.explorer.collapseFolders')"
+                :title="t('ide.explorer.collapseFolders')"
+                @click="requestCollapse"
+              >
+                <ListCollapse :size="15" aria-hidden="true" />
               </button>
             </template>
             <button
@@ -189,14 +212,18 @@ const styles = computed(() => (isIde.value
             :error="workspaceError"
             :runtimes="runtimes"
             :creating="creatingFile"
+            :creating-folder="creatingFolder"
+            :collapse-request="{ token: collapseToken }"
             :reveal-request="revealRequest"
             :icon-theme="iconTheme"
             hide-heading
             @update:creating="emit('update:creatingFile', $event)"
+            @update:creating-folder="emit('update:creatingFolder', $event)"
             @select="emit('selectFile', $event)"
             @open-folder="emit('openFolder')"
             @refresh="emit('refreshTree')"
             @create="emit('createFile', $event)"
+            @create-folder="emit('createFolder', $event)"
             @remove="emit('removeFile', $event)"
           />
           <section class="ide-sidebar__section" :aria-label="t('history.title')">

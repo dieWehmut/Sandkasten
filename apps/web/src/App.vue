@@ -49,6 +49,7 @@ const runnerLoaded = ref(false);
 const backend = ref<ExecutionBackend>('api');
 const cursor = ref({ line: 1, column: 1 });
 const creatingFile = ref(false);
+const creatingFolder = ref(false);
 // The token lets a repeated click on the same folder re-open it after the user
 // folded it again; a bare path would not change and the watcher would stay put.
 const revealRequest = ref<{ path: string; token: number }>();
@@ -230,8 +231,8 @@ function refreshTree(): void {
   void workspace.refreshTree();
 }
 
-function createFile(payload: { name: string; language: string }): void {
-  void workspace.createFile(payload.name, payload.language)
+function createFile(payload: { name: string; language: string; folder: string }): void {
+  void workspace.createFile(payload.name, payload.language, payload.folder)
     .then(() => { if (!language.value) runner.setLanguage(local.runtimes.value[0]?.language ?? ''); })
     .catch(() => undefined);
 }
@@ -330,6 +331,17 @@ function requestNewFile(): void {
 function setCreatingFile(value: boolean): void {
   if (value) requestNewFile();
   else creatingFile.value = false;
+}
+
+// The new-folder form lives in the explorer, so the explorer stays the visible
+// activity while the shell's header button opens it.
+function setCreatingFolder(value: boolean): void {
+  if (value) ide.showActivity('explorer');
+  creatingFolder.value = value;
+}
+
+function createFolder(path: string): void {
+  void workspace.createFolder(path).catch(() => undefined);
 }
 
 async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
@@ -607,6 +619,7 @@ onBeforeUnmount(() => {
       :workspace-busy="workspace.status.value === 'loading'"
       :workspace-error="workspace.error.value"
       :creating-file="creatingFile"
+      :creating-folder="creatingFolder"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -641,6 +654,8 @@ onBeforeUnmount(() => {
       @reveal-file="revealInExplorer"
       @create-file="createFile"
       @update:creating-file="setCreatingFile"
+      @update:creating-folder="setCreatingFolder"
+      @create-folder="createFolder"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"
