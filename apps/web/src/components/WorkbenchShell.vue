@@ -13,6 +13,7 @@ import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../serv
 import type { LayoutMode } from '../composables/useMediaLayout';
 import type { TerminalController } from '../composables/useTerminal';
 import type { WorkspaceSearchController } from '../composables/useWorkspaceSearch';
+import type { SourceControlController } from '../composables/useSourceControl';
 import type { IconTheme } from '../editor/fileIcon';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
@@ -30,6 +31,7 @@ import IdePanelActions from './ide/IdePanelActions.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import WorkspaceSearch from './ide/WorkspaceSearch.vue';
+import SourceControlView from './ide/SourceControlView.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
@@ -75,6 +77,7 @@ const props = withDefaults(defineProps<{
   workspaceLabel?: string;
   terminal?: TerminalController;
   search?: WorkspaceSearchController;
+  sourceControl?: SourceControlController;
   iconTheme?: IconTheme;
 }>(), {
   layoutMode: 'desktop',
@@ -124,6 +127,10 @@ const emit = defineEmits<{
   'update:searchQuery': [value: string];
   'update:searchCaseSensitive': [value: boolean];
   clearSearch: [];
+  refreshSourceControl: [];
+  'update:sourceControlMessage': [value: string];
+  stageSourceControl: [paths: string[]];
+  commitSourceControl: [];
   closeFile: [path: string];
   createFile: [payload: { name: string; language: string; folder: string }];
   createFolder: [path: string];
@@ -149,6 +156,7 @@ const dirtyPaths = computed(() => props.files.filter((file) => file.dirty).map((
 const sidebarTitle = computed(() => {
   if (props.activity === 'runs') return t('history.title');
   if (props.activity === 'context') return t('inspector.title');
+  if (props.activity === 'source-control') return t('ide.activity.sourceControl');
   return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
 });
 const styles = computed(() => (isIde.value
@@ -255,6 +263,25 @@ const styles = computed(() => (isIde.value
           @search="emit('searchFiles', $event)"
           @select="emit('selectSearchResult', $event)"
           @clear="emit('clearSearch')"
+        />
+        <SourceControlView
+          v-else-if="activity === 'source-control'"
+          :state="sourceControl?.state.value ?? 'idle'"
+          :branch="sourceControl?.branch.value ?? ''"
+          :changes="sourceControl?.changes.value ?? []"
+          :history="sourceControl?.history.value ?? []"
+          :staged-count="sourceControl?.stagedCount.value ?? 0"
+          :unstaged-changes="sourceControl?.unstagedChanges.value ?? []"
+          :staged-changes="sourceControl?.stagedChanges.value ?? []"
+          :message="sourceControl?.message.value ?? ''"
+          :error="sourceControl?.error.value"
+          :desktop="workspaceKind === 'desktop'"
+          :busy="sourceControl?.busy.value ?? false"
+          :can-commit="sourceControl?.canCommit.value ?? false"
+          @refresh="emit('refreshSourceControl')"
+          @update:message="emit('update:sourceControlMessage', $event)"
+          @stage="emit('stageSourceControl', $event)"
+          @commit="emit('commitSourceControl')"
         />
         <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />

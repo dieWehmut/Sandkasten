@@ -15,6 +15,7 @@ import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
 import { useEditorHistory } from './composables/useEditorHistory';
 import { useWorkspaceSearch } from './composables/useWorkspaceSearch';
+import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
@@ -38,6 +39,7 @@ const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
 const workspace = useWorkspace();
 const search = useWorkspaceSearch();
+const sourceControl = useSourceControl();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
@@ -223,14 +225,19 @@ function toggleInspector(): void {
 
 function selectActivity(activity: Parameters<typeof ide.selectActivity>[0]): void {
   ide.selectActivity(activity);
+  // The repository state is read from disk, so it is loaded when its view is
+  // opened rather than on every app start.
+  if (activity === 'source-control' && ide.sidebarVisible.value) void sourceControl.load();
 }
 
 function openFolder(): void {
-  void workspace.openFolder();
+  // Another folder means another repository, so the loaded state is replaced.
+  void workspace.openFolder().then(() => sourceControl.load()).catch(() => undefined);
 }
 
 function refreshTree(): void {
   void workspace.refreshTree();
+  void sourceControl.load();
 }
 
 function createFile(payload: { name: string; language: string; folder: string }): void {
@@ -633,6 +640,7 @@ onBeforeUnmount(() => {
       :creating-file="creatingFile"
       :creating-folder="creatingFolder"
       :search="search"
+      :source-control="sourceControl"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -674,6 +682,10 @@ onBeforeUnmount(() => {
       @update:search-query="search.query.value = $event"
       @update:search-case-sensitive="search.caseSensitive.value = $event"
       @clear-search="search.clear()"
+      @refresh-source-control="sourceControl.load()"
+      @update:source-control-message="sourceControl.message.value = $event"
+      @stage-source-control="sourceControl.stage($event)"
+      @commit-source-control="sourceControl.commit()"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"
