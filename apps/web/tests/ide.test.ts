@@ -430,6 +430,62 @@ describe('workspace explorer', () => {
     expect(wrapper.emitted('create')).toEqual([[{ name: 'fresh.py', language: 'python', folder: '' }]]);
   });
 
+  test('renders each directory once and creates inside a selected directory', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg',
+      },
+    });
+
+    // A directory must render exactly one row: the creation row sits between
+    // the directory branch and the file branch, which must not leak into it.
+    expect(wrapper.findAll('[data-path="pkg"]')).toHaveLength(1);
+    expect(wrapper.findAll('[role="treeitem"]')).toHaveLength(3);
+
+    // Selecting a directory creates inside it rather than beside a file of the
+    // same name, so the row belongs to the directory itself.
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-parent')).toBe('pkg');
+    expect(row.attributes('data-depth')).toBe('1');
+    expect(wrapper.findAll('[data-testid=ide-inline-create]')).toHaveLength(1);
+
+    await wrapper.get('input[name=fileName]').setValue('inside.py');
+    await wrapper.get('[data-testid=ide-new-file-form]').trigger('submit');
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'inside.py', language: 'python', folder: 'pkg' }]]);
+  });
+
+  test('switches the open row from file to folder through the shell flag', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg/util.py',
+      },
+    });
+
+    // The shell's header button sets its own flag, so a row that is already
+    // open must adopt the new kind instead of staying a file row.
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    expect(wrapper.get('[data-testid=ide-inline-create]').attributes('data-kind')).toBe('file');
+
+    await wrapper.setProps({ creating: false, creatingFolder: true });
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-kind')).toBe('folder');
+    expect(row.attributes('data-parent')).toBe('pkg');
+    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(true);
+  });
+
   test('cancels the inline row with Escape and with the close control', async () => {
     const wrapper = mount(WorkspaceExplorer, {
       props: {

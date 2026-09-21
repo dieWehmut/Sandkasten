@@ -124,7 +124,12 @@ function toggleDirectory(path: string): void {
 }
 
 // A directory selection creates inside it; a file selection creates beside it.
+// The selection may name a directory rather than an open file, and the row then
+// belongs to that directory itself instead of to a sibling of the same name.
 function targetForSelection(): CreateTarget {
+  if (props.activePath && directoryPaths.value.includes(props.activePath)) {
+    return { parent: props.activePath, depth: props.activePath.split('/').length };
+  }
   const segments = props.activePath.split('/').filter(Boolean);
   const filePath = segments.length > 1 ? segments.slice(0, -1).join('/') : '';
   const parent = directoryPaths.value.includes(filePath) ? filePath : '';
@@ -253,15 +258,26 @@ function collapseAll(): void {
 // so a bumped token folds the tree exactly like the button inside this panel.
 watch(() => props.collapseRequest.token, () => foldAll());
 
-// The shell's header drives the same row when it hides this panel's heading,
-// so a flag that arrives without a target still gets the selection's location.
+// The shell's header drives the same row when it hides this panel's heading, so
+// a flag that arrives without a target still gets the selection's location. A
+// flag for the other kind also switches an open row, because the header offers
+// both buttons at once and the row has to follow the button that was pressed.
 // It runs immediately because a hidden sidebar can mount this panel while the
 // flag is already set, and a fresh mount must still show the row.
-watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder]) => {
-  if ((creating || creatingFolder) && !createTarget.value) {
-    createTarget.value = targetForSelection();
-    revealTarget(createTarget.value);
+watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder], previous) => {
+  const kind = creating ? 'file' as const : creatingFolder ? 'folder' as const : null;
+  if (!kind) {
+    // A flag that clears while the row was only open through the shell closes it.
+    if (!createRowOpen.value) return;
+    if (previous?.[0] && !creating && !creatingFolder) closeCreateRow();
+    return;
   }
+  createRowOpen.value = true;
+  createKind.value = kind;
+  if (!createTarget.value || previous === undefined) {
+    createTarget.value = targetForSelection();
+  }
+  revealTarget(createTarget.value);
 }, { immediate: true });
 </script>
 
@@ -366,7 +382,7 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder])
           </form>
         </div>
         <div
-          v-else
+          v-else-if="row.node.type === 'file'"
           class="ide-tree__row"
           :class="{ 'ide-tree__row--active': activePath === row.node.path }"
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
