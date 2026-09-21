@@ -14,6 +14,7 @@ import { useLocalRunner } from './composables/useLocalRunner';
 import { useRunHistory } from './composables/useRunHistory';
 import { useWorkspace } from './composables/useWorkspace';
 import { useEditorHistory } from './composables/useEditorHistory';
+import { useWorkspaceSearch } from './composables/useWorkspaceSearch';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
@@ -36,6 +37,7 @@ const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
 const workspace = useWorkspace();
+const search = useWorkspaceSearch();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
@@ -344,6 +346,16 @@ function createFolder(path: string): void {
   void workspace.createFolder(path).catch(() => undefined);
 }
 
+// Search reuses the same panel for every query, and a chosen match opens the
+// file in the editor without leaving the results behind.
+function runSearch(query: string): void {
+  void search.run(query);
+}
+
+function selectSearchResult(path: string): void {
+  void workspace.openFile(path);
+}
+
 async function openTerminal(mode: 'show' | 'new' | 'split' = 'show'): Promise<void> {
   if (!terminal) return;
   settingsOpen.value = false;
@@ -620,6 +632,7 @@ onBeforeUnmount(() => {
       :workspace-error="workspace.error.value"
       :creating-file="creatingFile"
       :creating-folder="creatingFolder"
+      :search="search"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -656,6 +669,11 @@ onBeforeUnmount(() => {
       @update:creating-file="setCreatingFile"
       @update:creating-folder="setCreatingFolder"
       @create-folder="createFolder"
+      @search-files="runSearch"
+      @select-search-result="selectSearchResult"
+      @update:search-query="search.query.value = $event"
+      @update:search-case-sensitive="search.caseSensitive.value = $event"
+      @clear-search="search.clear()"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"

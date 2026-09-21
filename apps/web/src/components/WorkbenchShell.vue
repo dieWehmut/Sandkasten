@@ -12,6 +12,7 @@ import type { JobResponse, Runtime } from '../services/sandkastenApi';
 import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../services/desktopBridge';
 import type { LayoutMode } from '../composables/useMediaLayout';
 import type { TerminalController } from '../composables/useTerminal';
+import type { WorkspaceSearchController } from '../composables/useWorkspaceSearch';
 import type { IconTheme } from '../editor/fileIcon';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
@@ -28,6 +29,7 @@ import IdeEditorToolbar from './ide/IdeEditorToolbar.vue';
 import IdePanelActions from './ide/IdePanelActions.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
+import WorkspaceSearch from './ide/WorkspaceSearch.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
@@ -72,6 +74,7 @@ const props = withDefaults(defineProps<{
   connectionState?: ConnectionState;
   workspaceLabel?: string;
   terminal?: TerminalController;
+  search?: WorkspaceSearchController;
   iconTheme?: IconTheme;
 }>(), {
   layoutMode: 'desktop',
@@ -117,9 +120,14 @@ const emit = defineEmits<{
   openSettings: [];
   selectFile: [path: string];
   revealFile: [path: string];
+  selectSearchResult: [path: string];
+  'update:searchQuery': [value: string];
+  'update:searchCaseSensitive': [value: boolean];
+  clearSearch: [];
   closeFile: [path: string];
   createFile: [payload: { name: string; language: string; folder: string }];
   createFolder: [path: string];
+  searchFiles: [query: string];
   'update:creatingFile': [value: boolean];
   'update:creatingFolder': [value: boolean];
   removeFile: [path: string];
@@ -230,6 +238,24 @@ const styles = computed(() => (isIde.value
             <RunHistory :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
           </section>
         </template>
+        <WorkspaceSearch
+          v-else-if="activity === 'search'"
+          :state="search?.state.value ?? 'idle'"
+          :query="search?.query.value ?? ''"
+          :files="search?.results.value ?? []"
+          :case-sensitive="search?.caseSensitive.value ?? false"
+          :file-count="search?.fileCount.value ?? 0"
+          :match-count="search?.matchCount.value ?? 0"
+          :truncated="search?.truncated.value ?? false"
+          :error="search?.error.value"
+          :desktop="workspaceKind === 'desktop'"
+          :icon-theme="iconTheme"
+          @update:query="emit('update:searchQuery', $event)"
+          @update:case-sensitive="emit('update:searchCaseSensitive', $event)"
+          @search="emit('searchFiles', $event)"
+          @select="emit('selectSearchResult', $event)"
+          @clear="emit('clearSearch')"
+        />
         <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />
       </aside>

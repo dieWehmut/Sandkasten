@@ -3,7 +3,7 @@ import { readonly, ref, type DeepReadonly, type Ref } from 'vue';
 // The IDE chrome is intentionally thin: one activity at a time, one sidebar,
 // one bottom panel. Clicking the active activity collapses the sidebar, which
 // matches the editor-first behaviour of the desktop shell.
-export type IdeActivity = 'explorer' | 'runs' | 'context';
+export type IdeActivity = 'explorer' | 'search' | 'runs' | 'context';
 
 export interface IdeLayoutController {
   activity: DeepReadonly<Ref<IdeActivity>>;

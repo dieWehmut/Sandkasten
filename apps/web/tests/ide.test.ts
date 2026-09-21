@@ -642,6 +642,46 @@ describe('desktop workbench', () => {
     expect(bridge.workspace.remove).toHaveBeenCalledWith('helper.py');
   });
 
+  test('searches the open folder from the activity bar and opens a chosen match', async () => {
+    const bridge = stubBridge();
+    const results = {
+      query: 'disk', caseSensitive: false, truncated: false, fileCount: 1, matchCount: 1,
+      files: [{ path: 'main.py', name: 'main.py', matches: [{ line: 1, text: 'print("disk")' }] }],
+    };
+    (bridge.workspace as unknown as { search: ReturnType<typeof vi.fn> }).search = vi.fn(async () => results);
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="search"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="workspace-search-input"]').setValue('disk');
+    await wrapper.get('[data-testid="workspace-search-form"]').trigger('submit');
+    await flushPromises();
+    // The main-process search receives just the query and the case flag.
+    expect(bridge.workspace.search).toHaveBeenCalledWith({ query: 'disk', caseSensitive: false });
+    expect(wrapper.get('[data-match-path="main.py"]').text()).toContain('disk');
+
+    await wrapper.get('[data-match-path="main.py"] [data-line="1"]').trigger('click');
+    await flushPromises();
+    expect(bridge.workspace.read).toHaveBeenCalledWith('main.py');
+
+    await wrapper.get('[data-testid="workspace-search-case"]').setValue(true);
+    expect(wrapper.get('[data-testid="workspace-search-case"]').element.checked).toBe(true);
+  });
+
+  test('explains that search needs the desktop app in the browser build', async () => {
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('[data-activity="search"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search-unavailable"]').text()).toMatch(/desktop/i);
+    expect(wrapper.get<HTMLInputElement>('[data-testid="workspace-search-input"]').element.disabled).toBe(true);
+  });
+
   test('opens a folder from the File menu and replies to menu commands', async () => {
     const bridge = stubBridge();
     installBridge(bridge);

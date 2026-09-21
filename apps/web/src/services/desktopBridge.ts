@@ -127,6 +127,14 @@ export interface DesktopBridge {
     create(path: string, content: string): Promise<void>;
     createFolder(path: string): Promise<{ path: string }>;
     remove(path: string): Promise<void>;
+    search(request: { query: string; caseSensitive?: boolean }): Promise<{
+      query: string;
+      caseSensitive: boolean;
+      files: Array<{ path: string; name: string; matches: Array<{ line: number; text: string }> }>;
+      fileCount: number;
+      matchCount: number;
+      truncated: boolean;
+    }>;
   };
   runner: {
     detect(): Promise<LocalRuntimeInfo[]>;
