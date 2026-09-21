@@ -125,6 +125,7 @@ export interface DesktopBridge {
     read(path: string): Promise<string>;
     write(path: string, content: string): Promise<void>;
     create(path: string, content: string): Promise<void>;
+    createFolder(path: string): Promise<{ path: string }>;
     remove(path: string): Promise<void>;
   };
   runner: {
