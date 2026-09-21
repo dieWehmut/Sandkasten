@@ -115,6 +115,33 @@ export interface TerminalBridge {
   onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
 }
 
+export interface RemoteHost {
+  alias: string;
+  hostName: string;
+  user: string;
+  port: string;
+  directories: string[];
+}
+
+export interface RemoteHostList {
+  available: boolean;
+  configPath: string;
+  hosts: RemoteHost[];
+}
+
+export interface RemoteSession {
+  host: string;
+  command: string;
+  directory: string;
+}
+
+export interface RemoteBridge {
+  list(): Promise<RemoteHostList>;
+  remember(request: { host: string; directory: string }): Promise<RemoteHostList>;
+  forget(request: { host: string; directory: string }): Promise<RemoteHostList>;
+  open(request: { host: string; directory?: string; profileId?: string }): Promise<RemoteSession>;
+}
+
 export interface DesktopBridge {
   platform: string;
   versions: { chrome?: string; electron?: string };
@@ -146,6 +173,7 @@ export interface DesktopBridge {
     run(request: IsolatedRunRequest): Promise<LocalRunOutput>;
     stop(jobId: string): Promise<boolean>;
   };
+  remote?: RemoteBridge;
   onMenuCommand(handler: (command: string) => void): void;
   windowChrome?: WindowChromeBridge;
   terminal?: TerminalBridge;
