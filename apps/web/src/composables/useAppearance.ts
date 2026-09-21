@@ -51,7 +51,9 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
     }
   } catch { /* Invalid or unavailable preferences fall back to the theme. */ }
   const colors = computed<AppearanceColors>(() => ({
-    background: theme.value === 'light' ? '#ffffff' : '#181818',
+    // The defaults mirror the pure token surfaces so the settings swatches
+    // preview exactly what the workbench renders.
+    background: theme.value === 'light' ? '#ffffff' : '#000000',
     foreground: theme.value === 'light' ? '#1a1c1f' : '#f1f2f1',
     accent: fills[scheme.value][theme.value === 'light' ? 0 : 1],
     ...overrides.value[theme.value],
