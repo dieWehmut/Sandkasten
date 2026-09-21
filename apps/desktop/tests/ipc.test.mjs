@@ -81,6 +81,35 @@ test('workspace IPC requires an opened folder and confines every path', async (t
   await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceSearch, {}), /query/i);
 });
 
+test('source control IPC reports the repository and refuses anything outside the root', async (t) => {
+  const { root, ipcMain, session } = await harness(t);
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const run = promisify(execFile);
+  const git = (args) => run('git', ['-c', 'user.email=ipc@example.com', '-c', 'user.name=IPC Test', ...args], { cwd: root });
+  await git(['init', '--initial-branch=main']);
+  await git(['add', '.']);
+  await git(['commit', '-m', 'first commit']);
+  await writeFile(path.join(root, 'main.py'), 'print("changed")\n');
+  await session.setRoot(root);
+
+  const status = await ipcMain.invoke(IPC_CHANNELS.workspaceStatus);
+  assert.equal(status.isRepository, true);
+  assert.equal(status.branch, 'main');
+  assert.deepEqual(status.changes.map((change) => [change.path, change.status]), [['main.py', 'modified']]);
+  assert.deepEqual(status.history.map((entry) => entry.subject), ['first commit']);
+
+  // Staging returns the refreshed status, and a path outside the folder is refused.
+  const staged = await ipcMain.invoke(IPC_CHANNELS.workspaceStage, { paths: ['main.py'] });
+  assert.equal(staged.stagedCount, 1);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceStage, { paths: ['../escape.py'] }), /workspace/i);
+
+  const committed = await ipcMain.invoke(IPC_CHANNELS.workspaceCommit, { message: 'second commit' });
+  assert.equal(committed.stagedCount, 0);
+  assert.deepEqual(committed.history.map((entry) => entry.subject), ['second commit', 'first commit']);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.workspaceCommit, { message: '  ' }), /commit message/i);
+});
+
 test('the folder dialog opens exactly one directory and reports cancellation', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-ipc-open-'));
   t.after(() => rm(root, { recursive: true, force: true }));

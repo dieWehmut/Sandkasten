@@ -868,6 +868,9 @@
    known for each one. Selecting an entry only raises the hand-off; the terminal
    owns the connection. */
 .ide-remote {
+/* Source control: the reference's branch row, commit box, grouped changes, and
+   recent history. Action letters carry the file hue so staged work reads first. */
+.ide-source-control {
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
@@ -879,6 +882,119 @@
 }
 
 .ide-remote__group {
+  gap: 6px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 10px;
+}
+
+.ide-source-control__hint {
+  margin: 6px 10px 0;
+}
+
+.ide-source-control__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 2px;
+}
+
+.ide-source-control__branch {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-source-control__count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ide-source-control__refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ide-source-control__refresh:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ide-source-control__commit {
+  display: flex;
+  margin: 0 10px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ide-source-control__message {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.ide-source-control__message:focus-visible {
+  border-color: var(--border-strong);
+  outline: 2px solid var(--action-contrast, var(--border-strong));
+  outline-offset: 1px;
+}
+
+.ide-source-control__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--surface-raised);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ide-source-control__action:hover:not(:disabled) {
+  background: var(--surface-subtle);
+}
+
+.ide-source-control__action:disabled,
+.ide-source-control__refresh:disabled,
+.ide-source-control__file-name:disabled,
+.ide-source-control__stage-all:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ide-source-control__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-source-control__group-title,
+.ide-source-control__history-title {
   margin: 6px 10px 2px;
   color: var(--text-muted);
   font-size: 11px;
@@ -889,6 +1005,8 @@
 
 .ide-remote__hosts,
 .ide-remote__directories {
+.ide-source-control__files,
+.ide-source-control__history {
   display: flex;
   margin: 0;
   padding: 0;
@@ -1015,4 +1133,92 @@
   margin: 6px 10px;
   color: var(--text-muted);
   font-size: 12px;
+.ide-source-control__file-name {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px;
+  border: none;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-source-control__file-name--static {
+  cursor: default;
+}
+
+.ide-source-control__file-name:hover:not(.ide-source-control__file-name--static):not(:disabled) {
+  background: var(--surface-subtle);
+}
+
+.ide-source-control__letter {
+  flex: 0 0 auto;
+  width: 12px;
+  color: var(--text-faint);
+  font-weight: 700;
+  text-align: center;
+}
+
+.ide-source-control__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-source-control__stage-all {
+  align-self: flex-start;
+  margin: 4px 10px 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ide-source-control__stage-all:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ide-source-control__history {
+  gap: 1px;
+}
+
+.ide-source-control__commit-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.ide-source-control__commit-short {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+}
+
+.ide-source-control__commit-subject {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-source-control__commit-meta {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: 11px;
 }

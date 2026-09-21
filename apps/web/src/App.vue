@@ -16,6 +16,7 @@ import { useWorkspace } from './composables/useWorkspace';
 import { useEditorHistory } from './composables/useEditorHistory';
 import { useWorkspaceSearch } from './composables/useWorkspaceSearch';
 import { useRemoteHosts } from './composables/useRemoteHosts';
+import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
@@ -40,6 +41,7 @@ const local = useLocalRunner({ bridge, history: runHistory });
 const workspace = useWorkspace();
 const search = useWorkspaceSearch();
 const remote = useRemoteHosts(bridge?.remote);
+const sourceControl = useSourceControl();
 const ide = useIdeLayout();
 const theme = useTheme();
 const colorScheme = useColorScheme();
@@ -228,14 +230,19 @@ function selectActivity(activity: Parameters<typeof ide.selectActivity>[0]): voi
   // The remote host list is read from the SSH config, so it is loaded when its
   // view is opened rather than on every app start.
   if (activity === 'remote' && ide.sidebarVisible.value) void remote.load();
+  // The repository state is read from disk, so it is loaded when its view is
+  // opened rather than on every app start.
+  if (activity === 'source-control' && ide.sidebarVisible.value) void sourceControl.load();
 }
 
 function openFolder(): void {
-  void workspace.openFolder();
+  // Another folder means another repository, so the loaded state is replaced.
+  void workspace.openFolder().then(() => sourceControl.load()).catch(() => undefined);
 }
 
 function refreshTree(): void {
   void workspace.refreshTree();
+  void sourceControl.load();
 }
 
 function createFile(payload: { name: string; language: string; folder: string }): void {
@@ -666,6 +673,7 @@ onBeforeUnmount(() => {
       :creating-folder="creatingFolder"
       :search="search"
       :remote="remote"
+      :source-control="sourceControl"
       :reveal-request="revealRequest"
       :backend="backend"
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
@@ -710,6 +718,10 @@ onBeforeUnmount(() => {
       @open-remote="openRemoteSession"
       @remember-remote-directory="rememberRemoteDirectory($event.host, $event.directory)"
       @forget-remote-directory="forgetRemoteDirectory($event.host, $event.directory)"
+      @refresh-source-control="sourceControl.load()"
+      @update:source-control-message="sourceControl.message.value = $event"
+      @stage-source-control="sourceControl.stage($event)"
+      @commit-source-control="sourceControl.commit()"
       @remove-file="removeFile"
       @open-folder="openFolder"
       @refresh-tree="refreshTree"

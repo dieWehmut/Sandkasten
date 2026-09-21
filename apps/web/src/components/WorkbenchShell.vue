@@ -14,6 +14,7 @@ import type { LayoutMode } from '../composables/useMediaLayout';
 import type { TerminalController } from '../composables/useTerminal';
 import type { WorkspaceSearchController } from '../composables/useWorkspaceSearch';
 import type { RemoteHostsController } from '../composables/useRemoteHosts';
+import type { SourceControlController } from '../composables/useSourceControl';
 import type { IconTheme } from '../editor/fileIcon';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
@@ -32,6 +33,7 @@ import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import WorkspaceSearch from './ide/WorkspaceSearch.vue';
 import RemoteExplorer from './ide/RemoteExplorer.vue';
+import SourceControlView from './ide/SourceControlView.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
@@ -78,6 +80,7 @@ const props = withDefaults(defineProps<{
   terminal?: TerminalController;
   search?: WorkspaceSearchController;
   remote?: RemoteHostsController;
+  sourceControl?: SourceControlController;
   iconTheme?: IconTheme;
 }>(), {
   layoutMode: 'desktop',
@@ -130,6 +133,10 @@ const emit = defineEmits<{
   openRemote: [payload: { host: string; directory: string }];
   rememberRemoteDirectory: [payload: { host: string; directory: string }];
   forgetRemoteDirectory: [payload: { host: string; directory: string }];
+  refreshSourceControl: [];
+  'update:sourceControlMessage': [value: string];
+  stageSourceControl: [paths: string[]];
+  commitSourceControl: [];
   closeFile: [path: string];
   createFile: [payload: { name: string; language: string; folder: string }];
   createFolder: [path: string];
@@ -156,6 +163,7 @@ const sidebarTitle = computed(() => {
   if (props.activity === 'runs') return t('history.title');
   if (props.activity === 'context') return t('inspector.title');
   if (props.activity === 'remote') return t('ide.activity.remote');
+  if (props.activity === 'source-control') return t('ide.activity.sourceControl');
   return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
 });
 const styles = computed(() => (isIde.value
@@ -274,6 +282,24 @@ const styles = computed(() => (isIde.value
           @open="emit('openRemote', $event)"
           @remember="emit('rememberRemoteDirectory', $event)"
           @forget="emit('forgetRemoteDirectory', $event)"
+        <SourceControlView
+          v-else-if="activity === 'source-control'"
+          :state="sourceControl?.state.value ?? 'idle'"
+          :branch="sourceControl?.branch.value ?? ''"
+          :changes="sourceControl?.changes.value ?? []"
+          :history="sourceControl?.history.value ?? []"
+          :staged-count="sourceControl?.stagedCount.value ?? 0"
+          :unstaged-changes="sourceControl?.unstagedChanges.value ?? []"
+          :staged-changes="sourceControl?.stagedChanges.value ?? []"
+          :message="sourceControl?.message.value ?? ''"
+          :error="sourceControl?.error.value"
+          :desktop="workspaceKind === 'desktop'"
+          :busy="sourceControl?.busy.value ?? false"
+          :can-commit="sourceControl?.canCommit.value ?? false"
+          @refresh="emit('refreshSourceControl')"
+          @update:message="emit('update:sourceControlMessage', $event)"
+          @stage="emit('stageSourceControl', $event)"
+          @commit="emit('commitSourceControl')"
         />
         <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />

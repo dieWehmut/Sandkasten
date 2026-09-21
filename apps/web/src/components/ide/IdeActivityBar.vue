@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings, Clock, Files, Info, Search, Monitor } from '@lucide/vue';
+import { Settings, Clock, Files, GitBranch, Info, Monitor, Search } from '@lucide/vue';
 import type { Component } from 'vue';
 import type { IdeActivity } from '../../composables/useIdeLayout';
 import { useTranslation } from '../../i18n/useTranslation';
@@ -12,6 +12,7 @@ const items: Array<{ id: IdeActivity; labelKey: Parameters<typeof t>[0]; icon: C
   { id: 'explorer', labelKey: 'ide.activity.explorer', icon: Files },
   { id: 'search', labelKey: 'ide.activity.search', icon: Search },
   { id: 'remote', labelKey: 'ide.activity.remote', icon: Monitor },
+  { id: 'source-control', labelKey: 'ide.activity.sourceControl', icon: GitBranch },
   { id: 'runs', labelKey: 'ide.activity.runs', icon: Clock },
   { id: 'context', labelKey: 'ide.activity.context', icon: Info },
 ];
