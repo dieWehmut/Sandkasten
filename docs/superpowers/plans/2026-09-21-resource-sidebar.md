@@ -142,7 +142,9 @@ the default parallel run can starve the timer-based suites on a loaded machine.
 
 ## Delivery boundary
 
-The pushed state is `main` at the merge above, plus the six feature branches
+The pushed state is `main` carrying this plan's delivery merges — the
+integration merge, the glyph correction, and this record — plus the six feature
+branches
 (`feat/resource-explorer`, `feat/workspace-search`, `feat/remote-explorer`,
 `feat/source-control`, `fix/pure-black-white-surfaces`, and
 `feat/resource-sidebar-integration`). The Pages workflow deploys the pushed
