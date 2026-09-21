@@ -38,11 +38,27 @@ await writeFile(path.join(workspace, 'pkg', 'notes.md'), '# notes' + String.from
 await writeFile(path.join(workspace, 'main.py'), 'print("main")' + String.fromCharCode(10));
 
 const executable = process.env.SANDKASTEN_E2E_EXECUTABLE;
+const electronExecutable = executable
+  ?? (await import(pathToFileURL(path.join(appRoot, 'node_modules', 'electron', 'index.js')).href)).default;
+// The opened folder arrives through the environment, exactly as the end-to-end
+// run passes it; the flag form this probe used first is not one the app reads.
+const profileArgument = '--user-data-dir=' + path.join(workspace, '..', 'profile');
 const launchArgs = executable
-  ? ['--sandkasten-workspace=' + workspace]
-  : [path.join(repositoryRoot, 'apps', 'desktop'), '--sandkasten-workspace=' + workspace];
-const app = await electron.launch(executable ? { executablePath: executable, args: launchArgs } : { args: launchArgs });
+  ? [profileArgument]
+  : [appRoot, profileArgument];
+const app = await electron.launch({
+  executablePath: electronExecutable,
+  args: launchArgs,
+  env: { ...process.env, SANDKASTEN_WORKSPACE_ROOT: workspace, SANDKASTEN_E2E_PROBE: '1' },
+  cwd: appRoot,
+});
 const page = await app.firstWindow();
+// A fresh profile opens the first-visit setup, which covers the workbench until
+// it is dismissed; the end-to-end run dismisses it the same way.
+await page.waitForSelector('[data-testid="app-shell"]', { timeout: 30000 });
+if (await page.locator('[data-testid="setup-dismiss"]').count()) {
+  await page.click('[data-testid="setup-dismiss"]');
+}
 await page.waitForSelector('[data-testid="workspace-explorer"]', { timeout: 30000 });
 
 const report = { workspace, steps: [] };
@@ -52,11 +68,10 @@ const shot = async (name) => {
   report.steps.push({ name, file });
 };
 
-await page.click('[data-path="pkg"] .ide-tree__toggle').catch(() => undefined);
-await page.waitForTimeout(300);
-report.deepVisibleAfterExpand = await page.locator('[data-path="pkg/deep"]').count();
-await page.click('[data-path="pkg/deep"] .ide-tree__toggle').catch(() => undefined);
+// The tree lists every directory open by default, so nothing needs unfolding;
+// clicking a toggle here would fold the directory the probe wants to reach.
 await page.waitForSelector('[data-path="pkg/deep/util.py"]', { timeout: 10000 });
+report.deepVisibleAfterExpand = await page.locator('[data-path="pkg/deep"]').count();
 await page.click('[data-path="pkg/deep/util.py"] .ide-tree__open');
 await page.waitForTimeout(300);
 report.openedTab = await page.locator('.ide-tab__name').allInnerTexts();
