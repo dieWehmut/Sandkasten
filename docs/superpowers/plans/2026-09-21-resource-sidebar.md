@@ -156,3 +156,42 @@ session row shipped a blank spot. `87265d9` fixes the tag, adds
 `componentImports.test.ts` to fail on any unimported PascalCase tag, and
 rebuilds the four-file distribution; the packaged payload was rebuilt and
 re-verified from that revision.
+
+## Follow-up: inline creation at the selection
+
+Reference images 1 and 2 show the row opening *inside* the tree, under the
+selected folder, and asking for a name only. The delivered explorer rendered
+both forms as full-width blocks at the top of the panel with a second
+"target folder" field, so this follow-up replaces that placement.
+
+- [x] Take a slot in the tree's own row list, under the selected directory or
+      beside the selected file, and unfold the directories above it.
+- [x] Drop the target-folder field: the location comes from the selection, while
+      a typed path still nests.
+- [x] Land a selection-less open (welcome, native `Ctrl+N`) at the root.
+- [x] Keep one row per directory: the creation row sits between the directory
+      and file branches, so the file branch names its own condition.
+- [x] Follow the header button that was pressed: new folder switches an open
+      file row, and each button reports its own pressed state.
+- [x] Cover the placement, the switch, the single-row tree, and the folder row
+      in the WebUI suite and the desktop E2E, and capture the row visually.
+
+## Follow-up verification record
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| WebUI suite | `npx vitest run` in `apps/web` | 283 passed, 41 files |
+| Desktop suite | `npm test` in `apps/desktop` | 146 passed |
+| Browser smoke | `npm run test:browser` in `apps/web` | passed, 3 viewports |
+| Build contract | `bash scripts/webui-build-test.sh` | ok |
+| Apps layout | `bash scripts/apps-layout-test.sh` | ok |
+| Dev E2E | `npm run e2e` in `apps/desktop` | passed, development mode |
+| Packaged smoke | `npm run package:win` + `npm run verify:installer` | 2 payloads, 0 problems |
+| Packaged E2E | `SANDKASTEN_E2E_EXECUTABLE=<unpacked exe> npm run e2e` | passed, packaged mode |
+
+The E2E asserts the row's parent (`pkg`), that it renders inside `.ide-tree`,
+that a created file and folder land in `pkg`, that neither reaches the workspace
+root, and that the folder button switches an open file row. Both the loose and
+the packaged payload were rebuilt from the fixed source and hash-matched against
+`apps/web/dist`, and the machine's installed build was refreshed from the
+verified installer.
