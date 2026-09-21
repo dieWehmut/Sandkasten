@@ -67,6 +67,24 @@ async function main() {
   for (let index = 0; index < 60; index += 1) {
     await writeFile(path.join(workspace, 'many', `file-${String(index).padStart(2, '0')}.py`), `print(${index})\n`);
   }
+  // The source control view needs a repository, and the remote explorer needs
+  // an SSH config; both are real files so the run exercises the real parsers.
+  const sshDirectory = path.join(testRoot, 'ssh');
+  await mkdir(sshDirectory);
+  const sshConfig = path.join(sshDirectory, 'config');
+  await writeFile(sshConfig, [
+    '# The end-to-end run must never touch the real ~/.ssh/config.',
+    'Host sandkasten-e2e',
+    '  HostName 192.168.50.11',
+    '  User root',
+    '  Port 2222',
+    '',
+  ].join('\n'));
+  const gitRun = (...args) => spawnSync('git', ['-c', 'user.email=e2e@sandkasten.local', '-c', 'user.name=E2E Run', ...args], { cwd: workspace, stdio: 'ignore' });
+  gitRun('init', '--initial-branch=main');
+  gitRun('add', '.');
+  gitRun('commit', '-m', 'e2e: first commit');
+  await writeFile(path.join(workspace, 'notes.md'), '# notes\nchanged by the fixture\n');
   await mkdir(path.join(outputRoot), { recursive: true });
 
   const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
@@ -79,6 +97,7 @@ async function main() {
     SANDKASTEN_WORKSPACE_ROOT: workspace,
     SANDKASTEN_E2E_PROBE: '1',
     SANDKASTEN_E2E_RELEASE: process.env.SANDKASTEN_E2E_RELEASE ?? 'v9.9.9',
+    SANDKASTEN_SSH_CONFIG: sshConfig,
   };
   const app = packagedExecutable
     ? await driver.launch({ executablePath: packagedExecutable, args: [profileArgument], env: e2eEnv })
@@ -216,6 +235,101 @@ async function main() {
     checks.explorerRows = await page.locator('.ide-tree__row').count();
     checks.tree = await page.locator('.ide-tree__name').allInnerTexts();
     checks.bodyPreview = (await page.locator('.ide-sidebar').innerText().catch(() => '')).slice(0, 200);
+
+    // The sidebar is the resource manager: Explorer, Search, Source Control,
+    // and the Remote Explorer each render real data from the main process.
+    {
+      const views = {};
+      // Explorer carries the reference's four header buttons.
+      views.explorerHeader = await page.evaluate(() => {
+        const header = document.querySelector('.ide-sidebar__header');
+        return Array.from(header?.querySelectorAll('button[data-action]') ?? [])
+          .map((button) => button.getAttribute('data-action'));
+      });
+
+      // Search: a real query over the opened folder lists files with matches.
+      await page.click('[data-activity="search"]');
+      await page.waitForSelector('[data-testid="workspace-search-input"]');
+      await page.fill('[data-testid="workspace-search-input"]', 'util-ok');
+      await page.press('[data-testid="workspace-search-input"]', 'Enter');
+      await page.waitForSelector('[data-match-path="pkg/util.py"]', { timeout: 15_000 });
+      views.search = await page.evaluate(() => ({
+        summary: document.querySelector('[data-testid="workspace-search-summary"]')?.textContent?.trim() ?? null,
+        files: Array.from(document.querySelectorAll('[data-match-path]')).map((node) => node.getAttribute('data-match-path')),
+      }));
+      await page.click('[data-match-path="pkg/util.py"] [data-line]');
+      // The tab id carries the workspace-relative path, not just the name.
+      await page.waitForSelector('[data-action="ide-tab-pkg/util.py"]', { timeout: 10_000 });
+      views.searchOpened = (await page.locator('.ide-tab--active .ide-tab__name').innerText()).trim();
+
+      // Source control: the E2E workspace is a real repository with one staged
+      // change, so the view must report the branch, the file, and the history.
+      await page.click('[data-activity="source-control"]');
+      await page.waitForSelector('[data-testid="source-control"]');
+      await page.waitForSelector('[data-testid="source-control-branch"]', { timeout: 15_000 });
+      views.sourceControl = await page.evaluate(() => ({
+        branch: document.querySelector('[data-testid="source-control-branch"]')?.textContent?.trim() ?? null,
+        changes: Array.from(document.querySelectorAll('[data-change]')).map((node) => node.getAttribute('data-change')),
+        staged: Array.from(document.querySelectorAll('[data-group="staged"] [data-change]')).map((node) => node.getAttribute('data-change')),
+        history: Array.from(document.querySelectorAll('[data-commit]')).map((node) => node.getAttribute('data-commit')),
+        canCommit: !document.querySelector('[data-action="source-control-commit"]')?.hasAttribute('disabled'),
+      }));
+      // The fixture leaves the change unstaged, so the commit action must be
+      // honestly disabled until the file is staged through the view.
+      await page.fill('[data-testid="source-control-message"]', 'e2e: commit the fixture change');
+      views.sourceControlCommitBlocked = await page.locator('[data-action="source-control-commit"]').isDisabled();
+      await page.click('[data-stage="notes.md"]');
+      await page.waitForFunction(() => !document.querySelector('[data-action="source-control-commit"]')?.hasAttribute('disabled'), null, { timeout: 15_000 });
+      views.sourceControlCommitEnabled = !(await page.locator('[data-action="source-control-commit"]').isDisabled());
+      views.sourceControlStaged = await page.evaluate(() => Array.from(document.querySelectorAll('[data-group="staged"] [data-change]')).map((node) => node.getAttribute('data-change')));
+      await page.click('[data-action="source-control-commit"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="source-control"] [data-commit]')?.getAttribute('data-commit') !== null
+        && document.querySelector('[data-testid="source-control-count"]')?.textContent?.includes('0'), null, { timeout: 20_000 });
+      views.sourceControlCommitted = await page.evaluate(() => ({
+        history: Array.from(document.querySelectorAll('[data-commit]')).map((node) => node.textContent?.trim() ?? ''),
+        clean: document.querySelector('[data-testid="source-control-clean"]') !== null,
+      }));
+
+      // Remote explorer: the SSH config is provided through the environment, so
+      // the view must list the host and hand it to the terminal on selection.
+      await page.click('[data-activity="remote"]');
+      await page.waitForSelector('[data-testid="remote-explorer"]');
+      await page.waitForSelector('[data-host="sandkasten-e2e"]', { timeout: 15_000 });
+      views.remote = await page.evaluate(() => ({
+        hosts: Array.from(document.querySelectorAll('[data-host]')).map((node) => node.getAttribute('data-host')),
+        directories: Array.from(document.querySelectorAll('[data-directory]')).map((node) => node.getAttribute('data-directory')),
+      }));
+      // The bridge composes the ssh line; the panel then types it into a real
+      // session, so the observed contract is the panel opening plus the write
+      // the main process receives.
+      views.remoteSession = await page.evaluate(async () => {
+        const hosts = await window.sandkastenDesktop.remote.list();
+        return window.sandkastenDesktop.remote.open({ host: 'sandkasten-e2e', profileId: 'pwsh' })
+          .then((session) => ({ configured: hosts.hosts.map((host) => host.alias), command: session.command }));
+      });
+      await page.click('[data-open="sandkasten-e2e"]');
+      await page.waitForSelector('[data-testid="terminal-panel"]', { timeout: 15_000 });
+      views.remoteHandoff = await page.evaluate(() => ({
+        panel: document.querySelector('[data-testid="terminal-panel"]') !== null,
+        sessions: document.querySelectorAll('.terminal-pane').length,
+      }));
+
+      // The surfaces are pure: the canvas, chrome, and sidebar carry no tint.
+      views.pureSurfaces = await page.evaluate(() => {
+        const read = (selector) => document.querySelector(selector)?.style?.backgroundColor ?? '';
+        return {
+          body: getComputedStyle(document.body).backgroundColor,
+          activity: getComputedStyle(document.querySelector('.ide-activity')).backgroundColor,
+          sidebar: getComputedStyle(document.querySelector('.ide-sidebar')).backgroundColor,
+        };
+      });
+      checks.sidebarViews = views;
+      // The rest of the run drives the explorer tree, so the sidebar returns to
+      // it; the terminal panel the hand-off opened stays closed the same way.
+      await page.click('[data-activity="explorer"]');
+      await page.waitForSelector('[data-path="hello.py"]', { timeout: 15_000 });
+      await page.click('[data-action="ide-tab-close-pkg/util.py"]').catch(() => undefined);
+    }
 
     await page.click('[data-path="hello.py"] .ide-tree__open');
     await page.waitForSelector('[data-action="ide-tab-hello.py"]');
@@ -526,6 +640,34 @@ async function main() {
     assert.equal(checks.minimap?.painted, true);
     assert.equal(checks.minimumWindow?.statusVisible, true);
     assert.equal(checks.minimumWindow?.documentBounded, true);
+    // The sidebar resource manager: each view renders real data, the commit
+    // round-trips, the remote entry reaches the terminal, and the surfaces are
+    // pure black or pure white.
+    assert.deepEqual(checks.sidebarViews?.explorerHeader, [
+      'ide-new-file', 'ide-new-folder', 'ide-refresh-tree', 'ide-collapse-folders', 'ide-collapse-sidebar',
+    ]);
+    assert.ok(checks.sidebarViews?.search?.files.includes('pkg/util.py'), 'search must list the matching file');
+    // The summary is localized, so the counts are asserted rather than the prose.
+    assert.match(checks.sidebarViews?.search?.summary ?? '', /1\s*(?:result|个结果)/i);
+    assert.match(checks.sidebarViews?.search?.summary ?? '', /1\s*(?:file|个文件)/i);
+    assert.equal(checks.sidebarViews?.searchOpened, 'util.py');
+    assert.equal(checks.sidebarViews?.sourceControl?.branch, 'main');
+    assert.ok(checks.sidebarViews?.sourceControl?.changes.includes('notes.md'), 'the changed file must be listed');
+    assert.equal(checks.sidebarViews?.sourceControlCommitBlocked, true, 'the commit action must wait for staged work');
+    assert.equal(checks.sidebarViews?.sourceControlCommitEnabled, true);
+    assert.deepEqual(checks.sidebarViews?.sourceControlStaged, ['notes.md']);
+    assert.ok(checks.sidebarViews?.sourceControlCommitted?.history.some((entry) => entry.includes('e2e: commit the fixture change')), 'the commit must reach the history');
+    assert.equal(checks.sidebarViews?.sourceControlCommitted?.clean, true);
+    assert.deepEqual(checks.sidebarViews?.remote?.hosts, ['sandkasten-e2e']);
+    assert.equal(checks.sidebarViews?.remoteHandoff?.panel, true, 'choosing a host must open the terminal panel');
+    assert.deepEqual(checks.sidebarViews?.remoteSession?.configured, ['sandkasten-e2e']);
+    assert.match(checks.sidebarViews?.remoteSession?.command ?? '', /^ssh(?: -p 2222)? root@192\.168\.50\.11$/);
+    assert.ok(checks.sidebarViews?.remoteHandoff?.sessions > 0, 'the hand-off must open a real terminal session');
+    assert.deepEqual(checks.sidebarViews?.pureSurfaces, {
+      body: 'rgb(255, 255, 255)',
+      activity: 'rgb(255, 255, 255)',
+      sidebar: 'rgb(255, 255, 255)',
+    });
     assert.equal(checks.colorScheme, 'pink');
     assert.equal(checks.storedColorScheme, null);
     assert.equal(checks.titleRow?.headerIntegrated, true);
