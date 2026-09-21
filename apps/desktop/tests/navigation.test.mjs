@@ -40,8 +40,8 @@ test('Windows and Linux place native window controls in the integrated header', 
     const options = createWindowOptions({ platform });
     assert.equal(options.titleBarStyle, 'hidden');
     assert.equal(options.autoHideMenuBar, true);
-    assert.deepEqual(options.titleBarOverlay, { color: '#f0f5f1', symbolColor: '#1a1c1f', height: 40 });
-    assert.equal(options.backgroundColor, '#f0f5f1');
+    assert.deepEqual(options.titleBarOverlay, { color: '#ffffff', symbolColor: '#1a1c1f', height: 40 });
+    assert.equal(options.backgroundColor, '#ffffff');
     assert.equal(options.frame, undefined, 'keep native resize and window controls');
   }
 });

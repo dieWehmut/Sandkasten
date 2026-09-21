@@ -222,6 +222,25 @@ describe('color scheme palettes', () => {
     expect(schemes).toMatch(/--focus-ring:\s*color-mix\(in srgb, var\(--accent\)/);
   });
 
+  test('renders the canvas, chrome, and raised surfaces in pure black or pure white', () => {
+    const [lightTokens, darkTokens] = style('tokens.css').split(':root[data-theme="dark"]');
+    // The reference asks for a background that is purely black or purely
+    // white, so the neutral surfaces carry no tint at all in either theme.
+    for (const name of ['--canvas', '--chrome']) {
+      expect(token(lightTokens, name), `light ${name}`).toBe('#ffffff');
+      expect(token(darkTokens, name), `dark ${name}`).toBe('#000000');
+    }
+    // Raised and subtle surfaces stay neutral greys so a panel, row, or
+    // hover never borrows a hue from the canvas underneath it.
+    for (const name of ['--surface', '--surface-subtle', '--surface-raised']) {
+      for (const [theme, block] of [['light', lightTokens], ['dark', darkTokens]] as const) {
+        const value = token(block, name);
+        const channels = hexToRgb(value);
+        expect(Math.max(...channels) - Math.min(...channels), `${theme} ${name} is neutral`).toBe(0);
+      }
+    }
+  });
+
   test('keeps every file-type hue readable on the surfaces it renders on', () => {
     const [lightTokens, darkTokens] = style('tokens.css').split(':root[data-theme="dark"]');
     const lightSurface = token(lightTokens, '--surface');
