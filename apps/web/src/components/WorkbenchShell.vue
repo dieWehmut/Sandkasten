@@ -13,6 +13,7 @@ import type { LocalRuntimeInfo, WorkspaceRoot, WorkspaceTreeNode } from '../serv
 import type { LayoutMode } from '../composables/useMediaLayout';
 import type { TerminalController } from '../composables/useTerminal';
 import type { WorkspaceSearchController } from '../composables/useWorkspaceSearch';
+import type { RemoteHostsController } from '../composables/useRemoteHosts';
 import type { IconTheme } from '../editor/fileIcon';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
@@ -30,6 +31,7 @@ import IdePanelActions from './ide/IdePanelActions.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import WorkspaceSearch from './ide/WorkspaceSearch.vue';
+import RemoteExplorer from './ide/RemoteExplorer.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
@@ -75,6 +77,7 @@ const props = withDefaults(defineProps<{
   workspaceLabel?: string;
   terminal?: TerminalController;
   search?: WorkspaceSearchController;
+  remote?: RemoteHostsController;
   iconTheme?: IconTheme;
 }>(), {
   layoutMode: 'desktop',
@@ -124,6 +127,9 @@ const emit = defineEmits<{
   'update:searchQuery': [value: string];
   'update:searchCaseSensitive': [value: boolean];
   clearSearch: [];
+  openRemote: [payload: { host: string; directory: string }];
+  rememberRemoteDirectory: [payload: { host: string; directory: string }];
+  forgetRemoteDirectory: [payload: { host: string; directory: string }];
   closeFile: [path: string];
   createFile: [payload: { name: string; language: string; folder: string }];
   createFolder: [path: string];
@@ -149,6 +155,7 @@ const dirtyPaths = computed(() => props.files.filter((file) => file.dirty).map((
 const sidebarTitle = computed(() => {
   if (props.activity === 'runs') return t('history.title');
   if (props.activity === 'context') return t('inspector.title');
+  if (props.activity === 'remote') return t('ide.activity.remote');
   return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
 });
 const styles = computed(() => (isIde.value
@@ -255,6 +262,18 @@ const styles = computed(() => (isIde.value
           @search="emit('searchFiles', $event)"
           @select="emit('selectSearchResult', $event)"
           @clear="emit('clearSearch')"
+        />
+        <RemoteExplorer
+          v-else-if="activity === 'remote'"
+          :state="remote?.state.value ?? 'idle'"
+          :available="remote?.available.value ?? true"
+          :hosts="remote?.hosts.value ?? []"
+          :config-path="remote?.configPath.value ?? ''"
+          :error="remote?.error.value"
+          :desktop="workspaceKind === 'desktop'"
+          @open="emit('openRemote', $event)"
+          @remember="emit('rememberRemoteDirectory', $event)"
+          @forget="emit('forgetRemoteDirectory', $event)"
         />
         <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />

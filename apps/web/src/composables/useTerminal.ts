@@ -179,6 +179,22 @@ export function useTerminal(bridge: TerminalBridge) {
     }
   }
 
+  // Runs one composed line in the active session. The Remote Explorer hands its
+  // ssh command over this way, so it never needs a spawn surface of its own.
+  async function run(command: string): Promise<void> {
+    if (typeof command !== 'string') return;
+    const line = command.trim();
+    if (!line) return;
+    let id = activeId.value;
+    for (let attempt = 0; attempt < 2 && !views.has(id); attempt += 1) {
+      if (pending.value) await new Promise((resolve) => setTimeout(resolve, 25));
+      id = activeId.value;
+    }
+    if (!views.has(id)) return;
+    if (sessions.value.find((entry) => entry.id === id)?.exitCode !== undefined) return;
+    await bridge.write({ id, data: `${line}\r` });
+  }
+
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
@@ -191,7 +207,7 @@ export function useTerminal(bridge: TerminalBridge) {
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
-    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused,
+    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, run,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
   };
