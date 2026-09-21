@@ -1,4 +1,4 @@
-// Sandboxed preload scripts are loaded as CommonJS, so this file must stay .cjs
+﻿// Sandboxed preload scripts are loaded as CommonJS, so this file must stay .cjs
 // even though the rest of the desktop app is ESM.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -14,6 +14,10 @@ const CHANNELS = {
   workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
   workspaceSearch: 'sandkasten:workspace:search',
+  remoteList: 'sandkasten:remote:list',
+  remoteRemember: 'sandkasten:remote:remember',
+  remoteForget: 'sandkasten:remote:forget',
+  remoteOpen: 'sandkasten:remote:open',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
   localStop: 'sandkasten:local:stop',
@@ -74,6 +78,12 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     createFolder: (path) => ipcRenderer.invoke(CHANNELS.workspaceCreateFolder, path),
     remove: (path) => ipcRenderer.invoke(CHANNELS.workspaceRemove, path),
     search: (request) => ipcRenderer.invoke(CHANNELS.workspaceSearch, request),
+  },
+  remote: {
+    list: () => ipcRenderer.invoke(CHANNELS.remoteList),
+    remember: (request) => ipcRenderer.invoke(CHANNELS.remoteRemember, request),
+    forget: (request) => ipcRenderer.invoke(CHANNELS.remoteForget, request),
+    open: (request) => ipcRenderer.invoke(CHANNELS.remoteOpen, request),
   },
   runner: {
     detect: () => ipcRenderer.invoke(CHANNELS.localDetect),

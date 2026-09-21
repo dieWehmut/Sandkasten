@@ -133,9 +133,10 @@ export async function listRemoteHosts({ configPath, storePath } = {}) {
 }
 
 // The terminal hand-off. The renderer names a host and, optionally, one of the
-// directories that is known for it; the command line is composed here so a
-// renderer string can never become shell syntax.
-export async function openRemoteSession({ hosts, host, directory } = {}) {
+// directories known for it; the ssh line is composed here, so a renderer string
+// can never become shell syntax. `profileId` only picks the quoting style: a
+// cmd shell has no single-quote syntax, so the remote command is double-quoted.
+export async function openRemoteSession({ hosts, host, directory, profileId } = {}) {
   const alias = assertAlias(host);
   const target = Array.isArray(hosts) ? hosts.find((entry) => entry?.alias === alias) : undefined;
   if (!target) throw new Error(`unknown remote host: ${host}`);
@@ -146,9 +147,11 @@ export async function openRemoteSession({ hosts, host, directory } = {}) {
     return { host: alias, command: `ssh${port} ${destination}`, directory: '' };
   }
   const remembered = assertDirectory(directory);
+  const remote = `cd ${remembered} && exec $SHELL -l`;
+  const quoted = profileId === 'cmd' ? `"${remote}"` : `'${remote}'`;
   return {
     host: alias,
-    command: `ssh${port} -t ${destination} 'cd ${remembered} && exec $SHELL -l'`,
+    command: `ssh${port} -t ${destination} ${quoted}`,
     directory: remembered,
   };
 }
