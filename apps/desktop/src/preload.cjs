@@ -11,6 +11,7 @@ const CHANNELS = {
   workspaceRead: 'sandkasten:workspace:read',
   workspaceWrite: 'sandkasten:workspace:write',
   workspaceCreate: 'sandkasten:workspace:create',
+  workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
@@ -69,6 +70,7 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     read: (path) => ipcRenderer.invoke(CHANNELS.workspaceRead, path),
     write: (path, content) => ipcRenderer.invoke(CHANNELS.workspaceWrite, path, content),
     create: (path, content) => ipcRenderer.invoke(CHANNELS.workspaceCreate, path, content),
+    createFolder: (path) => ipcRenderer.invoke(CHANNELS.workspaceCreateFolder, path),
     remove: (path) => ipcRenderer.invoke(CHANNELS.workspaceRemove, path),
   },
   runner: {

@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   createWorkspaceFile,
+  createWorkspaceFolder,
   createWorkspaceSession,
   deleteWorkspaceFile,
   listWorkspaceTree,
@@ -78,6 +79,27 @@ test('file operations round-trip inside the workspace', async (t) => {
   await assert.rejects(() => readWorkspaceFile(root, 'nested/new.py'), /not found/);
   await assert.rejects(() => writeWorkspaceFile(root, 'missing.py', 'x'), /not found/);
   await assert.rejects(() => readWorkspaceFile(root, '../outside.py'), /workspace/i);
+});
+
+test('folders are created inside the workspace and appear in the tree', async (t) => {
+  const root = await temporaryDirectory('sandkasten-folders-');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'main.py'), 'print(hello)\n');
+
+  assert.deepEqual(await createWorkspaceFolder(root, 'pkg/deep'), { path: 'pkg/deep' });
+  assert.equal((await readWorkspaceFile(root, 'main.py')).length > 0, true);
+  await createWorkspaceFile(root, 'pkg/deep/util.py', 'print(util)\n');
+
+  const { tree } = await listWorkspaceTree(root);
+  assert.deepEqual(tree.map((node) => `${node.type}:${node.path}`), ['directory:pkg', 'file:main.py']);
+  assert.deepEqual(tree[0].children.map((node) => `${node.type}:${node.path}`), ['directory:pkg/deep']);
+
+  // Creating an existing folder or a name that collides with a file is refused
+  // instead of quietly succeeding, and paths still cannot escape the root.
+  await assert.rejects(() => createWorkspaceFolder(root, 'pkg/deep'), /already exists/);
+  await assert.rejects(() => createWorkspaceFolder(root, 'main.py'), /already exists/);
+  await assert.rejects(() => createWorkspaceFolder(root, '../outside'), /workspace/i);
+  await assert.rejects(() => createWorkspaceFolder(root, 'a/b/c/d/e/f/g'), /depth/i);
 });
 
 test('file writes are bounded by the workspace size limit', async (t) => {

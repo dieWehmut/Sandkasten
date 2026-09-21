@@ -7,6 +7,7 @@ import { buildMenuTemplate } from './menu.mjs';
 import { WINDOW_CHROME_THEMES } from './navigation.mjs';
 import {
   createWorkspaceFile,
+  createWorkspaceFolder,
   deleteWorkspaceFile,
   listWorkspaceTree,
   readWorkspaceFile,
@@ -21,6 +22,7 @@ export const IPC_CHANNELS = {
   workspaceRead: 'sandkasten:workspace:read',
   workspaceWrite: 'sandkasten:workspace:write',
   workspaceCreate: 'sandkasten:workspace:create',
+  workspaceCreateFolder: 'sandkasten:workspace:create-folder',
   workspaceRemove: 'sandkasten:workspace:remove',
   localDetect: 'sandkasten:local:detect',
   localRun: 'sandkasten:local:run',
@@ -154,6 +156,10 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
 
   ipcMain.handle(IPC_CHANNELS.workspaceCreate, async (_event, relativePath, content = '') => (
     createWorkspaceFile(requireRoot(session), assertString(relativePath, 'path'), assertString(content, 'content', { allowEmpty: true }))
+  ));
+
+  ipcMain.handle(IPC_CHANNELS.workspaceCreateFolder, async (_event, relativePath) => (
+    createWorkspaceFolder(requireRoot(session), assertString(relativePath, 'path'))
   ));
 
   ipcMain.handle(IPC_CHANNELS.workspaceRemove, async (_event, relativePath) => (
