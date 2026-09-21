@@ -312,25 +312,197 @@ describe('workspace explorer', () => {
     expect(wrapper.get('.ide-explorer__collapse').attributes('data-collapsed')).toBe('true');
   });
 
-  test('creates a folder through the new-folder form', async () => {
+  test('opens the new-file row inside the selected directory', async () => {
     const wrapper = mount(WorkspaceExplorer, {
-      props: { tree: [{ path: 'main.py', name: 'main.py', type: 'file' }], kind: 'desktop', activePath: 'main.py' },
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg/util.py',
+      },
     });
 
-    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
-    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
-    expect(wrapper.get('[data-testid=ide-new-folder-form]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
 
-    await wrapper.get('input[name=folderName]').setValue('pkg/deep');
+    // The row lands under the selected file's directory, not at the panel top,
+    // and carries the directory's depth so it lines up with its siblings.
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-parent')).toBe('pkg');
+    expect(row.attributes('data-depth')).toBe('1');
+    expect(wrapper.get('[data-action=ide-new-file]').attributes('aria-pressed')).toBe('true');
+  });
+
+  test('creates a file in the selected directory without a folder field', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg/util.py',
+      },
+    });
+
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    // The form takes a name only: the location comes from the selection.
+    expect(wrapper.find('[data-testid=ide-inline-create] input[name=fileFolder]').exists()).toBe(false);
+
+    await wrapper.get('input[name=fileName]').setValue('helper.py');
+    await wrapper.get('[data-testid=ide-new-file-form]').trigger('submit');
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'helper.py', language: 'python', folder: 'pkg' }]]);
+    expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
+  });
+
+  test('places the row as a sibling when the selection is a file at the root', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{ path: 'main.py', name: 'main.py', type: 'file' }],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'main.py',
+      },
+    });
+
+    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    // A root-level selection creates at the root, matching VS Code.
+    expect(row.attributes('data-parent')).toBe('');
+    expect(row.attributes('data-depth')).toBe('0');
+    expect(row.attributes('data-kind')).toBe('folder');
+  });
+
+  test('creates a folder at the selection and reveals a folded target', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          {
+            path: 'pkg',
+            name: 'pkg',
+            type: 'directory',
+            children: [{ path: 'pkg/deep', name: 'deep', type: 'directory', children: [] }],
+          },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg/deep/util.py',
+      },
+    });
+
+    // Fold pkg, then start a creation inside it: the row must still be visible,
+    // so the directories above the row open themselves.
+    await wrapper.get('[data-path="pkg"] .ide-tree__toggle').trigger('click');
+    expect(wrapper.find('[data-path="pkg/deep"]').exists()).toBe(false);
+
+    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
+    expect(wrapper.get('[data-testid=ide-inline-create]').attributes('data-parent')).toBe('pkg/deep');
+
+    await wrapper.get('input[name=folderName]').setValue('nested');
     await wrapper.get('[data-testid=ide-new-folder-form]').trigger('submit');
-    expect(wrapper.emitted('createFolder')).toEqual([['pkg/deep']]);
-    // Submitting closes the form itself, and the shell's mirrored flag is the
-    // only thing that keeps it open when the header button drives the form.
-    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
+    expect(wrapper.emitted('createFolder')).toEqual([['pkg/deep/nested']]);
+    expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
+  });
 
-    await wrapper.get('[data-action=ide-new-folder]').trigger('click');
-    await wrapper.get('[data-action=ide-cancel-folder]').trigger('click');
-    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(false);
+  test('creates at the root when the shell opens the row with nothing selected', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{ path: 'main.py', name: 'main.py', type: 'file' }],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: '',
+        creating: true,
+      },
+    });
+
+    // The welcome screen and the native Ctrl+N set the flag without a target,
+    // and an empty selection must still land in the workspace root.
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-parent')).toBe('');
+    expect(row.attributes('data-depth')).toBe('0');
+
+    await wrapper.get('input[name=fileName]').setValue('fresh.py');
+    await wrapper.get('[data-testid=ide-new-file-form]').trigger('submit');
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'fresh.py', language: 'python', folder: '' }]]);
+  });
+
+  test('renders each directory once and creates inside a selected directory', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg',
+      },
+    });
+
+    // A directory must render exactly one row: the creation row sits between
+    // the directory branch and the file branch, which must not leak into it.
+    expect(wrapper.findAll('[data-path="pkg"]')).toHaveLength(1);
+    expect(wrapper.findAll('[role="treeitem"]')).toHaveLength(3);
+
+    // Selecting a directory creates inside it rather than beside a file of the
+    // same name, so the row belongs to the directory itself.
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-parent')).toBe('pkg');
+    expect(row.attributes('data-depth')).toBe('1');
+    expect(wrapper.findAll('[data-testid=ide-inline-create]')).toHaveLength(1);
+
+    await wrapper.get('input[name=fileName]').setValue('inside.py');
+    await wrapper.get('[data-testid=ide-new-file-form]').trigger('submit');
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'inside.py', language: 'python', folder: 'pkg' }]]);
+  });
+
+  test('switches the open row from file to folder through the shell flag', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'pkg/util.py',
+      },
+    });
+
+    // The shell's header button sets its own flag, so a row that is already
+    // open must adopt the new kind instead of staying a file row.
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    expect(wrapper.get('[data-testid=ide-inline-create]').attributes('data-kind')).toBe('file');
+
+    await wrapper.setProps({ creating: false, creatingFolder: true });
+    const row = wrapper.get('[data-testid=ide-inline-create]');
+    expect(row.attributes('data-kind')).toBe('folder');
+    expect(row.attributes('data-parent')).toBe('pkg');
+    expect(wrapper.find('[data-testid=ide-new-folder-form]').exists()).toBe(true);
+  });
+
+  test('cancels the inline row with Escape and with the close control', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{ path: 'main.py', name: 'main.py', type: 'file' }],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'main.py',
+      },
+    });
+
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    await wrapper.get('[data-testid=ide-inline-create] input[name=fileName]').trigger('keydown', { key: 'Escape' });
+    expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
+
+    await wrapper.get('[data-action=ide-new-file]').trigger('click');
+    await wrapper.get('[data-testid=ide-inline-create] [data-action=ide-cancel-create]').trigger('click');
+    expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
   });
 
   test('renders folders, marks dirty files, and collapses directories', async () => {
