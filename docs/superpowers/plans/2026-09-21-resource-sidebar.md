@@ -111,7 +111,7 @@ record.
       the remote hand-off, and run it with a fresh profile.
 - [x] Rebuild the four-file distribution, package and smoke the Windows build,
       and record the commands and results (see the record below).
-- [ ] Push the branches and main.
+- [x] Push the branches and main.
 
 ## Verification record
 
@@ -119,7 +119,7 @@ Every gate ran on the integration branch with the worktree's own dependencies:
 
 | Gate | Command | Result |
 | --- | --- | --- |
-| Web suite (serial) | `npx vitest run --no-file-parallelism` in `apps/web` | 275 passed, 40 files |
+| Web suite (serial) | `npx vitest run --no-file-parallelism` in `apps/web` | 276 passed, 41 files |
 | Desktop suite | `node --test tests/*.test.mjs` in `apps/desktop` | 146 passed |
 | CLI suite | `node --test tests/*.test.mjs` in `apps/cli` | 19 passed |
 | Apps layout | `bash scripts/apps-layout-test.sh` | ok |
@@ -139,3 +139,18 @@ asserts the pure white surfaces in light mode.
 `npx tsc --noEmit` reports the same 30 pre-existing test-only errors as `main`
 (no new errors from this work), and the serial web run is the authoritative one:
 the default parallel run can starve the timer-based suites on a loaded machine.
+
+## Delivery boundary
+
+The pushed state is `main` at the merge above, plus the six feature branches
+(`feat/resource-explorer`, `feat/workspace-search`, `feat/remote-explorer`,
+`feat/source-control`, `fix/pure-black-white-surfaces`, and
+`feat/resource-sidebar-integration`). The Pages workflow deploys the pushed
+revision.
+
+The corrected terminal glyph is part of that state: `df527a1` renamed the
+lucide import but left the template tag reading `TerminalSquare`, so the
+session row shipped a blank spot. `87265d9` fixes the tag, adds
+`componentImports.test.ts` to fail on any unimported PascalCase tag, and
+rebuilds the four-file distribution; the packaged payload was rebuilt and
+re-verified from that revision.
