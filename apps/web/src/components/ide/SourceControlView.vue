@@ -57,6 +57,17 @@ function ageText(commit: WorkspaceCommit): string {
   return formatCommitAge(commit.committedAt ? Date.now() - commit.committedAt : 0);
 }
 
+// The rail is 10px per lane, so a lane's centre is its column times ten plus
+// five. An elbow leaves the dot for another lane (`out`, a merge) or arrives
+// at the dot from it (`in`, a branch that forks back), which is what curves
+// the line between two columns instead of leaving it cut.
+function elbowPath(from: number, elbow: { column: number; direction: 'in' | 'out' }): string {
+  const x1 = from * 10 + 5;
+  const x2 = elbow.column * 10 + 5;
+  if (elbow.direction === 'out') return 'M ' + x1 + ' 11 C ' + x1 + ' 16, ' + x2 + ' 17, ' + x2 + ' 22';
+  return 'M ' + x2 + ' 0 C ' + x2 + ' 5, ' + x1 + ' 6, ' + x1 + ' 11';
+}
+
 function statusLetter(change: WorkspaceChange): string {
   // A staged change reports its index letter; an unstaged one its work tree
   // letter. '?' and ' ' would read as blanks, so they become the reference's
@@ -188,9 +199,10 @@ function statusLetter(change: WorkspaceChange): string {
           :data-column="row.column"
           :data-head="row.commit.isHead ? 'true' : 'false'"
         >
-          <!-- The graph rail: one column per lane, with the commit's own dot
-               drawn as a ring when HEAD points at it, the way the reference
-               marks the checked-out commit. -->
+          <!-- The graph rail: a line for every lane that enters or leaves the
+               row, an elbow where the commit joins a lane other than its own,
+               and the commit's own dot -- outlined when HEAD points at it, the
+               way the reference marks the checked-out commit. -->
           <svg
             class="ide-source-control__graph"
             data-testid="source-control-graph"
@@ -201,22 +213,29 @@ function statusLetter(change: WorkspaceChange): string {
           >
             <g v-for="lane in row.lanes" :key="lane.column">
               <line
-                v-if="lane.passThrough"
-                :x1="lane.column * 10 + 5"
-                :y1="lane.column === row.column ? 11 : 0"
-                :x2="lane.column * 10 + 5"
-                y2="22"
-                class="ide-source-control__graph-line"
-              />
-              <line
-                v-if="lane.column === row.column"
+                v-if="lane.above"
                 :x1="lane.column * 10 + 5"
                 y1="0"
                 :x2="lane.column * 10 + 5"
                 y2="11"
                 class="ide-source-control__graph-line"
               />
+              <line
+                v-if="lane.below"
+                :x1="lane.column * 10 + 5"
+                y1="11"
+                :x2="lane.column * 10 + 5"
+                y2="22"
+                class="ide-source-control__graph-line"
+              />
             </g>
+            <path
+              v-for="elbow in row.elbows"
+              :key="'e' + elbow.column + elbow.direction"
+              :d="elbowPath(row.column, elbow)"
+              fill="none"
+              class="ide-source-control__graph-line"
+            />
             <circle
               :cx="row.column * 10 + 5"
               cy="11"

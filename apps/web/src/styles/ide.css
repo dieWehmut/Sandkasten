@@ -1226,14 +1226,18 @@
 }
 
 .ide-source-control__history {
-  gap: 1px;
+  /* The rows themselves define the rhythm; a gap would cut the rail. */
+  gap: 0;
 }
 
 .ide-source-control__commit-entry {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px 2px 4px;
+  /* No vertical padding: consecutive rows must meet so the 22px rail reads
+     as one line down the panel rather than a dashed one. */
+  padding: 0 10px 0 4px;
+  min-height: 22px;
   font-size: 12px;
 }
 

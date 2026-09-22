@@ -117,5 +117,22 @@ report.sourceControl = await page.evaluate(() => ({
   actionButtons: Array.from(document.querySelectorAll('.ide-source-control button[data-action]')).map((b) => b.getAttribute('data-action')),
 }));
 await page.screenshot({ path: path.join(outputRoot, 'source-control-light.png') });
+
+// The reference is a dark screenshot, so the same view is captured in dark
+// mode and the rail colours are read back to prove they are not lost there.
+await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+await page.waitForTimeout(400);
+report.darkRails = await page.evaluate(() => {
+  const dot = document.querySelector('.ide-source-control__graph-dot');
+  const line = document.querySelector('.ide-source-control__graph-line');
+  const surface = document.querySelector('[data-testid="source-control"]');
+  return {
+    scheme: document.documentElement.dataset.theme ?? null,
+    dotFill: dot ? getComputedStyle(dot).fill : null,
+    lineStroke: line ? getComputedStyle(line).stroke : null,
+    surface: surface ? getComputedStyle(surface).backgroundColor : null,
+  };
+});
+await page.screenshot({ path: path.join(outputRoot, 'source-control-dark.png') });
 await app.close();
 process.stdout.write(JSON.stringify(report, null, 2) + String.fromCharCode(10));
