@@ -195,3 +195,55 @@ root, and that the folder button switches an open file row. Both the loose and
 the packaged payload were rebuilt from the fixed source and hash-matched against
 `apps/web/dist`, and the machine's installed build was refreshed from the
 verified installer.
+
+## Follow-up: the reference Git view and colored code highlighting
+
+The reference screenshot is VS Code's Source Control panel: a rail of
+commit dots down the left of the history, a filled dot per commit, an
+outlined ring on the checked-out commit, the branch and tag names as badges
+beside the tip, and each row naming the author. Two gaps separated the
+delivered workbench from that picture, and the second was a defect rather
+than a missing feature.
+
+- [x] Read the three extra git fields the graph needs -- `%D` decorations,
+      `%P` parents, and `%ct` committer time -- through the existing fixed
+      argument vector, and normalize the decorations to names plus an
+      `isHead` marker.
+- [x] Lay the lanes out in a pure module: one lane per open line, a lane
+      reused rather than duplicated for a parent that already has one, and
+      no lane left open below the commit it was waiting for.
+- [x] Draw the rail in the view: a line per lane that enters or leaves the
+      row, a curve where the commit joins a parent in another lane, the HEAD
+      ring, and ref badges, with the author and the elapsed time in the row.
+- [x] Repair `ide.css`: the merge that integrated source control dropped the
+      closing brace of `.ide-remote`, so every rule after it -- the whole
+      remote tree and all of source control -- was nested inside a selector
+      that never matched. Rebuild the file from the two merge parents.
+- [x] Fail loudly on that class of mistake: count braces in every stylesheet
+      and assert the component blocks open at the top level.
+- [x] Wire a parser for every extension the explorer names a language, so a
+      file the tree labels with a language icon is not rendered as flat text.
+- [x] Prove the tokens are real colors rather than a wired-but-inert parser:
+      the probe counts the distinct colors the editor paints per language.
+
+### Verification record
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| WebUI suite (serial) | `npx vitest run --no-file-parallelism` in `apps/web` | 291 passed, 42 files |
+| Desktop suite | `npm test` in `apps/desktop` | 147 passed |
+| CLI suite | `npm test` in `apps/cli` | 19 passed |
+| Apps layout | `bash scripts/apps-layout-test.sh` | ok |
+| WebUI build contract | `bash scripts/webui-build-test.sh --test` | ok |
+| Pages artifact | `bash scripts/pages-artifact-test.sh` | ok |
+| Repository path | `bash scripts/repository-path-test.sh` | ok |
+| Browser smoke | `npm run test:browser` in `apps/web` | 3 viewports passed |
+| Desktop E2E | `node scripts/e2e-ide.mjs` in `apps/desktop` | passed, `rendererErrors: []` |
+| Graph probe | `node scripts/probe-git-view.mjs` in `apps/desktop` | rail, HEAD ring, `main`/`topic` badges, light and dark |
+| Highlight probe | `node scripts/probe-highlight.mjs` in `apps/desktop` | 2-9 distinct token colors per language |
+
+The E2E records one rail per commit, exactly one HEAD row (the newest), the
+`main` badge on the checked-out branch, and a lane index for every row, and
+it asserts them. The probes report what the renderer painted: the graph in
+both themes, and an editor that now colors markdown, CSS, HTML, YAML, SQL,
+shell, and Vue files that previously rendered as one flat color.
