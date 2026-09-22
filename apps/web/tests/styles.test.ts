@@ -263,4 +263,43 @@ describe('color scheme palettes', () => {
       expect(contrastRatio(dark, darkChrome), `dark ${tone} on chrome`).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  test('keeps every stylesheet balanced and its sections unnested', () => {
+    // A merge once landed `ide.css` with three unclosed braces, which nested
+    // the source-control and remote rules inside `.ide-remote` and silently
+    // removed their styling, so the balance is asserted rather than assumed.
+    for (const name of ['base.css', 'ide.css', 'tokens.css', 'workbench.css']) {
+      const source = style(name).replace(/\/\*[\s\S]*?\*\//g, '');
+      let depth = 0;
+      for (const character of source) {
+        if (character === '{') depth += 1;
+        else if (character === '}') depth -= 1;
+        expect(depth, `${name} closes a block it never opened`).toBeGreaterThanOrEqual(0);
+      }
+      expect(depth, `${name} leaves a block open`).toBe(0);
+    }
+
+    // The sections that corruption swallowed must each own their rules, so
+    // every known component block has to open at brace depth zero. The merge
+    // that broke this file left `.ide-source-control` opening inside
+    // `.ide-remote`, which reads as depth one here.
+    const ide = style('ide.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    let depth = 0;
+    const seen = new Set<string>();
+    for (const line of ide.split('\n')) {
+      const selector = line.trim().replace(/\s*\{$/, '');
+      if (line.includes('{') && !line.trimStart().startsWith('}')) {
+        if (/^\.ide-[a-z-]+ \{$/.test(line.trim())) {
+          expect(depth, `${selector} must open at the top level`).toBe(0);
+          seen.add(selector.slice(1));
+        }
+        depth += 1;
+      }
+      depth -= (line.match(/\}/g) ?? []).length;
+    }
+    // The four sidebar views each prove they were reached at the top level.
+    for (const name of ['ide-remote', 'ide-source-control']) {
+      expect(seen.has(name), `${name} must keep its own top-level block`).toBe(true);
+    }
+  });
 });
