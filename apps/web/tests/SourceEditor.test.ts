@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import { describe, expect, test, vi } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import SourceEditor from '../src/components/SourceEditor.vue';
-import { languageExtensionForRuntime } from '../src/editor/language';
+import { languageExtensionForRuntime, languageForPath } from '../src/editor/language';
 
 describe('SourceEditor', () => {
   test('maps the requested runtimes to CodeMirror language support and keeps unknown runtimes plain text', () => {
@@ -11,6 +11,24 @@ describe('SourceEditor', () => {
       expect(languageExtensionForRuntime(runtime), runtime).not.toBeNull();
     }
     expect(languageExtensionForRuntime('future-language')).toBeNull();
+  });
+
+  test('highlights every file extension the explorer tells users it knows', () => {
+    // A mapped extension that resolves to no parser renders the file as flat
+    // text while the explorer still shows a language icon, so the two maps are
+    // checked together: whatever the explorer calls a language must highlight.
+    const covered = [
+      'app.py', 'app.js', 'app.mjs', 'app.cjs', 'app.ts', 'app.tsx', 'app.jsx',
+      'main.go', 'lib.rs', 'main.c', 'main.cpp', 'Main.java', 'data.json',
+      'site.css', 'theme.scss', 'page.html', 'page.htm', 'App.vue',
+      'README.md', 'docs.mdx', 'query.sql', 'config.yaml', 'config.yml',
+      'run.sh', 'build.bash',
+    ];
+    for (const file of covered) {
+      const runtime = languageForPath(file);
+      expect(runtime, file + ' must resolve to a runtime').not.toBe('');
+      expect(languageExtensionForRuntime(runtime), file + ' must highlight as ' + runtime).not.toBeNull();
+    }
   });
 
   test('edits source through CodeMirror and follows external model updates', async () => {
