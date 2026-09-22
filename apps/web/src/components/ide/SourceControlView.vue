@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { GitBranch, GitCommitHorizontal, RefreshCw } from '@lucide/vue';
 import type { WorkspaceChange, WorkspaceCommit } from '../../services/desktopBridge';
 import type { SourceControlState } from '../../composables/useSourceControl';
+import { buildCommitGraph, formatCommitAge } from '../../editor/commitGraph';
 import { useTranslation } from '../../i18n/useTranslation';
 
 // The view renders the repository the controller loaded and raises the two
@@ -45,6 +47,25 @@ const GROUPS: ReadonlyArray<{ key: string; statuses: ReadonlyArray<WorkspaceChan
 
 function groupLabel(key: string): string {
   return t(`ide.sourceControl.group.${key}` as 'ide.sourceControl.group.staged');
+}
+
+// The history is laid out once per change to the commit list. The rows carry
+// their own lane geometry so the template only has to draw what it is handed.
+const graph = computed(() => buildCommitGraph(props.history));
+
+function ageText(commit: WorkspaceCommit): string {
+  return formatCommitAge(commit.committedAt ? Date.now() - commit.committedAt : 0);
+}
+
+// The rail is 10px per lane, so a lane's centre is its column times ten plus
+// five. An elbow leaves the dot for another lane (`out`, a merge) or arrives
+// at the dot from it (`in`, a branch that forks back), which is what curves
+// the line between two columns instead of leaving it cut.
+function elbowPath(from: number, elbow: { column: number; direction: 'in' | 'out' }): string {
+  const x1 = from * 10 + 5;
+  const x2 = elbow.column * 10 + 5;
+  if (elbow.direction === 'out') return 'M ' + x1 + ' 11 C ' + x1 + ' 16, ' + x2 + ' 17, ' + x2 + ' 22';
+  return 'M ' + x2 + ' 0 C ' + x2 + ' 5, ' + x1 + ' 6, ' + x1 + ' 11';
 }
 
 function statusLetter(change: WorkspaceChange): string {
@@ -170,10 +191,70 @@ function statusLetter(change: WorkspaceChange): string {
         {{ t('ide.sourceControl.noHistory') }}
       </p>
       <ul v-else class="ide-source-control__history" data-testid="source-control-history" :aria-label="t('ide.sourceControl.history')">
-        <li v-for="commit in history" :key="commit.full" class="ide-source-control__commit-entry" :data-commit="commit.short">
-          <span class="ide-source-control__commit-short">{{ commit.short }}</span>
-          <span class="ide-source-control__commit-subject">{{ commit.subject }}</span>
-          <span class="ide-source-control__commit-meta">{{ commit.author }}</span>
+        <li
+          v-for="row in graph.rows"
+          :key="row.commit.full"
+          class="ide-source-control__commit-entry"
+          :data-commit="row.commit.short"
+          :data-column="row.column"
+          :data-head="row.commit.isHead ? 'true' : 'false'"
+        >
+          <!-- The graph rail: a line for every lane that enters or leaves the
+               row, an elbow where the commit joins a lane other than its own,
+               and the commit's own dot -- outlined when HEAD points at it, the
+               way the reference marks the checked-out commit. -->
+          <svg
+            class="ide-source-control__graph"
+            data-testid="source-control-graph"
+            :width="(graph.columns + 1) * 10"
+            height="22"
+            :viewBox="'0 0 ' + (graph.columns + 1) * 10 + ' 22'"
+            aria-hidden="true"
+          >
+            <g v-for="lane in row.lanes" :key="lane.column">
+              <line
+                v-if="lane.above"
+                :x1="lane.column * 10 + 5"
+                y1="0"
+                :x2="lane.column * 10 + 5"
+                y2="11"
+                class="ide-source-control__graph-line"
+              />
+              <line
+                v-if="lane.below"
+                :x1="lane.column * 10 + 5"
+                y1="11"
+                :x2="lane.column * 10 + 5"
+                y2="22"
+                class="ide-source-control__graph-line"
+              />
+            </g>
+            <path
+              v-for="elbow in row.elbows"
+              :key="'e' + elbow.column + elbow.direction"
+              :d="elbowPath(row.column, elbow)"
+              fill="none"
+              class="ide-source-control__graph-line"
+            />
+            <circle
+              :cx="row.column * 10 + 5"
+              cy="11"
+              :r="row.commit.isHead ? 4 : 3.5"
+              class="ide-source-control__graph-dot"
+              :class="{ 'ide-source-control__graph-dot--head': row.commit.isHead }"
+            />
+          </svg>
+          <span class="ide-source-control__commit-subject" :title="row.commit.subject">{{ row.commit.subject }}</span>
+          <!-- The reference names the commit's author beside the rail, so the
+               row carries it too; it truncates before the subject does. -->
+          <span class="ide-source-control__commit-author" :title="row.commit.author">{{ row.commit.author }}</span>
+          <span
+            v-for="ref in row.commit.refs ?? []"
+            :key="ref"
+            class="ide-source-control__commit-ref"
+            :data-ref="ref"
+          >{{ ref }}</span>
+          <span class="ide-source-control__commit-meta">{{ ageText(row.commit) }}</span>
         </li>
       </ul>
     </template>

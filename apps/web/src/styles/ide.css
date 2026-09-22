@@ -1226,22 +1226,53 @@
 }
 
 .ide-source-control__history {
-  gap: 1px;
+  /* The rows themselves define the rhythm; a gap would cut the rail. */
+  gap: 0;
 }
 
 .ide-source-control__commit-entry {
   display: flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 3px 10px;
+  align-items: center;
+  gap: 6px;
+  /* No vertical padding: consecutive rows must meet so the 22px rail reads
+     as one line down the panel rather than a dashed one. */
+  padding: 0 10px 0 4px;
+  min-height: 22px;
   font-size: 12px;
 }
 
-.ide-source-control__commit-short {
+/* The rail keeps its own column so every row's dots line up vertically, and it
+   must not shrink when the subject is long. */
+.ide-source-control__graph {
   flex: 0 0 auto;
+  overflow: visible;
+}
+
+.ide-source-control__graph-line {
+  stroke: var(--border-strong, #c8c8c8);
+  stroke-width: 1.4;
+}
+
+.ide-source-control__graph-dot {
+  fill: var(--accent);
+}
+
+/* HEAD is an outlined ring rather than a filled dot, matching the reference. */
+.ide-source-control__graph-dot--head {
+  fill: var(--canvas);
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+
+/* The author rides beside the rail the way the reference prints it, muted so
+   the subject stays the loudest text in the row. */
+.ide-source-control__commit-author {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-faint);
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ide-source-control__commit-subject {
@@ -1250,6 +1281,18 @@
   color: var(--text);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A branch or tag badge sits right after the subject, like the reference's
+   "main" chip beside the tip. */
+.ide-source-control__commit-ref {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-size: 10px;
+  line-height: 15px;
 }
 
 .ide-source-control__commit-meta {

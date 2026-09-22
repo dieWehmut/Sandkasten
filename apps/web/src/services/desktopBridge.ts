@@ -79,6 +79,14 @@ export interface WorkspaceCommit {
   subject: string;
   author: string;
   date: string;
+  /** Branch and tag names pointing at this commit, HEAD marker excluded. */
+  refs?: string[];
+  /** Full hashes of the commit's parents, first parent first. */
+  parents?: string[];
+  /** True only for the commit HEAD resolves to. */
+  isHead?: boolean;
+  /** Committer time in milliseconds, for the row's age. */
+  committedAt?: number;
 }
 
 export interface WorkspaceRepositoryStatus {

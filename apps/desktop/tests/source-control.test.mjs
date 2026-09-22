@@ -62,6 +62,43 @@ test('staging and committing round-trip through a real repository', async (t) =>
   assert.deepEqual(status.history.map((entry) => entry.subject), ['second commit', 'first commit']);
 });
 
+test('history carries the graph fields the reference view draws', async (t) => {
+  const root = await repository(t);
+  await writeFile(path.join(root, 'tracked.py'), 'print("second")\n');
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'second commit']);
+  // A side branch makes the log non-linear, which is what a graph has to show.
+  await git(root, ['checkout', '-b', 'topic', 'HEAD~1']);
+  await writeFile(path.join(root, 'tracked.py'), 'print("topic")\n');
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'topic commit']);
+  await git(root, ['checkout', 'main']);
+
+  const status = await readWorkspaceStatus(root);
+  const bySubject = Object.fromEntries(status.history.map((entry) => [entry.subject, entry]));
+
+  // The log spans every branch so the lanes are real, and the commit HEAD points
+  // at is marked wherever it sorts rather than assumed to be the first row.
+  assert.equal(bySubject['second commit'].isHead, true);
+  assert.equal(bySubject['topic commit'].isHead, undefined);
+  // Every commit names its parents so the view can draw the lanes without
+  // asking git again, and a root commit names none.
+  assert.equal(bySubject['topic commit'].parents.length, 1);
+  assert.deepEqual(bySubject['first commit'].parents, []);
+
+  // Decorations name the refs that point at a commit, which is what the
+  // reference prints beside the tip.
+  assert.ok(bySubject['second commit'].refs.includes('main'), 'the HEAD commit must carry its branch decoration: ' + JSON.stringify(bySubject['second commit'].refs));
+  assert.ok(bySubject['topic commit'].refs.includes('topic'));
+
+  // The view needs the author, the date, and the short hash for the row.
+  assert.equal(typeof bySubject['second commit'].author, 'string');
+  assert.equal(typeof bySubject['second commit'].date, 'string');
+  assert.match(bySubject['second commit'].short, /^[0-9a-f]{7}$/);
+  // Every commit is stamped so the row can show how long ago it landed.
+  assert.equal(typeof bySubject['second commit'].committedAt, 'number');
+});
+
 test('a rename keeps its original path out of the status list', async (t) => {
   const root = await repository(t);
   await git(root, ['mv', 'tracked.py', 'renamed.py']);

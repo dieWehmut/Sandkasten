@@ -140,6 +140,39 @@ describe('source control view', () => {
     expect(wrapper.emitted('commit')).toHaveLength(1);
   });
 
+  test('draws the history as a graph with the HEAD ring and the ref badge', () => {
+    const history = [
+      {
+        short: 'bb0804a', full: 'bb0804a11', subject: 'second commit',
+        author: 'Sandkasten', date: '2026-09-22T00:00:00+08:00',
+        refs: ['main'], parents: ['aa0704a11'], isHead: true,
+        committedAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+      },
+      {
+        short: 'aa0704a', full: 'aa0704a11', subject: 'first commit',
+        author: 'Sandkasten', date: '2026-09-21T00:00:00+08:00',
+        refs: [], parents: [], committedAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+      },
+    ];
+    const wrapper = mount(SourceControlView, {
+      props: { state: 'ready', branch: 'main', changes: [], history, stagedCount: 0 },
+    });
+
+    const rows = wrapper.findAll('.ide-source-control__commit-entry');
+    expect(rows).toHaveLength(2);
+    // Every row carries the rail, so the graph is a column of its own.
+    expect(wrapper.findAll('[data-testid="source-control-graph"]')).toHaveLength(2);
+    // Only the checked-out commit gets the outline, and only it carries a badge.
+    expect(rows[0].get('.ide-source-control__graph-dot').classes()).toContain('ide-source-control__graph-dot--head');
+    expect(rows[1].get('.ide-source-control__graph-dot').classes()).not.toContain('ide-source-control__graph-dot--head');
+    expect(rows[0].get('[data-ref="main"]').text()).toBe('main');
+    expect(rows[1].find('[data-ref]').exists()).toBe(false);
+    // The age is rendered from the commit time, not from the raw date string.
+    expect(rows[0].get('.ide-source-control__commit-meta').text()).toBe('3d');
+    // The reference prints the author beside the rail, so the row names it.
+    expect(rows[0].get('.ide-source-control__commit-author').text()).toBe('Sandkasten');
+  });
+
   test('explains that source control needs the desktop app in the browser build', () => {
     const wrapper = mount(SourceControlView, { props: { state: 'empty', desktop: false } });
     expect(wrapper.get('[data-testid="source-control-desktop-only"]').text()).toMatch(/desktop/i);
