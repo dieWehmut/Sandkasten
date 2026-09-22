@@ -272,6 +272,16 @@ async function main() {
         changes: Array.from(document.querySelectorAll('[data-change]')).map((node) => node.getAttribute('data-change')),
         staged: Array.from(document.querySelectorAll('[data-group="staged"] [data-change]')).map((node) => node.getAttribute('data-change')),
         history: Array.from(document.querySelectorAll('[data-commit]')).map((node) => node.getAttribute('data-commit')),
+        // The reference draws a rail beside every commit, so the graph must
+        // be one dot per row, with the HEAD row marked and badged.
+        graphDots: document.querySelectorAll('[data-testid="source-control-graph"]').length,
+        headRows: Array.from(document.querySelectorAll('[data-head="true"]')).map((node) => node.getAttribute('data-commit')),
+        refBadges: Array.from(document.querySelectorAll('[data-ref]')).map((node) => node.getAttribute('data-ref')),
+        commitRefs: Array.from(document.querySelectorAll('[data-commit]')).map((node) => ({
+          commit: node.getAttribute('data-commit'),
+          column: Number(node.getAttribute('data-column')),
+          head: node.getAttribute('data-head'),
+        })),
         canCommit: !document.querySelector('[data-action="source-control-commit"]')?.hasAttribute('disabled'),
       }));
       // The fixture leaves the change unstaged, so the commit action must be
@@ -693,6 +703,13 @@ async function main() {
     assert.equal(checks.sidebarViews?.sourceControl?.branch, 'main');
     assert.ok(checks.sidebarViews?.sourceControl?.changes.includes('notes.md'), 'the changed file must be listed');
     assert.equal(checks.sidebarViews?.sourceControlCommitBlocked, true, 'the commit action must wait for staged work');
+    // The history renders as the reference's graph: every commit gets a rail,
+    // exactly one row is the HEAD ring, and the checked-out branch is badged.
+    const graph = checks.sidebarViews?.sourceControl;
+    assert.equal(graph?.graphDots, graph?.history.length, 'every commit row must carry a graph rail');
+    assert.deepEqual(graph?.headRows, [graph?.history[0]], 'only the checked-out commit is the HEAD row');
+    assert.ok((graph?.refBadges ?? []).includes('main'), 'the checked-out branch must be badged: ' + JSON.stringify(graph?.refBadges));
+    assert.ok((graph?.commitRefs ?? []).every((row) => Number.isInteger(row.column) && row.column >= 0), 'every row must sit on a lane');
     assert.equal(checks.sidebarViews?.sourceControlCommitEnabled, true);
     assert.deepEqual(checks.sidebarViews?.sourceControlStaged, ['notes.md']);
     assert.ok(checks.sidebarViews?.sourceControlCommitted?.history.some((entry) => entry.includes('e2e: commit the fixture change')), 'the commit must reach the history');
