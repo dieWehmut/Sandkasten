@@ -8,9 +8,11 @@ import { promisify } from 'node:util';
 import { resolveInsideRoot } from './workspace.mjs';
 
 const run = promisify(execFile);
-const HISTORY_LIMIT = 20;
+const HISTORY_LIMIT = 50;
 // `git log` prints one commit per line; the unit separator divides its fields.
-const HISTORY_FORMAT = '%h%x1f%H%x1f%s%x1f%an%x1f%aI';
+// The decorations, the parent list, and the committer date ride along so the
+// graph and its ref badges render without a second git call.
+const HISTORY_FORMAT = '%h%x1f%H%x1f%s%x1f%an%x1f%aI%x1f%D%x1f%P%x1f%ct';
 const GIT_TIMEOUT_MS = 10_000;
 
 async function git(cwd, args) {
@@ -89,7 +91,7 @@ export async function readWorkspaceStatus(root) {
   const branch = await git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).then((value) => value.trim()).catch(() => '');
   const porcelain = await git(cwd, ['status', '--porcelain=v1', '-z']).catch(() => '');
   const changes = parseStatus(porcelain);
-  const history = await git(cwd, ['log', `--max-count=${HISTORY_LIMIT}`, `--pretty=format:${HISTORY_FORMAT}`])
+  const history = await git(cwd, ['log', '--all', '--topo-order', `--max-count=${HISTORY_LIMIT}`, `--pretty=format:${HISTORY_FORMAT}`])
     .then((stdout) => parseHistory(stdout))
     .catch(() => []);
 
@@ -106,18 +108,57 @@ function emptyStatus() {
   return { isRepository: false, branch: '', changes: [], stagedCount: 0, history: [] };
 }
 
-// One commit per line, five unit-separated fields per commit. A NUL separator
+// One commit per line, eight unit-separated fields per commit. A NUL separator
 // cannot be used here: Node refuses to pass a NUL byte as an argv entry, so the
 // whole command would fail and the history would silently stay empty.
 function parseHistory(stdout) {
   const entries = [];
   for (const line of stdout.split('\n')) {
     if (!line) continue;
-    const [short, full, subject, author, date] = line.split('\u001f');
+    const [short, full, subject, author, date, decorations, parents, committed] = line.split('\u001f');
     if (!short || !full) continue;
-    entries.push({ short, full, subject: subject ?? '', author: author ?? '', date: date ?? '' });
+    const decoration = parseDecorations(decorations);
+    const entry = {
+      short,
+      full,
+      subject: subject ?? '',
+      author: author ?? '',
+      date: date ?? '',
+      refs: decoration.refs,
+      parents: (parents ?? '').split(' ').filter(Boolean),
+      committedAt: committed ? Number(committed) * 1000 : 0,
+    };
+    if (decoration.isHead) entry.isHead = true;
+    entries.push(entry);
   }
   return entries;
+}
+
+// `%D` prints "HEAD -> main, origin/main, tag: v1" (and is empty for a plain
+// commit), so the decorations are normalized to the names alone: the arrow is
+// dropped, a tag keeps its `tag: ` marker, and a detached HEAD stays `HEAD`.
+// The HEAD marker also tells the graph which dot is the outlined ring.
+function parseDecorations(decorations) {
+  const value = String(decorations ?? '').trim();
+  if (!value) return { refs: [], isHead: false };
+  let isHead = false;
+  const refs = [];
+  for (const raw of value.split(',')) {
+    const name = raw.trim();
+    if (!name) continue;
+    const arrow = name.lastIndexOf(' -> ');
+    if (arrow !== -1) {
+      isHead = true;
+      refs.push(name.slice(arrow + 4).trim());
+      continue;
+    }
+    if (name === 'HEAD') {
+      isHead = true;
+      continue;
+    }
+    refs.push(name.replace(/^tag:\s*/, 'tag: '));
+  }
+  return { refs: refs.filter(Boolean), isHead };
 }
 
 export async function stageWorkspaceChanges(root, paths) {
