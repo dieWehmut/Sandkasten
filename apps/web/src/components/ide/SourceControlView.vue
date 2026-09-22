@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { GitBranch, GitCommitHorizontal, RefreshCw } from '@lucide/vue';
 import type { WorkspaceChange, WorkspaceCommit } from '../../services/desktopBridge';
 import type { SourceControlState } from '../../composables/useSourceControl';
+import { buildCommitGraph, formatCommitAge } from '../../editor/commitGraph';
 import { useTranslation } from '../../i18n/useTranslation';
 
 // The view renders the repository the controller loaded and raises the two
@@ -45,6 +47,14 @@ const GROUPS: ReadonlyArray<{ key: string; statuses: ReadonlyArray<WorkspaceChan
 
 function groupLabel(key: string): string {
   return t(`ide.sourceControl.group.${key}` as 'ide.sourceControl.group.staged');
+}
+
+// The history is laid out once per change to the commit list. The rows carry
+// their own lane geometry so the template only has to draw what it is handed.
+const graph = computed(() => buildCommitGraph(props.history));
+
+function ageText(commit: WorkspaceCommit): string {
+  return formatCommitAge(commit.committedAt ? Date.now() - commit.committedAt : 0);
 }
 
 function statusLetter(change: WorkspaceChange): string {
@@ -170,10 +180,62 @@ function statusLetter(change: WorkspaceChange): string {
         {{ t('ide.sourceControl.noHistory') }}
       </p>
       <ul v-else class="ide-source-control__history" data-testid="source-control-history" :aria-label="t('ide.sourceControl.history')">
-        <li v-for="commit in history" :key="commit.full" class="ide-source-control__commit-entry" :data-commit="commit.short">
-          <span class="ide-source-control__commit-short">{{ commit.short }}</span>
-          <span class="ide-source-control__commit-subject">{{ commit.subject }}</span>
-          <span class="ide-source-control__commit-meta">{{ commit.author }}</span>
+        <li
+          v-for="row in graph.rows"
+          :key="row.commit.full"
+          class="ide-source-control__commit-entry"
+          :data-commit="row.commit.short"
+          :data-column="row.column"
+          :data-head="row.commit.isHead ? 'true' : 'false'"
+        >
+          <!-- The graph rail: one column per lane, with the commit's own dot
+               drawn as a ring when HEAD points at it, the way the reference
+               marks the checked-out commit. -->
+          <svg
+            class="ide-source-control__graph"
+            data-testid="source-control-graph"
+            :width="(graph.columns + 1) * 10"
+            height="22"
+            :viewBox="'0 0 ' + (graph.columns + 1) * 10 + ' 22'"
+            aria-hidden="true"
+          >
+            <g v-for="lane in row.lanes" :key="lane.column">
+              <line
+                v-if="lane.passThrough"
+                :x1="lane.column * 10 + 5"
+                :y1="lane.column === row.column ? 11 : 0"
+                :x2="lane.column * 10 + 5"
+                y2="22"
+                class="ide-source-control__graph-line"
+              />
+              <line
+                v-if="lane.column === row.column"
+                :x1="lane.column * 10 + 5"
+                y1="0"
+                :x2="lane.column * 10 + 5"
+                y2="11"
+                class="ide-source-control__graph-line"
+              />
+            </g>
+            <circle
+              :cx="row.column * 10 + 5"
+              cy="11"
+              :r="row.commit.isHead ? 4 : 3.5"
+              class="ide-source-control__graph-dot"
+              :class="{ 'ide-source-control__graph-dot--head': row.commit.isHead }"
+            />
+          </svg>
+          <span class="ide-source-control__commit-subject" :title="row.commit.subject">{{ row.commit.subject }}</span>
+          <!-- The reference names the commit's author beside the rail, so the
+               row carries it too; it truncates before the subject does. -->
+          <span class="ide-source-control__commit-author" :title="row.commit.author">{{ row.commit.author }}</span>
+          <span
+            v-for="ref in row.commit.refs ?? []"
+            :key="ref"
+            class="ide-source-control__commit-ref"
+            :data-ref="ref"
+          >{{ ref }}</span>
+          <span class="ide-source-control__commit-meta">{{ ageText(row.commit) }}</span>
         </li>
       </ul>
     </template>
