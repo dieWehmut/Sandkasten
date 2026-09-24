@@ -89,46 +89,66 @@
   flex: 0 1 auto;
 }
 
+/* Quick input, measured from the VS Code workbench: a 600 px widget opened with
+   a 250 ms fade and scale from its top edge, a 6 px header inset, a 25 px input,
+   and 22 px list rows with 3 px selection corners. */
 .command-palette {
   position: fixed;
   z-index: 80;
   top: calc(var(--header-height) + 6px);
   left: 50%;
-  width: min(640px, calc(100vw - 24px));
-  padding: 8px;
+  width: min(600px, calc(100vw - 24px));
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, 10px);
   color: var(--text);
   background: var(--surface);
   box-shadow: 0 12px 36px rgb(0 0 0 / .24);
   transform: translateX(-50%);
+  transform-origin: top center;
   -webkit-app-region: no-drag;
+  animation: command-palette-open 250ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes command-palette-open {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
 }
 
 .command-palette__input {
-  width: 100%;
-  height: 34px;
-  margin-bottom: 8px;
-  padding: 0 10px;
+  display: block;
+  width: calc(100% - 12px);
+  height: 25px;
+  margin: 6px 6px 4px;
+  padding: 0 6px;
   border: 1px solid var(--accent-strong);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   color: var(--text);
   background: var(--canvas);
   font: 13px var(--font-ui);
 }
 
 .command-palette__list {
-  max-height: min(430px, calc(100dvh - var(--header-height) - 84px));
+  max-height: min(440px, calc(100dvh - var(--header-height) - 96px));
+  margin-top: 4px;
+  padding: 0 6px 7px;
   overflow-y: auto;
 }
 
 .command-palette__item {
   display: flex;
-  min-height: 32px;
+  min-height: 22px;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: var(--radius-sm);
+  gap: 5px;
+  padding: 0 6px;
+  border-radius: 3px;
   font-size: 13px;
   cursor: pointer;
 }
@@ -174,7 +194,7 @@
 
 .command-palette__empty,
 .command-palette__error {
-  margin: 4px 8px;
+  margin: 0 8px 6px;
   font-size: 13px;
 }
 
