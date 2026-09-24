@@ -13,10 +13,14 @@
   background: var(--surface);
 }
 
+/* Editor typography follows the VS Code defaults: a 14 px monospace face on a
+   1.5 line box (21 px), the line-number column reserving the five characters
+   `editor.lineNumbersMinChars` asks for plus the ten-pixel decoration width, and
+   the gutter painted on the editor surface rather than a tinted strip. */
 .source-editor .cm-editor {
   color: var(--text);
   background: var(--surface);
-  font: 13px/1.62 var(--font-mono);
+  font: 14px/1.5 var(--font-mono);
 }
 
 .source-editor .cm-editor.cm-focused {
@@ -33,6 +37,9 @@
   min-width: max-content;
   padding: 12px 0 28px;
   caret-color: var(--accent-strong);
+  /* CodeMirror's base theme pins the line box at 1.4; the VS Code line box is
+     1.5, and the measured default is that ratio at a 14 px font size. */
+  line-height: 1.5;
 }
 
 .source-editor .cm-line {
@@ -40,14 +47,96 @@
 }
 
 .source-editor .cm-gutters {
-  border-right: 1px solid var(--border);
-  color: var(--text-faint);
-  background: var(--surface-subtle);
+  border-right: 0;
+  /* The gutter keeps the muted role rather than the faint one: the faint role
+     measured 4.21:1 on the light editor surface, under WCAG AA for the numbers. */
+  color: var(--text-muted);
+  background: var(--surface);
+  /* VS Code's line numbers are part of the editor and use its monospace face;
+     that also makes the `ch` reservation below mean one editor character. */
+  font-family: var(--font-mono);
 }
 
+.source-editor .cm-lineNumbers .cm-gutterElement {
+  /* Five characters of the editor face (`editor.lineNumbersMinChars`) plus the
+     ten-pixel decoration width and the gutter's own insets, so the number column
+     never shifts when the file grows a digit. */
+  min-width: calc(5ch + 14px);
+  padding: 0 10px 0 4px;
+  text-align: right;
+}
+
+
+
+/* Indentation guides. The reference positions absolute `.core-guide` elements
+   inside each line (`.lines-content .core-guide { position: absolute;
+   box-sizing: border-box; height: 100% }`) coloured from `editorIndentGuide`.
+   A CodeMirror line is a plain block, so the guides are stripes one character
+   apart: `--indent-step` comes from a content attribute (one indent unit in `ch`,
+   one column of the editor's monospace face) and the depth travels in the line's
+   class. */
+.source-editor .cm-line.cm-indent-guides {
+  background-image: repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px var(--indent-step, 4ch));
+  background-repeat: no-repeat;
+  background-origin: content-box;
+}
+
+.source-editor .cm-indent-guides-1 { background-size: calc(1 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-2 { background-size: calc(2 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-3 { background-size: calc(3 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-4 { background-size: calc(4 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-5 { background-size: calc(5 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-6 { background-size: calc(6 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-7 { background-size: calc(7 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-8 { background-size: calc(8 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-9 { background-size: calc(9 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-10 { background-size: calc(10 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-11 { background-size: calc(11 * var(--indent-step, 4ch)) 100%; }
+.source-editor .cm-indent-guides-12 { background-size: calc(12 * var(--indent-step, 4ch)) 100%; }
+
+/* The line the cursor sits on is a quiet fill with hairline rules, the way VS
+   Code paints `editor.lineHighlightBackground` and `editor-lineHighlightBorder`,
+   and its line number steps up to the active foreground. The colour is set as a
+   longhand: the shorthand would reset the indent guides' background layers on the
+   very line the cursor is on. */
 .source-editor .cm-activeLine,
 .source-editor .cm-activeLineGutter {
-  background: var(--accent-soft);
+  background-color: var(--grid-line);
+}
+
+.source-editor .cm-activeLine {
+  box-shadow: inset 0 1px var(--border), inset 0 -1px var(--border);
+}
+
+.source-editor .cm-activeLineGutter {
+  color: var(--text);
+}
+
+/* Bracket matching and occurrence highlighting follow the reference roles:
+   `.bracket-match { background-color: editorBracketMatch-background; border: 1px
+   solid editorBracketMatch-border }` and `.focused .selectionHighlight
+   { background-color: editor-selectionHighlightBackground; border: 1px solid
+   editor-selectionHighlightBorder }`. The box is drawn with an inset shadow
+   instead of a border because these marks sit inline: a real border would reflow
+   the line. CodeMirror's own theme hard-codes a teal/green tint, so these rules
+   keep the higher specificity they need to win. */
+.source-editor .cm-editor.cm-focused .cm-matchingBracket {
+  background: var(--surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.source-editor .cm-editor.cm-focused .cm-nonmatchingBracket {
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.source-editor .cm-selectionMatch {
+  background: var(--selection);
+}
+
+/* The word the cursor is in already carries the selection colour. */
+.source-editor .cm-selectionMatch-main {
+  background: transparent;
 }
 
 .source-editor .cm-selectionBackground,
@@ -65,6 +154,143 @@
   color: var(--text);
   border-color: var(--border);
   background: var(--surface-raised);
+}
+
+/* The find widget follows the measured VS Code shape: a 34 px row floating over
+   the editor's top-right corner, a replace row that expands on demand, 13 px
+   inputs without a resting border, 16 px icon buttons with 5 px corners, the
+   match counter before the buttons, and the close action pinned to the corner. */
+.source-editor .cm-panels.cm-panels-top {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  left: auto;
+  z-index: 30;
+  width: auto;
+  max-width: calc(100% - 12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+}
+
+.source-editor .cm-panel.cm-search {
+  padding: 0;
+  background: transparent;
+}
+
+.find-widget {
+  position: relative;
+  display: flex;
+  width: min(400px, 100%);
+  flex-direction: column;
+  padding: 0 26px 0 20px;
+  font: 13px var(--font-ui);
+}
+
+.find-widget__row {
+  display: flex;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  gap: 3px;
+}
+
+.find-widget__row--replace {
+  height: 28px;
+  padding-bottom: 4px;
+}
+
+.find-widget__replace-toggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 18px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.find-widget__replace-toggle svg {
+  transition: transform var(--transition-fast);
+}
+
+.find-widget__replace-toggle--expanded svg {
+  transform: rotate(180deg);
+}
+
+.find-widget__input {
+  min-width: 0;
+  height: 25px;
+  flex: 1 1 auto;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  background: transparent;
+  font: 13px var(--font-ui);
+}
+
+.find-widget__input:focus {
+  border-color: var(--accent-strong);
+  outline: none;
+}
+
+.find-widget__count {
+  flex: 0 0 auto;
+  margin-left: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.find-widget__count--empty {
+  color: var(--danger);
+}
+
+.find-widget__button,
+.find-widget__option {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font: 11px var(--font-ui);
+}
+
+.find-widget__button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.find-widget__button:hover,
+.find-widget__replace-toggle:hover,
+.find-widget__option:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+/* VS Code lights an active option with the input-option accent. */
+.find-widget__option[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.find-widget__button--close {
+  position: absolute;
+  top: 6px;
+  right: 4px;
 }
 
 .source-editor .cm-searchMatch {
