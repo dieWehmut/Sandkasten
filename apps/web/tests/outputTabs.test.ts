@@ -90,7 +90,20 @@ describe('output inspection', () => {
         },
       },
     });
-    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.find('.tab-indicator').exists())).toEqual([true, true, true, true]);
+    // The problems view replaces its content dot with the reference's count
+    // badge, so the first three tabs keep the dot and the last one shows a count.
+    expect(wrapper.findAll('[role="tab"]').map((tab) => tab.find('.tab-indicator').exists())).toEqual([true, true, true, false]);
+    const badge = wrapper.get('[data-testid="output-tab-badge"]');
+    expect(badge.text()).toBe('1');
+    expect(badge.attributes('data-kind')).toBe('error');
+    expect(badge.attributes('aria-label')).toBe('1 problems');
+
+    // A diagnostics channel with content but no counted problem keeps the dot.
+    const plain = mount(OutputTabs, {
+      props: { result: { jobId: 'job-2', status: 'JOB_STATUS_SUCCEEDED', diagnostics: { line: 3 } } },
+    });
+    expect(plain.find('[data-testid="output-tab-badge"]').exists()).toBe(false);
+    expect(plain.findAll('[role="tab"]').at(-1)?.find('.tab-indicator').exists()).toBe(true);
   });
 
   test('labels each visible diagnostics channel as utf8 while rendering payloads as text', async () => {
