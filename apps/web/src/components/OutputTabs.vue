@@ -5,6 +5,7 @@ import type { OutputTab } from '../composables/useRunner';
 import OutputViewer from './OutputViewer.vue';
 import { useTranslation } from '../i18n/useTranslation';
 import type { TerminalController } from '../composables/useTerminal';
+import { runProblemCounts } from '../state/diagnostics';
 import TerminalPanel from './ide/TerminalPanel.vue';
 
 const props = withDefaults(defineProps<{ result?: JobResponse; error?: string; modelValue?: OutputTab; terminal?: TerminalController }>(), { modelValue: 'output' });
@@ -22,6 +23,12 @@ const selected = ref<OutputTab>(props.modelValue);
 const active = computed<PanelTab>(() => props.terminal?.shown.value ? 'terminal' : selected.value);
 const tabElements = ref<HTMLButtonElement[]>([]);
 const instanceId = `output-tabs-${Math.random().toString(36).slice(2)}`;
+// The reference puts a count badge on its problems view; this tab is that view's
+// counterpart, so it carries the same error and warning total.
+const problems = computed(() => runProblemCounts(props.result, props.error));
+const badgeFor = (tab: PanelTab): number => (tab === 'diagnostics' ? problems.value.errors + problems.value.warnings : 0);
+const badgeKind = computed(() => (problems.value.errors > 0 ? 'error' : 'warning'));
+const badgeLabel = (count: number): string => t('output.problemCount').replace('{count}', String(count));
 
 function hasChannelContent(tab: PanelTab): boolean {
   if (tab === 'terminal') return false;
@@ -72,24 +79,38 @@ async function move(event: KeyboardEvent, index: number) {
 
 <template>
   <section class="output-tabs" :class="{ 'output-tabs--terminal': active === 'terminal' }">
-    <div role="tablist" :aria-label="t('workbench.jobOutput')">
-      <button
-        v-for="(tab, index) in tabs"
-        :id="`${instanceId}-${tab.id}-tab`"
-        :key="tab.id"
-        :ref="(element) => { if (element) tabElements[index] = element as HTMLButtonElement; }"
-        type="button"
-        :data-action="`select-output-${tab.id}`"
-        role="tab"
-        :aria-selected="active === tab.id"
-        :aria-controls="`${instanceId}-panel`"
-        :tabindex="active === tab.id ? 0 : -1"
-        @click="choose(tab.id)"
-        @keydown="move($event, index)"
-      >
-        {{ t(tab.labelKey) }}
-        <span v-if="hasChannelContent(tab.id)" class="tab-indicator" :aria-label="t('output.containsContent')">*</span>
-      </button>
+    <!-- One title row carries the tabs and the panel actions, the way VS Code's
+         composite title does, and stays pinned while the panel body scrolls. -->
+    <div class="output-tabs__title">
+      <div role="tablist" :aria-label="t('workbench.jobOutput')">
+        <button
+          v-for="(tab, index) in tabs"
+          :id="`${instanceId}-${tab.id}-tab`"
+          :key="tab.id"
+          :ref="(element) => { if (element) tabElements[index] = element as HTMLButtonElement; }"
+          type="button"
+          :data-action="`select-output-${tab.id}`"
+          role="tab"
+          :aria-selected="active === tab.id"
+          :aria-controls="`${instanceId}-panel`"
+          :tabindex="active === tab.id ? 0 : -1"
+          @click="choose(tab.id)"
+          @keydown="move($event, index)"
+        >
+          {{ t(tab.labelKey) }}
+          <span
+            v-if="badgeFor(tab.id)"
+            class="output-tabs__badge"
+            :data-kind="badgeKind"
+            data-testid="output-tab-badge"
+            :aria-label="badgeLabel(badgeFor(tab.id))"
+          >{{ badgeFor(tab.id) }}</span>
+          <span v-else-if="hasChannelContent(tab.id)" class="tab-indicator" :aria-label="t('output.containsContent')">*</span>
+        </button>
+      </div>
+      <div v-if="$slots.actions" class="output-tabs__actions">
+        <slot name="actions" />
+      </div>
     </div>
     <div
       :id="`${instanceId}-panel`"
