@@ -65,6 +65,13 @@ select:disabled {
   background: var(--selection);
 }
 
+/* Scrollbars follow VS Code's overlay slider: no track, a translucent rounded
+   slider that fills the rail, and stronger fills while it is hovered or
+   dragged. The theme supplies the colours, so every scheme stays readable.
+   Native scrollbars are styled through the WebKit pseudo-elements rather than
+   the standard `scrollbar-width`/`scrollbar-color` properties: the standard
+   properties take precedence in Chromium and would replace this geometry, so
+   only the containers that hide their rail on purpose set `scrollbar-width`. */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -75,15 +82,21 @@ select:disabled {
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background: var(--border-strong);
-  background-clip: padding-box;
+  border: 0;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-faint) 40%, transparent);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-faint);
-  background-clip: padding-box;
+  background: color-mix(in srgb, var(--text-faint) 60%, transparent);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: color-mix(in srgb, var(--text-muted) 80%, transparent);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

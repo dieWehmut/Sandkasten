@@ -1,4 +1,4 @@
-﻿import { flushPromises, mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
@@ -54,6 +54,32 @@ test('Ctrl+Shift+P executes real commands and excludes desktop-only operations i
     await app.get('[data-command="file.new"]').trigger('click');
     await flushPromises();
     expect(app.find('[data-testid="ide-new-file-form"]').exists()).toBe(true);
+  } finally { app.unmount(); }
+});
+
+test('offers the actions the visible controls offer, and honours the accelerators it prints', async () => {
+  const app = mount(App, { attachTo: document.body });
+  try {
+    await flushPromises();
+    // The palette advertises Ctrl+, so the shortcut has to be bound as well.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ',', ctrlKey: true, cancelable: true }));
+    await flushPromises();
+    expect(app.find('[data-testid="settings-view"]').exists()).toBe(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    await flushPromises();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    // The editor history has entries once a run exists; the palette entry is only
+    // enabled then, so this checks the command set rather than its availability.
+    expect(app.find('[data-command="history.clear"]').exists()).toBe(false);
+    expect(app.find('[data-command="workspace.refresh"]').exists()).toBe(true);
+    expect(app.find('[data-command="file.delete"]').exists()).toBe(true);
+
+    // Deleting the active file through the palette works like the row action.
+    await app.get('[data-command="file.delete"]').trigger('click');
+    await flushPromises();
+    expect(app.find('[data-path="main.py"]').exists()).toBe(false);
   } finally { app.unmount(); }
 });
 

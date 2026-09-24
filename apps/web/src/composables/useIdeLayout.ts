@@ -10,12 +10,16 @@ export interface IdeLayoutController {
   sidebarVisible: DeepReadonly<Ref<boolean>>;
   panelVisible: DeepReadonly<Ref<boolean>>;
   panelMaximized: DeepReadonly<Ref<boolean>>;
+  // The explorer stacks the workspace tree and the recent runs list; the second
+  // list is a collapsible section with a VS Code pane header.
+  runsSectionExpanded: DeepReadonly<Ref<boolean>>;
   selectActivity(activity: IdeActivity): void;
   showActivity(activity: IdeActivity): void;
   toggleSidebar(): void;
   togglePanel(): void;
   showPanel(): void;
   togglePanelMaximize(): void;
+  toggleRunsSection(): void;
 }
 
 export function useIdeLayout(): IdeLayoutController {
@@ -23,6 +27,7 @@ export function useIdeLayout(): IdeLayoutController {
   const sidebarVisible = ref(true);
   const panelVisible = ref(true);
   const panelMaximized = ref(false);
+  const runsSectionExpanded = ref(true);
 
   function selectActivity(next: IdeActivity): void {
     if (activity.value === next && sidebarVisible.value) {
@@ -43,9 +48,11 @@ export function useIdeLayout(): IdeLayoutController {
     sidebarVisible: readonly(sidebarVisible),
     panelVisible: readonly(panelVisible),
     panelMaximized: readonly(panelMaximized),
+    runsSectionExpanded: readonly(runsSectionExpanded),
     selectActivity,
     showActivity,
     toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value; },
+    toggleRunsSection: () => { runsSectionExpanded.value = !runsSectionExpanded.value; },
     togglePanel: () => {
       panelVisible.value = !panelVisible.value;
       if (!panelVisible.value) panelMaximized.value = false;

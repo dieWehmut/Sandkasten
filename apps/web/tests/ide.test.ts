@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -184,6 +184,16 @@ describe('ide layout', () => {
     expect(layout.panelVisible.value).toBe(true);
   });
 
+  test('collapses and restores the sidebar runs section', () => {
+    const layout = useIdeLayout();
+    // The section starts expanded and the pane header toggles it.
+    expect(layout.runsSectionExpanded.value).toBe(true);
+    layout.toggleRunsSection();
+    expect(layout.runsSectionExpanded.value).toBe(false);
+    layout.toggleRunsSection();
+    expect(layout.runsSectionExpanded.value).toBe(true);
+  });
+
   test('maximizing the panel shows it, and hiding it clears the maximized state', () => {
     const layout = useIdeLayout();
     expect(layout.panelMaximized.value).toBe(false);
@@ -244,11 +254,41 @@ describe('workspace explorer', () => {
 
     const steps = wrapper.findAll('.ide-breadcrumbs__step');
     expect(steps.map((step) => step.text())).toEqual(['ws', 'pkg', 'deep', 'util.py']);
-    expect(wrapper.findAll('button.ide-breadcrumbs__step').map((step) => step.text())).toEqual(['pkg', 'deep']);
+    // The root and every folder step open the picker; the file stays static.
+    expect(wrapper.findAll('button.ide-breadcrumbs__step').map((step) => step.text())).toEqual(['ws', 'pkg', 'deep']);
     expect(wrapper.get('.ide-breadcrumbs__step--static .file-icon').attributes('data-icon')).toBe('_f_python');
 
+    // A folder step opens the reference's picker instead of only revealing the
+    // folder; the picker then offers the level's entries.
+    expect(wrapper.find('[data-testid="breadcrumb-picker"]').exists()).toBe(false);
     await wrapper.get('[data-segment="pkg"]').trigger('click');
-    expect(wrapper.emitted('reveal')).toEqual([['pkg']]);
+    expect(wrapper.find('[data-testid="breadcrumb-picker"]').exists()).toBe(false);
+    expect(wrapper.emitted('reveal')).toBeUndefined();
+
+    const withTree = mount(IdeBreadcrumbs, {
+      props: {
+        filePath: 'pkg/util.py',
+        rootPath: 'C:\\ws',
+        tree: [
+          { path: 'pkg', name: 'pkg', type: 'directory', children: [{ path: 'pkg/util.py', name: 'util.py', type: 'file' }] },
+          { path: 'main.py', name: 'main.py', type: 'file' },
+        ],
+      },
+    });
+    await withTree.get('[data-segment="pkg"]').trigger('click');
+    const picker = withTree.get('[data-testid="breadcrumb-picker"]');
+    expect(picker.findAll('.ide-breadcrumb-picker__item').map((item) => item.attributes('data-path')))
+      .toEqual(['pkg', 'main.py']);
+    expect(picker.get('[data-path="pkg"]').attributes('aria-current')).toBe('true');
+
+    // Choosing the folder reveals it in the explorer, a file opens instead.
+    await picker.get('[data-path="pkg"]').trigger('click');
+    expect(withTree.emitted('reveal')).toEqual([['pkg']]);
+    expect(withTree.find('[data-testid="breadcrumb-picker"]').exists()).toBe(false);
+
+    await withTree.get('[data-segment="pkg"]').trigger('click');
+    await withTree.get('[data-testid="breadcrumb-picker"] [data-path="main.py"]').trigger('click');
+    expect(withTree.emitted('select')).toEqual([['main.py']]);
   });
 
   test('renders folders, marks dirty files, and collapses directories', async () => {
@@ -268,6 +308,9 @@ describe('workspace explorer', () => {
     expect(wrapper.findAll('[role="treeitem"]')).toHaveLength(3);
     expect(wrapper.get('[data-path="main.py"] .ide-tree__row').classes()).toContain('ide-tree__row--active');
     expect(wrapper.get('[data-path="main.py"] .ide-tree__dirty').text()).toBe('*');
+    // A nested row draws one indent guide per level; the root row draws none.
+    expect(wrapper.findAll('[data-path="pkg/util.py"] .ide-tree__guides i')).toHaveLength(1);
+    expect(wrapper.find('[data-path="pkg"] .ide-tree__guides').exists()).toBe(false);
 
     await wrapper.get('[data-path="pkg"] button').trigger('click');
     expect(wrapper.findAll('[role="treeitem"]')).toHaveLength(2);
@@ -326,6 +369,11 @@ describe('workspace explorer', () => {
 });
 
 describe('desktop workbench', () => {
+  // Every case here mounts the whole app; leaving them mounted would leave their
+  // global key listeners behind, so later cases would see keys consumed by an
+  // earlier shell.
+  enableAutoUnmount(afterEach);
+
   beforeEach(() => {
     // Start from a clean store: a previous test's persisted workspace would
     // otherwise decide which file this test opens on load.
@@ -352,6 +400,13 @@ describe('desktop workbench', () => {
     wrapper.get('[data-testid="editor-tabs"]');
     wrapper.get('[data-testid="ide-status-bar"]');
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('local');
+    // The strip reads the open buffer: its detected formatting, its encoding, and
+    // the language mode, next to the cursor and the problem counters.
+    const strip = wrapper.get('[data-testid="ide-status-bar"]');
+    expect(strip.text()).toContain('UTF-8');
+    expect(strip.text()).toContain('Spaces: 4');
+    expect(strip.text()).toContain('LF');
+    expect(strip.get('[data-testid="ide-status-language"]').text()).toBe('Python');
     // The breadcrumb trail names the workspace root and the open file.
     expect(wrapper.get('[data-testid="ide-breadcrumbs"]').text()).toContain('ws');
     expect(wrapper.get('[data-testid="ide-breadcrumbs"]').text()).toContain('main.py');
@@ -442,7 +497,7 @@ describe('desktop workbench', () => {
     expect(header.get('.ide-sidebar__title').text()).toBe('ws');
     const controls = header.findAll('button').map((button) => button.attributes('data-action'));
     expect(controls.at(-1)).toBe('ide-collapse-sidebar');
-    expect(controls).toEqual(['ide-new-file', 'ide-open-folder', 'ide-refresh-tree', 'ide-collapse-sidebar']);
+    expect(controls).toEqual(['ide-new-file', 'ide-open-folder', 'ide-refresh-tree', 'ide-collapse-all', 'ide-collapse-sidebar']);
     expect(header.get('[data-action="ide-collapse-sidebar"]').attributes('aria-label')).toContain('Collapse sidebar');
 
     await header.get('[data-action="ide-collapse-sidebar"]').trigger('click');
@@ -464,6 +519,160 @@ describe('desktop workbench', () => {
     expect(wrapper.find('.inspector-panel .pane-heading').exists()).toBe(false);
   });
 
+  test('collapses the recent runs section from its pane header', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The runs list sits under the workspace tree behind a VS Code pane header,
+    // which toggles the whole section.
+    const toggle = () => wrapper.get('.ide-pane-header__toggle');
+    expect(toggle().text()).toBe('Recent runs');
+    expect(toggle().attributes('aria-expanded')).toBe('true');
+    expect(wrapper.find('#history-panel').exists()).toBe(true);
+    expect(wrapper.get('.ide-pane-header__twisty').classes()).not.toContain('ide-pane-header__twisty--collapsed');
+
+    await toggle().trigger('click');
+    await nextTick();
+    expect(toggle().attributes('aria-expanded')).toBe('false');
+    expect(wrapper.find('#history-panel').exists()).toBe(false);
+    expect(wrapper.get('.ide-pane-header__twisty').classes()).toContain('ide-pane-header__twisty--collapsed');
+
+    await toggle().trigger('click');
+    await nextTick();
+    expect(toggle().attributes('aria-expanded')).toBe('true');
+    expect(wrapper.find('#history-panel').exists()).toBe(true);
+  });
+
+  test('clears the recent runs from the pane header action', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // An empty history offers no action; a run adds one to the pane header.
+    expect(wrapper.find('[data-action="ide-clear-history"]').exists()).toBe(false);
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.findAll('[data-testid="history-item"]')).toHaveLength(1);
+
+    const clear = wrapper.get('[data-action="ide-clear-history"]');
+    expect(clear.attributes('aria-label')).toBe('Clear run history');
+    await clear.trigger('click');
+    await nextTick();
+    expect(wrapper.findAll('[data-testid="history-item"]')).toHaveLength(0);
+    expect(wrapper.get('#history-panel .empty-state').text()).toBe('Completed runs appear here.');
+    expect(wrapper.find('[data-action="ide-clear-history"]').exists()).toBe(false);
+  });
+
+  test('raises a toast when a run finishes with the output out of sight', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // Starting a run reveals the panel, so a run the user watches stays inline.
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="notification-toast"]').exists()).toBe(false);
+
+    // A job that settles after the panel was closed is announced instead: the
+    // workbench opens the panel when a run starts, so this is the real case.
+    let settle: ((value: unknown) => void) | undefined;
+    bridge.runner.run.mockImplementationOnce((request: { jobId: string; language: string }) => new Promise((resolve) => {
+      settle = () => resolve({
+        jobId: request.jobId,
+        status: 'JOB_STATUS_SUCCEEDED',
+        language: request.language,
+        stdout: 'done\n',
+        stderr: '',
+        stdoutEncoding: 'utf8',
+        stderrEncoding: 'utf8',
+        exitCode: 0,
+        durationMs: 420,
+      });
+    }));
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-panel').exists()).toBe(true);
+    await wrapper.get('[data-action="ide-panel-close"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-panel').exists()).toBe(false);
+
+    settle?.(undefined);
+    await flushPromises();
+
+    const toast = wrapper.get('[data-testid="notification-toast"]');
+    expect(toast.attributes('data-kind')).toBe('success');
+    expect(toast.get('.ide-toast__message').text()).toBe('Succeeded');
+    expect(toast.get('.ide-toast__source').text()).toBe('python · 0.42 s');
+    await toast.get('[data-action="dismiss-notification"]').trigger('click');
+    expect(wrapper.find('[data-testid="notification-toast"]').exists()).toBe(false);
+  });
+
+  test('counts unsaved files on the activity bar, the way the reference badges its source control', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const explorer = () => wrapper.get('[data-activity="explorer"]');
+    expect(explorer().find('[data-testid="activity-badge"]').exists()).toBe(false);
+
+    const view = editorViewOf(wrapper);
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'print("changed")\n' } });
+    await nextTick();
+    expect(explorer().get('[data-testid="activity-badge"]').text()).toBe('1');
+    // The count is announced with the item rather than left to the bubble.
+    expect(explorer().attributes('aria-label')).toBe('Explorer — 1 unsaved files');
+
+    await wrapper.get('[data-action="ide-save-file"]').trigger('click');
+    await flushPromises();
+    expect(explorer().find('[data-testid="activity-badge"]').exists()).toBe(false);
+    expect(explorer().attributes('aria-label')).toBe('Explorer');
+  });
+
+  test('folds every folder from the explorer title action', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The nested file is visible while its folder is expanded.
+    expect(wrapper.find('[data-path="pkg/util.py"]').exists()).toBe(true);
+    await wrapper.get('[data-action="ide-collapse-all"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-path="pkg/util.py"]').exists()).toBe(false);
+    expect(wrapper.get('[data-path="pkg"] .ide-tree__toggle').attributes('aria-expanded')).toBe('false');
+    // The action lives in the title row with the view's other actions.
+    expect(wrapper.get('[data-action="ide-collapse-all"]').attributes('aria-label')).toBe('Collapse folders');
+  });
+
+  test('reaches the desktop-only actions from the palette and the advertised shortcuts', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // Ctrl+O is printed in the palette, so it opens the folder on the desktop.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, cancelable: true }));
+    await flushPromises();
+    expect(bridge.workspace.openFolder).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    // The title-row and panel actions are palette commands too.
+    expect(wrapper.find('[data-command="explorer.collapseAll"]').exists()).toBe(true);
+    expect(wrapper.find('[data-command="workspace.refresh"]').exists()).toBe(true);
+    expect(wrapper.find('[data-command="view.togglePanelMaximize"]').exists()).toBe(true);
+
+    await wrapper.get('[data-command="explorer.collapseAll"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-path="pkg/util.py"]').exists()).toBe(false);
+    expect(wrapper.get('[data-path="pkg"] .ide-tree__toggle').attributes('aria-expanded')).toBe('false');
+  });
+
   test('keeps every workbench region reachable through the scrollable body', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
@@ -478,7 +687,10 @@ describe('desktop workbench', () => {
 
     const main = wrapper.get('.ide-main');
     expect(main.attributes('aria-label')).toBe('Source workbench');
-    expect(main.element.lastElementChild?.className).toContain('ide-status');
+    // The strip is a sibling of the panes, not part of the editor card, so it
+    // can span the whole shell the way the VS Code status bar does.
+    const shell = wrapper.get('[data-testid="workbench-shell"]');
+    expect(shell.element.lastElementChild?.className).toContain('ide-status');
   });
 
   test('runs the active file with the local toolchain and shows its output', async () => {
@@ -532,12 +744,18 @@ describe('desktop workbench', () => {
     const view = editorViewOf(wrapper);
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'print("changed")\n' } });
     await nextTick();
-    expect(wrapper.get('.ide-tab__dirty').text()).toBe('*');
+    // VS Code marks an unsaved buffer with the filled dot in the close slot and
+    // names the state for assistive technology; the dirty marker is no longer a
+    // glyph in the tab label.
+    expect(wrapper.find('.ide-tab__dirty').exists()).toBe(true);
+    expect(wrapper.get('.ide-tab__close').classes()).toContain('ide-tab__close--dirty');
+    expect(wrapper.get('[data-action="ide-tab-main.py"]').attributes('aria-label')).toContain('Unsaved');
 
     await wrapper.get('[data-action="ide-save-file"]').trigger('click');
     await flushPromises();
     expect(bridge.workspace.write).toHaveBeenLastCalledWith('main.py', 'print("changed")\n');
     expect(wrapper.find('.ide-tab__dirty').exists()).toBe(false);
+    expect(wrapper.get('[data-action="ide-tab-main.py"]').attributes('aria-label')).toBeUndefined();
 
     await wrapper.get('[data-action="ide-new-file"]').trigger('click');
     await wrapper.get('input[name="fileName"]').setValue('helper.py');
@@ -672,5 +890,29 @@ describe('desktop workbench', () => {
     expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="local"]').element.disabled).toBe(true);
     expect(wrapper.find('[data-action="ide-open-folder"]').exists()).toBe(false);
     expect(wrapper.get('[data-path="main.py"]').text()).toContain('main.py');
+  });
+
+  test('drives the workbench from the status bar actions', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The problem counters bring the output panel back, the run counter switches
+    // the sidebar to recent runs, and the guide item reopens the setup screen.
+    await wrapper.get('[data-action="ide-panel-close"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-panel').exists()).toBe(false);
+    await wrapper.get('[data-action="ide-status-errors"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.ide-panel').exists()).toBe(true);
+
+    await wrapper.get('[data-action="ide-status-runs"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
+
+    await wrapper.get('[data-action="ide-status-settings"]').trigger('click');
+    await nextTick();
+    expect(wrapper.find('[data-testid="settings-view"]').exists()).toBe(true);
   });
 });
