@@ -1,0 +1,234 @@
+/* The empty-editor welcome, laid out like VS Code's Get Started tab. The
+   reference (`.gettingStartedContainer`) is a two-column page on a 1200 px
+   centred grid with a header row, a centred footer, category tiles, and 24 px
+   list rows for the recent files. Colours stay the app's own tokens.
+
+   Measured reference values: 13 px base type at a 16 px line height, an `h1` at
+   2.7em with weight 400, a 2em subtitle, `h2` section titles at 1.5em with
+   weight 400, `.gettingStartedSlideCategories { padding: 12px 24px }` on a
+   `max-width: 1200px` grid whose columns are 1fr 6fr 1fr 6fr 1fr, sections
+   32 px apart, tiles at `padding: 4px 6px` with 6 px corners and 20 px icons,
+   and recent rows at `line-height: 24px` with the path ellipsised. */
+
+.editor-welcome {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.editor-welcome__grid {
+  display: grid;
+  max-width: 1200px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 12px 24px;
+  /* The reference spends the top quarter of the page on the title block and
+     keeps the footer at the bottom edge, so the columns get the slack. */
+  grid-template-rows: 25% minmax(min-content, auto) min-content;
+  grid-template-columns: 1fr 6fr 1fr 6fr 1fr;
+  grid-template-areas:
+    ". header header header ."
+    ". start . more ."
+    ". footer footer footer .";
+}
+
+.editor-welcome__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  align-self: end;
+  gap: 14px;
+  grid-area: header;
+}
+
+.editor-welcome__mark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 24%;
+  opacity: .9;
+  user-select: none;
+}
+
+.editor-welcome__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 2.7em;
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.editor-welcome__subtitle {
+  display: block;
+  margin-top: .4em;
+  font-size: 1.35em;
+  font-weight: 400;
+}
+
+.editor-welcome__column {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editor-welcome__column--start {
+  grid-area: start;
+}
+
+.editor-welcome__column--more {
+  grid-area: more;
+}
+
+.editor-welcome__section {
+  margin-bottom: 32px;
+}
+
+.editor-welcome__section-title {
+  margin: 0 0 5px;
+  color: var(--text);
+  font-size: 1.5em;
+  font-weight: 400;
+}
+
+/* Tiles carry one action each: the layout is the reference's category tile, with
+   the icon in a 20 px box and the shortcut pushed to the trailing edge. */
+.editor-welcome__tiles {
+  display: grid;
+  gap: 2px;
+}
+
+.editor-welcome__tile {
+  display: flex;
+  width: calc(100% - 16px);
+  min-height: 30px;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 8px 0 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  font-size: 13px;
+  line-height: normal;
+  text-align: left;
+}
+
+.editor-welcome__tile:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.editor-welcome__tile > svg,
+.editor-welcome__tile > .file-icon {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.editor-welcome__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-welcome__shortcut {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.editor-welcome__shortcut kbd,
+.editor-welcome__footer kbd {
+  min-width: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font: 11px/19px var(--font-ui);
+  text-align: center;
+}
+
+/* Recent files: the reference's recently-opened list, one 24 px row per path. */
+.editor-welcome__recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 24px;
+}
+
+.editor-welcome__recent li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.editor-welcome__recent-item {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+}
+
+.editor-welcome__recent-item:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.editor-welcome__path {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding-left: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The "no recent files" line is text, so it takes the muted role: the faint role
+   does not clear WCAG AA on the editor surface. */
+.editor-welcome__empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.editor-welcome__footer {
+  padding-top: 12px;
+  grid-area: footer;
+  justify-self: center;
+  text-align: center;
+}
+
+.editor-welcome__footer p {
+  margin: 0;
+}
+
+/* The reference folds the two columns into one when the editor is narrow. */
+@media (max-width: 899px) {
+  .editor-welcome__grid {
+    grid-template-rows: auto minmax(min-content, auto) minmax(min-content, auto) min-content;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "start"
+      "more"
+      "footer";
+  }
+
+  .editor-welcome__title {
+    font-size: 2.2em;
+  }
+}
