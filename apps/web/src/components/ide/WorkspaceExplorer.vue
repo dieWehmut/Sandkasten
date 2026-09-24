@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChevronDown, ChevronRight, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
+import { ChevronDown, ChevronRight, ChevronsDownUp, FilePlus, FolderOpen, RefreshCw, Trash2, X } from '@lucide/vue';
 import type { WorkspaceRoot, WorkspaceTreeNode } from '../../services/desktopBridge';
 import type { Runtime } from '../../services/sandkastenApi';
 import type { IconTheme } from '../../editor/fileIcon';
@@ -19,6 +19,9 @@ const props = withDefaults(defineProps<{
   creating?: boolean;
   hideHeading?: boolean;
   revealRequest?: { path: string; token: number };
+  /** Bumped by the sidebar header to fold every folder, the way the reference's
+   * "Collapse Folders in Explorer" title action does. */
+  collapseRequest?: { token: number };
   iconTheme?: IconTheme;
 }>(), { dirtyPaths: () => [], runtimes: () => [], busy: false, creating: false, hideHeading: false, iconTheme: 'dark' });
 
@@ -75,6 +78,13 @@ function isCollapsed(path: string): boolean {
   return collapsed.value.includes(path);
 }
 
+/** Fold every folder the tree currently shows, like the reference's title action. */
+function collapseAll(): void {
+  collapsed.value = rows.value.filter((row) => row.node.type === 'directory').map((row) => row.node.path);
+}
+
+watch(() => props.collapseRequest?.token, () => { collapseAll(); });
+
 function toggleDirectory(path: string): void {
   collapsed.value = isCollapsed(path) ? collapsed.value.filter((entry) => entry !== path) : [...collapsed.value, path];
 }
@@ -107,6 +117,9 @@ function submitNewFile(): void {
         </button>
         <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="busy" @click="emit('refresh')">
           <RefreshCw :size="15" aria-hidden="true" />
+        </button>
+        <button type="button" data-action="ide-collapse-all" :aria-label="t('ide.explorer.collapseAll')" :title="t('ide.explorer.collapseAll')" @click="collapseAll">
+          <ChevronsDownUp :size="15" aria-hidden="true" />
         </button>
       </span>
     </header>
@@ -143,6 +156,9 @@ function submitNewFile(): void {
         :data-path="row.node.path"
       >
         <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :style="{ paddingLeft: `${8 + row.depth * 12}px` }">
+          <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
+            <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
+          </span>
           <button type="button" class="ide-tree__toggle" :aria-expanded="!isCollapsed(row.node.path)" @click="toggleDirectory(row.node.path)">
             <ChevronDown v-if="!isCollapsed(row.node.path)" :size="14" aria-hidden="true" />
             <ChevronRight v-else :size="14" aria-hidden="true" />
@@ -156,6 +172,9 @@ function submitNewFile(): void {
           :class="{ 'ide-tree__row--active': activePath === row.node.path }"
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
         >
+          <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
+            <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
+          </span>
           <button type="button" class="ide-tree__open" :data-action="`ide-open-${row.node.path}`" @click="emit('select', row.node.path)">
             <FileIcon :path="row.node.path" :name="row.node.name" :theme="iconTheme" :size="14" />
             <span class="ide-tree__name">{{ row.node.name }}</span>
