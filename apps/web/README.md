@@ -14,46 +14,107 @@ panel, and a status bar. Narrower windows fall back to the single-column
 layout with history and inspector sheets, and open settings from the floating
 entry at the bottom-right, since they have no activity bar.
 
+Chrome geometry follows the measured VS Code workbench numbers: a 48 px
+activity lane whose items are 48 px squares marked with a 2 px lane border on
+the checked one and on keyboard focus, a 32 px editor tab lane whose active tab
+paints the editor surface with a 1 px top accent, 35 px sidebar and panel title
+rows, 22 px breadcrumbs, and a 22 px status strip. The panel keeps one 35 px
+title row that carries the output tabs and the maximize/close actions and stays
+pinned while the panel body scrolls. Colours stay Sandkasten's own so every
+scheme and theme keeps working.
+`docs/superpowers/specs/2026-09-23-vscode-ui-fidelity-design.md` records the
+measurements, the per-region contract, and the remaining plan.
+
+The status bar is one 22 px strip across the bottom of the shell, running under
+the activity bar and the sidebar as well as the editor, the way the VS Code
+status bar does. Its leading group names the execution target (the backend
+badge), the connection — the API origin while the sandbox backend runs, the
+session state otherwise — the workspace, the active file with its unsaved
+marker, the errors and warnings of the last run, and icon actions for recent
+runs, the terminal, the setup guide, and settings. Its trailing group reads the
+open buffer: the run phase, the duration, the exit code, `Ln`/`Col`, the
+detected indentation, `UTF-8`, the detected line ending, and the language mode
+beside its file glyph. The problem counters and the run phase open the output
+panel, and the secondary icon actions fold away below 1280 px so the readouts
+always fit. Sandkasten has no language server, so the problem counters summarize
+the last run: a failed request or run counts as one error, a run that hit a
+resource limit and every `warning` line on stderr count as warnings.
+
 The title row starts with the product mark alone, then the editor back and
 forward arrows, then a centered search control that opens the command palette
 (`Ctrl+P` for files, `Ctrl+Shift+P` for commands). The palette lists the real
 commands with their accelerators, searches the workspace files, and shows
-recently opened files before a query. The connection status, setup guide,
+recently opened files before a query; the widget keeps the measured quick-input
+geometry — 600 px wide, opened with a 250 ms fade and scale, 22 px rows with a
+16 px icon column. The connection status, setup guide,
 locale switcher, history, inspector, and theme buttons are gone from the title
 row; their entry points live in the settings screen, the palette, and the
 native menus.
 
 The sidebar owns one header row: the view title on the left, the view actions
-(new file, open folder, refresh) and the collapse control on the right. The
+(new file, open folder, refresh, collapse folders) and the collapse control on the
+right. Collapse folders folds every directory the tree is showing, the way VS
+Code's explorer title action does. The
 collapse button sits flush with the sidebar's top-right corner, hides the whole
 sidebar, and matches `Ctrl+B`; selecting the active activity in the activity bar
-collapses it too.
+collapses it too. Counts use VS Code's two badge shapes: a pill on the explorer
+activity while any buffer is unsaved (with the count in its accessible name), and
+a severity-tinted count badge on the panel's Diagnostics tab carrying the problems
+of the last run.
+
+Transient surfaces hand focus back when they close: Escape or a click outside the
+editor's context menu returns to the editor, and closing the breadcrumb picker
+returns to the step that opened it, rather than dropping focus on the document. Under the workspace tree the recent runs list sits behind a
+VS Code pane header — a 22 px row whose chevron turns a quarter turn while the
+section is collapsed, and whose trailing edge reveals a "clear run history"
+action once there is a run to clear.
 
 Files carry the real `vscode-icons` glyphs in the explorer, the tab strip, and
-the breadcrumbs. `scripts/generate-file-icons.mjs` builds the extension, exact
+the breadcrumbs. The explorer's rows follow VS Code's two roles: hovering paints
+the quiet list tint, while the open file gets the stronger selection fill, and a
+nested row reveals one hairline indent guide per level. Scroll containers paint
+VS Code's overlay slider — a transparent track with a translucent rounded slider
+that strengthens on hover — while the tab rows keep their rail hidden, and the
+standard `scrollbar-width`/`scrollbar-color` properties are deliberately left
+unset on scrolling panes so that geometry survives in Chromium. `scripts/generate-file-icons.mjs` builds the extension, exact
 file name, and folder name maps plus the inlined SVG table from the upstream
 manifests at a pinned commit, and `src/editor/fileIcon.ts` resolves a path to
 its icon id with a neutral default for unknown names. The distribution stays
 four files because each reachable glyph ships inline in the bundle.
 
 Under the tab strip, a breadcrumb trail names the open file's location: the
-workspace root, then each folder, then the file with its glyph. Folder
-steps are buttons that reveal themselves in the explorer, unfolding the tree
-when the folder was collapsed. The editor adds an optional minimap that
-overviews the whole file and the current viewport; it is enabled in the IDE
-shell only and hidden on the narrow layout.
+workspace root, then each folder, then the file with its glyph. A root or folder
+step opens the VS Code picker — a dropdown under the step with an arrow, a filter
+field that bolds the matching part, and the entries of that level — where a
+folder reveals itself in the explorer (unfolding the tree when it was collapsed)
+and a file opens. A tab reveals its close action on hover; while its
+buffer is unsaved the same slot shows the filled dot VS Code uses, and the tab
+names the unsaved state for assistive technology. The editor follows the VS Code
+defaults: a 14 px monospace face on a 21 px line box, line numbers on the editor
+surface in a five-character column, a quiet active-line fill with hairline rules,
+one indentation guide per nesting level (with the step taken from the file's own
+indentation, and blank lines carrying the guides of the block around them), the
+bracket pair under the cursor boxed, the other occurrences of the selected
+word highlighted, and the minimap rail at the right. The editor adds an optional
+minimap that overviews the whole file and the current viewport; it is enabled in
+the IDE shell only and hidden on the narrow layout.
 
 ## Settings screen
 
 The settings button at the foot of the activity bar (and the compact floating
-entry) opens a full-screen settings view modelled on the Codex reference: a
-section sidebar with a search box, and sections for general,
-appearance, and workbench. Appearance offers system/light/dark theme previews
-and per-theme accent, background, and foreground colors, all persisted and
-applied to the running workbench. General holds the language choice, the setup
-guide, and the GitHub link; workbench moves the API endpoint and color scheme
-controls, and links to the history and inspector sheets. Escape and the back
-button both leave the screen and return focus to the control that opened it.
+entry) opens a full-screen settings view framed like the VS Code settings
+editor: a table-of-contents rail whose selected entry is bold, a header that
+carries the section name and the search field over a rule, group titles at the
+settings-editor size, and rows with the editor's padding and hover highlight. A
+setting the user changed from its default — an overridden color, a non-default
+color scheme — carries the two-pixel accent bar VS Code puts on a modified
+setting. The sections are general, appearance, connection, and workbench.
+Appearance offers system/light/dark theme previews and per-theme accent,
+background, and foreground colors, all persisted and applied to the running
+workbench. General holds the language choice, the setup guide, and the GitHub
+link; workbench moves the API endpoint and color scheme controls, and links to
+the history and inspector sheets. Escape and the back button both leave the
+screen and return focus to the control that opened it.
 
 The output panel carries its own maximize and close controls, so it can be
 expanded or dismissed from the panel itself instead of only through the menu or
@@ -61,6 +122,13 @@ expanded or dismissed from the panel itself instead of only through the menu or
 back at its normal height. The window title reads
 `<file> — <workspace> — <app>`, with a dot on the file while its buffer is
 unsaved.
+
+Feedback stays where the user is looking. A run raises a VS Code-style toast in
+the bottom-right corner only when it finishes out of sight — the panel was closed
+while the job kept polling — with the status as its message and the runtime and
+duration underneath; the toast dismisses itself after a few seconds and its close
+action appears on hover or keyboard focus. Everything else (the run bar, the
+panel, the editor status line) reports inline.
 
 The desktop shell is bounded to the viewport (`100dvh`), so the file tree, the
 editor, and the output panel scroll inside their own panes with the mouse wheel
@@ -73,7 +141,12 @@ Both the mark and the favicon are inlined as data URIs, so the shipped
 distribution stays exactly four files (`app.js`, `config.js`, `index.html`,
 `styles.css`).
 
-The workspace holds one or more open files. In the browser the workspace is an
+The workspace holds one or more open files. With no file open the editor shows
+the welcome page in the shape of VS Code's Get Started tab: the product name and
+its one-line description over a two-column grid, a **Start** column (new file,
+open folder, quick open) with the **Recent** files from the editor history under
+it, a **Next steps** column (setup guide, settings), and a centred shortcut hint
+in the footer. In the browser the workspace is an
 in-memory scratch workspace persisted under `sandkasten-workspace-v1`; in the
 desktop app the same UI reads and writes a real folder through the preload
 bridge described below. Files are never sent anywhere except the execution
@@ -93,8 +166,21 @@ Three execution backends share one output surface:
   namespaces; the status bar labels the run `Isolated run`.
 
 Keyboard: `Ctrl+S` save, `Ctrl+Enter` run, `Ctrl+N` new file, `Ctrl+W` close
-editor, `Ctrl+B` toggle sidebar, `Ctrl+J` toggle the output panel, `Ctrl+P`
-open a file from the palette, and `Ctrl+Shift+P` run a command from it.
+editor, `Ctrl+,` open settings, `Ctrl+O` open a folder (desktop), `Ctrl+B` toggle
+sidebar, `Ctrl+J` toggle the output panel, `Ctrl+P`
+open a file from the palette, `Ctrl+Shift+P` run a command from it, and `Ctrl+F`
+open the editor's find widget — a floating VS Code-style widget with the match
+counter, the `Aa` / `ab` / `.*` switches, and an expandable replace row.
+Every shortcut the palette prints is bound, and the actions that live on the view
+title rows (refresh files, collapse folders, clear the run history, delete the
+active file, maximize the panel) are palette commands as well, so nothing is
+reachable from only one place.
+Right-clicking the editor opens the workbench's own context menu (Cut, Copy,
+Paste, Select All, Undo, Redo, Find with their accelerators) instead of the
+browser menu; it keeps a selection you right-click inside, greys out the
+commands that cannot run, and reports a refused clipboard action above the
+editor's bottom edge. `Shift+F10` (or the keyboard's menu key) opens the same
+menu at the caret, and either way the menu clamps itself into the window.
 
 ### Desktop bridge contract
 

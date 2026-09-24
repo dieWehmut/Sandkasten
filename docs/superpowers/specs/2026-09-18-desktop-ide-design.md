@@ -47,15 +47,46 @@ app-header (unchanged: brand, connection, header actions)
 ├ activity bar (48 px)  explorer | runs | inspector | setup guide
 ├ sidebar (248 px)      header: view title · view actions · collapse
 │                       workspace tree + recent runs, or the selected activity
-└ main
-  ├ editor tabs
-  ├ editor toolbar      runtime select · execution backend · save · run/stop
-  ├ body (scrolls)      editor · job timeline · output panel
-  └ status bar (pinned)
+├ main
+│  ├ editor tabs
+│  ├ editor toolbar     runtime select · execution backend · save · run/stop
+│  └ body (scrolls)     editor · job timeline · output panel
+└ status bar (pinned, full width, 22 px)
 ```
 
 Narrower windows keep the existing single-column layout with history and
 inspector sheets, so the mobile and tablet contracts are unchanged.
+
+### Status bar
+
+The strip is a grid row of the shell rather than a child of the editor card, so
+it spans the whole window the way the VS Code status bar does, and it reuses the
+VS Code conventions: a 22 px height, full-height item buttons that highlight on
+hover, two groups, and a tint that follows the active colour scheme through
+`--accent-soft` / `--text`.
+
+- Leading group: the backend badge (execution target — `Local run`,
+  `Isolated run`, or `Sandbox API` — spinning while a run is in flight), the
+  connection item (the API origin while the sandbox backend runs, the session
+  state otherwise), the workspace, the active file with its unsaved marker, the
+  error and warning counters, and icon actions for recent runs, the terminal,
+  the setup guide, and settings.
+- Trailing group: the run phase (semantic colour from the job category), the
+  duration, the exit code, `Ln`/`Col`, the indentation, `UTF-8`, the line
+  ending, and the language mode beside its file glyph.
+
+`src/editor/documentFormat.ts` detects the indentation (with the VS Code
+guesser's candidate scoring) and the line ending from the open buffer,
+`src/editor/language.ts` names the language mode, and
+`src/state/diagnostics.ts` derives the problem counters from the last run: no
+language server exists, so a failed request or run counts as one error while a
+limit stop and every `warning` line on stderr count as warnings. Below 1280 px
+the secondary icon actions fold away so the readouts always fit the smallest
+desktop window.
+
+The measured VS Code geometry for the rest of the chrome — activity lane, tab
+lane, breadcrumbs, quick input — and the ordered fidelity plan live in
+`2026-09-23-vscode-ui-fidelity-design.md`.
 
 The activity bar follows the editor-first rule: selecting the active activity
 collapses the sidebar instead of re-rendering it. The sidebar header owns the
@@ -203,6 +234,10 @@ the packaged smoke run and the OS shutdown sequence working.
 - `apps/web/tests/ide.test.ts` covers the store, layout state, explorer tree,
   tabs, the sidebar header and collapse control, the scrolling body, local run,
   backend switching, save/create/delete, and menu commands.
+- `apps/web/tests/statusBar.test.ts`, `documentFormat.test.ts`,
+  `language.test.ts`, and `diagnostics.test.ts` cover the status strip: its two
+  groups and every item, the buffer-derived indentation and line ending, the
+  language-mode names, the run problem counts, and the action it emits per item.
 - `apps/web/tests/colorScheme.test.ts` pins pink as the deterministic default
   and asserts that a first visit stores nothing.
 - `apps/desktop/tests/*.test.mjs` cover the path guard, tree limits, local run

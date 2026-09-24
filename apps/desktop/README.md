@@ -25,7 +25,10 @@ The desktop build adds these things the browser cannot do:
    installed on this computer (`python`, `node`, `go`, `rustc`/`gcc`/`g++`,
    `java`, `ruby`, `php`, `bash`, `lua`, `perl`), unsandboxed, with a 20 s
    default timeout and a 1 MiB output cap. The status bar always shows which
-   backend ran the code (`Local run` vs `Sandbox API`).
+   backend ran the code (`Local run` vs `Sandbox API`); the same strip also
+   reports the connection, the open file, the problems of the last run, the
+   cursor, the detected indentation and line ending, the encoding, and the
+   language mode.
 3. **Isolated execution.** `Execution > Isolated` runs the same workspace file
    through `unshare` inside a WSL2 distro, in a fresh user, network, and PID
    namespace. The payload sees uid 0 but holds no host privilege, cannot reach
