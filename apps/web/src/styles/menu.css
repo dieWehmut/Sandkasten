@@ -1,0 +1,111 @@
+/* The workbench's context menu, shaped like VS Code's `.context-view` menu.
+   Measured anchors from the reference stylesheet:
+   - `.context-view { position: absolute }` and `.context-view.fixed { all: initial;
+     font-family: inherit; font-size: 13px; position: fixed; color: inherit }`
+   - `.monaco-action-bar.vertical { border-radius: var(--vscode-cornerRadius-large) }`
+   - `.action-item .action-label.separator { display: block; height: 0;
+     border-bottom: 1px solid var(--vscode-menu-separatorBackground);
+     padding-top: 1px; margin: 4px .8em; width: 100% }`
+   The row rhythm itself lives in the editor bundle, which this installation does
+   not ship as a stylesheet, so the 22 px row, the 26 px icon/label insets, and
+   the keybinding column follow the workbench's own list rhythm instead. That
+   split is recorded in docs/superpowers/specs/2026-09-23-vscode-ui-fidelity-design.md. */
+
+.context-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  min-width: 180px;
+  max-width: min(360px, calc(100vw - 8px));
+  flex-direction: column;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+  font-size: 13px;
+  outline: none;
+  /* Hidden until the first measurement lands, so it never flashes offscreen. */
+  visibility: hidden;
+}
+
+.context-menu--placed {
+  visibility: visible;
+}
+
+.context-menu__item {
+  display: flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+/* VS Code highlights the row the pointer or the keyboard is on. */
+.context-menu__item:hover,
+.context-menu__item:focus-visible {
+  color: var(--text);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.context-menu__item:disabled {
+  color: var(--text-faint);
+  cursor: default;
+  opacity: .6;
+}
+
+.context-menu__item:disabled:hover {
+  background: transparent;
+}
+
+.context-menu__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The accelerator stays a step dimmer than the label, but has to clear WCAG AA on
+   the menu surface: `--text-faint` measured 4.05:1 (light) and 4.30:1 (dark) at
+   this size, so it takes the muted role, which passes in every scheme and theme. */
+.context-menu__keybinding {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font: 11px var(--font-ui);
+}
+
+.context-menu__separator {
+  height: 0;
+  margin: 4px .8em;
+  padding-top: 1px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* A failed clipboard action says so above the editor's bottom edge instead of
+   failing silently; the keyboard shortcut keeps working either way. */
+.source-editor {
+  position: relative;
+}
+
+.source-editor__status {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 12;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 12px;
+}
