@@ -29,4 +29,17 @@ if (!canvasInstalled && typeof HTMLCanvasElement !== 'undefined') {
   HTMLCanvasElement.prototype.getContext = (() => noopContext) as unknown as HTMLCanvasElement['getContext'];
 }
 
+// jsdom implements neither `Range.getClientRects` nor `Range.getBoundingClientRect`,
+// and CodeMirror measures a range when it scrolls a search result into view.
+// Nothing under test reads that geometry, so empty measurements keep the path
+// working instead of raising an unhandled error.
+if (typeof Range !== 'undefined') {
+  if (typeof Range.prototype.getClientRects !== 'function') {
+    Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+  }
+  if (typeof Range.prototype.getBoundingClientRect !== 'function') {
+    Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 0, 0);
+  }
+}
+
 export {};
