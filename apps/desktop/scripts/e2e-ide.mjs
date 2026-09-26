@@ -616,7 +616,9 @@ async function main() {
         statusBackground: colour('.ide-status'),
         documentTheme: document.documentElement.dataset.theme,
         systemPrefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
-        fullHeight: Math.abs((rect('.ide-main')?.h ?? 0) + (rect('.app-header')?.h ?? 0) - window.innerHeight) <= 1,
+        // The shell spends its last row on the status strip, so the full height
+        // is the title row, the editor card, and that strip together.
+        fullHeight: Math.abs((rect('.ide-main')?.h ?? 0) + (rect('.app-header')?.h ?? 0) + (rect('.ide-status')?.h ?? 0) - window.innerHeight) <= 1,
         noPageScroll: pageElement.scrollHeight <= window.innerHeight + 1 && pageElement.scrollWidth <= window.innerWidth + 1,
       };
     });

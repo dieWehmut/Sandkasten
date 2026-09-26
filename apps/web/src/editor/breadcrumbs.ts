@@ -1,6 +1,7 @@
 // Breadcrumb segments for the active file: the reference resolves a path into
 // readable steps, and keeping that as plain data lets the tests assert the
-// split without mounting the bar.
+// split without mounting the bar. The picker's level lookup lives here too.
+import type { WorkspaceTreeNode } from '../services/desktopBridge';
 export type BreadcrumbKind = 'root' | 'directory' | 'file';
 
 export interface BreadcrumbSegment {
@@ -58,4 +59,39 @@ export function breadcrumbSegments(filePath: string | undefined | null, rootPath
 export function ancestorPaths(path: string | undefined | null): string[] {
   const parts = normalize(path).split('/').filter(Boolean);
   return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join('/'));
+}
+
+export interface BreadcrumbEntry {
+  path: string;
+  name: string;
+  kind: 'file' | 'directory';
+}
+
+/**
+ * The entries of the level `path` sits in, which is what a breadcrumb drops down:
+ * the root level for an empty path, or the children of the folder that contains
+ * `path`. An unknown path yields no entries rather than a wrong level.
+ */
+export function siblingEntries(
+  tree: readonly WorkspaceTreeNode[],
+  path: string | undefined | null,
+): BreadcrumbEntry[] {
+  const target = normalize(path);
+  const nodes = target ? findChildren(tree, target.split('/').slice(0, -1).join('/')) : tree;
+  return nodes.map((node) => ({
+    path: node.path,
+    name: node.name,
+    kind: node.type === 'directory' ? 'directory' : 'file',
+  }));
+}
+
+function findChildren(nodes: readonly WorkspaceTreeNode[], directory: string): readonly WorkspaceTreeNode[] {
+  if (!directory) return nodes;
+  for (const node of nodes) {
+    if (node.type !== 'directory') continue;
+    if (node.path === directory) return node.children ?? [];
+    const nested = findChildren(node.children ?? [], directory);
+    if (nested.length) return nested;
+  }
+  return [];
 }

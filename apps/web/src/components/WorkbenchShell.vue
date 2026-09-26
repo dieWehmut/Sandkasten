@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { DeepReadonly } from 'vue';
-import { FilePlus, FolderPlus, ListCollapse, PanelLeftClose, RefreshCw } from '@lucide/vue';
+import { FilePlus, FolderPlus, ListCollapse, PanelLeftClose, RefreshCw, Trash2 } from '@lucide/vue';
 import type { OutputTab } from '../composables/useRunner';
 import type { ConnectionState } from '../composables/useRunner';
 import type { ExecutionBackend, ExecutionPhase } from '../composables/execution';
@@ -29,6 +29,7 @@ import IdeActivityBar from './ide/IdeActivityBar.vue';
 import IdeBreadcrumbs from './ide/IdeBreadcrumbs.vue';
 import IdeEditorToolbar from './ide/IdeEditorToolbar.vue';
 import IdePanelActions from './ide/IdePanelActions.vue';
+import IdePaneHeader from './ide/IdePaneHeader.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import WorkspaceSearch from './ide/WorkspaceSearch.vue';
@@ -55,6 +56,7 @@ const props = withDefaults(defineProps<{
   canResume: boolean;
   activity?: IdeActivity;
   sidebarVisible?: boolean;
+  runsExpanded?: boolean;
   panelVisible?: boolean;
   panelMaximized?: boolean;
   files?: readonly WorkspaceFile[];
@@ -69,6 +71,8 @@ const props = withDefaults(defineProps<{
   creatingFolder?: boolean;
   collapseRequest?: { token: number };
   revealRequest?: { path: string; token: number };
+  /** Bumped upstream (title action or palette) to fold every folder. */
+  collapseRequest?: { token: number };
   backend?: ExecutionBackend;
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
@@ -77,6 +81,8 @@ const props = withDefaults(defineProps<{
   statusText?: string;
   connectionState?: ConnectionState;
   workspaceLabel?: string;
+  recentFiles?: readonly string[];
+  apiHost?: string;
   terminal?: TerminalController;
   search?: WorkspaceSearchController;
   remote?: RemoteHostsController;
@@ -86,6 +92,7 @@ const props = withDefaults(defineProps<{
   layoutMode: 'desktop',
   activity: 'explorer',
   sidebarVisible: true,
+  runsExpanded: true,
   panelVisible: true,
   panelMaximized: false,
   files: () => [],
@@ -103,6 +110,8 @@ const props = withDefaults(defineProps<{
   cursor: () => ({ line: 1, column: 1 }),
   statusText: 'Ready',
   connectionState: 'connecting',
+  recentFiles: () => [],
+  apiHost: '',
   iconTheme: 'dark',
 });
 
@@ -120,10 +129,15 @@ const emit = defineEmits<{
   closeInspector: [];
   selectActivity: [activity: IdeActivity];
   toggleSidebar: [];
+  toggleRunsSection: [];
+  clearHistory: [];
   togglePanelMaximize: [];
   closePanel: [];
   openSetup: [];
   openSettings: [];
+  openPalette: [];
+  showPanel: [];
+  toggleTerminal: [];
   selectFile: [path: string];
   revealFile: [path: string];
   selectSearchResult: [path: string];
@@ -146,17 +160,13 @@ const emit = defineEmits<{
   removeFile: [path: string];
   openFolder: [];
   refreshTree: [];
+  collapseFolders: [];
   saveFile: [];
 }>();
 const t = useTranslation();
 
-// The explorer owns the tree, so the header's collapse action only bumps a
-// token: the explorer watches it and folds every open directory at once.
-const collapseToken = ref(0);
-function requestCollapse(): void {
-  collapseToken.value += 1;
-}
-
+// The explorer owns the tree, so the sidebar's collapse action asks the app for a
+// new request token and the explorer folds every open directory when it changes.
 const isIde = computed(() => props.layoutMode === 'desktop');
 const dirtyPaths = computed(() => props.files.filter((file) => file.dirty).map((file) => file.path));
 const sidebarTitle = computed(() => {
@@ -184,6 +194,7 @@ const styles = computed(() => (isIde.value
       <IdeActivityBar
         :active="activity"
         :sidebar-visible="sidebarVisible"
+        :badges="{ explorer: dirtyPaths.length }"
         @select="emit('selectActivity', $event)"
         @open-settings="emit('openSettings')"
       />
@@ -201,13 +212,13 @@ const styles = computed(() => (isIde.value
               <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="workspaceBusy" @click="emit('refreshTree')">
                 <RefreshCw :size="15" aria-hidden="true" />
               </button>
-              <button
+<button
                 type="button"
                 class="ide-sidebar__collapse-folders"
                 data-action="ide-collapse-folders"
                 :aria-label="t('ide.explorer.collapseFolders')"
                 :title="t('ide.explorer.collapseFolders')"
-                @click="requestCollapse"
+                @click="emit('collapseFolders')"
               >
                 <ListCollapse :size="15" aria-hidden="true" />
               </button>
@@ -236,8 +247,8 @@ const styles = computed(() => (isIde.value
             :runtimes="runtimes"
             :creating="creatingFile"
             :creating-folder="creatingFolder"
-            :collapse-request="{ token: collapseToken }"
             :reveal-request="revealRequest"
+            :collapse-request="collapseRequest"
             :icon-theme="iconTheme"
             hide-heading
             @update:creating="emit('update:creatingFile', $event)"
@@ -250,7 +261,22 @@ const styles = computed(() => (isIde.value
             @remove="emit('removeFile', $event)"
           />
           <section class="ide-sidebar__section" :aria-label="t('history.title')">
-            <RunHistory :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
+            <IdePaneHeader :label="t('history.title')" :expanded="runsExpanded" @toggle="emit('toggleRunsSection')">
+              <template #actions>
+                <button
+                  v-if="history.length"
+                  type="button"
+                  class="ide-pane-header__action"
+                  data-action="ide-clear-history"
+                  :aria-label="t('history.clear')"
+                  :title="t('history.clear')"
+                  @click="emit('clearHistory')"
+                >
+                  <Trash2 :size="14" aria-hidden="true" />
+                </button>
+              </template>
+            </IdePaneHeader>
+            <RunHistory v-if="runsExpanded" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
           </section>
         </template>
         <WorkspaceSearch
@@ -311,8 +337,10 @@ const styles = computed(() => (isIde.value
           v-if="files.length"
           :file-path="activePath"
           :root-path="workspaceRoot?.path"
+          :tree="tree"
           :icon-theme="iconTheme"
           @reveal="emit('revealFile', $event)"
+          @select="emit('selectFile', $event)"
         />
         <IdeEditorToolbar
           v-if="files.length"
@@ -347,41 +375,63 @@ const styles = computed(() => (isIde.value
               v-else
               :desktop="workspaceKind === 'desktop'"
               :platform="platform"
+              :recent="recentFiles"
               @new-file="emit('update:creatingFile', true)"
               @open-folder="emit('openFolder')"
               @open-setup="emit('openSetup')"
+              @open-settings="emit('openSettings')"
+              @open-palette="emit('openPalette')"
+              @select-file="emit('selectFile', $event)"
             />
           </section>
           <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
           <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
-            <IdePanelActions
-              :maximized="panelMaximized"
-              @toggle-maximize="emit('togglePanelMaximize')"
-              @close="emit('closePanel')"
-            />
             <OutputTabs
               :terminal="terminal"
               :result="result"
               :error="error"
               :model-value="activeOutputTab"
               @update:model-value="emit('update:activeOutputTab', $event)"
-            />
+            >
+              <template #actions>
+                <IdePanelActions
+                  :maximized="panelMaximized"
+                  @toggle-maximize="emit('togglePanelMaximize')"
+                  @close="emit('closePanel')"
+                />
+              </template>
+            </OutputTabs>
           </section>
         </div>
-        <IdeStatusBar
-          :backend="backend"
-          :language="language"
-          :file-path="activePath"
-          :dirty="dirtyPaths.includes(activePath)"
-          :phase="phase"
-          :status-text="statusText"
-          :cursor="cursor"
-          :connection-state="connectionState"
-          :workspace-label="workspaceLabel"
-          :duration-ms="result?.durationMs"
-          :exit-code="result?.exitCode"
-        />
       </section>
+      <!-- The strip is a sibling of the panes, not part of the editor card, so it
+           spans the whole shell the way the VS Code status bar does. -->
+      <IdeStatusBar
+        :backend="backend"
+        :language="language"
+        :file-path="activePath"
+        :dirty="dirtyPaths.includes(activePath)"
+        :phase="phase"
+        :status-text="statusText"
+        :cursor="cursor"
+        :connection-state="connectionState"
+        :workspace-label="workspaceLabel"
+        :duration-ms="result?.durationMs"
+        :exit-code="result?.exitCode"
+        :source="source"
+        :job="result"
+        :error="error"
+        :api-host="apiHost"
+        :history-count="history.length"
+        :terminal-available="Boolean(terminal)"
+        :icon-theme="iconTheme"
+        @open-settings="emit('openSettings')"
+        @open-setup="emit('openSetup')"
+        @show-panel="emit('showPanel')"
+        @toggle-terminal="emit('toggleTerminal')"
+        @select-runs="emit('selectActivity', 'runs')"
+        @save-file="emit('saveFile')"
+      />
     </template>
 
     <template v-else>

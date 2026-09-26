@@ -64,6 +64,23 @@
   --header-height: 52px;
   --history-width: 244px;
   --inspector-width: 304px;
+  /* The measured VS Code workbench geometry, shared by every strip and lane the
+     IDE chrome draws. Values were read from the installed build's stylesheet
+     plus the layout constants in `workbench.desktop.main.js`:
+     - activity lane and item box: 48 px, checked marker: 2 px
+     - editor tab lane: `DEFAULT_HEIGHT = 32` (28 px in the compact density)
+     - part title rows and the panel title row: `TITLE_HEIGHT = 35`
+     - pane (sidebar section) header: `.monaco-pane-view{--pane-header-size:22px}`
+     - breadcrumbs and the status strip: 22 px
+     See docs/superpowers/specs/2026-09-23-vscode-ui-fidelity-design.md. */
+  --vscode-activity-item: 48px;
+  --vscode-activity-marker: 2px;
+  --vscode-tab-height: 32px;
+  --vscode-tab-marker: 1px;
+  --vscode-title-height: 35px;
+  --vscode-pane-header: 22px;
+  --vscode-breadcrumb-height: 22px;
+  --vscode-status-height: 22px;
   --transition-fast: 160ms ease;
   --transition-sheet: 220ms cubic-bezier(.2, .8, .2, 1);
 }

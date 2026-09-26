@@ -1,0 +1,143 @@
+/* Background toasts, following the measured VS Code notifications.
+   Reference values from the workbench stylesheet:
+   - `.notifications-toasts { position: absolute; z-index: 2545; right: 3px;
+     bottom: 25px }` — the stack sits just above the 22 px status bar
+   - `.notification-toast { margin: 4px; transform: translate3d(0, 100%, 0);
+     opacity: 0; transition: transform .3s ease-out, opacity .3s ease-out }`,
+     shown with `.notification-fade-in { opacity: 1; transform: none }`
+   - `.notification-toast .monaco-list-row { border-radius: cornerRadius-large }`
+   - `.notification-list-item { padding: 10px 5px }`
+   - `.notification-list-item-icon { flex: 0 0 16px; height: 22px; margin: 0 4px;
+     font-size: 18px }`
+   - `.notification-list-item-message { line-height: 22px; flex: 1; overflow: hidden;
+     text-overflow: ellipsis }`
+   - `.notification-list-item-source { flex: 1; font-size: 12px }`
+   - `.notification-list-item-toolbar-container { display: none; height: 22px }`,
+     revealed while the entry is hovered or expanded
+   Colours stay the app's own tokens. */
+
+.ide-toasts {
+  position: fixed;
+  right: 3px;
+  bottom: calc(var(--vscode-status-height) + 3px);
+  z-index: 2545;
+  display: flex;
+  width: min(400px, calc(100vw - 12px));
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.ide-toast {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  margin: 4px;
+  padding: 10px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 24%);
+  pointer-events: auto;
+  animation: ide-toast-in 300ms ease-out both;
+}
+
+@keyframes ide-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The measured icon column: 16 px of glyph in a 22 px line, inset by 4 px. */
+.ide-toast__icon {
+  display: flex;
+  align-items: center;
+  align-self: start;
+  justify-content: center;
+  height: 22px;
+  margin: 0 4px;
+  color: var(--text-muted);
+}
+
+.ide-toast[data-kind="success"] .ide-toast__icon {
+  color: var(--success);
+}
+
+.ide-toast[data-kind="warning"] .ide-toast__icon {
+  color: var(--warning);
+}
+
+.ide-toast[data-kind="error"] .ide-toast__icon {
+  color: var(--danger);
+}
+
+.ide-toast__message {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-toast__source {
+  min-width: 0;
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The close action stays out of the way until the entry is pointed at or reached
+   by keyboard, which is how the reference reveals a notification's toolbar. */
+.ide-toast__close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  opacity: 0;
+}
+
+.ide-toast:hover .ide-toast__close,
+.ide-toast:focus-within .ide-toast__close {
+  opacity: 1;
+}
+
+.ide-toast__close:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ide-toast__close:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+/* The live region announces the newest entry without showing it twice. */
+.ide-toast__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

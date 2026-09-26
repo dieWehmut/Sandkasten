@@ -35,6 +35,21 @@ describe('settings view', () => {
     await wrapper.get('[data-action="settings-back"]').trigger('click');
     expect(wrapper.emitted('back')).toHaveLength(1);
   });
+  test('marks the settings the user changed from their default', async () => {
+    const plain = mount(SettingsView, { props });
+    // Nothing is overridden yet, so no row carries the modified marker.
+    expect(plain.findAll('.settings-row--modified')).toHaveLength(0);
+
+    const changed = mount(SettingsView, {
+      props: { ...props, colorScheme: 'green', customized: { accent: true, background: false, foreground: false } },
+    });
+    // The overridden accent row and the non-default colour scheme row carry it.
+    const marked = changed.findAll('.settings-row--modified');
+    expect(marked).toHaveLength(2);
+    expect(marked[0].text()).toContain(props.t('header.colorScheme'));
+    expect(marked[1].text()).toContain(props.t('settings.accent'));
+  });
+
   test('shows the live connection state that the title row no longer carries', async () => {
     const connected = mount(SettingsView, { props });
     await connected.get('[data-section="connection"]').trigger('click');

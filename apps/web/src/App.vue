@@ -6,6 +6,7 @@ import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import SettingsView from './components/SettingsView.vue';
+import NotificationToasts from './components/NotificationToasts.vue';
 import { Settings } from '@lucide/vue';
 import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
@@ -20,6 +21,7 @@ import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
 import { useIdeLayout } from './composables/useIdeLayout';
+import { useNotifications } from './composables/useNotifications';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
@@ -27,9 +29,9 @@ import { useAppearance } from './composables/useAppearance';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
 import { desktopBridge } from './services/desktopBridge';
-import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl } from './services/apiEndpoint';
+import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl, effectiveApiBaseUrl } from './services/apiEndpoint';
 import { windowTitle } from './editor/windowTitle';
-import { statusLabel } from './state/status';
+import { statusLabel, isTerminalStatus, statusCategory } from './state/status';
 import type { MessageKey } from './i18n/messages';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
 
@@ -43,12 +45,16 @@ const search = useWorkspaceSearch();
 const remote = useRemoteHosts(bridge?.remote);
 const sourceControl = useSourceControl();
 const ide = useIdeLayout();
+// Bumped by the title action or the palette command; the explorer owns the
+// collapsed state and folds everything when the token changes.
+const collapseToken = ref(0);
 const theme = useTheme();
 const colorScheme = useColorScheme();
 const appearance = useAppearance(theme.theme, colorScheme.colorScheme);
 const layout = useMediaLayout();
 const locale = useLocale();
 const setupWelcome = useSetupWelcome();
+const notifications = useNotifications();
 const compactHistoryOpen = ref(layout.isDesktop.value);
 const compactInspectorOpen = ref(layout.isDesktop.value);
 const runnerLoaded = ref(false);
@@ -86,6 +92,11 @@ function filePaths(nodes: readonly WorkspaceTreeNode[]): string[] {
 const workspacePaths = computed(() => [...new Set([
   ...filePaths(workspace.tree.value), ...workspace.files.value.map((file) => file.path),
 ])]);
+// Whether the tree holds anything the "collapse folders" action can fold.
+const hasDirectories = computed(() => {
+  const walk = (nodes: readonly WorkspaceTreeNode[]): boolean => nodes.some((node) => node.type === 'directory');
+  return walk(workspace.tree.value);
+});
 const editorHistory = useEditorHistory({
   activePath: workspace.activePath, paths: workspacePaths, openFile: workspace.openFile,
 });
@@ -111,6 +122,22 @@ const requestError = computed(() => (usesDesktop.value ? local.error.value : run
 const pollingStopped = computed(() => !usesDesktop.value && runner.pollingStopped.value);
 const connectionState = computed(() => (usesDesktop.value ? 'connected' as const : runner.connectionState.value));
 const selectedRuntime = computed(() => runner.runtimes.value.find((runtime) => runtime.language === language.value));
+// The status bar names the origin the sandbox backend talks to, or the page's own
+// host when requests are same-origin. Reading the stored override through the
+// computed keeps the label in step with an endpoint change.
+const apiHost = computed(() => {
+  if (typeof window === 'undefined') return '';
+  const base = effectiveApiBaseUrl({
+    configured: configuredApiBaseUrl.value,
+    bundled: typeof globalThis.SANDKASTEN_CONFIG?.apiBaseUrl === 'string' ? globalThis.SANDKASTEN_CONFIG.apiBaseUrl : '',
+    desktop: Boolean(bridge),
+  });
+  try {
+    return new URL(base || window.location.href).host;
+  } catch {
+    return '';
+  }
+});
 const localReady = computed(() => local.available.value && local.supports(language.value));
 const isolatedReady = computed(() => local.available.value && local.supportsIsolated(language.value));
 
@@ -128,6 +155,25 @@ const statusText = computed(() => {
   return locale.t(PHASE_KEYS[executionPhase.value]);
 });
 const ideMode = computed(() => layout.isDesktop.value);
+// Feedback stays inline where the user is looking: a run only raises a toast when
+// it finishes while the output is out of sight (a closed panel, or the settings
+// and setup screens on top of the workbench).
+const outputVisible = computed(() => ide.panelVisible.value && !settingsOpen.value && !setupWelcome.isGuideOpen.value);
+const toastedJobs = new Set<string>();
+watch(result, (job) => {
+  if (!job?.status || !isTerminalStatus(job.status) || toastedJobs.has(job.jobId)) return;
+  toastedJobs.add(job.jobId);
+  if (outputVisible.value) return;
+  const category = statusCategory(job.status);
+  notifications.push({
+    id: `run-${job.jobId}`,
+    kind: category === 'danger' ? 'error' : category === 'warning' ? 'warning' : category === 'success' ? 'success' : 'info',
+    message: statusLabel(job.status, locale.t),
+    source: [language.value, typeof job.durationMs === 'number' ? `${(job.durationMs / 1000).toFixed(2)} s` : '']
+      .filter(Boolean)
+      .join(' · '),
+  });
+});
 const historyOpen = computed(() => (ideMode.value
   ? ide.sidebarVisible.value && ide.activity.value === 'runs'
   : compactHistoryOpen.value));
@@ -444,6 +490,14 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'locale.zh-CN': () => locale.setLocale('zh-CN'),
   'navigation.back': () => { void editorHistory.back(); },
   'navigation.forward': () => { void editorHistory.forward(); },
+  // The title-row and panel actions are commands too, so the palette reaches
+  // every action the visible controls offer (the reference's own rule).
+  'history.clear': () => runHistory.clear(),
+  'workspace.refresh': () => { refreshTree(); },
+  'explorer.collapseAll': () => { collapseToken.value += 1; },
+  'file.delete': () => { const path = activeFile.value?.path; if (path) removeFile(path); },
+  'view.togglePanelMaximize': () => ide.togglePanelMaximize(),
+  'view.restorePanel': () => ide.togglePanelMaximize(),
 };
 
 const commandPaletteError = ref('');
@@ -475,6 +529,11 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('locale.en', 'locale.switchToEnglish', undefined, locale.locale.value !== 'en'),
     command('locale.zh-CN', 'locale.switchToChinese', undefined, locale.locale.value !== 'zh-CN'),
     command('help.github', 'header.github'),
+    command('history.clear', 'history.clear', undefined, runHistory.history.value.length > 0),
+    command('workspace.refresh', 'ide.explorer.refresh', undefined, workspace.status.value !== 'loading'),
+    command('explorer.collapseAll', 'ide.explorer.collapseFolders', undefined, hasDirectories.value),
+    command('file.delete', 'ide.explorer.deleteFile', undefined, Boolean(activeFile.value)),
+    command(ide.panelMaximized.value ? 'view.restorePanel' : 'view.togglePanelMaximize', ide.panelMaximized.value ? 'ide.panel.restore' : 'ide.panel.maximize', undefined, ideMode.value && ide.panelVisible.value),
   ];
 });
 const commandCenter = useCommandCenter({
@@ -558,6 +617,13 @@ function onKeydown(event: KeyboardEvent): void {
   } else if (key === 'w') {
     event.preventDefault();
     closeActiveFile();
+  } else if (key === ',') {
+    // The palette advertises this accelerator, so it has to be bound too.
+    event.preventDefault();
+    openSettings();
+  } else if (key === 'o' && !event.shiftKey) {
+    event.preventDefault();
+    openFolder();
   }
 }
 
@@ -595,6 +661,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   void terminal?.dispose();
+  notifications.dispose();
   window.removeEventListener('keydown', onKeydown);
   window.removeEventListener('focusin', syncTerminalFocus);
   window.removeEventListener('focusout', syncTerminalFocus);
@@ -659,6 +726,7 @@ onBeforeUnmount(() => {
       :layout-mode="layout.mode.value"
       :activity="ide.activity.value"
       :sidebar-visible="ide.sidebarVisible.value"
+      :runs-expanded="ide.runsSectionExpanded.value"
       :panel-visible="ide.panelVisible.value"
       :panel-maximized="ide.panelMaximized.value"
       :files="workspace.files.value"
@@ -684,6 +752,8 @@ onBeforeUnmount(() => {
       :connection-state="connectionState"
       :icon-theme="theme.theme.value"
       :workspace-label="workspace.root.value?.name"
+      :recent-files="editorHistory.recentPaths.value"
+      :api-host="apiHost"
       :history="runHistory.history.value"
       :runtimes="runner.runtimes.value"
       :runtime="selectedRuntime"
@@ -699,10 +769,17 @@ onBeforeUnmount(() => {
       :can-resume="canResume"
       @select-activity="selectActivity"
       @toggle-sidebar="ide.toggleSidebar"
+      @toggle-runs-section="ide.toggleRunsSection"
+      :collapse-request="{ token: collapseToken }"
+      @collapse-folders="collapseToken += 1"
+      @clear-history="runHistory.clear()"
       @toggle-panel-maximize="ide.togglePanelMaximize"
       @close-panel="ide.togglePanel"
+      @show-panel="ide.showPanel"
+      @toggle-terminal="toggleTerminal"
       @open-setup="setupWelcome.reopen"
       @open-settings="openSettings"
+      @open-palette="openPalette()"
       @select-file="selectFile"
       @close-file="closeFile"
       @reveal-file="revealInExplorer"
@@ -738,12 +815,14 @@ onBeforeUnmount(() => {
       @close-history="compactHistoryOpen = false"
       @close-inspector="compactInspectorOpen = false"
     />
+    <NotificationToasts :toasts="notifications.toasts.value" @dismiss="notifications.dismiss" />
     <button v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
     <SettingsView
       v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
       :preference="theme.preference.value"
       :theme="theme.theme.value"
       :colors="appearance.colors.value"
+      :customized="appearance.customized.value"
       :color-scheme="colorScheme.colorScheme.value"
       :locale="locale.locale.value"
       :t="locale.t"

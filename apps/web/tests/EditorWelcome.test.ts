@@ -90,4 +90,40 @@ describe('empty editor welcome', () => {
     wrapper.unmount();
   });
 
+  test('offers the next steps and lists the recently opened files', async () => {
+    const wrapper = mount(WorkbenchShell, {
+      props: { ...shellProps, recentFiles: ['main.py', 'pkg/util.py'] },
+    });
+    const welcome = wrapper.get('[data-testid="editor-welcome"]');
+
+    // The page is the Get Started arrangement: a start column, a next-steps
+    // column, and one tile per action.
+    expect(welcome.get('.editor-welcome__title').text()).toBe('Sandkasten');
+    expect(welcome.findAll('.editor-welcome__section-title').map((title) => title.text()))
+      .toEqual(['Start', 'Recent', 'Next steps']);
+
+    await welcome.get('[data-action="welcome-open-palette"]').trigger('click');
+    expect(wrapper.emitted('openPalette')).toHaveLength(1);
+    await welcome.get('[data-action="welcome-open-settings"]').trigger('click');
+    expect(wrapper.emitted('openSettings')).toHaveLength(1);
+
+    // Each recent row carries the file's glyph and its full path, and opens it.
+    const rows = welcome.findAll('.editor-welcome__recent-item');
+    expect(rows.map((row) => row.find('.editor-welcome__path').text())).toEqual(['main.py', 'pkg/util.py']);
+    expect(rows[1].find('.file-icon').attributes('data-icon')).toBe('_f_python');
+    await rows[1].trigger('click');
+    expect(wrapper.emitted('selectFile')).toEqual([['pkg/util.py']]);
+    expect(welcome.find('.editor-welcome__empty').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  test('says so when nothing has been opened yet, and names the platform modifier', () => {
+    const wrapper = mount(WorkbenchShell, { props: { ...shellProps, platform: 'darwin' } });
+    const welcome = wrapper.get('[data-testid="editor-welcome"]');
+    expect(welcome.find('.editor-welcome__recent').exists()).toBe(false);
+    expect(welcome.get('.editor-welcome__empty').text()).toBe('No recent files yet.');
+    expect(welcome.get('.editor-welcome__footer').text()).toBe('Cmd+P opens a file, Cmd+Shift+P runs a command.');
+    wrapper.unmount();
+  });
+
 });

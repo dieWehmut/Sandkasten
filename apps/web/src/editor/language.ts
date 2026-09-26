@@ -142,6 +142,83 @@ const EXTENSION_LANGUAGES: Readonly<Record<string, string>> = {
   wdl: 'wdl',
 };
 
+// The status bar names the language mode the way VS Code does: branded and
+// acronym runtime names keep their own spelling instead of a naive
+// capitalize-first, and anything unknown falls back to that capitalization.
+const LANGUAGE_MODE_NAMES: Readonly<Record<string, string>> = {
+  assembly: 'Assembly',
+  bash: 'Shell Script',
+  c: 'C',
+  cangjie: 'Cangjie',
+  clojure: 'Clojure',
+  coq: 'Coq',
+  cpp: 'C++',
+  csharp: 'C#',
+  css: 'CSS',
+  csv: 'CSV',
+  dart: 'Dart',
+  elixir: 'Elixir',
+  erlang: 'Erlang',
+  fortran: 'Fortran',
+  fsharp: 'F#',
+  gdscript: 'GDScript',
+  gleam: 'Gleam',
+  go: 'Go',
+  graphviz: 'Graphviz',
+  haskell: 'Haskell',
+  html: 'HTML',
+  java: 'Java',
+  javascript: 'JavaScript',
+  json: 'JSON',
+  julia: 'Julia',
+  kotlin: 'Kotlin',
+  latex: 'LaTeX',
+  lean4: 'Lean 4',
+  less: 'Less',
+  lua: 'Lua',
+  markdown: 'Markdown',
+  mdx: 'MDX',
+  mojo: 'Mojo',
+  nextjs: 'Next.js',
+  nextflow: 'Nextflow',
+  nim: 'Nim',
+  ocaml: 'OCaml',
+  octave: 'GNU Octave',
+  pascal: 'Pascal',
+  perl: 'Perl',
+  php: 'PHP',
+  prolog: 'Prolog',
+  python: 'Python',
+  qml: 'QML',
+  r: 'R',
+  racket: 'Racket',
+  ruby: 'Ruby',
+  rust: 'Rust',
+  sass: 'Sass',
+  scala: 'Scala',
+  scss: 'SCSS',
+  sql: 'SQL',
+  swift: 'Swift',
+  tailwind: 'Tailwind CSS',
+  toml: 'TOML',
+  tsx: 'TSX',
+  typescript: 'TypeScript',
+  typst: 'Typst',
+  vlang: 'V',
+  vue3: 'Vue',
+  wdl: 'WDL',
+  xml: 'XML',
+  yaml: 'YAML',
+  zig: 'Zig',
+};
+
+/** Name the language mode for the runtime, or '' when no runtime is selected. */
+export function languageModeLabel(runtime: string | undefined | null): string {
+  const name = String(runtime ?? '').trim();
+  if (!name) return '';
+  return LANGUAGE_MODE_NAMES[name.toLowerCase()] ?? name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 /** Resolve the canonical runtime name for a file path, or '' when unknown. */
 export function languageForPath(path: string | undefined | null): string {
   const name = String(path ?? '').trim();

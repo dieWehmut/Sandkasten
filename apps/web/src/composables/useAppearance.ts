@@ -94,5 +94,15 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
   }
   function resetColors(): void { overrides.value[theme.value] = {}; persist(); }
   const dispose = watch([theme, scheme, overrides], apply, { deep: true, immediate: true, flush: 'sync' });
-  return { colors, setColor, resetColors, dispose };
+  // Which of the three colors the user has overridden for the active theme, so a
+  // settings row can carry the same "modified" marker VS Code uses.
+  const customized = computed<Record<AppearanceColor, boolean>>(() => {
+    const overridesForTheme = overrides.value[theme.value];
+    return {
+      accent: 'accent' in overridesForTheme,
+      background: 'background' in overridesForTheme,
+      foreground: 'foreground' in overridesForTheme,
+    };
+  });
+  return { colors, customized, setColor, resetColors, dispose };
 }

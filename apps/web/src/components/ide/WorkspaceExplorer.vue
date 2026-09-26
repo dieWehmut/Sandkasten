@@ -295,7 +295,7 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
         <button type="button" data-action="ide-refresh-tree" :aria-label="t('ide.explorer.refresh')" :title="t('ide.explorer.refresh')" :disabled="busy" @click="emit('refresh')">
           <RefreshCw :size="15" aria-hidden="true" />
         </button>
-        <button
+<button
           type="button"
           class="ide-explorer__collapse"
           data-action="ide-collapse-folders"
@@ -323,6 +323,9 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
         :data-path="row.node.path"
       >
         <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :style="{ paddingLeft: `${8 + row.depth * 12}px` }">
+          <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
+            <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
+          </span>
           <button type="button" class="ide-tree__toggle" :aria-expanded="!isCollapsed(row.node.path)" @click="toggleDirectory(row.node.path)">
             <ChevronDown v-if="!isCollapsed(row.node.path)" :size="14" aria-hidden="true" />
             <ChevronRight v-else :size="14" aria-hidden="true" />
@@ -387,6 +390,9 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
           :class="{ 'ide-tree__row--active': activePath === row.node.path }"
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
         >
+          <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
+            <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
+          </span>
           <button type="button" class="ide-tree__open" :data-action="`ide-open-${row.node.path}`" @click="emit('select', row.node.path)">
             <FileIcon :path="row.node.path" :name="row.node.name" :theme="iconTheme" :size="14" />
             <span class="ide-tree__name">{{ row.node.name }}</span>

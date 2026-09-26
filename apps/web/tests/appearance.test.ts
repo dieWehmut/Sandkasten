@@ -14,6 +14,22 @@ function setup(saved?: string) {
 }
 
 describe('appearance overrides', () => {
+  test('reports which colors the active theme overrides, for the settings marker', () => {
+    const ctx = setup();
+    expect(ctx.controller.customized.value).toEqual({ accent: false, background: false, foreground: false });
+
+    ctx.controller.setColor('accent', '#123456');
+    expect(ctx.controller.customized.value).toEqual({ accent: true, background: false, foreground: false });
+
+    // The marker is per theme: the other theme has not been touched.
+    ctx.theme.value = 'dark';
+    expect(ctx.controller.customized.value).toEqual({ accent: false, background: false, foreground: false });
+    ctx.theme.value = 'light';
+
+    ctx.controller.resetColors();
+    expect(ctx.controller.customized.value).toEqual({ accent: false, background: false, foreground: false });
+  });
+
   test('applies colors immediately, keeps each theme independent and restores saved overrides', () => {
     const ctx = setup();
     ctx.controller.setColor('background', '#f0e8ff');
