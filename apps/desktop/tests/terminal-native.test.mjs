@@ -33,17 +33,30 @@ test('real PTY preserves shell state, resizes, interrupts and exits', { timeout:
     }
   }
   const windows = process.platform === 'win32';
+  const echoInterrupted = windows ? 'echo INTERRUPTED=%SK_PTY_VALUE%\r' : 'echo INTERRUPTED=$SK_PTY_VALUE\r';
   write(windows ? 'set SK_PTY_VALUE=persistent\r' : 'SK_PTY_VALUE=persistent\r');
   write(windows ? 'echo STATE=%SK_PTY_VALUE%\r' : 'echo STATE=$SK_PTY_VALUE\r');
   await until(() => output.includes('STATE=persistent'), 'shell variables must persist between writes');
   terminal.resize(1, { id: session.id, cols: 110, rows: 32 });
   output = '';
-  write(windows ? 'ping -n 30 127.0.0.1 >nul\r' : 'sleep 30\r');
+  // The child announces itself before it blocks, so the interrupt can never
+  // land before the child exists; a bare fixed delay made this test fail on a
+  // loaded machine. The child itself has to be one the console can interrupt.
+  write(windows ? 'echo SK_WAITING & ping -n 30 127.0.0.1 >nul\r' : 'echo SK_WAITING; sleep 30\r');
+  await until(() => output.includes('SK_WAITING'), 'the long-running program must report that it started');
   await new Promise((resolve) => setTimeout(resolve, 200));
   write('\x03');
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  write(windows ? 'echo INTERRUPTED=%SK_PTY_VALUE%\r' : 'echo INTERRUPTED=$SK_PTY_VALUE\r');
-  await until(() => output.includes('INTERRUPTED=persistent'), 'Ctrl+C must interrupt the child and return control to the same shell');
+  // The shell may not own the prompt yet when the interrupt lands, and a
+  // swallowed echo would then look like a failed interrupt. Repeating the probe
+  // makes the assertion about the shell rather than about scheduler timing.
+  const interruptDeadline = Date.now() + 20_000;
+  while (!output.includes('INTERRUPTED=persistent')) {
+    if (Date.now() > interruptDeadline) {
+      assert.fail(`Ctrl+C must interrupt the child and return control to the same shell\n${output}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    write(echoInterrupted);
+  }
   write('exit 0\r');
   await until(() => exit !== undefined, 'shell exit must reach the renderer bridge');
   assert.equal(exit, 0);
