@@ -61,8 +61,18 @@ test('local plans substitute the file and executable placeholders', () => {
   assert.equal(rust.compile.args.at(-1), 'C:\\Temp\\sandkasten-local-run-job_2_3\\main.exe');
   assert.deepEqual(rust.run, { command: 'C:\\Temp\\sandkasten-local-run-job_2_3\\main.exe', args: [] });
 
-  const go = resolveLocalPlan('go', { filePath: path.resolve('/ws/main.go'), jobId: 'job-3' });
-  assert.deepEqual(go.run.args.slice(0, 1), ['run']);
+  const go = resolveLocalPlan('go', { filePath: path.resolve('/ws/main.go'), jobId: 'job-3', platform: 'win32', tmpRoot: 'C:\\Temp' });
+  assert.equal(go.compile.command, 'go');
+  assert.deepEqual(go.compile.args.slice(0, 3), ['build', '-o', 'C:\\Temp\\sandkasten-local-run-job-3\\main.exe']);
+  assert.equal(go.compile.args.at(-1), path.resolve('/ws/main.go'));
+  assert.equal(go.run.command, 'C:\\Temp\\sandkasten-local-run-job-3\\main.exe');
+  assert.deepEqual(go.run.args, []);
+
+  // WSL cannot open a Windows absolute path, so Bash is handed the relative
+  // name and runs in the file's own directory.
+  const bash = resolveLocalPlan('bash', { filePath: path.resolve('/ws/hello world.sh'), jobId: 'job-4' });
+  assert.deepEqual(bash.run, { command: 'bash', args: ['hello world.sh'] });
+  assert.equal(bash.workDirectory, path.resolve('/ws'));
 
   assert.throws(() => resolveLocalPlan('cobol', { filePath: '/ws/main.cob' }), /does not support/);
   assert.throws(() => resolveLocalPlan('python', {}), /workspace file/);
@@ -78,6 +88,33 @@ test('extensions map to canonical runtime names', () => {
       assert.equal(runtimeForExtension(extension), language);
     }
   }
+});
+
+test('Bash declares a probe budget that covers a cold WSL distro start', () => {
+  assert.equal(LOCAL_RUNTIMES.bash.command, 'bash');
+  assert.ok(LOCAL_RUNTIMES.bash.probeTimeoutMs >= 15_000,
+    'the generic probe budget would report an installed WSL-backed Bash as missing');
+});
+
+test('Go builds explicitly so a locked temporary executable cannot fail a good run', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-run-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'main.go'), 'package main\n\nfunc main() {}\n');
+  const executable = path.join(root, '.out', 'sandkasten-local-run-job-go', 'main.exe');
+
+  const { spawnImpl, calls } = fakeSpawn({ stdout: 'ok\n', code: 0 });
+  const runner = createLocalRunner({ spawnImpl, platform: 'win32', tmpRoot: path.join(root, '.out') });
+  const result = await runner.run({ jobId: 'job-go', path: 'main.go', language: 'go' }, { root });
+  assert.equal(result.status, 'JOB_STATUS_SUCCEEDED');
+  assert.deepEqual(calls.map((call) => call.command), ['go', executable]);
+  assert.deepEqual(calls[0].args.slice(0, 3), ['build', '-o', executable]);
+
+  const { spawnImpl: failing, calls: failingCalls } = fakeSpawn({ stderr: 'cannot build\n', code: 2 });
+  const buildFailure = await createLocalRunner({ spawnImpl: failing, platform: 'win32', tmpRoot: path.join(root, '.out') })
+    .run({ jobId: 'job-go-bad', path: 'main.go', language: 'go' }, { root });
+  assert.equal(buildFailure.status, 'JOB_STATUS_COMPILE_FAILED');
+  assert.equal(buildFailure.compileStderr, 'cannot build\n');
+  assert.equal(failingCalls.length, 1, 'a failed build must not run the executable');
 });
 
 test('detection reports which toolchains exist on this machine', async () => {

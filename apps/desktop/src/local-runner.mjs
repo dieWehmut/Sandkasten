@@ -20,7 +20,18 @@ export const LOCAL_RUNTIMES = {
   python: { label: 'Python', command: 'python', args: ['{file}'], probe: ['--version'], extensions: ['.py', '.pyw'] },
   javascript: { label: 'JavaScript', command: 'node', args: ['{file}'], probe: ['--version'], extensions: ['.js', '.mjs', '.cjs'] },
   typescript: { label: 'TypeScript', command: 'node', args: ['{file}'], probe: ['--version'], extensions: ['.ts', '.mts', '.cts'] },
-  go: { label: 'Go', command: 'go', args: ['run', '{file}'], probe: ['version'], extensions: ['.go'] },
+  go: {
+    label: 'Go',
+    // `go run` deletes its own temporary executable after the program exits; a
+    // Windows lock on that file turns a successful program into a failed job.
+    // Building explicitly moves the run into the same compile/run shape as the
+    // other native runtimes and separates build errors from runtime errors.
+    compile: { command: 'go', args: ['build', '-o', '{exe}', '{file}'] },
+    run: { command: '{exe}', args: [] },
+    probe: ['version'],
+    native: true,
+    extensions: ['.go'],
+  },
   rust: {
     label: 'Rust',
     compile: { command: 'rustc', args: ['{file}', '-o', '{exe}'] },
@@ -47,7 +58,19 @@ export const LOCAL_RUNTIMES = {
   java: { label: 'Java', command: 'java', args: ['{file}'], probe: ['-version'], extensions: ['.java'] },
   ruby: { label: 'Ruby', command: 'ruby', args: ['{file}'], probe: ['--version'], extensions: ['.rb'] },
   php: { label: 'PHP', command: 'php', args: ['{file}'], probe: ['--version'], extensions: ['.php'] },
-  bash: { label: 'Bash', command: 'bash', args: ['{file}'], probe: ['--version'], extensions: ['.sh', '.bash'] },
+  bash: {
+    label: 'Bash',
+    command: 'bash',
+    // A Windows `bash` is usually the WSL launcher, and WSL cannot open a
+    // Windows absolute path; the run starts in the file's directory (which WSL
+    // translates to /mnt/…), so the relative name is the portable argument.
+    args: ['{name}'],
+    probe: ['--version'],
+    // A cold WSL distro start takes longer than the generic probe budget;
+    // without the extension an installed Bash would be reported as missing.
+    probeTimeoutMs: 20_000,
+    extensions: ['.sh', '.bash'],
+  },
   lua: { label: 'Lua', command: 'lua', args: ['{file}'], probe: ['-v'], extensions: ['.lua'] },
   perl: { label: 'Perl', command: 'perl', args: ['{file}'], probe: ['-v'], extensions: ['.pl'] },
 };
@@ -63,10 +86,11 @@ export function resolveLocalPlan(language, options = {}) {
 
   const base = path.basename(filePath).replace(/\.[^.]+$/, '');
   const executable = path.join(tmpRoot, `sandkasten-local-run-${jobId.replace(/[^\w.-]/g, '_')}`, `${base}${platform === 'win32' ? '.exe' : ''}`);
-  const substitute = (step) => ({
-    command: step.command.replaceAll('{file}', filePath).replaceAll('{exe}', executable),
-    args: step.args.map((argument) => argument.replaceAll('{file}', filePath).replaceAll('{exe}', executable)),
-  });
+  const substitute = (step) => {
+    const fill = (text) => text
+      .replaceAll('{file}', filePath).replaceAll('{exe}', executable).replaceAll('{name}', path.basename(filePath));
+    return { command: fill(step.command), args: step.args.map(fill) };
+  };
   const run = runtime.run ?? { command: runtime.command, args: runtime.args };
 
   return {
@@ -197,7 +221,7 @@ export function createLocalRunner(options = {}) {
       label: runtime.label,
       command: runtime.compile?.command ?? runtime.command,
       extensions: [...runtime.extensions],
-      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, probeTimeoutMs),
+      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, runtime.probeTimeoutMs ?? probeTimeoutMs),
     })));
     detection = entries;
     return detection;
