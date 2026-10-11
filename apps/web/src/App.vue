@@ -465,6 +465,18 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
 };
 
 const commandPaletteError = ref('');
+// The commands the active shell can run, offered next to the app's own
+// commands. They are names only: the main process owns the directories.
+const terminalShellCommands = computed<PaletteCommand[]>(() => {
+  if (!terminal) return [];
+  const profileId = terminal.activeProfileId.value;
+  if (!profileId) return [];
+  const label = terminal.profiles.value.find((profile) => profile.id === profileId)?.label ?? '';
+  return (terminal.commandNames.value[profileId] ?? []).map((name) => ({
+    id: `shell.${name}`, label: name, detail: label,
+    execute: () => { void terminal.send(name); },
+  }));
+});
 const paletteCommands = computed<PaletteCommand[]>(() => {
   const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
   const command = (id: string, key: MessageKey, accelerator?: string, enabled = true): PaletteCommand => ({
@@ -499,6 +511,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('explorer.collapseAll', 'ide.explorer.collapseAll', undefined, hasDirectories.value),
     command('file.delete', 'ide.explorer.deleteFile', undefined, Boolean(activeFile.value)),
     command(ide.panelMaximized.value ? 'view.restorePanel' : 'view.togglePanelMaximize', ide.panelMaximized.value ? 'ide.panel.restore' : 'ide.panel.maximize', undefined, ideMode.value && ide.panelVisible.value),
+    ...terminalShellCommands.value,
   ];
 });
 const commandCenter = useCommandCenter({

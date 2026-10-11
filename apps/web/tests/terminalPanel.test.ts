@@ -26,6 +26,7 @@ function installDesktop(options: { root?: WorkspaceRoot | null; files?: Workspac
   const terminal = {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
+    commands: vi.fn(async (profileId: string) => profileId === 'cmd' ? ['git', 'ls'] : ['python', 'git']),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
@@ -147,5 +148,21 @@ describe('desktop terminal panel', () => {
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: "python 'main.py'\r" }));
     expect(bridge.create).toHaveBeenCalledWith({ profileId: undefined, cols: 80, rows: 24 });
     expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(true);
+  });
+
+  test('offers the active shell\'s commands in the palette and types the chosen one', async () => {
+    const bridge = installDesktop();
+    const app = await mountApp();
+    menu('terminal.new');
+    await flushPromises();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    const git = app.find('[data-command="shell.git"]');
+    expect(git.exists()).toBe(true);
+    expect(git.text()).toContain('git');
+    expect(git.text()).toContain('PowerShell');
+    await git.trigger('click');
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'git\r' }));
+    expect(bridge.commands).toHaveBeenCalledWith('pwsh');
   });
 });

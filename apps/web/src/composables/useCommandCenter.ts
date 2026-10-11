@@ -4,6 +4,8 @@ import type { Translator } from '../i18n/locale';
 export interface PaletteCommand {
   id: string;
   label: string;
+  /** Optional right-hand note, e.g. which shell offers the command. */
+  detail?: string;
   accelerator?: string;
   enabled?: boolean;
   execute(): void | Promise<unknown>;

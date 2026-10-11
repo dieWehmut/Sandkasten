@@ -1,4 +1,4 @@
-import { readonly, ref, shallowRef } from 'vue';
+import { computed, readonly, ref, shallowRef, watch } from 'vue';
 import { Terminal, type IDisposable, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import type { TerminalBridge, TerminalProfile, TerminalSession } from '../services/desktopBridge';
@@ -22,9 +22,15 @@ export function useTerminal(bridge: TerminalBridge) {
   const shown = ref(false);
   const pending = ref(0);
   const error = ref('');
+  // Command names per profile id, fetched once per profile and kept for the
+  // session: the list is what the palette offers for the shell in front of the
+  // user, and the main process only ever sends names.
+  const commandNames = shallowRef<Record<string, readonly string[]>>({});
   const views = new Map<string, SessionView>();
   let disposed = false;
   let focused = false;
+
+  const activeProfileId = computed(() => sessions.value.find((entry) => entry.id === activeId.value)?.profileId ?? '');
 
   const offData = bridge.onData(({ id, data }) => { views.get(id)?.terminal.write(data); });
   const offExit = bridge.onExit(({ id, exitCode }) => {
@@ -63,6 +69,25 @@ export function useTerminal(bridge: TerminalBridge) {
       if (!disposed) profiles.value = discovered;
     } catch (cause) { report(cause); }
   }
+
+  async function loadCommands(profileId = activeProfileId.value): Promise<readonly string[]> {
+    if (disposed || !profileId) return [];
+    const cached = commandNames.value[profileId];
+    if (cached) return cached;
+    try {
+      const names = await bridge.commands(profileId);
+      if (disposed) return [];
+      commandNames.value = { ...commandNames.value, [profileId]: names };
+      return names;
+    } catch (cause) {
+      report(cause);
+      return [];
+    }
+  }
+
+  // The list belongs to the shell the user is looking at, so it is fetched when
+  // that shell becomes the active session.
+  watch(activeProfileId, (profileId) => { if (profileId) void loadCommands(profileId); }, { immediate: true });
 
   function removeView(id: string): void {
     const view = views.get(id);
@@ -208,8 +233,9 @@ export function useTerminal(bridge: TerminalBridge) {
 
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
+    activeProfileId, commandNames: readonly(commandNames),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
-    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send,
+    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
   };

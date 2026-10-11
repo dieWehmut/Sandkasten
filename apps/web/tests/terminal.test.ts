@@ -24,6 +24,7 @@ function fakeBridge() {
   const bridge = {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++count}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
+    commands: vi.fn(async (profileId: string) => profileId === 'cmd' ? ['git', 'ls'] : ['pwsh']),
     attach: vi.fn(async (id: string) => { data({ id, data: 'initial prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
@@ -191,5 +192,31 @@ describe('app-owned terminal sessions', () => {
     expect(await terminal.send('')).toBe(false);
     await terminal.dispose();
     expect(await terminal.send('after dispose')).toBe(false);
+  });
+
+  test('fetches the active shell\'s command names once per profile and caches them', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(host.bridge.commands).toHaveBeenCalledWith('cmd'));
+    expect(await terminal.loadCommands('cmd')).toEqual(['git', 'ls']);
+    expect(host.bridge.commands).toHaveBeenCalledTimes(1);
+    expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']);
+    await terminal.create('pwsh');
+    await vi.waitFor(() => expect(host.bridge.commands).toHaveBeenCalledWith('pwsh'));
+    expect(terminal.commandNames.value.pwsh).toEqual(['pwsh']);
+    expect(terminal.activeProfileId.value).toBe('pwsh');
+    await terminal.dispose();
+  });
+
+  test('a failed command list is reported and retried without breaking the session', async () => {
+    const host = fakeBridge();
+    host.bridge.commands.mockRejectedValueOnce(new Error('scan failed'));
+    const terminal = useTerminal(host.bridge);
+    await terminal.create();
+    await vi.waitFor(() => expect(terminal.error.value).toContain('scan failed'));
+    expect(terminal.commandNames.value).toEqual({});
+    expect(await terminal.loadCommands()).toEqual(['pwsh']);
+    expect(terminal.commandNames.value.pwsh).toEqual(['pwsh']);
+    await terminal.dispose();
   });
 });
