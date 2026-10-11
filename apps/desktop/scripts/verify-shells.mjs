@@ -13,6 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
+import { discoverTerminalCommands } from '../src/terminal-commands.mjs';
 import { sessionEnvironment } from '../src/terminal.mjs';
 
 const MARKER = 'SANDKASTEN_SHELL_OK';
@@ -79,6 +80,35 @@ function createCommandProbe(platform = process.platform) {
   return { directory, command: name, dispose: () => rmSync(directory, { recursive: true, force: true }) };
 }
 
+// The published command list has to be one the shell really resolves, otherwise
+// the palette would advertise commands that cannot run. Sampling a few names is
+// deliberate: bash's own `compgen -c` never returns under MSYS when stdio is
+// piped, and a per-name lookup is the same evidence with a bounded cost.
+const SAFE_COMMAND_NAME = /^[\w.+-]+$/;
+const SAMPLE_PREFERENCE = ['git', 'python', 'ls', 'node', 'dir'];
+
+function sampleCommands(published) {
+  const safe = published.filter((name) => SAFE_COMMAND_NAME.test(name));
+  const preferred = SAMPLE_PREFERENCE
+    .map((name) => safe.find((candidate) => candidate.toLowerCase() === name))
+    .filter((name) => name !== undefined);
+  const rest = safe.filter((name) => !preferred.includes(name));
+  return [...new Set([...preferred, ...rest])].slice(0, 3);
+}
+
+function resolvesName(profile, name) {
+  switch (profile.family) {
+    case 'powershell': return `(Get-Command '${name}' -ErrorAction SilentlyContinue).Source`;
+    case 'cmd': return `where ${name}`;
+    case 'bash':
+    case 'posix':
+    case 'wsl': return `command -v '${name}'`;
+    // NuShell resolves through `which`, and its output is a table; the sample
+    // check is skipped there rather than parsed unreliably.
+    default: return '';
+  }
+}
+
 export async function verifyShells({ platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true } = {}) {
   const discovered = await discoverTerminalProfiles({ platform });
   const profiles = profileId ? discovered.filter((profile) => profile.id === profileId) : discovered;
@@ -113,7 +143,23 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
           reason = run.ok ? 'the probe command did not print its marker' : `the probe command could not run (${run.reason})`;
         }
       }
-      results.push({ ...base, status: reason ? 'failed' : 'ok', reason, pathProbe });
+      // Sampling proves the advertised list contains commands this shell runs.
+      const published = await discoverTerminalCommands(profile, { platform });
+      const samples = published.length ? sampleCommands(published) : [];
+      const resolved = [];
+      for (const name of samples) {
+        const resolve = resolvesName(profile, name);
+        if (!resolve) break;
+        const lookup = await probe(profile, resolve, { timeoutMs, environment });
+        if (lookup.ok && lookup.stdout.trim()) resolved.push(name);
+      }
+      if (samples.length && !resolved.length) {
+        reason = reason || `the shell resolves none of its advertised commands (${samples.join(', ')})`;
+      }
+      results.push({
+        ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
+        commands: published.length, samples, resolved,
+      });
     }
   } finally {
     commandProbe?.dispose();
@@ -124,8 +170,11 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
 function render(results) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
+    const commands = result.commands
+      ? `${result.commands} commands (${result.resolved.length}/${result.samples.length} sampled resolve)`
+      : 'no command list';
     const detail = result.status === 'ok'
-      ? `marker ok; commands from the profile path ${result.pathProbe}`
+      ? `marker ok; path ${result.pathProbe}; ${commands}`
       : result.reason;
     process.stdout.write(`${result.status === 'ok' ? 'ok     ' : 'FAILED '} ${result.label.padEnd(width)}  ${String(result.family).padEnd(11)} ${String(result.durationMs).padStart(6)} ms  ${detail}\n`);
   }
