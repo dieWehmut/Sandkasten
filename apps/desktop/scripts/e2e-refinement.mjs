@@ -14,7 +14,7 @@ const outputRoot = path.join(repositoryRoot, 'tmp');
 const scratch = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-refinement-'));
 const workspace = path.join(scratch, 'workspace');
 await mkdir(workspace);
-await writeFile(path.join(workspace, 'hello.py'), 'print("hello")\n');
+await writeFile(path.join(workspace, 'hello.py'), 'print("E2E_TERMINAL_RUN")\n');
 await mkdir(outputRoot, { recursive: true });
 
 let driver;

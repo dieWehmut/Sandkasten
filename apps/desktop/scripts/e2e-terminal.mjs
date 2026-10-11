@@ -6,6 +6,7 @@ import { selectTheme } from './e2e-theme.mjs';
 // This drives xterm through its real input element. Output assertions read its
 // accessibility tree, which represents the same screen painted on the canvas.
 export async function verifyTerminal({ page, app, outputRoot }) {
+  let reportRunInTerminal = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -33,6 +34,15 @@ export async function verifyTerminal({ page, app, outputRoot }) {
 
   await page.click('[data-action="ide-open-hello.py"]');
   await page.waitForSelector('[data-action="ide-tab-hello.py"]');
+
+  // The palette command types the active file's interpreter command into the
+  // shell the panel owns; the fixture's marker proves the program really ran.
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-command="terminal.runFile"]');
+  await page.click('[data-command="terminal.runFile"]');
+  await waitScreen(firstId, 'E2E_TERMINAL_RUN');
+  reportRunInTerminal = true;
+
   await page.locator(`${pane(firstId)} .xterm-helper-textarea`).focus();
   await page.keyboard.press('Control+w');
   await page.keyboard.press('Control+n');
@@ -124,5 +134,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal };
 }
