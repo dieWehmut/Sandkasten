@@ -48,7 +48,11 @@ export function createTerminalHost({
 }) {
   const sessions = new Map();
   let disposed = false;
-  const publicProfiles = () => profiles.map(({ id, label, isDefault }) => ({ id, label, isDefault: !!isDefault }));
+  // The renderer needs the shell family to quote a command it injects into the
+  // session; the executable path stays in the main process.
+  const publicProfiles = () => profiles.map(({ id, label, family, isDefault }) => ({
+    id, label, family: family ?? 'posix', isDefault: !!isDefault,
+  }));
   function owned(owner, id) {
     const terminal = typeof id === 'string' && sessions.get(id);
     if (!terminal || terminal.owner !== owner) throw new Error('Unknown terminal session.');

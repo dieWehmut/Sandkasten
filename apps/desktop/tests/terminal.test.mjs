@@ -35,7 +35,7 @@ function harness() {
 test('sessions start in the workspace or home and buffer the prompt until attached', (t) => {
   const { host, processes, events, setCwd } = harness();
   t.after(() => host.dispose());
-  assert.deepEqual(host.profiles(), [{ id: 'cmd', label: 'Command Prompt', isDefault: true }]);
+  assert.deepEqual(host.profiles(), [{ id: 'cmd', label: 'Command Prompt', family: 'posix', isDefault: true }]);
   const first = host.create(1, { cols: 80, rows: 24 });
   assert.equal(first.cwd, 'C:\\Users\\test');
   assert.equal(first.profileId, 'cmd');
@@ -48,6 +48,20 @@ test('sessions start in the workspace or home and buffer the prompt until attach
   assert.equal(events.length, 1, 'reattach must not replay output twice');
   setCwd('D:\\work');
   assert.equal(host.create(1, { cols: 100, rows: 30 }).cwd, 'D:\\work');
+});
+
+test('the renderer sees the shell family but never the executable or its command path', (t) => {
+  const host = createTerminalHost({
+    profiles: [{
+      id: 'powershell', label: 'PowerShell', family: 'powershell', executable: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+      args: ['-NoLogo'], pathPrepend: ['C:\\Program Files\\PowerShell\\7'], isDefault: true,
+    }],
+    spawn: () => { throw new Error('no session is created here'); },
+    getCwd: () => 'C:\\work',
+    onData: () => {}, onExit: () => {},
+  });
+  t.after(() => host.dispose());
+  assert.deepEqual(host.profiles(), [{ id: 'powershell', label: 'PowerShell', family: 'powershell', isDefault: true }]);
 });
 
 test('a persistent session accepts input, Ctrl+C and resize only from its owner', (t) => {
