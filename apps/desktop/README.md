@@ -23,7 +23,8 @@ The desktop build adds these things the browser cannot do:
    created, and deleted on disk, and `Ctrl+S` writes the buffer back.
 2. **Local execution.** `Run` executes the active file with the toolchain
    installed on this computer (`python`, `node`, `go`, `rustc`/`gcc`/`g++`,
-   `java`, `ruby`, `php`, `bash`, `lua`, `perl`), unsandboxed, with a 20 s
+   `java`, `ruby`, `php`, `bash`, `lua`, `perl`, and PowerShell through `pwsh`
+   or the Windows PowerShell), unsandboxed, with a 20 s
    default timeout and a 1 MiB output cap. The status bar always shows which
    backend ran the code (`Local run` vs `Sandbox API`); the same strip also
    reports the connection, the open file, the problems of the last run, the
@@ -60,7 +61,11 @@ The desktop build adds these things the browser cannot do:
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
    tabs, or visiting setup keeps the shell, its buffer, and its working
-   directory alive; quitting the app disposes them.
+   directory alive; quitting the app disposes them. `Terminal: Run active file
+   in terminal` (the command palette) types the file's interpreter command into
+   the shell the user is looking at, quoted for that shell's family, so the same
+   workspace can be driven from PowerShell, Git Bash or WSL without leaving the
+   workbench.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
