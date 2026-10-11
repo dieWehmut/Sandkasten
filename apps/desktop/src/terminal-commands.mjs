@@ -63,11 +63,20 @@ export async function discoverTerminalCommands(profile, {
   listDirectory = readdir,
   isExecutable = (file) => onPath(file, platform),
 } = {}) {
+  // A WSL session's PATH belongs to the distro, so the Windows directories
+  // cannot describe what it can run; reporting Windows commands there would be
+  // wrong. Such a profile reports no list instead of a misleading one.
+  if (profile?.family === 'wsl') return [];
   const windows = platform === 'win32';
   const extensions = windows ? windowsExtensions(environment) : undefined;
-  const names = new Map();
-  const ceiling = TERMINAL_COMMAND_LIMITS.commands * 2;
+  const seen = new Set();
+  const commands = [];
+  // Directories are visited in the order the shell itself searches them, and
+  // each directory is listed alphabetically. Sorting the whole result instead
+  // would drop the tail of the alphabet once the cap is reached, which would
+  // hide exactly the tools the user is looking for.
   for (const directory of shellSearchPath(profile, environment, platform)) {
+    if (commands.length >= TERMINAL_COMMAND_LIMITS.commands) break;
     let entries;
     try {
       entries = await listDirectory(directory, { withFileTypes: true });
@@ -75,6 +84,7 @@ export async function discoverTerminalCommands(profile, {
       // An unreadable PATH entry simply contributes nothing.
       continue;
     }
+    const found = [];
     for (const entry of entries) {
       const fileName = typeof entry === 'string' ? entry : entry?.name;
       const isFile = typeof entry === 'string' ? true : entry?.isFile?.() === true;
@@ -82,14 +92,18 @@ export async function discoverTerminalCommands(profile, {
       const name = windows ? commandName(fileName, extensions) : fileName;
       if (!name) continue;
       if (!windows && !isExecutable(path.posix.join(directory, fileName))) continue;
+      found.push(name);
+    }
+    found.sort((left, right) => left.localeCompare(right));
+    for (const name of found) {
       const identity = windows ? name.toLowerCase() : name;
-      if (!names.has(identity)) names.set(identity, name);
-      if (names.size >= ceiling) break;
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      commands.push(name);
+      if (commands.length >= TERMINAL_COMMAND_LIMITS.commands) break;
     }
   }
-  return [...names.values()]
-    .sort((left, right) => left.localeCompare(right))
-    .slice(0, TERMINAL_COMMAND_LIMITS.commands);
+  return commands;
 }
 
 /**

@@ -33,7 +33,7 @@ test('Windows lists command names from the profile path then PATH, without dupli
       listDirectory: async (directory) => entries[directory] ?? [],
     },
   );
-  assert.deepEqual(commands, ['bash', 'cmd', 'git', 'notepad', 'run']);
+  assert.deepEqual(commands, ['bash', 'git', 'cmd', 'notepad', 'run']);
 });
 
 test('Windows falls back to the default extension set when the environment omits PATHEXT', async () => {
@@ -63,7 +63,7 @@ test('Unix keeps executable files under their own names', async () => {
       isExecutable: (path) => !path.endsWith('not-exec'),
     },
   );
-  assert.deepEqual(commands, ['ls', 'mytool', 'sed', 'sh']);
+  assert.deepEqual(commands, ['mytool', 'ls', 'sed', 'sh']);
 });
 
 test('an unreadable PATH entry contributes nothing instead of failing the scan', async () => {
@@ -82,23 +82,52 @@ test('an unreadable PATH entry contributes nothing instead of failing the scan',
   assert.deepEqual(commands, ['sh']);
 });
 
-test('the scan is bounded by the directory and command limits', async () => {
-  const directories = Array.from({ length: TERMINAL_COMMAND_LIMITS.directories + 10 }, (_value, index) => `/d${index}`);
+test('a WSL profile reports no command list instead of the Windows one', async () => {
+  const commands = await discoverTerminalCommands(
+    { id: 'wsl', family: 'wsl', pathPrepend: ['C:\\Windows\\System32'] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\Windows\\System32' },
+      listDirectory: async () => [file('cmd.exe')],
+    },
+  );
+  assert.deepEqual(commands, [], 'the distro owns its PATH; Windows names would mislead');
+});
+
+test('the scan stops at the command limit while keeping the search-path order', async () => {
   const crowded = Array.from({ length: TERMINAL_COMMAND_LIMITS.commands + 100 }, (_value, index) => file(`cmd-${String(index).padStart(3, '0')}`));
   const scanned = [];
   const commands = await discoverTerminalCommands(
     { id: 'bash', pathPrepend: [] },
     {
       platform: 'linux',
+      environment: { PATH: '/first:/second' },
+      listDirectory: async (directory) => { scanned.push(directory); return directory === '/first' ? crowded : [file('later')]; },
+      isExecutable: () => true,
+    },
+  );
+  assert.deepEqual(scanned, ['/first'], 'a full list must stop the scan');
+  assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.commands);
+  assert.equal(commands[0], 'cmd-000');
+  assert.equal(commands.at(-1), `cmd-${String(TERMINAL_COMMAND_LIMITS.commands - 1).padStart(3, '0')}`);
+});
+
+test('the scan visits at most the directory limit', async () => {
+  const directories = Array.from({ length: TERMINAL_COMMAND_LIMITS.directories + 10 }, (_value, index) => `/d${index}`);
+  const scanned = [];
+  const commands = await discoverTerminalCommands(
+    { id: 'bash', pathPrepend: [] },
+    {
+      platform: 'linux',
       environment: { PATH: directories.join(':') },
-      listDirectory: async (directory) => { scanned.push(directory); return directory === '/d0' ? crowded : []; },
+      listDirectory: async (directory) => { scanned.push(directory); return [file(`tool-${directory.slice(2)}`)]; },
       isExecutable: () => true,
     },
   );
   assert.equal(scanned.length, TERMINAL_COMMAND_LIMITS.directories);
-  assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.commands);
-  assert.equal(commands[0], 'cmd-000');
-  assert.equal(commands.at(-1), `cmd-${String(TERMINAL_COMMAND_LIMITS.commands - 1).padStart(3, '0')}`);
+  assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.directories);
+  assert.deepEqual(commands.slice(0, 3), ['tool-0', 'tool-1', 'tool-2']);
+  assert.ok(commands.every((name, index) => name === `tool-${index}`), 'commands keep the directory order');
 });
 
 test('the catalog scans a profile once and refreshes after its window', async () => {
