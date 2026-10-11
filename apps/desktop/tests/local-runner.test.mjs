@@ -74,6 +74,15 @@ test('local plans substitute the file and executable placeholders', () => {
   assert.deepEqual(bash.run, { command: 'bash', args: ['hello world.sh'] });
   assert.equal(bash.workDirectory, path.resolve('/ws'));
 
+  // PowerShell falls back to `pwsh` until detection resolves an installed one.
+  const fallback = resolveLocalPlan('powershell', { filePath: path.resolve('/ws/main.ps1'), jobId: 'job-5' });
+  assert.deepEqual(fallback.run, {
+    command: 'pwsh',
+    args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.resolve('/ws/main.ps1')],
+  });
+  const resolved = resolveLocalPlan('powershell', { filePath: path.resolve('/ws/main.ps1'), jobId: 'job-6', command: 'powershell' });
+  assert.equal(resolved.run.command, 'powershell');
+
   assert.throws(() => resolveLocalPlan('cobol', { filePath: '/ws/main.cob' }), /does not support/);
   assert.throws(() => resolveLocalPlan('python', {}), /workspace file/);
 });
@@ -115,6 +124,42 @@ test('Go builds explicitly so a locked temporary executable cannot fail a good r
   assert.equal(buildFailure.status, 'JOB_STATUS_COMPILE_FAILED');
   assert.equal(buildFailure.compileStderr, 'cannot build\n');
   assert.equal(failingCalls.length, 1, 'a failed build must not run the executable');
+});
+
+test('a runtime with alternative binaries probes them in order and runs the one that answers', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-run-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'main.ps1'), 'Write-Output "hi"\n');
+
+  const calls = [];
+  const spawnImpl = (command, args, options) => {
+    calls.push({ command, args });
+    const plan = command === 'pwsh' ? { error: 'ENOENT' } : { stdout: 'hi\n', code: 0 };
+    return fakeSpawn(plan).spawnImpl(command, args, options);
+  };
+  const runner = createLocalRunner({ spawnImpl, platform: 'win32', tmpRoot: path.join(root, '.out') });
+  const entry = (await runner.detect()).find((item) => item.language === 'powershell');
+  assert.equal(entry.available, true);
+  assert.equal(entry.command, 'powershell');
+  // Detection probes every runtime; the PowerShell candidates stay in order.
+  const probed = calls.filter((call) => ['pwsh', 'powershell'].includes(call.command)).map((call) => call.command);
+  assert.deepEqual(probed, ['pwsh', 'powershell'], 'candidates are probed in order');
+
+  calls.length = 0;
+  const result = await runner.run({ jobId: 'job-ps', path: 'main.ps1', language: 'powershell' }, { root });
+  assert.equal(result.status, 'JOB_STATUS_SUCCEEDED', result.errorMessage ?? result.stderr);
+  assert.deepEqual(calls.map((call) => call.command), ['powershell']);
+  assert.deepEqual(calls[0].args, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'main.ps1')]);
+
+  // With no candidate installed the runtime is unavailable and keeps its primary
+  // name, so the UI can still say what it looked for.
+  const missing = createLocalRunner({
+    spawnImpl: (command, args, options) => fakeSpawn({ error: 'ENOENT' }).spawnImpl(command, args, options),
+    platform: 'win32',
+  });
+  const unavailable = (await missing.detect()).find((item) => item.language === 'powershell');
+  assert.equal(unavailable.available, false);
+  assert.equal(unavailable.command, 'pwsh');
 });
 
 test('detection reports which toolchains exist on this machine', async () => {

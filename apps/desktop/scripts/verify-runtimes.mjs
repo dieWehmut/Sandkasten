@@ -32,6 +32,7 @@ export const RUNTIME_FIXTURES = {
   bash: { file: 'main.sh', source: `echo "${MARKER}:bash"\n` },
   lua: { file: 'main.lua', source: `print("${MARKER}:lua")\n` },
   perl: { file: 'main.pl', source: `print "${MARKER}:perl\\n";\n` },
+  powershell: { file: 'main.ps1', source: `Write-Output "${MARKER}:powershell"\n` },
 };
 
 function brief(text, limit = 400) {

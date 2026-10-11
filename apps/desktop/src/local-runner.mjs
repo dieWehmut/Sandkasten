@@ -74,6 +74,19 @@ export const LOCAL_RUNTIMES = {
   },
   lua: { label: 'Lua', command: 'lua', args: ['{file}'], probe: ['-v'], extensions: ['.lua'] },
   perl: { label: 'Perl', command: 'perl', args: ['{file}'], probe: ['-v'], extensions: ['.pl'] },
+  powershell: {
+    label: 'PowerShell',
+    // PowerShell 7 installs as `pwsh` and Windows ships Windows PowerShell as
+    // `powershell`; whichever answers the probe runs the script.
+    candidates: ['pwsh', 'powershell'],
+    command: 'pwsh',
+    // A default Windows client policy blocks local script files, so the run
+    // asks for Bypass in this process only; the file is the user's own code and
+    // local execution is already an explicit, unsandboxed opt-in.
+    args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '{file}'],
+    probe: ['-NoProfile', '-Command', 'exit 0'],
+    extensions: ['.ps1'],
+  },
 };
 
 export function resolveLocalPlan(language, options = {}) {
@@ -92,7 +105,10 @@ export function resolveLocalPlan(language, options = {}) {
       .replaceAll('{file}', filePath).replaceAll('{exe}', executable).replaceAll('{name}', path.basename(filePath));
     return { command: fill(step.command), args: step.args.map(fill) };
   };
-  const run = runtime.run ?? { command: runtime.command, args: runtime.args };
+  // A runtime with several acceptable binaries runs the one detection resolved;
+  // the renderer never chooses a command name.
+  const command = typeof options.command === 'string' && options.command !== '' ? options.command : runtime.command;
+  const run = runtime.run ?? { command, args: runtime.args };
 
   return {
     language,
@@ -217,15 +233,28 @@ export function createLocalRunner(options = {}) {
 
   async function detect({ refresh = false } = {}) {
     if (detection && !refresh) return detection;
-    const entries = await Promise.all(Object.entries(LOCAL_RUNTIMES).map(async ([language, runtime]) => ({
-      language,
-      label: runtime.label,
-      command: runtime.compile?.command ?? runtime.command,
-      extensions: [...runtime.extensions],
-      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, runtime.probeTimeoutMs ?? probeTimeoutMs),
-    })));
+    const entries = await Promise.all(Object.entries(LOCAL_RUNTIMES).map(async ([language, runtime]) => {
+      const primary = runtime.compile?.command ?? runtime.command;
+      const candidates = runtime.candidates?.length ? [...runtime.candidates] : [primary];
+      let command = primary;
+      let available = false;
+      for (const candidate of candidates) {
+        available = await settleAvailability(spawnImpl, candidate, runtime.probe, runtime.probeTimeoutMs ?? probeTimeoutMs);
+        if (available) { command = candidate; break; }
+      }
+      return { language, label: runtime.label, command, extensions: [...runtime.extensions], available };
+    }));
     detection = entries;
     return detection;
+  }
+
+  // Only a runtime that declares alternatives needs the probe result to pick a
+  // binary; every other runtime spawns its own command directly.
+  async function commandFor(language) {
+    const runtime = LOCAL_RUNTIMES[language];
+    if (!runtime?.candidates?.length) return undefined;
+    const entries = await detect().catch(() => []);
+    return entries.find((entry) => entry.language === language)?.command ?? runtime.command;
   }
 
   function timeoutFor(requested) {
@@ -244,7 +273,8 @@ export function createLocalRunner(options = {}) {
     const info = await stat(absolute).catch(() => null);
     if (!info?.isFile()) throw new Error(`workspace file not found: ${relativePath}`);
 
-    const plan = resolveLocalPlan(language, { filePath: absolute, jobId, platform, tmpRoot, workDirectory: path.dirname(absolute) });
+    const command = await commandFor(language);
+    const plan = resolveLocalPlan(language, { filePath: absolute, jobId, platform, tmpRoot, workDirectory: path.dirname(absolute), command });
     const timeoutMs = timeoutFor(request?.timeoutMs);
     const state = { canceled: false, child: undefined };
     activeRuns.set(jobId, state);
