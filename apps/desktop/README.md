@@ -61,11 +61,15 @@ The desktop build adds these things the browser cannot do:
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
    tabs, or visiting setup keeps the shell, its buffer, and its working
-   directory alive; quitting the app disposes them. `Terminal: Run active file
-   in terminal` (the command palette) types the file's interpreter command into
-   the shell the user is looking at, quoted for that shell's family, so the same
-   workspace can be driven from PowerShell, Git Bash or WSL without leaving the
-   workbench.
+   directory alive; quitting the app disposes them. The command palette offers the
+   commands the active shell can run — discovered from the session `PATH` with
+   the profile's own directories first, so a Git Bash session lists `git`, `ls`
+   and the coreutils while PowerShell leads with its own tools — and an entry
+   per command types it into that session. `Terminal: Run active file in
+   terminal` types the file's interpreter command instead, quoted for that
+   shell's family, so the same workspace can be driven from PowerShell, Git Bash
+   or WSL without leaving the workbench. A WSL session reports no command list:
+   its `PATH` belongs to the distro, so Windows names would mislead.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
@@ -154,9 +158,11 @@ npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 `verify:shells` walks the discovered terminal profiles, asks each shell for a
 one-shot marker command, and then proves the session environment reaches it: a
 probe command is written into a directory that is added to the profile's
-command path and the shell has to find and run it. WSL reports the check as not
-applicable, because a WSL session's `PATH` belongs to the distro. Pass
-`--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
+command path and the shell has to find and run it. It also publishes the
+command list the palette would offer and resolves a sample of those names in
+the shell itself, so the advertised list is one the shell really runs. WSL
+reports both checks as not applicable, because a WSL session's `PATH` belongs to
+the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
 
 `verify:runtimes` detects the toolchains on this machine and runs a hello-world
 fixture for every available runtime through the real local runner, requiring the
