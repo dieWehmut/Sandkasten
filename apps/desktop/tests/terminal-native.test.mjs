@@ -44,18 +44,20 @@ test('real PTY preserves shell state, resizes, interrupts and exits', { timeout:
   // loaded machine. The child itself has to be one the console can interrupt.
   write(windows ? 'echo SK_WAITING & ping -n 30 127.0.0.1 >nul\r' : 'echo SK_WAITING; sleep 30\r');
   await until(() => output.includes('SK_WAITING'), 'the long-running program must report that it started');
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  write('\x03');
-  // The shell may not own the prompt yet when the interrupt lands, and a
-  // swallowed echo would then look like a failed interrupt. Repeating the probe
-  // makes the assertion about the shell rather than about scheduler timing.
-  const interruptDeadline = Date.now() + 20_000;
-  while (!output.includes('INTERRUPTED=persistent')) {
+  // Interrupt until the shell answers. The marker is printed before the child
+  // starts, so the first Ctrl+C can land in the gap between the two commands,
+  // where an interactive cmd ignores it; once the child runs, the next one lands
+  // on it and the shell returns to its prompt.
+  const interrupted = () => output.includes('INTERRUPTED=persistent');
+  const interruptDeadline = Date.now() + 25_000;
+  while (!interrupted()) {
     if (Date.now() > interruptDeadline) {
       assert.fail(`Ctrl+C must interrupt the child and return control to the same shell\n${output}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    write('\x03');
+    await new Promise((resolve) => setTimeout(resolve, 300));
     write(echoInterrupted);
+    await new Promise((resolve) => setTimeout(resolve, 700));
   }
   write('exit 0\r');
   await until(() => exit !== undefined, 'shell exit must reach the renderer bridge');
