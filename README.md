@@ -233,6 +233,21 @@ Go、Assembly、Bash/Shell、C、Cangjie(仓颉)、Clojure、CSS、C++、C#、Co
 ./werkzeug/smoke/smoke-languages.sh # 所有语言的 HTTP 冒烟
 ```
 
+桌面工作台另有两个针对本机的验证入口(不需要 API 服务):
+
+```bash
+cd apps/desktop
+npm test                # 桌面端单元测试(工作区守卫、本地运行器、终端、菜单、托盘等)
+npm run verify:shells   # 发现已安装的 shell,并验证每个 shell 都能真正执行命令
+npm run verify:runtimes # 探测本机工具链,并对每个可用运行时跑一个真实样例
+```
+
+`verify:shells` 会为每个发现的 shell 执行一条标记命令,并把一个探针命令写入该
+shell 自己的命令目录,要求 shell 能找到并运行它——这正是终端会话 `PATH` 增强要
+保证的性质。`verify:runtimes` 通过真实的本地运行器执行各语言 hello-world,缺少的
+工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败。
+两者都支持 `--json` 输出。
+
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只验证子集。
 
 ## 工具目录

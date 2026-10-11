@@ -15,7 +15,8 @@ export const MAX_OUTPUT_BYTES = 1024 * 1024;
 export const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
 
 // {file} is the absolute path of the active workspace file; {exe} is the build
-// output path for compiled languages.
+// output path for compiled languages; {name} is the file's base name, for
+// runtimes that must be handed a path the target environment can resolve.
 export const LOCAL_RUNTIMES = {
   python: { label: 'Python', command: 'python', args: ['{file}'], probe: ['--version'], extensions: ['.py', '.pyw'] },
   javascript: { label: 'JavaScript', command: 'node', args: ['{file}'], probe: ['--version'], extensions: ['.js', '.mjs', '.cjs'] },
