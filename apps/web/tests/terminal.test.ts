@@ -22,7 +22,7 @@ function fakeBridge() {
   let exit = (_event: { id: string; exitCode: number }) => {};
   const offData = vi.fn(); const offExit = vi.fn(); let count = 0;
   const bridge = {
-    profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', isDefault: true }, { id: 'cmd', label: 'Command Prompt' }]),
+    profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++count}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'initial prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
@@ -171,5 +171,25 @@ describe('app-owned terminal sessions', () => {
     terminal.fit('s1'); expect(mocks.fits[0].fit).toHaveBeenCalledOnce();
     terminal.unmount('s1'); terminal.fit('s1'); expect(mocks.fits[0].fit).toHaveBeenCalledOnce();
     container.remove(); await terminal.dispose();
+  });
+
+  test('types an injected command into the active shell and refuses a dead or missing session', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    expect(await terminal.send('python main.py')).toBe(false);
+    await terminal.create(); await terminal.create();
+    expect(await terminal.send("python 'main.py'")).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's2', data: "python 'main.py'\r" });
+    terminal.select('s1');
+    expect(await terminal.send('node main.js')).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'node main.js\r' });
+    // The PTY can exit between the check and the write; the failure surfaces.
+    host.bridge.write.mockRejectedValueOnce(new Error('The terminal process has exited.'));
+    expect(await terminal.send('racy')).toBe(false);
+    expect(terminal.error.value).toContain('exited');
+    host.exit('s1', 0);
+    expect(await terminal.send('late')).toBe(false);
+    expect(await terminal.send('')).toBe(false);
+    await terminal.dispose();
+    expect(await terminal.send('after dispose')).toBe(false);
   });
 });

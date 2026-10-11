@@ -188,10 +188,28 @@ export function useTerminal(bridge: TerminalBridge) {
     await Promise.allSettled([bridge.setFocused(false), ...ids.map((id) => bridge.close(id))]);
   }
 
+  // Typing into the shell the way a keyboard would: the text belongs to the
+  // shell's own command line, so Enter has to be part of the write. Refuses
+  // when the active session is gone, exited, or not mounted as a view.
+  async function send(text: string): Promise<boolean> {
+    if (disposed || typeof text !== 'string' || text === '') return false;
+    const id = activeId.value;
+    const session = sessions.value.find((entry) => entry.id === id);
+    if (!session || session.exitCode !== undefined || !views.has(id)) return false;
+    try {
+      await bridge.write({ id, data: `${text}\r` });
+    } catch (cause) {
+      report(cause);
+      return false;
+    }
+    views.get(id)?.terminal.focus();
+    return true;
+  }
+
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
-    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused,
+    loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
   };

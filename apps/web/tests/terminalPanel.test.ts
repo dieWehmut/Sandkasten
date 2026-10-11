@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
-import type { DesktopBridge, TerminalBridge } from '../src/services/desktopBridge';
+import type { DesktopBridge, TerminalBridge, WorkspaceRoot, WorkspaceTreeNode } from '../src/services/desktopBridge';
 
 vi.mock('../src/services/sandkastenApi', async (original) => ({
   ...await original<typeof import('../src/services/sandkastenApi')>(), loadRuntimes: vi.fn(async () => []),
@@ -21,10 +21,10 @@ vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit() {} } }));
 let wrapper: ReturnType<typeof mount> | undefined;
 let menu: (command: string) => void;
 let data: (event: { id: string; data: string }) => void;
-function installDesktop() {
+function installDesktop(options: { root?: WorkspaceRoot | null; files?: WorkspaceTreeNode[]; source?: string } = {}) {
   let index = 0;
   const terminal = {
-    profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', isDefault: true }, { id: 'cmd', label: 'Command Prompt' }]),
+    profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
@@ -33,7 +33,7 @@ function installDesktop() {
   } satisfies TerminalBridge;
   const bridge: DesktopBridge = {
     platform: 'win32', versions: {}, terminal,
-    workspace: { root: vi.fn(async () => null), list: vi.fn(async () => []), openFolder: vi.fn(async () => null), read: vi.fn(async () => ''), write: vi.fn(), create: vi.fn(), remove: vi.fn() },
+    workspace: { root: vi.fn(async () => options.root ?? null), list: vi.fn(async () => options.files ?? []), openFolder: vi.fn(async () => null), read: vi.fn(async () => options.source ?? 'print("hello")\n'), write: vi.fn(), create: vi.fn(), remove: vi.fn() },
     runner: { detect: vi.fn(async () => []), run: vi.fn(), stop: vi.fn() },
     onMenuCommand: (handler) => { menu = handler; },
   };
@@ -130,5 +130,22 @@ describe('desktop terminal panel', () => {
     expect(bridge.setFocused).toHaveBeenLastCalledWith(true);
     (app.get('[data-action="select-output-output"]').element as HTMLElement).focus();
     expect(bridge.setFocused).toHaveBeenLastCalledWith(false);
+  });
+
+  test('runs the active file in the active shell with that shell\'s quoting', async () => {
+    const bridge = installDesktop({
+      root: { path: 'C:\\workspace', name: 'workspace' },
+      files: [{ path: 'main.py', name: 'main.py', type: 'file' }],
+    });
+    const app = await mountApp();
+    expect(app.get('[data-testid="window-title"]').text()).toContain('main.py');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(app.find('[data-command="terminal.runFile"]').exists()).toBe(true);
+    await app.get('[data-command="terminal.runFile"]').trigger('click');
+    // The command opens the panel, starts the default shell and only then types.
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: "python 'main.py'\r" }));
+    expect(bridge.create).toHaveBeenCalledWith({ profileId: undefined, cols: 80, rows: 24 });
+    expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(true);
   });
 });

@@ -25,6 +25,7 @@ import { useColorScheme } from './composables/useColorScheme';
 import { useAppearance } from './composables/useAppearance';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
+import { terminalInterpreter, terminalRunCommand } from './terminal/terminalCommand';
 import { desktopBridge } from './services/desktopBridge';
 import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl, effectiveApiBaseUrl } from './services/apiEndpoint';
 import { windowTitle } from './editor/windowTitle';
@@ -396,6 +397,31 @@ function toggleTerminal(): void {
   else void openTerminal();
 }
 
+// The palette entry is offered only when one shell command can run the file:
+// compiled languages need a build step, which is what the run backend does.
+const canRunInTerminal = computed(() => Boolean(terminal) && Boolean(activeFile.value)
+  && Boolean(terminalInterpreter(language.value)));
+
+// Types the file's interpreter command into the shell the user is looking at,
+// with the quoting that shell expects, so the same workspace can be driven from
+// PowerShell, Git Bash or WSL without leaving the workbench.
+async function runActiveInTerminal(): Promise<void> {
+  const file = activeFile.value;
+  if (!terminal || !file) return;
+  if (!terminal.profiles.value.length) await terminal.loadProfiles();
+  await openTerminal('show');
+  const session = terminal.sessions.value.find((entry) => entry.id === terminal.activeId.value);
+  const profile = terminal.profiles.value.find((entry) => entry.id === session?.profileId);
+  const command = terminalRunCommand(language.value, file.path, profile?.family);
+  if (!command) return;
+  if (!(await terminal.send(command))) {
+    notifications.push({
+      id: `terminal-run-${Date.now()}`, kind: 'error', message: locale.t('terminal.runFileFailed'),
+      source: file.path,
+    });
+  }
+}
+
 function syncTerminalFocus(event?: FocusEvent): void {
   const target = event?.type === 'focusout' ? event.relatedTarget : (event?.target ?? document.activeElement);
   terminal?.setFocused(Boolean(
@@ -421,6 +447,7 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'terminal.new': () => { void openTerminal('new'); },
   'terminal.toggle': toggleTerminal,
   'terminal.split': () => { void openTerminal('split'); },
+  'terminal.runFile': () => { void runActiveInTerminal(); },
   'view.history': toggleHistory,
   'view.inspector': toggleInspector,
   'locale.en': () => locale.setLocale('en'),
@@ -460,6 +487,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
     command('terminal.new', 'terminal.new', `${modifier}Shift+\``, Boolean(terminal?.profiles.value.length) && !terminal?.pending.value),
     command('terminal.split', 'terminal.split', undefined, Boolean(terminal?.sessions.value.length) && !terminal?.pending.value),
+    command('terminal.runFile', 'terminal.runFile', undefined, canRunInTerminal.value),
     command('view.toggleSetup', 'header.setup'),
     command('apiEndpoint.open', 'apiEndpoint.open'),
     command('theme.toggle', theme.theme.value === 'light' ? 'header.theme.useDark' : 'header.theme.useLight'),

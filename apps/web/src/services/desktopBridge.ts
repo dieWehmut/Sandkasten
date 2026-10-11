@@ -91,6 +91,8 @@ export interface WindowChromeBridge {
 export interface TerminalProfile {
   id: string;
   label: string;
+  /** Shell family the main process reports, used to quote injected commands. */
+  family: string;
   isDefault?: boolean;
 }
 
