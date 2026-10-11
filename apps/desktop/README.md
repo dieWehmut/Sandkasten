@@ -51,12 +51,16 @@ The desktop build adds these things the browser cannot do:
    release, reports the running and published versions, and opens the release
    page only when an update exists and its download button is chosen.
 7. **A real interactive terminal.** The bottom panel gains a Terminal tab
-   beside Output, Errors, Compile, and Diagnostics. It lists the installed
-   shells (PowerShell, cmd, Git Bash, and WSL when present), starts sessions
-   with xterm.js over a real PTY in the main process, and supports new
-   sessions, switching, split panes, close, resize, and Ctrl+C. Hiding the
-   panel, switching tabs, or visiting setup keeps the shell, its buffer, and
-   its working directory alive; quitting the app disposes them.
+   beside Output, Errors, Compile, and Diagnostics. It lists every installed
+   shell — PowerShell 7 and Windows PowerShell, Command Prompt, Git Bash and
+   MSYS2/Cygwin, NuShell, WSL when a distro answers, and the POSIX login shells
+   elsewhere — starts sessions with xterm.js over a real PTY in the main
+   process, and supports new sessions, switching, split panes, close, resize,
+   and Ctrl+C. Each session gets its shell's own command directories on `PATH`
+   (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
+   on top of the directories the user already had. Hiding the panel, switching
+   tabs, or visiting setup keeps the shell, its buffer, and its working
+   directory alive; quitting the app disposes them.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
@@ -133,12 +137,28 @@ directory and exits instead of starting an empty window.
 ```sh
 cd apps/desktop
 npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, terminal host, window policy
+npm run verify:shells    # discover the installed shells and prove each one runs a command
+npm run verify:runtimes  # detect the local toolchains and run a fixture through every available one
 npm run smoke       # headless Electron launch against apps/web/dist
 npm run e2e         # drives the real app: open folder, edit, save, run, screenshots
 npm run e2e:refinement  # setup scrolling, welcome actions, and the real terminal
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
 npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
+
+`verify:shells` walks the discovered terminal profiles, asks each shell for a
+one-shot marker command, and then proves the session environment reaches it: a
+probe command is written into a directory that is added to the profile's
+command path and the shell has to find and run it. WSL reports the check as not
+applicable, because a WSL session's `PATH` belongs to the distro. Pass
+`--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
+
+`verify:runtimes` detects the toolchains on this machine and runs a hello-world
+fixture for every available runtime through the real local runner, requiring the
+fixture's marker on stdout. Runtimes whose toolchain is absent are reported as
+unavailable instead of failing; an installed but unusable toolchain (a `rustc`
+without a linker, for example) fails with its own output. Pass `--json`,
+`--language=<id>`, or `--timeout-ms=<ms>`.
 
 `npm run e2e` launches the app against a temporary workspace and asserts the
 explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel
