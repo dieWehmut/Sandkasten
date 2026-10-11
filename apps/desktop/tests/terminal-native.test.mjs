@@ -8,7 +8,7 @@ import { spawnPty } from '../src/terminal-pty.mjs';
 import { createTerminalHost } from '../src/terminal.mjs';
 import { discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
 
-test('real PTY preserves shell state, resizes, interrupts and exits', { timeout: 20000 }, async (t) => {
+test('real PTY preserves shell state, resizes, interrupts and exits', { timeout: 40000 }, async (t) => {
   const profiles = await discoverTerminalProfiles();
   const profile = profiles.find(({ id }) => id === (process.platform === 'win32' ? 'cmd' : 'sh'));
   assert.ok(profile, 'the operating system shell must be discoverable');
@@ -24,7 +24,9 @@ test('real PTY preserves shell state, resizes, interrupts and exits', { timeout:
   terminal.attach(1, session.id);
   const write = (data) => terminal.write(1, { id: session.id, data });
   async function until(predicate, description) {
-    const deadline = Date.now() + 5000;
+    // A real shell under a loaded machine is slower than the happy path; the
+    // deadline only exists to fail a genuinely stuck PTY.
+    const deadline = Date.now() + 15_000;
     while (!predicate()) {
       if (Date.now() > deadline) assert.fail(`${description}\n${output}`);
       await new Promise((resolve) => setTimeout(resolve, 30));
