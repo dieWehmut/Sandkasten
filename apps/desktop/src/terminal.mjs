@@ -22,9 +22,30 @@ function dimensions(request) {
   }
 }
 
+// A discovered profile names the directories that carry its own command set
+// (PowerShell's modules, Git Bash's coreutils, the WSL launcher). Merging them
+// into the session PATH is what lets the chosen shell run the commands it ships
+// with, without dropping any directory the user already had.
+export function sessionEnvironment(profile, base = process.env, platform = process.platform) {
+  const separator = platform === 'win32' ? ';' : ':';
+  const compare = (entry) => platform === 'win32' ? entry.toLowerCase() : entry;
+  const pathKey = Object.keys(base).find((name) => name.toLowerCase() === 'path') ?? 'PATH';
+  const current = String(base[pathKey] ?? '').split(separator).filter((entry) => entry !== '');
+  const known = new Set(current.map(compare));
+  const missing = (profile?.pathPrepend ?? []).filter((directory) => {
+    return typeof directory === 'string' && directory !== '' && !known.has(compare(directory));
+  });
+  const environment = { ...base, TERM: 'xterm-256color', COLORTERM: 'truecolor' };
+  if (missing.length) environment[pathKey] = [...missing, ...current].join(separator);
+  return environment;
+}
+
 // Main-process ownership is independent of the visible panel: hiding a terminal
 // must never tear down its shell. Only explicit close, renderer reload, or quit do.
-export function createTerminalHost({ spawn, profiles, getCwd, homeDirectory = homedir(), onData, onExit }) {
+export function createTerminalHost({
+  spawn, profiles, getCwd, homeDirectory = homedir(), onData, onExit,
+  platform = process.platform, environment = process.env,
+}) {
   const sessions = new Map();
   let disposed = false;
   const publicProfiles = () => profiles.map(({ id, label, isDefault }) => ({ id, label, isDefault: !!isDefault }));
@@ -71,7 +92,7 @@ export function createTerminalHost({ spawn, profiles, getCwd, homeDirectory = ho
       const cwd = getCwd() || homeDirectory;
       const pty = spawn(profile.executable, profile.args, {
         name: 'xterm-256color', cols: request.cols, rows: request.rows, cwd,
-        env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' },
+        env: sessionEnvironment(profile, environment, platform),
       });
       const terminal = { id: randomUUID(), owner, pty, pending: '', attached: false, listeners: [] };
       sessions.set(terminal.id, terminal);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import test from 'node:test';
-import { createTerminalHost, TERMINAL_LIMITS } from '../src/terminal.mjs';
+import { createTerminalHost, sessionEnvironment, TERMINAL_LIMITS } from '../src/terminal.mjs';
 
 function harness() {
   const processes = [];
@@ -116,4 +116,52 @@ test('bounds sessions and pending output while cleaning up only the reloading ow
   host.write(2, { id: other.id, data: 'alive' });
   host.dispose();
   assert.equal(processes.at(-1).killed, true);
+});
+
+test('a shell session PATH gains its own command directories without losing or duplicating entries', () => {
+  const windows = sessionEnvironment(
+    { pathPrepend: ['C:\\tools\\Git\\usr\\bin', 'C:\\tools\\Git\\mingw64\\bin'] },
+    { Path: 'C:\\Windows;C:\\tools\\git\\USR\\bin', TEMP: 'C:\\Temp' },
+    'win32',
+  );
+  assert.equal(windows.Path, 'C:\\tools\\Git\\mingw64\\bin;C:\\Windows;C:\\tools\\git\\USR\\bin');
+  assert.equal(windows.PATH, undefined, 'the existing Path key is reused instead of duplicated');
+  assert.equal(windows.TERM, 'xterm-256color');
+  assert.equal(windows.COLORTERM, 'truecolor');
+  assert.equal(windows.TEMP, 'C:\\Temp');
+
+  const posix = sessionEnvironment({ pathPrepend: ['/opt/msys2/usr/bin'] }, { PATH: '/usr/bin:/bin' }, 'linux');
+  assert.equal(posix.PATH, '/opt/msys2/usr/bin:/usr/bin:/bin');
+
+  const plain = sessionEnvironment({ id: 'cmd' }, { PATH: '/usr/bin' }, 'linux');
+  assert.equal(plain.PATH, '/usr/bin', 'a shell without its own directory leaves PATH untouched');
+});
+
+test('a spawned session inherits the enriched environment instead of the raw process one', (t) => {
+  const processes = [];
+  const host = createTerminalHost({
+    profiles: [{
+      id: 'git-bash', label: 'Git Bash', family: 'bash', executable: 'C:\\tools\\Git\\bin\\bash.exe',
+      args: ['--login', '-i'], isDefault: true, pathPrepend: ['C:\\tools\\Git\\usr\\bin'],
+    }],
+    getCwd: () => 'C:\\work',
+    homeDirectory: 'C:\\Users\\test',
+    platform: 'win32',
+    environment: { Path: 'C:\\Windows', TERM: 'dumb' },
+    spawn(executable, args, options) {
+      const pty = {
+        executable, args, options,
+        write() {}, resize() {}, kill() {},
+        onData: () => ({ dispose() {} }), onExit: () => ({ dispose() {} }),
+      };
+      processes.push(pty);
+      return pty;
+    },
+    onData: () => {}, onExit: () => {},
+  });
+  t.after(() => host.dispose());
+  host.create(1, { cols: 80, rows: 24 });
+  assert.equal(processes[0].options.cwd, 'C:\\work');
+  assert.equal(processes[0].options.env.Path, 'C:\\tools\\Git\\usr\\bin;C:\\Windows');
+  assert.equal(processes[0].options.env.TERM, 'xterm-256color');
 });
