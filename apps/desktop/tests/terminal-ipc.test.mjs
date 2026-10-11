@@ -19,7 +19,12 @@ function harness() {
   const event = { sender, senderFrame: sender.mainFrame };
   registerTerminalIpc({
     ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
-    terminal: Object.fromEntries(['profiles', 'create', 'attach', 'write', 'resize', 'close', 'disposeOwner'].map((method) => [method, (...args) => { calls.push([method, ...args]); return method === 'profiles' ? [{ id: 'cmd', label: 'Command Prompt' }] : undefined; }])),
+    terminal: Object.fromEntries(['profiles', 'create', 'attach', 'write', 'resize', 'close', 'commands', 'disposeOwner'].map((method) => [method, (...args) => {
+      calls.push([method, ...args]);
+      if (method === 'profiles') return [{ id: 'cmd', label: 'Command Prompt' }];
+      if (method === 'commands') return ['git', 'ls'];
+      return undefined;
+    }])),
     getWindowForContents: (contents) => contents === sender ? window : undefined,
     bundledIndex,
   });
@@ -42,7 +47,7 @@ test('only a trusted boolean focus request suppresses native menu shortcuts and 
 
 test('terminal IPC accepts only the bundled top-level application frame on every channel', async () => {
   const { event, window, invoke } = harness();
-  const channels = ['terminalProfiles', 'terminalCreate', 'terminalAttach', 'terminalWrite', 'terminalResize', 'terminalClose'];
+  const channels = ['terminalProfiles', 'terminalCreate', 'terminalAttach', 'terminalWrite', 'terminalResize', 'terminalClose', 'terminalCommands'];
   for (const key of channels) {
     const channel = IPC_CHANNELS[key];
     await assert.rejects(() => invoke(channel, {}, { ...event, senderFrame: { url: event.senderFrame.url } }), /trusted/i);
@@ -52,6 +57,7 @@ test('terminal IPC accepts only the bundled top-level application frame on every
     event.senderFrame.url = original;
   }
   assert.deepEqual(await invoke(IPC_CHANNELS.terminalProfiles), [{ id: 'cmd', label: 'Command Prompt' }]);
+  assert.deepEqual(await invoke(IPC_CHANNELS.terminalCommands, 'cmd'), ['git', 'ls']);
   window.isDestroyed = () => true;
   await assert.rejects(() => invoke(IPC_CHANNELS.terminalProfiles), /trusted/i);
 });

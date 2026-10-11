@@ -67,7 +67,8 @@ test('terminal bridge supports attach and removable subscriptions without exposi
   });
   assert.ok(bridge.terminal, 'desktop must expose the terminal capability');
   await bridge.terminal.attach('id-1');
-  assert.deepEqual(calls, [[IPC_CHANNELS.terminalAttach, 'id-1']]);
+  await bridge.terminal.commands('pwsh');
+  assert.deepEqual(calls, [[IPC_CHANNELS.terminalAttach, 'id-1'], [IPC_CHANNELS.terminalCommands, 'pwsh']]);
   const received = [];
   const unsubscribeData = bridge.terminal.onData((...args) => received.push(args));
   const unsubscribeExit = bridge.terminal.onExit((...args) => received.push(args));

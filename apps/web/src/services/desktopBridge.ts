@@ -106,6 +106,8 @@ export interface TerminalSession {
 export interface TerminalBridge {
   profiles(): Promise<TerminalProfile[]>;
   create(request: { profileId?: string; cols: number; rows: number }): Promise<TerminalSession>;
+  /** The command names a session of this profile can run; paths stay in main. */
+  commands(profileId: string): Promise<string[]>;
   /** Release initial output only once the renderer owns the session buffer. */
   attach(id: string): Promise<void>;
   write(request: { id: string; data: string }): Promise<void>;

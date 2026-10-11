@@ -48,6 +48,6 @@ export function registerTerminalIpc({ ipcMain, terminal, getWindowForContents, b
   for (const [channel, method] of [
     [IPC_CHANNELS.terminalCreate, 'create'], [IPC_CHANNELS.terminalAttach, 'attach'],
     [IPC_CHANNELS.terminalWrite, 'write'], [IPC_CHANNELS.terminalResize, 'resize'],
-    [IPC_CHANNELS.terminalClose, 'close'],
+    [IPC_CHANNELS.terminalClose, 'close'], [IPC_CHANNELS.terminalCommands, 'commands'],
   ]) ipcMain.handle(channel, async (event, request) => terminal[method](trustedOwner(event), request));
 }

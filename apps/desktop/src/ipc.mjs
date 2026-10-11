@@ -36,6 +36,7 @@ export const IPC_CHANNELS = {
   terminalWrite: 'sandkasten:terminal:write',
   terminalResize: 'sandkasten:terminal:resize',
   terminalClose: 'sandkasten:terminal:close',
+  terminalCommands: 'sandkasten:terminal:commands',
   terminalSetFocused: 'sandkasten:terminal:set-focused',
   terminalData: 'sandkasten:terminal:data',
   terminalExit: 'sandkasten:terminal:exit',

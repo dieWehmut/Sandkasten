@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import { createTerminalHost, sessionEnvironment, TERMINAL_LIMITS } from '../src/terminal.mjs';
 
-function harness() {
+function harness(overrides = {}) {
   const processes = [];
   const events = [];
   let cwd;
@@ -28,6 +28,7 @@ function harness() {
     },
     onData: (owner, event) => events.push({ owner, type: 'data', ...event }),
     onExit: (owner, event) => events.push({ owner, type: 'exit', ...event }),
+    ...overrides,
   });
   return { host, processes, events, setCwd: (value) => { cwd = value; } };
 }
@@ -149,6 +150,34 @@ test('a shell session PATH gains its own command directories without losing or d
 
   const plain = sessionEnvironment({ id: 'cmd' }, { PATH: '/usr/bin' }, 'linux');
   assert.equal(plain.PATH, '/usr/bin', 'a shell without its own directory leaves PATH untouched');
+});
+
+test('the host publishes the commands a profile can run and caches one scan per profile', async (t) => {
+  const scanned = [];
+  const profiles = [{
+    id: 'git-bash', label: 'Git Bash', family: 'bash', executable: 'C:\\Git\\bin\\bash.exe',
+    args: ['--login', '-i'], isDefault: true, pathPrepend: ['C:\\Git\\usr\\bin'],
+  }];
+  const { host } = harness({
+    profiles,
+    platform: 'win32',
+    environment: { Path: 'C:\\Windows' },
+    discoverCommands: async (profile, options) => {
+      scanned.push([profile.id, options.platform, options.environment.Path]);
+      return ['git', 'ls'];
+    },
+  });
+  t.after(() => host.dispose());
+  assert.deepEqual(await host.commands(1, 'git-bash'), ['git', 'ls']);
+  assert.deepEqual(await host.commands(1, 'git-bash'), ['git', 'ls']);
+  assert.equal(scanned.length, 1, 'the catalog must not rescan the same profile');
+  assert.deepEqual(scanned[0], ['git-bash', 'win32', 'C:\\Windows']);
+  await assert.rejects(() => host.commands(1, 'nope'), /unknown terminal profile/i);
+  for (const profileId of ['', 42, null, undefined]) {
+    await assert.rejects(() => host.commands(1, profileId), /invalid terminal profile/i);
+  }
+  host.dispose();
+  await assert.rejects(() => host.commands(1, 'git-bash'), /shut down/i);
 });
 
 test('a spawned session inherits the enriched environment instead of the raw process one', (t) => {

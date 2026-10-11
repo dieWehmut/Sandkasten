@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 
+import { createCommandCatalog, discoverTerminalCommands } from './terminal-commands.mjs';
+
 export const TERMINAL_LIMITS = Object.freeze({
   sessionsPerOwner: 8,
   totalSessions: 32,
@@ -45,8 +47,10 @@ export function sessionEnvironment(profile, base = process.env, platform = proce
 export function createTerminalHost({
   spawn, profiles, getCwd, homeDirectory = homedir(), onData, onExit,
   platform = process.platform, environment = process.env,
+  discoverCommands = discoverTerminalCommands, catalog,
 }) {
   const sessions = new Map();
+  const commandCatalog = catalog ?? createCommandCatalog({ discover: discoverCommands });
   let disposed = false;
   // The renderer needs the shell family to quote a command it injects into the
   // session; the executable path stays in the main process.
@@ -134,6 +138,16 @@ export function createTerminalHost({
       terminal.pty.resize(request.cols, request.rows);
     },
     close(owner, id) { remove(owned(owner, id), true); },
+    // The commands a profile can run are profile-scoped, not session-scoped, so
+    // they stay available while the panel is hidden. Only names cross the IPC
+    // boundary and the catalog caches the scan per profile.
+    async commands(owner, profileId) {
+      if (disposed) throw new Error('The terminal host has shut down.');
+      if (typeof profileId !== 'string' || profileId === '') throw new Error('Invalid terminal profile.');
+      const profile = profiles.find((item) => item.id === profileId);
+      if (!profile) throw new Error('Unknown terminal profile.');
+      return commandCatalog.commands(profile, { platform, environment });
+    },
     disposeOwner(owner) {
       for (const terminal of sessions.values()) if (terminal.owner === owner) remove(terminal, true);
     },
