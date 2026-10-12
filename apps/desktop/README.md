@@ -71,7 +71,12 @@ The desktop build adds these things the browser cannot do:
    per command types it into that session, revealing the panel first and raising
    a toast when the session will not take the input. The commands typed this
    session lead the list, and a shell that answered with an empty list (a cold
-   distro, a broken shim) is asked again every time the palette opens. A WSL
+   distro, a broken shim) is asked again every time the palette opens. Typing
+   the start of a command in the terminal itself suggests up to five commands
+   the active shell can run; choosing one types the rest of the word without
+   running it. The suggestion model gives up whenever it cannot follow the input
+   (history, cursor movement), so it never suggests from a line it lost track
+   of, and Tab still belongs to the shell. A WSL
    session is asked inside the
    distro instead, because its `PATH` belongs there and Windows names would
    mislead. `Terminal: Run active file in
