@@ -41,6 +41,7 @@ each one.
 | `cd apps/web && npm run test:loaded` | The same suite with two workers, for a workstation busy with other applications. | The same. |
 | `cd apps/web && npm run test:browser` | The built distribution in a real Chrome at three viewports. | A Chrome or Edge executable; never downloads one. |
 | `cd apps/web && node --test tests/build-contract.test.mjs` | A clean `npm ci && npm run build` emits exactly the four tracked files, and they match what is committed. | Node and git. |
+| `cd apps/web && npm install --no-save vue-tsc@3.3.13 && node node_modules/vue-tsc/bin/vue-tsc.js --noEmit` | Type-checks the WebUI. No entry does this today: vitest compiles without checking types and the production build only bundles, so a wrong bridge payload or a stale import is found at runtime or not at all. Measured here: 68 errors, five of them in `src/` — the deep `readonly` types the composables expose are wider than the props that receive them, and 63 are test doubles that drifted from the interfaces. Fixing those two groups is the work left before this can become a gate. | Node, and network access the first time for `vue-tsc`. |
 | `scripts/pages-artifact-test.sh --test` | The shape of the published Pages artifact. | bash. |
 | `scripts/apps-layout-test.sh` | The apps layout the release assumes. | bash. |
 
@@ -97,6 +98,10 @@ dropped variable fails the unit suite instead of sending a reader down a dead en
 - **Cross-platform byte equality** of the committed WebUI bundle. Freshness is
   checked on the machine that builds it, and the WSL distro available here only
   has Node 20, so it cannot stand in for the Node 22 runner.
+- **The WebUI's types.** Nothing checks them: `npm test` compiles through esbuild,
+  which strips types, and `npm run build` bundles. `vue-tsc` reports 68 errors here,
+  five in sources and the rest in test doubles, so it is a measurement rather than a
+  gate for now — see the entry in the table above for the command.
 - **Every language the API offers.** The API ships 58 runtimes; this workstation
   can verify 11 locally and 7 in the sandbox, and the rest are reported as
   unavailable rather than assumed to work.

@@ -233,6 +233,12 @@ Every verification entry point in this repository, what it proves and what it
 needs, is indexed in
 [`handbuch/verification.md`](../../handbuch/verification.md).
 
+Types are not checked by any entry: vitest and the Vite build both go through
+esbuild, which strips them. `vue-tsc` is the measurement —
+`npm install --no-save vue-tsc@3.3.13 && node node_modules/vue-tsc/bin/vue-tsc.js --noEmit`
+reported 68 errors when this was written, five in `src/` and the rest in test
+doubles that drifted from the interfaces they stand in for.
+
 Run the real-browser responsive smoke against the committed distribution with
 the local mock API:
 
