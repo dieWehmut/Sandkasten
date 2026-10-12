@@ -171,6 +171,50 @@ async function runOutputLimitProbe(runner, root, distro, timeoutMs) {
   return { result, durationMs: Date.now() - started, kept: result.stdout.length, left: await survivors(), maxOutputBytes };
 }
 
+/**
+ * The verdicts the check reaches, as pure functions: what the payload reported is
+ * the input, what the row says is the output. They are the part that has to fail
+ * when the sandbox stops doing what it promises, so they are testable without a
+ * distro.
+ */
+export function languageVerdict({ status, stdout, errorMessage }, expect) {
+  const ok = status === 'JOB_STATUS_SUCCEEDED' && String(stdout ?? '').includes(expect);
+  return { ok, reason: ok ? '' : errorMessage || `marker ${expect} missing (${status})` };
+}
+
+export function isolationFixtureVerdict(check, result, facts) {
+  if (result.status !== 'JOB_STATUS_SUCCEEDED' || !String(result.stdout ?? '').includes(check.expect)) {
+    return { ok: false, reason: result.errorMessage || `marker ${check.expect} missing (${result.status})`, note: '' };
+  }
+  if (check.id === 'processes' && (facts.pid1 === 'init' || !(facts.processes > 0))) {
+    return { ok: false, reason: `the payload sees the host process table (PID 1 is ${facts.pid1 || 'unknown'})`, note: '' };
+  }
+  if (check.id === 'host-files') {
+    // A run copies its payload into a private directory and masks the drives a
+    // distro mounts, so a payload that can still read them means the sandbox is
+    // not doing what the backend says it does.
+    return facts.hostFiles === 'visible'
+      ? { ok: false, reason: 'the payload can still read the host filesystem (the distro refused the mask)', note: '' }
+      : { ok: true, reason: '', note: 'the host filesystem is out of reach' };
+  }
+  return { ok: true, reason: '', note: '' };
+}
+
+export function cancellationVerdict({ running, status, left }) {
+  if (!running) return { ok: false, reason: 'the payload never started, so nothing was cancelled', note: '' };
+  if (status !== 'JOB_STATUS_CANCELED') return { ok: false, reason: `a cancelled run reported ${status}`, note: '' };
+  if (left !== 0) return { ok: false, reason: `${left} process(es) kept running after the cancellation`, note: '' };
+  return { ok: true, reason: '', note: `stopped ${running} process(es) and left nothing running` };
+}
+
+export function outputLimitVerdict({ status, left, kept, durationMs }) {
+  if (status !== 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED') {
+    return { ok: false, reason: `a flooding payload reported ${status} after ${durationMs} ms`, note: '' };
+  }
+  if (left !== 0) return { ok: false, reason: `${left} process(es) kept running after the output limit`, note: '' };
+  return { ok: true, reason: '', note: `stopped at ${kept} characters and left nothing running` };
+}
+
 export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, distros } = {}) {
   const runner = createIsolatedRunner(distros ? { distros } : {});
   const detection = await runner.detect({ refresh: true });
@@ -227,64 +271,36 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
       }
       const { result, durationMs } = await runFixture(check, 'python');
       const facts = parseProcessFacts(result.stdout);
-      let reason = '';
-      let note = '';
-      if (result.status !== 'JOB_STATUS_SUCCEEDED' || !result.stdout.includes(check.expect)) {
-        reason = result.errorMessage || `marker ${check.expect} missing (${result.status})`;
-      } else if (check.id === 'processes' && (facts.pid1 === 'init' || !(facts.processes > 0))) {
-        reason = `the payload sees the host process table (PID 1 is ${facts.pid1 || 'unknown'})`;
-      } else if (check.id === 'host-files') {
-        // A run copies its payload into a private directory and masks the drives
-        // a distro mounts, so a payload that can still read them means the
-        // sandbox is not doing what the backend says it does.
-        if (facts.hostFiles === 'visible') {
-          reason = 'the payload can still read the host filesystem (the distro refused the mask)';
-        } else {
-          note = 'the host filesystem is out of reach';
-        }
-      }
+      const verdict = isolationFixtureVerdict(check, result, facts);
       results.push({
-        id: check.id, label: check.label, kind: 'isolation', status: reason ? 'failed' : 'ok',
-        jobStatus: result.status, exitCode: result.exitCode, durationMs, note,
+        id: check.id, label: check.label, kind: 'isolation', status: verdict.ok ? 'ok' : 'failed',
+        jobStatus: result.status, exitCode: result.exitCode, durationMs, note: verdict.note,
         stdout: brief(result.stdout), stderr: brief(result.stderr),
-        pid1: facts.pid1, processes: facts.processes, reason,
+        pid1: facts.pid1, processes: facts.processes, reason: verdict.reason,
       });
     }
 
     if (detection.languages.python === true) {
       const cancellation = await runCancellationProbe(runner, root, detection.distro, timeoutMs);
-      const { result } = cancellation;
-      let reason = '';
-      let note = '';
-      if (!cancellation.running) {
-        reason = 'the payload never started, so nothing was cancelled';
-      } else if (result.status !== 'JOB_STATUS_CANCELED') {
-        reason = `a cancelled run reported ${result.status}`;
-      } else if (cancellation.left !== 0) {
-        reason = `${cancellation.left} process(es) kept running after the cancellation`;
-      } else {
-        note = `stopped ${cancellation.running} process(es) and left nothing running`;
-      }
+      const cancelled = cancellationVerdict({
+        running: cancellation.running, status: cancellation.result.status, left: cancellation.left,
+      });
       results.push({
         id: 'cancellation', label: 'Cancellation', kind: 'isolation',
-        status: reason ? 'failed' : 'ok', jobStatus: result.status, note, reason,
-        durationMs: cancellation.durationMs, stdout: brief(result.stdout), stderr: brief(result.stderr),
+        status: cancelled.ok ? 'ok' : 'failed', jobStatus: cancellation.result.status,
+        note: cancelled.note, reason: cancelled.reason,
+        durationMs: cancellation.durationMs, stdout: brief(cancellation.result.stdout), stderr: brief(cancellation.result.stderr),
       });
 
       const outputLimit = await runOutputLimitProbe(runner, root, detection.distro, timeoutMs);
-      let outputReason = '';
-      let outputNote = '';
-      if (outputLimit.result.status !== 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED') {
-        outputReason = `a flooding payload reported ${outputLimit.result.status} after ${outputLimit.durationMs} ms`;
-      } else if (outputLimit.left !== 0) {
-        outputReason = `${outputLimit.left} process(es) kept running after the output limit`;
-      } else {
-        outputNote = `stopped at ${outputLimit.kept} characters and left nothing running`;
-      }
+      const limited = outputLimitVerdict({
+        status: outputLimit.result.status, left: outputLimit.left,
+        kept: outputLimit.kept, durationMs: outputLimit.durationMs,
+      });
       results.push({
         id: 'output-limit', label: 'Output limit', kind: 'isolation',
-        status: outputReason ? 'failed' : 'ok', jobStatus: outputLimit.result.status,
-        note: outputNote, reason: outputReason, durationMs: outputLimit.durationMs,
+        status: limited.ok ? 'ok' : 'failed', jobStatus: outputLimit.result.status,
+        note: limited.note, reason: limited.reason, durationMs: outputLimit.durationMs,
         // The payload's output is deliberately repetitive; the note says what
         // matters about it.
         stdout: '', stderr: brief(outputLimit.result.stderr),
