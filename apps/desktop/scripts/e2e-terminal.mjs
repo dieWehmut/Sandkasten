@@ -24,6 +24,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportClipboardKeys = false;
   let reportTerminalMenu = false;
   let reportZoom = false;
+  let reportQuietLine = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -148,6 +149,24 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   );
   reportCmdInternal = true;
   await page.keyboard.press('Control+c');
+
+  // The strip reads the line the shell echoes, and a cursor key moves the shell's
+  // cursor where the model cannot see it. The strip has to go quiet rather than
+  // keep answering from a line it no longer knows; submitting the line starts a
+  // fresh prompt it can follow again.
+  await page.keyboard.type('ec');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"]`, { timeout: 10_000 });
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForFunction(
+    (selector) => !document.querySelector(selector),
+    `${pane(firstId)} [data-testid="terminal-suggestions"]`,
+    { timeout: 10_000 },
+  );
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('ec');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"]`, { timeout: 10_000 });
+  await page.keyboard.press('Control+c');
+  reportQuietLine = true;
 
   // The clipboard goes through the main process, and pasting reaches the shell.
   // Some environments have no OS clipboard to give the app — a headless session,
@@ -373,5 +392,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu, zoom: reportZoom };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu, zoom: reportZoom, quietLine: reportQuietLine };
 }
