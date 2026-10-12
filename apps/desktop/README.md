@@ -38,7 +38,10 @@ The desktop build adds these things the browser cannot do:
    mount namespace. The payload sees uid 0 but holds no host privilege, cannot
    reach the LAN or the internet, cannot see or signal host processes, and cannot
    read the workspace or the Windows drives: it runs in a private directory of
-   its own with the host mounts masked. Compiled
+   its own with the host mounts masked. Stopping a run reaches the payload too:
+   killing the WSL client does not end the Linux process, so a cancelled,
+   timed-out or truncated run is followed by a bounded cleanup in the distro that
+   stops it by the sandbox it was given. Compiled
    languages are built inside the namespace and the artifact is run there, so a
    compile-only success is not mistaken for a run. The option stays disabled
    unless a distro answers the probe, can create the namespaces, and has the
@@ -259,7 +262,9 @@ keeps three sandbox payloads: one that opens a TCP connection (it has to be
 refused), one that reports `/proc`, where PID 1 has to be the payload itself, and
 one that reads `/mnt` and the distro home, which has to come back empty — that is
 what proves the run hides the host files rather than only bounding what the
-payload can reach.
+payload can reach. A fourth starts a payload that sleeps, waits until it is really
+running, cancels it and counts what is left: a cancelled run has to leave nothing
+behind.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
