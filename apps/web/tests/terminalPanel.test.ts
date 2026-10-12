@@ -306,7 +306,7 @@ describe('desktop terminal panel', () => {
 
     const cmdlet = app.find('[data-command="shell.Get-ChildItem"]');
     expect(cmdlet.exists()).toBe(true);
-    expect(cmdlet.text()).toContain('cmdlet or function');
+    expect(cmdlet.text()).toContain('cmdlet, function or alias');
     // An executable on the PATH keeps the plain profile label.
     expect(app.get('[data-command="shell.python"]').text()).not.toContain('cmdlet');
   });
@@ -323,7 +323,7 @@ describe('desktop terminal panel', () => {
     const shellSuggestion = app.find('[data-testid="terminal-suggestion"][data-command="Get-ChildItem"]');
     expect(shellSuggestion.exists()).toBe(true);
     expect(shellSuggestion.attributes('data-source')).toBe('shell');
-    expect(shellSuggestion.attributes('title')).toContain('cmdlet or function');
+    expect(shellSuggestion.attributes('title')).toContain('cmdlet, function or alias');
     expect(shellSuggestion.classes()).toContain('terminal-suggestions__item--shell');
 
     // An executable is offered without a marker.
