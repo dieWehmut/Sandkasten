@@ -180,6 +180,11 @@ Go、Assembly、Bash/Shell、C、Cangjie、Clojure、CSS、C++、C#、Coq、Crys
 
 `SMOKE_LANGUAGES=ocaml` または `SMOKE_LANGUAGES="markdown graphviz"` でサブセットのみを検証できます。
 
+各検証エントリが何を証明し、何を必要とするかは
+[`verification.md`](verification.md) にまとめています。ハンドブックのその他の文書:
+[アーキテクチャ](architecture.md)、[API](api.md)、
+[ランナーのセキュリティ](runner-security.md)、[デプロイ](deployment.md)。
+
 ## ツール配置
 
 開発・品質用スクリプトは `werkzeug/development/`、`werkzeug/quality/`、

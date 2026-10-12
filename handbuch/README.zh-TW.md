@@ -179,6 +179,11 @@ Go、Assembly、Bash/Shell、C、Cangjie(倉頡)、Clojure、CSS、C++、C#、Co
 
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只驗證子集。
 
+每個驗證入口證明了什麼、需要什麼環境,整理在
+[`verification.md`](verification.md)。手冊其餘文件:
+[架構](architecture.md)、[API](api.md)、
+[執行器安全](runner-security.md)、[部署](deployment.md)。
+
 ## 工具目錄
 
 開發與品質指令稿依用途分置於 `werkzeug/development/`、`werkzeug/quality/`、
