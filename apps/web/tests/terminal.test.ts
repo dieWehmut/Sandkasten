@@ -6,8 +6,10 @@ const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
   cols = 80; rows = 24; options: any = {}; element?: HTMLElement;
   input = (_data: string) => {}; resized = (_size: { cols: number; rows: number }) => {};
+  keyHandler: ((event: any) => boolean) | undefined;
   write = vi.fn(); dispose = vi.fn(); focus = vi.fn(); refresh = vi.fn();
-  loadAddon = vi.fn(); attachCustomKeyEventHandler = vi.fn();
+  loadAddon = vi.fn();
+  attachCustomKeyEventHandler(handler: (event: any) => boolean) { this.keyHandler = handler; }
   constructor(options: any) { this.options = options; mocks.terminals.push(this); }
   open(host: HTMLElement) { this.element = document.createElement('div'); host.append(this.element); }
   onData(handler: any) { this.input = handler; return { dispose: vi.fn() }; }
@@ -291,6 +293,24 @@ describe('app-owned terminal sessions', () => {
     expect(terminal.suggestions.value).toEqual(['ls']);
     terminal.select('s1');
     expect(terminal.inputLine.value).toBe('', 'switching panes cannot keep the other shell\'s line');
+    await terminal.dispose();
+  });
+
+  test('Ctrl+Space accepts the first suggestion and only while one exists', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const handler = mocks.terminals[0].keyHandler!;
+
+    // With nothing typed the key belongs to the shell.
+    expect(handler({ ctrlKey: true, altKey: false, code: 'Space', key: ' ' })).toBe(true);
+    // The app's own terminal shortcut still wins.
+    expect(handler({ ctrlKey: true, altKey: false, code: 'Backquote', key: '`' })).toBe(false);
+
+    mocks.terminals[0].input('gi');
+    expect(handler({ ctrlKey: true, altKey: false, code: 'Space', key: ' ' })).toBe(false);
+    await vi.waitFor(() => expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 't' }));
+    await vi.waitFor(() => expect(terminal.inputLine.value).toBe('git'));
     await terminal.dispose();
   });
 

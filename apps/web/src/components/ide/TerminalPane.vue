@@ -36,6 +36,7 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     <div
       v-if="active && controller.suggestions.value.length" class="terminal-suggestions"
       data-testid="terminal-suggestions" role="listbox" :aria-label="t('terminal.suggestions')"
+      :title="t('terminal.suggestionsHint')"
     >
       <button
         v-for="name in controller.suggestions.value" :key="name" type="button" role="option"

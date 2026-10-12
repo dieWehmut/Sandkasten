@@ -165,8 +165,16 @@ export function useTerminal(bridge: TerminalBridge) {
       });
       const fit = new FitAddon();
       terminal.loadAddon(fit);
-      // Let the App handle its terminal shortcuts; all other input belongs to the shell.
-      terminal.attachCustomKeyEventHandler((event) => !isTerminalShortcut(event));
+      // Let the App handle its terminal shortcuts; the suggestion shortcut is only
+  // taken while a suggestion exists, so the shell keeps every other key.
+      terminal.attachCustomKeyEventHandler((event) => {
+        if (isTerminalShortcut(event)) return false;
+        if (isSuggestionShortcut(event) && id === activeId.value && suggestions.value.length) {
+          void complete(suggestions.value[0]);
+          return false;
+        }
+        return true;
+      });
       const host = document.createElement('div');
       host.className = 'terminal-host';
       const subscriptions = [
@@ -314,6 +322,11 @@ export function useTerminal(bridge: TerminalBridge) {
 export function isTerminalShortcut(event: KeyboardEvent): boolean {
   return (event.ctrlKey || event.metaKey) && !event.altKey
     && (event.code === 'Backquote' || event.key === '`' || event.key === '~');
+}
+
+/** The editor-style accept key; Tab stays with the shell's own completion. */
+export function isSuggestionShortcut(event: KeyboardEvent): boolean {
+  return (event.ctrlKey || event.metaKey) && !event.altKey && (event.code === 'Space' || event.key === ' ');
 }
 
 export type TerminalController = ReturnType<typeof useTerminal>;
