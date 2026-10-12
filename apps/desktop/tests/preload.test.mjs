@@ -116,6 +116,12 @@ test('the clipboard is a read and a write, and nothing else', async () => {
   });
   assert.deepEqual(Object.keys(bridge.clipboard).sort(), ['read', 'write']);
   assert.equal(await bridge.clipboard.read(), 'text from the host');
+  assert.equal(await bridge.clipboard.read('selection'), 'text from the host');
   await bridge.clipboard.write('copied');
-  assert.deepEqual(calls, [[IPC_CHANNELS.clipboardRead], [IPC_CHANNELS.clipboardWrite, 'copied']]);
+  assert.deepEqual(calls, [
+    [IPC_CHANNELS.clipboardRead, undefined],
+    // The X11 primary selection is a different buffer, so the kind travels with it.
+    [IPC_CHANNELS.clipboardRead, 'selection'],
+    [IPC_CHANNELS.clipboardWrite, 'copied'],
+  ]);
 });

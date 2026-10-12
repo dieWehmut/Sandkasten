@@ -67,7 +67,7 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     onExit: (handler) => subscribe(CHANNELS.terminalExit, handler),
   },
   clipboard: {
-    read: () => ipcRenderer.invoke(CHANNELS.clipboardRead),
+    read: (kind) => ipcRenderer.invoke(CHANNELS.clipboardRead, kind),
     write: (text) => ipcRenderer.invoke(CHANNELS.clipboardWrite, text),
   },
   workspace: {

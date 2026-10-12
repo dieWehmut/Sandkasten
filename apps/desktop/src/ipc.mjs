@@ -210,8 +210,11 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
 
   // The clipboard goes through the main process: a sandboxed renderer cannot read
   // it without a permission prompt, and a terminal that cannot be pasted into or
-  // copied from is half a terminal.
-  ipcMain.handle(IPC_CHANNELS.clipboardRead, async () => clipboard.readText());
+  // copied from is half a terminal. `selection` is the X11 primary selection, which
+  // only Linux has, and asking any other platform for it would be an error.
+  ipcMain.handle(IPC_CHANNELS.clipboardRead, async (_event, kind) => (
+    kind === 'selection' && process.platform === 'linux' ? clipboard.readText('selection') : clipboard.readText()
+  ));
   ipcMain.handle(IPC_CHANNELS.clipboardWrite, async (_event, text) => {
     clipboard.writeText(typeof text === 'string' ? text : '');
     return true;
