@@ -16,6 +16,10 @@ const repositoryRoot = path.resolve(appRoot, '..', '..');
 /** Kernel and libc constants a document quotes, not names this repository defines. */
 const EXTERNAL_CONSTANTS = new Set(['CLOSE_RANGE_UNSHARE', 'UINT_MAX']);
 
+// This file names the allowlisted constants, so it is not evidence that they exist
+// in the code — the first run passed only because the file was still untracked.
+const SELF = 'apps/desktop/tests/handbuch-symbols.test.mjs';
+
 const SYMBOL = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
 
 function trackedFiles() {
@@ -28,7 +32,7 @@ test('every symbol the handbuch names exists somewhere in the repository', () =>
   const docs = files.filter((file) => file.startsWith('handbuch/') && file.endsWith('.md'));
   assert.ok(docs.length >= 5, `expected the handbuch to have documents, saw ${docs.length}`);
   const corpus = files
-    .filter((file) => !docs.includes(file))
+    .filter((file) => !docs.includes(file) && file !== SELF)
     .map((file) => { try { return readFileSync(path.join(repositoryRoot, file), 'utf8'); } catch { return ''; } })
     .join('\n');
 
@@ -54,7 +58,7 @@ test('the external-constant list only holds constants the documents quote', () =
   const docs = files.filter((file) => file.startsWith('handbuch/') && file.endsWith('.md'));
   const docText = docs.map((file) => readFileSync(path.join(repositoryRoot, file), 'utf8')).join('\n');
   const corpus = files
-    .filter((file) => !docs.includes(file))
+    .filter((file) => !docs.includes(file) && file !== SELF)
     .map((file) => { try { return readFileSync(path.join(repositoryRoot, file), 'utf8'); } catch { return ''; } })
     .join('\n');
   for (const name of EXTERNAL_CONSTANTS) {
