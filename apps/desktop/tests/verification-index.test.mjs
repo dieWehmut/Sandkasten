@@ -73,12 +73,17 @@ test('every path the index names exists', () => {
 });
 
 test('every test that guards a document is named in the index', () => {
-  // A contract nobody can find is a contract nobody reads: a test that reads the
-  // handbuch or a README to check it has to be listed here.
+  // A contract nobody can find is a contract nobody reads: a test that *reads* a
+  // document — the handbuch, or any markdown file — to check it has to be listed
+  // here. The predicate looks for a read of one rather than for the word, because a
+  // comment that merely mentions a README is not a guard.
   const testsDirectory = path.join(repositoryRoot, 'apps', 'desktop', 'tests');
   const guarders = readdirSync(testsDirectory)
     .filter((file) => file.endsWith('.test.mjs'))
-    .filter((file) => /handbuch|README/.test(readFileSync(path.join(testsDirectory, file), 'utf8')))
+    .filter((file) => {
+      const source = readFileSync(path.join(testsDirectory, file), 'utf8');
+      return source.includes('readFileSync') && /handbuch|\.md|README/.test(source);
+    })
     .sort();
   assert.ok(guarders.length >= 4, `expected document guards in the suite, saw ${guarders.length}`);
 
