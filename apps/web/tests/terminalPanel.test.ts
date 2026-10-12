@@ -7,14 +7,15 @@ import type { DesktopBridge, TerminalBridge, WorkspaceRoot, WorkspaceTreeNode } 
 vi.mock('../src/services/sandkastenApi', async (original) => ({
   ...await original<typeof import('../src/services/sandkastenApi')>(), loadRuntimes: vi.fn(async () => []),
 }));
+const xterm = vi.hoisted(() => ({ terminals: [] as any[] }));
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
-  cols = 80; rows = 24; options: any; host?: HTMLElement; text = '';
-  constructor(options: any) { this.options = options; }
+  cols = 80; rows = 24; options: any; host?: HTMLElement; text = ''; input: (data: string) => void = () => {};
+  constructor(options: any) { this.options = options; xterm.terminals.push(this); }
   open(host: HTMLElement) { this.host = host; host.innerHTML = '<textarea class="xterm-helper-textarea"></textarea><span></span>'; this.write(''); }
   write(data: string) { this.text += data; if (this.host) this.host.querySelector('span')!.textContent = this.text; }
   loadAddon() {} attachCustomKeyEventHandler() {} dispose() {} refresh() {}
   focus() { this.host?.querySelector('textarea')?.focus(); }
-  onData() { return { dispose() {} }; } onResize() { return { dispose() {} }; }
+  onData(handler: any) { this.input = handler; return { dispose() {} }; } onResize() { return { dispose() {} }; }
 } }));
 vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit() {} } }));
 
@@ -45,8 +46,8 @@ async function mountApp() {
   wrapper = mount(App, { attachTo: document.body, global: { stubs: { SourceEditor: true } } });
   await flushPromises(); return wrapper;
 }
-beforeEach(() => { window.localStorage.clear(); window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true'); });
-afterEach(() => { wrapper?.unmount(); wrapper = undefined; delete (window as any).sandkastenDesktop; vi.unstubAllGlobals(); });
+beforeEach(() => { window.localStorage.clear(); window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true'); xterm.terminals.length = 0; });
+afterEach(() => { wrapper?.unmount(); wrapper = undefined; delete (window as any).sandkastenDesktop; xterm.terminals.length = 0; vi.unstubAllGlobals(); });
 
 describe('desktop terminal panel', () => {
   test('only adds the terminal tab when the desktop terminal capability exists', async () => {
@@ -219,5 +220,21 @@ describe('desktop terminal panel', () => {
     await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledTimes(2));
     await flushPromises();
     expect(app.find('[data-command="shell.git"]').exists()).toBe(true);
+  });
+
+  test('suggests the shell commands while typing and types only the rest of the chosen one', async () => {
+    const bridge = installDesktop();
+    const app = await mountApp();
+    menu('terminal.new');
+    await flushPromises();
+    await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledWith('pwsh'));
+    xterm.terminals.at(-1).input('py');
+    await flushPromises();
+    const suggestion = app.find('[data-testid="terminal-suggestion"][data-command="python"]');
+    expect(suggestion.exists()).toBe(true);
+    // Nothing is suggested before the user types.
+    await suggestion.trigger('click');
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'thon' }));
+    expect(xterm.terminals.at(-1).input).toBeTypeOf('function');
   });
 });

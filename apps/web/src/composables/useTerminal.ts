@@ -30,6 +30,12 @@ export function useTerminal(bridge: TerminalBridge) {
   // what a cold or unreachable shell reports, so the next request has to ask
   // again instead of serving the empty list for the rest of the session.
   const loadedCommands = new Set<string>();
+  // A best-effort model of the shell's current input line, used only to suggest
+  // commands. Anything the model cannot follow (an arrow key, a control byte it
+  // does not handle) empties it, so a wrong suggestion is never offered from a
+  // line the terminal emulator has lost track of.
+  const inputLine = ref('');
+  let inEscape = false;
   const views = new Map<string, SessionView>();
   let disposed = false;
   let focused = false;
@@ -100,7 +106,36 @@ export function useTerminal(bridge: TerminalBridge) {
   // that shell becomes the active session.
   watch(activeProfileId, (profileId) => { if (profileId) void loadCommands(profileId); }, { immediate: true });
 
+  // The command word the model believes is on the prompt, and the published
+  // commands that continue it. Only the first word counts: an argument is not a
+  // command name.
+  const suggestions = computed(() => {
+    const prefix = inputLine.value;
+    if (!prefix || /\s/.test(prefix)) return [];
+    const lower = prefix.toLowerCase();
+    const names = commandNames.value[activeProfileId.value] ?? [];
+    return names.filter((name) => name.toLowerCase().startsWith(lower) && name.toLowerCase() !== lower).slice(0, 5);
+  });
+
+  function trackInput(data: string): void {
+    for (const character of data) {
+      if (inEscape) {
+        // An escape sequence ends on its final byte; anything in between is not
+        // input the user typed.
+        if (/[A-Za-z~]/.test(character)) inEscape = false;
+        continue;
+      }
+      if (character === '\x1b') { inputLine.value = ''; inEscape = true; continue; }
+      if (character === '\r' || character === '\n' || character === '\x03' || character === '\x04') { inputLine.value = ''; continue; }
+      if (character === '\x7f' || character === '\b') { inputLine.value = inputLine.value.slice(0, -1); continue; }
+      if (character === '\t') continue;
+      if (character < ' ') { inputLine.value = ''; continue; }
+      inputLine.value += character;
+    }
+  }
+
   function removeView(id: string): void {
+    inputLine.value = '';
     const view = views.get(id);
     if (view?.host.contains(document.activeElement)) setFocused(false);
     view?.subscriptions.forEach((subscription) => subscription.dispose());
@@ -136,6 +171,8 @@ export function useTerminal(bridge: TerminalBridge) {
       host.className = 'terminal-host';
       const subscriptions = [
         terminal.onData((data) => {
+          // Only the session the user is looking at owns the suggestion model.
+          if (id === activeId.value) trackInput(data);
           if (sessions.value.find((entry) => entry.id === id)?.exitCode === undefined && views.has(id)) {
             void bridge.write({ id, data }).catch(report);
           }
@@ -150,6 +187,8 @@ export function useTerminal(bridge: TerminalBridge) {
       sessions.value = [...sessions.value, session];
       visibleIds.value = splitFrom && views.has(splitFrom) ? [splitFrom, id] : [id];
       activeId.value = id;
+      // A new shell starts on its own empty prompt.
+      inputLine.value = '';
       // Data/exit subscriptions and the xterm buffer exist before initial replay.
       await bridge.attach(id);
     } catch (cause) {
@@ -163,6 +202,7 @@ export function useTerminal(bridge: TerminalBridge) {
 
   function select(id: string): void {
     if (!views.has(id)) return;
+    if (activeId.value !== id) inputLine.value = '';
     if (!visibleIds.value.includes(id)) {
       visibleIds.value = visibleIds.value.length === 2
         ? visibleIds.value.map((visible) => visible === activeId.value ? id : visible)
@@ -224,16 +264,15 @@ export function useTerminal(bridge: TerminalBridge) {
     await Promise.allSettled([bridge.setFocused(false), ...ids.map((id) => bridge.close(id))]);
   }
 
-  // Typing into the shell the way a keyboard would: the text belongs to the
-  // shell's own command line, so Enter has to be part of the write. Refuses
-  // when the active session is gone, exited, or not mounted as a view.
-  async function send(text: string): Promise<boolean> {
-    if (disposed || typeof text !== 'string' || text === '') return false;
+  // Types into the shell the way a keyboard would. Refuses when the active
+  // session is gone, exited, or not mounted as a view.
+  async function writeRaw(data: string): Promise<boolean> {
+    if (disposed || data === '') return false;
     const id = activeId.value;
     const session = sessions.value.find((entry) => entry.id === id);
     if (!session || session.exitCode !== undefined || !views.has(id)) return false;
     try {
-      await bridge.write({ id, data: `${text}\r` });
+      await bridge.write({ id, data });
     } catch (cause) {
       report(cause);
       return false;
@@ -242,9 +281,29 @@ export function useTerminal(bridge: TerminalBridge) {
     return true;
   }
 
+  async function send(text: string): Promise<boolean> {
+    if (typeof text !== 'string' || text === '') return false;
+    if (!(await writeRaw(`${text}\r`))) return false;
+    inputLine.value = '';
+    return true;
+  }
+
+  // Types the rest of a suggested command without running it, so the user can add
+  // arguments and press Enter themselves.
+  async function complete(name: string): Promise<boolean> {
+    const prefix = inputLine.value;
+    if (!name || !name.toLowerCase().startsWith(prefix.toLowerCase())) return false;
+    const suffix = name.slice(prefix.length);
+    if (!suffix) return false;
+    if (!(await writeRaw(suffix))) return false;
+    inputLine.value = name;
+    return true;
+  }
+
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     activeProfileId, defaultProfileId, commandNames: readonly(commandNames),
+    inputLine: readonly(inputLine), suggestions, complete,
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },

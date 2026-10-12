@@ -235,6 +235,65 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('suggests the commands that continue the typed word and types only the rest', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+    type('g'); type('i');
+    expect(terminal.inputLine.value).toBe('gi');
+    expect(terminal.suggestions.value).toEqual(['git']);
+    // The shell still receives every keystroke.
+    expect(host.bridge.write.mock.calls).toEqual([[{ id: 's1', data: 'g' }], [{ id: 's1', data: 'i' }]]);
+
+    expect(await terminal.complete('git')).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 't' });
+    expect(terminal.inputLine.value).toBe('git');
+    expect(await terminal.complete('git')).toBe(false, 'a finished word has nothing to type');
+    expect(await terminal.complete('ls')).toBe(false, 'a suggestion has to continue the typed word');
+    await terminal.dispose();
+  });
+
+  test('gives up the input model on anything it cannot follow', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    type('gi');
+    type('\x7f');
+    expect(terminal.inputLine.value).toBe('g');
+    type('it');
+    expect(terminal.inputLine.value).toBe('git');
+    type('\t');
+    expect(terminal.inputLine.value).toBe('git', 'the shell keeps Tab for its own completion');
+    type('\r');
+    expect(terminal.inputLine.value).toBe('');
+    type('gi'); type('\x03');
+    expect(terminal.inputLine.value).toBe('');
+    type('gi'); type('\x1b[A');
+    expect(terminal.inputLine.value).toBe('', 'history navigation is not input the model can follow');
+    type('\x1b[C'); type('g');
+    expect(terminal.inputLine.value).toBe('g');
+    await terminal.dispose();
+  });
+
+  test('an argument is not a command name, and switching sessions forgets the line', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    mocks.terminals[0].input('git co');
+    expect(terminal.inputLine.value).toBe('git co');
+    expect(terminal.suggestions.value).toEqual([]);
+    await terminal.create('cmd');
+    expect(terminal.inputLine.value).toBe('', 'a new session starts on a fresh prompt');
+    mocks.terminals[1].input('l');
+    expect(terminal.suggestions.value).toEqual(['ls']);
+    terminal.select('s1');
+    expect(terminal.inputLine.value).toBe('', 'switching panes cannot keep the other shell\'s line');
+    await terminal.dispose();
+  });
+
   test('a failed command list is reported and retried without breaking the session', async () => {
     const host = fakeBridge();
     host.bridge.commands.mockRejectedValueOnce(new Error('scan failed'));

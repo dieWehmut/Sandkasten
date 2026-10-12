@@ -31,6 +31,18 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     :aria-label="session.title" @focusin="controller.select(session.id)" @pointerdown="controller.select(session.id)"
   >
     <div ref="container" class="terminal-pane__viewport" />
+    <!-- The shell the user is typing in can run these; the prefix model only
+         suggests, it never inserts anything on its own. -->
+    <div
+      v-if="active && controller.suggestions.value.length" class="terminal-suggestions"
+      data-testid="terminal-suggestions" role="listbox" :aria-label="t('terminal.suggestions')"
+    >
+      <button
+        v-for="name in controller.suggestions.value" :key="name" type="button" role="option"
+        data-testid="terminal-suggestion" :data-command="name" :title="`${t('terminal.complete')} ${name}`"
+        @pointerdown.prevent @click="controller.complete(name)"
+      >{{ name }}</button>
+    </div>
     <div v-if="session.exitCode !== undefined" class="terminal-pane__exit" role="status">
       {{ t('terminal.exited') }} {{ session.exitCode }}
     </div>
