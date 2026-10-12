@@ -234,9 +234,9 @@ needs, is indexed in
 [`handbuch/verification.md`](../../handbuch/verification.md).
 
 `npm run typecheck` is the one entry that looks at types: vitest and the Vite build
-both go through esbuild, which strips them. It covers `src/` — the test doubles are
-not yet clean enough to join it, and `vue-tsc --noEmit` over the whole project still
-reports 63 errors in them.
+both go through esbuild, which strips them. It covers the sources, the tests and the
+Vite config, and it is the check that found a type imported from a module that never
+exported it.
 
 Run the real-browser responsive smoke against the committed distribution with
 the local mock API:

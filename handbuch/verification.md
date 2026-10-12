@@ -41,7 +41,7 @@ each one.
 | `cd apps/web && npm run test:loaded` | The same suite with two workers, for a workstation busy with other applications. | The same. |
 | `cd apps/web && npm run test:browser` | The built distribution in a real Chrome at three viewports. | A Chrome or Edge executable; never downloads one. |
 | `cd apps/web && node --test tests/build-contract.test.mjs` | A clean `npm ci && npm run build` emits exactly the four tracked files, and they match what is committed. | Node and git. |
-| `cd apps/web && npm run typecheck` | Type-checks the WebUI's sources. Nothing else does: `npm test` and `npm run build` both go through esbuild, which strips types, so a wrong bridge payload or a stale import was found at runtime or not at all. The config covers `src/` only; the test doubles still report 63 errors against the interfaces they stand in for, which is the pass left before they can join it. | Node, and the pinned `vue-tsc`. |
+| `cd apps/web && npm run typecheck` | Type-checks the WebUI, sources and tests. Nothing else does: `npm test` and `npm run build` both go through esbuild, which strips types, so a wrong bridge payload or an import from a module that does not export it (as `indentGuides.ts` had) was found at runtime or not at all. | Node, and the pinned `vue-tsc`. |
 | `scripts/pages-artifact-test.sh --test` | The shape of the published Pages artifact. | bash. |
 | `scripts/apps-layout-test.sh` | The apps layout the release assumes. | bash. |
 
@@ -98,10 +98,8 @@ dropped variable fails the unit suite instead of sending a reader down a dead en
 - **Cross-platform byte equality** of the committed WebUI bundle. Freshness is
   checked on the machine that builds it, and the WSL distro available here only
   has Node 20, so it cannot stand in for the Node 22 runner.
-- **The WebUI's test files' types.** `npm run typecheck` covers `src/`, and nothing
-  covers the doubles the tests build: `vue-tsc` over the whole project reports 63
-  errors, all in test files whose mocks have drifted from the interfaces they stand
-  in for. They pass at runtime because esbuild only strips the types.
+- **The desktop shell's and CLI's types.** Both are JavaScript, so there is nothing
+  to check; the WebUI's `npm run typecheck` is the only type gate in the repository.
 - **Every language the API offers.** The API ships 58 runtimes; this workstation
   can verify 11 locally and 7 in the sandbox, and the rest are reported as
   unavailable rather than assumed to work.
