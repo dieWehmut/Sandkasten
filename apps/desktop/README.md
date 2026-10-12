@@ -267,7 +267,9 @@ one that reads `/mnt` and the distro home, which has to come back empty — that
 what proves the run hides the host files rather than only bounding what the
 payload can reach. A fourth starts a payload that sleeps, waits until it is really
 running, cancels it and counts what is left: a cancelled run has to leave nothing
-behind.
+behind. A fifth floods stdout past the cap, which has to stop the payload — and
+leave nothing behind — rather than run to the time limit with its output
+discarded.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
