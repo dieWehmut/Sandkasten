@@ -206,7 +206,10 @@ one-shot marker command, and then proves the session environment reaches it: a
 probe command is written into a directory that is added to the profile's
 command path and the shell has to find and run it. It also publishes the
 command list the palette would offer and resolves a sample of those names in
-the shell itself, so the advertised list is one the shell really runs. WSL
+the shell itself, so the advertised list is one the shell really runs. It also
+asks the shell what it reports about itself and requires the list to carry it,
+which is how a bound that cut PowerShell's cmdlets after the first letters of the
+alphabet was found. WSL
 reports the path check as not applicable — the probe directory is a Windows one
 and the distro cannot see it — but its command list is real, asked from inside
 the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
