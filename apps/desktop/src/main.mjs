@@ -122,9 +122,9 @@ async function start() {
     if (quitPrepared) return;
     event.preventDefault();
     terminal.dispose();
-    void runner.stopAll();
-    void isolated.stopAll();
-    void shutdownPtyWorkers().finally(() => {
+    // Quitting has to wait for the runners: their stops reach into the distro to
+    // end a payload, and the app must not exit before that happened.
+    void Promise.allSettled([runner.stopAll(), isolated.stopAll(), shutdownPtyWorkers()]).finally(() => {
       quitPrepared = true;
       app.quit();
     });

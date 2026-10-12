@@ -291,7 +291,10 @@ export function createIsolatedRunner(options = {}) {
       jobId,
       workingDirectory: request.workingDirectory ?? (windowsPath.includes('\\') ? windowsPath.slice(0, windowsPath.lastIndexOf('\\')) : ''),
     });
-    const state = { canceled: false, child: undefined };
+    // `done` settles when the run has finished *and* been cleaned up in the distro,
+// which is what a caller stopping a run (or the app quitting) has to wait for.
+    let settled;
+    const state = { canceled: false, child: undefined, done: new Promise((resolve) => { settled = resolve; }) };
     activeRuns.set(jobId, state);
     const started = Date.now();
     const result = {
@@ -348,6 +351,7 @@ export function createIsolatedRunner(options = {}) {
         await stopSandbox(distro, jobId);
       }
       result.durationMs = Date.now() - started;
+      settled();
     }
     return result;
   }
@@ -371,6 +375,10 @@ export function createIsolatedRunner(options = {}) {
     } catch {
       // The process already exited.
     }
+    // Waiting is what makes `stop` mean the payload is gone: the kill above ends
+    // the client, and the cleanup that reaches the payload runs as the run
+    // settles.
+    await state.done;
     return true;
   }
 

@@ -205,16 +205,16 @@ test('a canceled run is reported as canceled rather than as a crash', async () =
 
   assert.equal(runner.activeRuns.size, 1);
   assert.equal(await runner.stop('job-1'), true);
-  const result = await pending;
-
-  assert.equal(result.status, 'JOB_STATUS_CANCELED');
-  assert.match(result.errorMessage, /canceled/i);
-  assert.equal(runner.activeRuns.size, 0);
-  // Killing wsl.exe ends the client, not the Linux payload, so the run is stopped
-  // by its sandbox marker as well.
+  // Killing wsl.exe ends the client, not the Linux payload, so stop waits for the
+  // cleanup that reaches it: by the time it resolves, the cleanup was issued.
   assert.equal(calls.length, 2, 'a canceled run is cleaned up in the distro');
   assert.match(calls[1].args.join(' '), /pkill -9 -f/);
   assert.match(calls[1].args.join(' '), /sandkasten-job-1/);
+
+  const result = await pending;
+  assert.equal(result.status, 'JOB_STATUS_CANCELED');
+  assert.match(result.errorMessage, /canceled/i);
+  assert.equal(runner.activeRuns.size, 0);
 });
 
 test('a run that ended on its own is not cleaned up', async () => {
@@ -240,7 +240,7 @@ test('stopping an unknown job reports that nothing was canceled', async () => {
 });
 
 test('stopAll cancels every active job', async () => {
-  const { runner } = runnerWith({ hold: true });
+  const { runner, calls } = runnerWith({ hold: true });
   const first = runner.run({ ...RUN_ARGUMENTS, jobId: 'job-a' }, { root: 'C:\\ws' });
   const second = runner.run({ ...RUN_ARGUMENTS, jobId: 'job-b' }, { root: 'C:\\ws' });
   await new Promise((resolve) => setImmediate(resolve));
@@ -248,6 +248,9 @@ test('stopAll cancels every active job', async () => {
   assert.equal(runner.activeRuns.size, 2);
   await runner.stopAll();
 
+  // Both cleanups were issued before stopAll resolved, which is what the app
+  // relies on when it quits.
+  assert.equal(calls.filter((call) => call.args.join(' ').includes('pkill -9 -f')).length, 2);
   assert.equal((await first).status, 'JOB_STATUS_CANCELED');
   assert.equal((await second).status, 'JOB_STATUS_CANCELED');
 });
