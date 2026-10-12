@@ -176,6 +176,8 @@ test('the catalog scans a profile once and refreshes after its window', async ()
     discover: async () => { scans += 1; return [`scan-${scans}`]; },
     now: () => clock,
     cacheMs: 100,
+    // No persisted window here: an expired entry is rebuilt before it answers.
+    persistedMs: 0,
   });
   const profile = { id: 'bash' };
   assert.deepEqual(await catalog.commands(profile), ['scan-1']);
@@ -273,4 +275,69 @@ test('each shell family gets the argv that runs one command', () => {
   assert.deepEqual(shellArguments({ family: 'wsl' }, 'pwd'), ['-e', 'sh', '-c', 'pwd']);
   assert.deepEqual(shellArguments({ family: 'bash' }, 'compgen -b'), ['-c', 'compgen -b']);
   assert.deepEqual(shellArguments({ family: 'posix' }, 'true'), ['-c', 'true']);
+});
+
+test('a persisted list answers immediately while a fresh one is built in the background', async () => {
+  let scans = 0;
+  const written = [];
+  const clock = 1_000_000;
+  const catalog = createCommandCatalog({
+    discover: async () => { scans += 1; return ['fresh']; },
+    now: () => clock,
+    cacheMs: 1_000,
+    persistedMs: 100_000,
+    store: {
+      read: async () => ({ bash: { at: clock - 5_000, commands: ['cached'] } }),
+      write: async (record) => { written.push(record); },
+    },
+  });
+  const profile = { id: 'bash' };
+
+  // Older than the memory window but inside the persisted one: the caller gets
+  // the list it has, and the shell is asked again without being waited for.
+  assert.deepEqual(await catalog.commands(profile), ['cached']);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(scans, 1, 'the refresh still runs');
+  assert.deepEqual(await catalog.commands(profile), ['fresh'], 'and replaces the answer');
+  assert.deepEqual(written.at(-1).bash.commands, ['fresh'], 'the new list is written back');
+});
+
+test('a persisted list past its window is rebuilt before it is answered with', async () => {
+  let scans = 0;
+  const catalog = createCommandCatalog({
+    discover: async () => { scans += 1; return ['fresh']; },
+    now: () => 1_000_000,
+    cacheMs: 1_000,
+    persistedMs: 100_000,
+    store: { read: async () => ({ bash: { at: 1_000_000 - 200_000, commands: ['stale'] } }), write: async () => {} },
+  });
+  assert.deepEqual(await catalog.commands({ id: 'bash' }), ['fresh']);
+  assert.equal(scans, 1);
+});
+
+test('an unreadable store is just a cold start', async () => {
+  const catalog = createCommandCatalog({
+    discover: async () => ['fresh'],
+    store: { read: async () => { throw new Error('boom'); }, write: async () => { throw new Error('boom'); } },
+  });
+  assert.deepEqual(await catalog.commands({ id: 'bash' }), ['fresh']);
+});
+
+test('one shell asking while a refresh is in flight does not scan twice', async () => {
+  let scans = 0;
+  let release;
+  const catalog = createCommandCatalog({
+    discover: async () => {
+      scans += 1;
+      await new Promise((resolve) => { release = resolve; });
+      return ['fresh'];
+    },
+    store: undefined,
+  });
+  const first = catalog.commands({ id: 'bash' });
+  const second = catalog.commands({ id: 'bash' });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  release?.();
+  assert.deepEqual(await Promise.all([first, second]), [['fresh'], ['fresh']]);
+  assert.equal(scans, 1, 'concurrent callers share one scan');
 });

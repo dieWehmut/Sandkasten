@@ -10,6 +10,8 @@ import { createLocalRunner } from './local-runner.mjs';
 import { createIsolatedRunner } from './isolated-runner.mjs';
 import { buildMenuTemplate } from './menu.mjs';
 import { createWorkspaceSession } from './workspace.mjs';
+import { createCommandCatalog } from './terminal-commands.mjs';
+import { createCommandStore } from './terminal-command-store.mjs';
 import { createTerminalHost } from './terminal.mjs';
 import { spawnPty, shutdownPtyWorkers } from './terminal-pty.mjs';
 import { discoverTerminalProfiles } from './terminal-profiles.mjs';
@@ -79,6 +81,11 @@ async function start() {
     spawn: spawnPty,
     profiles: await discoverTerminalProfiles(),
     getCwd: () => session.root,
+    // The command list a shell reports is persisted, so a restart does not pay
+    // for a cold WSL scan again.
+    catalog: createCommandCatalog({
+      store: createCommandStore(path.join(app.getPath('userData'), 'terminal-commands.json')),
+    }),
     onData: (owner, event) => { if (!owner.isDestroyed()) owner.send(IPC_CHANNELS.terminalData, event); },
     onExit: (owner, event) => { if (!owner.isDestroyed()) owner.send(IPC_CHANNELS.terminalExit, event); },
   });

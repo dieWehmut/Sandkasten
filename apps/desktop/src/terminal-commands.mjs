@@ -17,6 +17,9 @@ export const TERMINAL_COMMAND_LIMITS = Object.freeze({
   // the PATH executables, so the list is bounded well above one shell's worth.
   commands: 2_000,
   cacheMs: 5 * 60 * 1000,
+  // How long a persisted list may answer before it has to be re-read: a runtime
+  // installed an hour ago shows up on the next scan.
+  persistedMs: 60 * 60 * 1000,
   // A WSL session may have to cold-start a distro before it can answer.
   distroTimeoutMs: 30_000,
   // A shell that reports its own commands (PowerShell, bash) gets the same kind
@@ -193,25 +196,83 @@ export async function discoverTerminalCommands(profile, {
 }
 
 /**
- * A per-profile cache in front of the discovery: opening several sessions of
- * the same shell must not rescan the PATH every time.
+ * A per-profile cache in front of the discovery: opening several sessions of the
+ * same shell must not rescan the PATH every time, and a list written to the
+ * store survives a restart. A cold WSL scan costs seconds, so a persisted list
+ * answers immediately while a background refresh replaces it.
  */
 export function createCommandCatalog({
-  discover = discoverTerminalCommands, now = () => Date.now(), cacheMs = TERMINAL_COMMAND_LIMITS.cacheMs,
+  discover = discoverTerminalCommands, now = () => Date.now(),
+  cacheMs = TERMINAL_COMMAND_LIMITS.cacheMs,
+  persistedMs = TERMINAL_COMMAND_LIMITS.persistedMs,
+  store,
 } = {}) {
   const cache = new Map();
+  const pending = new Map();
+  let hydrated;
+
+  async function hydrate() {
+    if (hydrated) return hydrated;
+    hydrated = (async () => {
+      try {
+        const record = await store?.read?.();
+        for (const [key, entry] of Object.entries(record ?? {})) {
+          if (entry && Number.isFinite(entry.at) && Array.isArray(entry.commands)) cache.set(key, { at: entry.at, commands: entry.commands });
+        }
+      } catch {
+        // A missing or unreadable cache is simply a cold start.
+      }
+      return cache;
+    })();
+    return hydrated;
+  }
+
+  // Caching is best effort: a store that cannot be written must not fail a
+  // palette that already has its answer.
+  async function persist() {
+    if (!store?.write) return;
+    try { await store.write(Object.fromEntries(cache)); } catch { /* best effort */ }
+  }
+
+  function refresh(profile, options) {
+    const key = profile?.id ?? '';
+    const running = pending.get(key);
+    if (running) return running;
+    const task = (async () => {
+      try {
+        const commands = await discover(profile, options);
+        // Only a real list is remembered. An empty result is what a cold or
+        // unreachable shell answers with, and caching it would hide the commands
+        // even after the shell could report them.
+        if (commands.length) {
+          cache.set(key, { at: now(), commands });
+          await persist();
+        } else cache.delete(key);
+        return commands;
+      } finally {
+        pending.delete(key);
+      }
+    })();
+    pending.set(key, task);
+    return task;
+  }
+
   return {
     async commands(profile, options) {
       const key = profile?.id ?? '';
+      await hydrate();
       const cached = cache.get(key);
-      if (cached && now() - cached.at < cacheMs) return cached.commands;
-      const commands = await discover(profile, options);
-      // Only a real list is remembered. An empty result is what a cold or
-      // unreachable shell answers with, and caching it for the whole window
-      // would hide the commands even after the shell could report them.
-      if (commands.length) cache.set(key, { at: now(), commands });
-      else cache.delete(key);
-      return commands;
+      if (cached) {
+        const age = now() - cached.at;
+        if (age < cacheMs) return cached.commands;
+        // Still fresh enough to answer with: hand back what we have and refresh
+        // in the background, so the caller never waits for a cold shell again.
+        if (age < persistedMs) {
+          void refresh(profile, options);
+          return cached.commands;
+        }
+      }
+      return refresh(profile, options);
     },
     clear: () => cache.clear(),
   };
