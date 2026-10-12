@@ -402,24 +402,40 @@ function toggleTerminal(): void {
 const canRunInTerminal = computed(() => Boolean(terminal) && Boolean(activeFile.value)
   && Boolean(terminalInterpreter(language.value)));
 
-// Types the file's interpreter command into the shell the user is looking at,
-// with the quoting that shell expects, so the same workspace can be driven from
-// PowerShell, Git Bash or WSL without leaving the workbench.
+// Types a command into the shell the user is looking at. The panel is revealed
+// first so the output is never written into a session nobody can see, and a
+// session that refuses the input raises a toast instead of failing silently.
+async function sendToTerminal(command: string, source: string): Promise<boolean> {
+  if (!terminal || !command) return false;
+  await openTerminal('show');
+  if (await terminal.send(command)) return true;
+  notifications.push({
+    id: `terminal-command-${Date.now()}`, kind: 'error', message: locale.t('terminal.commandFailed'), source,
+  });
+  return false;
+}
+
+// Types the file's interpreter command into the shell, with the quoting that
+// shell expects, so the same workspace can be driven from PowerShell, Git Bash
+// or WSL without leaving the workbench.
 async function runActiveInTerminal(): Promise<void> {
   const file = activeFile.value;
   if (!terminal || !file) return;
   if (!terminal.profiles.value.length) await terminal.loadProfiles();
-  await openTerminal('show');
   const session = terminal.sessions.value.find((entry) => entry.id === terminal.activeId.value);
   const profile = terminal.profiles.value.find((entry) => entry.id === session?.profileId);
-  const command = terminalRunCommand(language.value, file.path, profile?.family);
-  if (!command) return;
-  if (!(await terminal.send(command))) {
-    notifications.push({
-      id: `terminal-run-${Date.now()}`, kind: 'error', message: locale.t('terminal.runFileFailed'),
-      source: file.path,
-    });
-  }
+  await sendToTerminal(terminalRunCommand(language.value, file.path, profile?.family), file.path);
+}
+
+// The commands typed this session lead the palette list, the way a shell's own
+// history would.
+const RECENT_SHELL_COMMAND_LIMIT = 8;
+const recentShellCommands = ref<string[]>([]);
+
+async function runShellCommand(name: string): Promise<void> {
+  recentShellCommands.value = [name, ...recentShellCommands.value.filter((entry) => entry !== name)]
+    .slice(0, RECENT_SHELL_COMMAND_LIMIT);
+  await sendToTerminal(name, name);
 }
 
 function syncTerminalFocus(event?: FocusEvent): void {
@@ -472,9 +488,11 @@ const terminalShellCommands = computed<PaletteCommand[]>(() => {
   const profileId = terminal.activeProfileId.value;
   if (!profileId) return [];
   const label = terminal.profiles.value.find((profile) => profile.id === profileId)?.label ?? '';
-  return (terminal.commandNames.value[profileId] ?? []).map((name) => ({
+  const names = terminal.commandNames.value[profileId] ?? [];
+  const recent = recentShellCommands.value.filter((name) => names.includes(name));
+  return [...recent, ...names.filter((name) => !recent.includes(name))].map((name) => ({
     id: `shell.${name}`, label: name, detail: label,
-    execute: () => { void terminal.send(name); },
+    execute: () => { void runShellCommand(name); },
   }));
 });
 const paletteCommands = computed<PaletteCommand[]>(() => {

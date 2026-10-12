@@ -155,6 +155,11 @@ describe('desktop terminal panel', () => {
     const app = await mountApp();
     menu('terminal.new');
     await flushPromises();
+    // Hiding the panel must not turn a palette command into a silent write: the
+    // session it types into has to become visible.
+    menu('view.togglePanel');
+    await flushPromises();
+    expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(false);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
     await flushPromises();
     const git = app.find('[data-command="shell.git"]');
@@ -164,5 +169,26 @@ describe('desktop terminal panel', () => {
     await git.trigger('click');
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'git\r' }));
     expect(bridge.commands).toHaveBeenCalledWith('pwsh');
+    expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(true);
+
+    // The command that just ran leads the shell section the next time.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    const shellRows = app.findAll('[data-command^="shell."]');
+    expect(shellRows.length).toBeGreaterThan(1);
+    expect(shellRows[0].attributes('data-command')).toBe('shell.git');
+  });
+
+  test('reports a shell command the session refuses instead of failing silently', async () => {
+    const bridge = installDesktop();
+    const app = await mountApp();
+    menu('terminal.new');
+    await flushPromises();
+    // The PTY can exit between the palette click and the write.
+    bridge.write.mockRejectedValueOnce(new Error('The terminal process has exited.'));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    await app.get('[data-command="shell.git"]').trigger('click');
+    await vi.waitFor(() => expect(app.findAll('[data-testid="notification-toast"]').length).toBe(1));
   });
 });
