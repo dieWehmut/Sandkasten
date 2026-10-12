@@ -113,8 +113,12 @@ function resolvesName(profile, name) {
   }
 }
 
-export async function verifyShells({ platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true } = {}) {
-  const report = await discoverTerminalProfileReport({ platform });
+export async function verifyShells({
+  platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true, profiles: injected,
+} = {}) {
+  // A check that can only be tested on the machine it describes is hard to trust:
+  // an injected profile lets the tests show what a broken shell produces.
+  const report = injected ? { profiles: injected, missing: [] } : await discoverTerminalProfileReport({ platform });
   const discovered = report.profiles;
   const profiles = profileId ? discovered.filter((profile) => profile.id === profileId) : discovered;
   if (!profiles.length) throw new Error(profileId ? `No terminal profile matched "${profileId}".` : 'No shell profile was discovered.');
