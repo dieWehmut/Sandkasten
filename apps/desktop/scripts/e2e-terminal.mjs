@@ -21,6 +21,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportCmdInternal = false;
   let reportClipboard = false;
   let clipboardNote = '';
+  let reportClipboardKeys = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -286,13 +287,18 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   assert.ok(bounds.width > 50 && bounds.height > 40);
   assert.ok(bounds.right <= bounds.viewportWidth + 1 && bounds.bottom <= bounds.viewportHeight + 1);
 
-  // Interrupt a genuinely running program, then run another command in the
-  // same shell to prove it remains interactive after Ctrl+C.
-  await enter(firstId, 'python -c "import time; print(\'E2E\'+chr(95)+\'WAIT\',flush=True); time.sleep(30)"');
+  // The clipboard keys belong to the terminal and must not reach the shell, while
+  // Ctrl+C does interrupt. The program therefore prints again two seconds later:
+  // if a clipboard key had been forwarded as an interrupt, that line never comes.
+  const clipboardKeysIgnored = true;
+  await enter(firstId, 'python -c "import time; print(\'E2E\'+chr(95)+\'WAIT\',flush=True); time.sleep(2); print(\'E2E\'+chr(95)+\'STILL\',flush=True); time.sleep(30)"');
   await waitScreen(firstId, 'E2E_WAIT');
+  for (const keys of ['Control+Shift+C', 'Control+Shift+A']) await page.keyboard.press(keys);
+  await waitScreen(firstId, 'E2E_STILL', 20_000);
   await page.keyboard.press('Control+c');
   await enter(firstId, 'echo E2E^_INTERRUPT^_OK');
   await waitScreen(firstId, 'E2E_INTERRUPT_OK');
+  reportClipboardKeys = clipboardKeysIgnored;
 
   for (const theme of ['light', 'dark']) {
     await selectTheme(page, theme);
@@ -340,5 +346,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys };
 }
