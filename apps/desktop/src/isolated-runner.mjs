@@ -41,6 +41,11 @@ export function sandboxName(jobId) {
   return cleaned || 'run';
 }
 
+/** The directory this run owns inside the distro. */
+export function sandboxDirectory(jobId) {
+  return `${SANDBOX_PREFIX}-${sandboxName(jobId)}`;
+}
+
 // Preferred distros, richest toolchain first. The first one that answers the
 // probe wins; a machine without a usable distro reports the backend as
 // unavailable instead of failing a run.
@@ -73,7 +78,7 @@ function shellDoubleQuote(value) {
 export function buildIsolatedCommand({ distro, filePath, command, args = [], maxOutputBytes, workingDirectory, jobId } = {}) {
   const source = toDistroPath(filePath);
   const name = source.slice(source.lastIndexOf('/') + 1) || 'payload';
-  const sandbox = `${SANDBOX_PREFIX}-${sandboxName(jobId)}`;
+  const sandbox = sandboxDirectory(jobId);
   const target = `${sandbox}/${name}`;
   const inner = [command, ...args.map((argument) => argument.replaceAll('{file}', target))];
   // The folder the user's file lives in is what the command preview should show;
@@ -169,6 +174,18 @@ export function isolationProbeScript(tools = isolatedTools()) {
   ].join('; ');
 }
 
+/**
+ * Killing `wsl.exe` ends the client, not the Linux process it started: a
+ * cancelled or timed-out payload keeps running inside the distro until it
+ * finishes on its own. The sandbox directory names the job, and the payload's
+ * command line carries it, so the run is stopped by that marker. The pattern is
+ * written with a character class so the cleanup command cannot match itself.
+ */
+export function sandboxKillCommand(jobId) {
+  const target = sandboxDirectory(jobId);
+  return `pkill -9 -f ${shellQuote(`[${target.slice(0, 1)}]${target.slice(1)}/`)} 2>/dev/null; exit 0`;
+}
+
 export function createIsolatedRunner(options = {}) {
   const spawnImpl = options.spawnImpl ?? nodeSpawn;
   const distros = Array.isArray(options.distros) && options.distros.length ? options.distros : DEFAULT_DISTRO_CANDIDATES;
@@ -231,21 +248,30 @@ export function createIsolatedRunner(options = {}) {
   async function detect({ refresh = false } = {}) {
     if (detection && !refresh) return detection;
     for (const distro of distros) {
-      let output;
-      try {
-        const result = await runProcess('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', isolationProbeScript()], { timeoutMs: probeTimeoutMs });
-        output = result.stdout;
-      } catch {
-        continue;
+      // A distro that is starting, or a launcher that is busy, answers a probe
+      // with nothing once in a while. Asking again is what keeps a hiccup at
+      // startup from disabling the backend until the app is restarted.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        let output;
+        try {
+          const result = await runProcess('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', isolationProbeScript()], { timeoutMs: probeTimeoutMs });
+          output = result.stdout;
+        } catch {
+          continue;
+        }
+        const facts = parseIsolationProbe(output);
+        // Nothing at all means the probe never ran — a distro that is starting or
+        // a launcher that is busy — so it is worth asking once more. A distro that
+        // answered and cannot create the namespace is a verdict; move on.
+        if (!facts.ok) continue;
+        if (!facts.pidIsolated) break;
+        detection = {
+          available: true, distro, pidIsolated: true, networkBlocked: facts.networkBlocked,
+          hostFilesystem: facts.hostFilesystem,
+          languages: isolatedLanguagesFrom(facts.tools, ISOLATED_LANGUAGES),
+        };
+        return detection;
       }
-      const facts = parseIsolationProbe(output);
-      if (!facts.ok || !facts.pidIsolated) continue;
-      detection = {
-        available: true, distro, pidIsolated: true, networkBlocked: facts.networkBlocked,
-        hostFilesystem: facts.hostFilesystem,
-        languages: isolatedLanguagesFrom(facts.tools, ISOLATED_LANGUAGES),
-      };
-      return detection;
     }
     detection = { available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} };
     return detection;
@@ -317,9 +343,23 @@ export function createIsolatedRunner(options = {}) {
       }
     } finally {
       activeRuns.delete(jobId);
+      // A payload that was killed from this side may still be alive over there.
+      if (state.canceled || result.status === 'JOB_STATUS_TIME_LIMIT_EXCEEDED' || result.status === 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED') {
+        await stopSandbox(distro, jobId);
+      }
       result.durationMs = Date.now() - started;
     }
     return result;
+  }
+
+  // Best effort and bounded: the distro may be gone or simply not answering, and
+  // a run that already ended must not turn into a failed one because of it.
+  async function stopSandbox(distro, jobId) {
+    try {
+      await runProcess('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', sandboxKillCommand(jobId)], { timeoutMs: 15_000 });
+    } catch {
+      // Nothing left to clean up.
+    }
   }
 
   async function stop(jobId) {

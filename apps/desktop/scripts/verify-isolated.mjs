@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 // Verify the isolated backend end to end on this machine. Detection answers
 // whether a WSL2 distro can create the namespaces and which languages it has the
-// binaries for; every available language then runs a real fixture, and two extra
-// payloads ask the sandbox what it denies from the inside: a TCP connection has
-// to be refused, and /proc has to show the namespace's own table.
+// binaries for; every available language then runs a real fixture, and three
+// extra payloads ask the sandbox what it does from the inside: a TCP connection
+// has to be refused, /proc has to show the namespace's own table, the host
+// filesystem has to be out of reach, and a cancelled run has to leave nothing
+// running in the distro.
 //
 //   node scripts/verify-isolated.mjs [--json] [--timeout-ms=60000]
+import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 
 import { ISOLATED_LANGUAGES, isolatedLanguageIds, isolatedRunPlan } from '../src/isolated-languages.mjs';
-import { createIsolatedRunner } from '../src/isolated-runner.mjs';
+import { createIsolatedRunner, sandboxDirectory } from '../src/isolated-runner.mjs';
 import { resolveInsideRoot } from '../src/workspace.mjs';
+
+const execute = promisify(execFile);
 
 export const MARKER = 'SANDKASTEN_ISOLATED_OK';
 export const NETWORK_BLOCKED = 'NETWORK_BLOCKED';
@@ -97,6 +103,47 @@ function parseProcessFacts(stdout) {
   };
 }
 
+/**
+ * A cancellation has to reach the payload, not just the WSL client: the fixture
+ * starts a payload that sleeps, waits until it is really running in the distro,
+ * cancels the run, and then counts what is left. The pattern is written with a
+ * character class so the counting command cannot match itself.
+ */
+async function runCancellationProbe(runner, root, distro, timeoutMs) {
+  const file = 'cancel.py';
+  await writeFile(path.join(root, file), 'import time\nprint("CANCEL_READY", flush=True)\ntime.sleep(120)\n', 'utf8');
+  const jobId = 'verify-cancellation';
+  const directory = sandboxDirectory(jobId);
+  const pattern = `[${directory.slice(0, 1)}]${directory.slice(1)}/`;
+  const survivors = async () => {
+    try {
+      const { stdout } = await execute('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', `pgrep -f '${pattern}' | wc -l`], {
+        encoding: 'utf8', timeout: 30_000, windowsHide: true,
+      });
+      return Number(stdout.trim()) || 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const started = Date.now();
+  const pending = runner.run({
+    jobId, path: file, absolutePath: resolveInsideRoot(root, file),
+    language: 'python', command: 'python3', args: ['{file}'], timeoutMs,
+  }, { root });
+
+  let running = 0;
+  for (let attempt = 0; attempt < 40 && running === 0; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    running = await survivors();
+  }
+  await runner.stop(jobId);
+  const result = await pending;
+  // The kill travels on its own; give it a moment before counting the survivors.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { result, durationMs: Date.now() - started, running, left: await survivors() };
+}
+
 export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, distros } = {}) {
   const runner = createIsolatedRunner(distros ? { distros } : {});
   const detection = await runner.detect({ refresh: true });
@@ -174,6 +221,27 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
         jobStatus: result.status, exitCode: result.exitCode, durationMs, note,
         stdout: brief(result.stdout), stderr: brief(result.stderr),
         pid1: facts.pid1, processes: facts.processes, reason,
+      });
+    }
+
+    if (detection.languages.python === true) {
+      const cancellation = await runCancellationProbe(runner, root, detection.distro, timeoutMs);
+      const { result } = cancellation;
+      let reason = '';
+      let note = '';
+      if (!cancellation.running) {
+        reason = 'the payload never started, so nothing was cancelled';
+      } else if (result.status !== 'JOB_STATUS_CANCELED') {
+        reason = `a cancelled run reported ${result.status}`;
+      } else if (cancellation.left !== 0) {
+        reason = `${cancellation.left} process(es) kept running after the cancellation`;
+      } else {
+        note = `stopped ${cancellation.running} process(es) and left nothing running`;
+      }
+      results.push({
+        id: 'cancellation', label: 'Cancellation', kind: 'isolation',
+        status: reason ? 'failed' : 'ok', jobStatus: result.status, note, reason,
+        durationMs: cancellation.durationMs, stdout: brief(result.stdout), stderr: brief(result.stderr),
       });
     }
   } finally {

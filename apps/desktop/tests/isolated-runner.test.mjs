@@ -12,6 +12,7 @@ import {
   createIsolatedRunner,
   isolationProbeScript,
   parseIsolationProbe,
+  sandboxKillCommand,
   sandboxName,
   sanitizeWslNoise,
   toDistroPath,
@@ -146,7 +147,10 @@ function fakeSpawn(plan) {
     setImmediate(() => {
       if (plan.stdout) child.stdout.push(plan.stdout);
       if (plan.stderr) child.stderr.push(plan.stderr);
-      if (plan.hold) return;
+      // `hold` models a payload that never finishes, which is what a cancellation
+      // is for. The cleanup command that follows is not the payload.
+      const isPayload = args.some((argument) => String(argument).includes('unshare'));
+      if (plan.hold && isPayload) return;
       close(plan.code ?? 0);
     });
     return child;
@@ -195,7 +199,7 @@ test('a non-zero exit is reported as a failed run with its code', async () => {
 });
 
 test('a canceled run is reported as canceled rather than as a crash', async () => {
-  const { runner } = runnerWith({ hold: true });
+  const { runner, calls } = runnerWith({ hold: true });
   const pending = runner.run(RUN_ARGUMENTS, { root: 'C:\\ws' });
   await new Promise((resolve) => setImmediate(resolve));
 
@@ -206,6 +210,28 @@ test('a canceled run is reported as canceled rather than as a crash', async () =
   assert.equal(result.status, 'JOB_STATUS_CANCELED');
   assert.match(result.errorMessage, /canceled/i);
   assert.equal(runner.activeRuns.size, 0);
+  // Killing wsl.exe ends the client, not the Linux payload, so the run is stopped
+  // by its sandbox marker as well.
+  assert.equal(calls.length, 2, 'a canceled run is cleaned up in the distro');
+  assert.match(calls[1].args.join(' '), /pkill -9 -f/);
+  assert.match(calls[1].args.join(' '), /sandkasten-job-1/);
+});
+
+test('a run that ended on its own is not cleaned up', async () => {
+  const { runner, calls } = runnerWith({ stdout: 'done\n', code: 0 });
+  const result = await runner.run(RUN_ARGUMENTS, { root: 'C:\\ws' });
+
+  assert.equal(result.status, 'JOB_STATUS_SUCCEEDED');
+  assert.equal(calls.length, 1, 'nothing to kill when the payload exited');
+});
+
+test('the cleanup pattern names the sandbox without matching its own command', () => {
+  const command = sandboxKillCommand('job a/b');
+  // The payload's command line carries the sandbox directory; the pattern is
+  // written with a character class so the command line of the cleanup itself,
+  // which carries the bracketed form, does not match it.
+  assert.ok(command.includes(`pkill -9 -f '[/]tmp/sandkasten-job_a_b/'`), command);
+  assert.ok(!command.includes(`'${'/tmp/sandkasten-job_a_b/'}'`), command);
 });
 
 test('stopping an unknown job reports that nothing was canceled', async () => {
@@ -274,6 +300,34 @@ test('detect skips a distro that cannot isolate and falls back to the next', asy
   assert.deepEqual(status.languages, {
     python: true, javascript: false, c: false, cpp: false, java: false, bash: false, perl: false,
   });
+});
+
+test('detect asks a distro again when its first probe answers nothing', async () => {
+  const probes = [];
+  const spawnImpl = (command, args) => {
+    probes.push(args[1]);
+    const child = new EventEmitter();
+    child.stdout = new Readable({ read() {} });
+    child.stderr = new Readable({ read() {} });
+    // A distro that is starting answers nothing once; the second probe is real.
+    const stdout = probes.length === 1
+      ? ''
+      : `${ISOLATION_MARKER}:ok\n${ISOLATION_MARKER}:pid1\n${ISOLATION_MARKER}:net-blocked\n${ISOLATION_MARKER}:mounts:0\n${ISOLATION_MARKER}:tool:python3\n${ISOLATION_MARKER}:tool:sh\n`;
+    setImmediate(() => {
+      child.stdout.push(stdout);
+      child.stdout.push(null);
+      child.stderr.push(null);
+      child.emit('close', 0, null);
+    });
+    return child;
+  };
+  const runner = createIsolatedRunner({ spawnImpl, distros: ['Ubuntu-22.04'] });
+  const status = await runner.detect();
+
+  assert.deepEqual(probes, ['Ubuntu-22.04', 'Ubuntu-22.04']);
+  assert.equal(status.available, true);
+  assert.equal(status.hostFilesystem, 'hidden');
+  assert.equal(status.languages.python, true);
 });
 
 test('detect reports the backend unavailable when no distro can isolate', async () => {
