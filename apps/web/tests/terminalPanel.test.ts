@@ -237,4 +237,20 @@ describe('desktop terminal panel', () => {
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'thon' }));
     expect(xterm.terminals.at(-1).input).toBeTypeOf('function');
   });
+
+  test('completes a workspace file as a command argument', async () => {
+    const bridge = installDesktop({
+      root: { path: 'C:\\workspace', name: 'workspace' },
+      files: [{ path: 'main.py', name: 'main.py', type: 'file' }],
+    });
+    const app = await mountApp();
+    menu('terminal.new');
+    await flushPromises();
+    xterm.terminals.at(-1).input('python mai');
+    await flushPromises();
+    const suggestion = app.find('[data-testid="terminal-suggestion"][data-command="main.py"]');
+    expect(suggestion.exists()).toBe(true);
+    await suggestion.trigger('click');
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'n.py' }));
+  });
 });

@@ -2,8 +2,15 @@ import { computed, readonly, ref, shallowRef, watch } from 'vue';
 import { Terminal, type IDisposable, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import type { TerminalBridge, TerminalProfile, TerminalSession } from '../services/desktopBridge';
+import { quoteForShell } from '../terminal/terminalCommand';
 
 export interface TerminalEntry extends TerminalSession { exitCode?: number }
+
+/** What the suggestion strip offers: a label to show and the word it completes to. */
+export interface TerminalSuggestion {
+  label: string;
+  value: string;
+}
 
 interface SessionView {
   terminal: Terminal;
@@ -13,8 +20,14 @@ interface SessionView {
   subscriptions: IDisposable[];
 }
 
+export interface TerminalOptions {
+  /** Workspace paths offered as arguments once the command word is typed. */
+  paths?: () => readonly string[];
+}
+
 /** The App owns this controller; panel components only borrow its DOM hosts. */
-export function useTerminal(bridge: TerminalBridge) {
+export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {}) {
+  const inputPaths = options.paths ?? (() => []);
   const profiles = shallowRef<TerminalProfile[]>([]);
   const sessions = shallowRef<TerminalEntry[]>([]);
   const activeId = ref('');
@@ -106,15 +119,29 @@ export function useTerminal(bridge: TerminalBridge) {
   // that shell becomes the active session.
   watch(activeProfileId, (profileId) => { if (profileId) void loadCommands(profileId); }, { immediate: true });
 
-  // The command word the model believes is on the prompt, and the published
-  // commands that continue it. Only the first word counts: an argument is not a
-  // command name.
-  const suggestions = computed(() => {
-    const prefix = inputLine.value;
-    if (!prefix || /\s/.test(prefix)) return [];
-    const lower = prefix.toLowerCase();
+  // The command word completes from the shell's published commands, and an
+  // argument completes from the workspace, so `python mai…` offers main.py.
+  const suggestions = computed<TerminalSuggestion[]>(() => {
+    const line = inputLine.value;
+    if (!line) return [];
+    // Everything after the command word is an argument, so the last token is the
+    // one being typed — even when earlier arguments are already on the line.
+    const parts = line.split(/\s+/);
+    if (parts.length > 1) {
+      const token = parts.at(-1) ?? '';
+      if (!token) return [];
+      const lower = token.toLowerCase();
+      return inputPaths()
+        .filter((path) => path.toLowerCase().startsWith(lower))
+        .slice(0, 5)
+        .map((path) => ({ label: path, value: path }));
+    }
+    const lower = line.toLowerCase();
     const names = commandNames.value[activeProfileId.value] ?? [];
-    return names.filter((name) => name.toLowerCase().startsWith(lower) && name.toLowerCase() !== lower).slice(0, 5);
+    return names
+      .filter((name) => name.toLowerCase().startsWith(lower) && name.toLowerCase() !== lower)
+      .slice(0, 5)
+      .map((name) => ({ label: name, value: name }));
   });
 
   function trackInput(data: string): void {
@@ -296,15 +323,22 @@ export function useTerminal(bridge: TerminalBridge) {
     return true;
   }
 
-  // Types the rest of a suggested command without running it, so the user can add
-  // arguments and press Enter themselves.
-  async function complete(name: string): Promise<boolean> {
-    const prefix = inputLine.value;
-    if (!name || !name.toLowerCase().startsWith(prefix.toLowerCase())) return false;
-    const suffix = name.slice(prefix.length);
-    if (!suffix) return false;
-    if (!(await writeRaw(suffix))) return false;
-    inputLine.value = name;
+  // Types the rest of the suggested word without running it, so the user can add
+  // arguments and press Enter themselves. A path that needs quoting replaces the
+  // typed token instead of continuing it, because the quoted form is not a
+  // continuation.
+  async function complete(suggestion: TerminalSuggestion): Promise<boolean> {
+    const line = inputLine.value;
+    const value = suggestion?.value ?? '';
+    if (!value) return false;
+    const start = Math.max(line.lastIndexOf(' '), line.lastIndexOf('\t')) + 1;
+    const token = line.slice(start);
+    if (!value.toLowerCase().startsWith(token.toLowerCase())) return false;
+    const family = profiles.value.find((profile) => profile.id === activeProfileId.value)?.family;
+    const insert = /[\s'"&|<>()$`;]/.test(value) ? quoteForShell(family, value) : value;
+    const data = insert.startsWith(token) ? insert.slice(token.length) : `${'\x7f'.repeat(token.length)}${insert}`;
+    if (!(await writeRaw(data))) return false;
+    inputLine.value = line.slice(0, start) + insert;
     return true;
   }
 

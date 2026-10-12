@@ -34,7 +34,9 @@ import type { MessageKey } from './i18n/messages';
 import { TRANSLATOR_KEY } from './i18n/useTranslation';
 
 const bridge = desktopBridge();
-const terminal = bridge?.terminal ? useTerminal(bridge.terminal) : undefined;
+// The workspace paths are read lazily: the controller is created before the
+// workspace, and the argument suggestions only matter once the user types.
+const terminal = bridge?.terminal ? useTerminal(bridge.terminal, { paths: () => workspacePaths.value }) : undefined;
 const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });

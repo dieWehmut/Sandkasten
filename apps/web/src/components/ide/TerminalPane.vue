@@ -39,10 +39,10 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
       :title="t('terminal.suggestionsHint')"
     >
       <button
-        v-for="name in controller.suggestions.value" :key="name" type="button" role="option"
-        data-testid="terminal-suggestion" :data-command="name" :title="`${t('terminal.complete')} ${name}`"
-        @pointerdown.prevent @click="controller.complete(name)"
-      >{{ name }}</button>
+        v-for="suggestion in controller.suggestions.value" :key="suggestion.value" type="button" role="option"
+        data-testid="terminal-suggestion" :data-command="suggestion.label" :title="`${t('terminal.complete')} ${suggestion.label}`"
+        @pointerdown.prevent @click="controller.complete(suggestion)"
+      >{{ suggestion.label }}</button>
     </div>
     <div v-if="session.exitCode !== undefined" class="terminal-pane__exit" role="status">
       {{ t('terminal.exited') }} {{ session.exitCode }}

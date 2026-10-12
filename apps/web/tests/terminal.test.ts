@@ -244,15 +244,15 @@ describe('app-owned terminal sessions', () => {
     const type = (data: string) => mocks.terminals[0].input(data);
     type('g'); type('i');
     expect(terminal.inputLine.value).toBe('gi');
-    expect(terminal.suggestions.value).toEqual(['git']);
+    expect(terminal.suggestions.value).toEqual([{ label: 'git', value: 'git' }]);
     // The shell still receives every keystroke.
     expect(host.bridge.write.mock.calls).toEqual([[{ id: 's1', data: 'g' }], [{ id: 's1', data: 'i' }]]);
 
-    expect(await terminal.complete('git')).toBe(true);
+    expect(await terminal.complete({ label: 'git', value: 'git' })).toBe(true);
     expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 't' });
     expect(terminal.inputLine.value).toBe('git');
-    expect(await terminal.complete('git')).toBe(false, 'a finished word has nothing to type');
-    expect(await terminal.complete('ls')).toBe(false, 'a suggestion has to continue the typed word');
+    expect(await terminal.complete({ label: 'git', value: 'git' })).toBe(false, 'a finished word has nothing to type');
+    expect(await terminal.complete({ label: 'ls', value: 'ls' })).toBe(false, 'a suggestion has to continue the typed word');
     await terminal.dispose();
   });
 
@@ -290,7 +290,7 @@ describe('app-owned terminal sessions', () => {
     await terminal.create('cmd');
     expect(terminal.inputLine.value).toBe('', 'a new session starts on a fresh prompt');
     mocks.terminals[1].input('l');
-    expect(terminal.suggestions.value).toEqual(['ls']);
+    expect(terminal.suggestions.value).toEqual([{ label: 'ls', value: 'ls' }]);
     terminal.select('s1');
     expect(terminal.inputLine.value).toBe('', 'switching panes cannot keep the other shell\'s line');
     await terminal.dispose();
@@ -311,6 +311,34 @@ describe('app-owned terminal sessions', () => {
     expect(handler({ ctrlKey: true, altKey: false, code: 'Space', key: ' ' })).toBe(false);
     await vi.waitFor(() => expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 't' }));
     await vi.waitFor(() => expect(terminal.inputLine.value).toBe('git'));
+    await terminal.dispose();
+  });
+
+  test('completes a file argument from the workspace and quotes it when needed', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'my notes.txt'] });
+    await terminal.loadProfiles();
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    type('python mai');
+    expect(terminal.suggestions.value).toEqual([{ label: 'main.py', value: 'main.py' }]);
+    expect(await terminal.complete({ label: 'main.py', value: 'main.py' })).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'n.py' });
+    expect(terminal.inputLine.value).toBe('python main.py');
+
+    // A path with a space cannot be a continuation of what was typed: the token
+    // is replaced, and the shell's own quoting is used for its family.
+    type('\r'); type('type my');
+    expect(terminal.suggestions.value).toEqual([{ label: 'my notes.txt', value: 'my notes.txt' }]);
+    expect(await terminal.complete({ label: 'my notes.txt', value: 'my notes.txt' })).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: `\x7f\x7f"my notes.txt"` });
+    expect(terminal.inputLine.value).toBe('type "my notes.txt"');
+
+    // An argument that matches nothing offers nothing.
+    type('\r'); type('python zzz');
+    expect(terminal.suggestions.value).toEqual([]);
     await terminal.dispose();
   });
 
