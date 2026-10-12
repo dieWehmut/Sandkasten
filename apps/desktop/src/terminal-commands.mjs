@@ -52,6 +52,20 @@ const SHELL_COMMAND_REPORTS = Object.freeze({
   posix: 'compgen -b',
 });
 
+// cmd's internal commands. They have no file behind them — `copy`, `del` and `cls`
+// are nowhere on the PATH — so a scan cannot find them and there is nothing to ask
+// the shell: `help` lists them, but its output is localized, so the names are
+// written down here instead. `help` also lists external tools, which the PATH scan
+// already finds, so those are not repeated.
+export const SHELL_INTERNAL_COMMANDS = Object.freeze({
+  cmd: Object.freeze([
+    'assoc', 'break', 'call', 'cd', 'chdir', 'cls', 'color', 'copy', 'date', 'del', 'dir', 'echo',
+    'endlocal', 'erase', 'exit', 'for', 'ftype', 'goto', 'if', 'md', 'mkdir', 'mklink', 'move',
+    'path', 'pause', 'popd', 'prompt', 'pushd', 'rd', 'rem', 'ren', 'rename', 'rmdir', 'set',
+    'setlocal', 'shift', 'start', 'time', 'title', 'type', 'ver', 'verify', 'vol',
+  ]),
+});
+
 // A name the renderer can offer and complete: PowerShell's aliases include `?`,
 // `%` and `#`, which are punctuation rather than words to type. The verification
 // asks the same question, so it uses this rather than its own copy of the rule.
@@ -65,6 +79,11 @@ export function isReportedCommandName(name) {
 /** The command that lists what this family reports about itself, or ''. */
 export function shellReportCommand(family) {
   return SHELL_COMMAND_REPORTS[String(family ?? '').toLowerCase()] ?? '';
+}
+
+/** The commands this family runs without a file behind them, when they are known. */
+export function shellInternalCommands(family) {
+  return SHELL_INTERNAL_COMMANDS[String(family ?? '').toLowerCase()] ?? [];
 }
 
 function pathKey(environment) {
@@ -233,6 +252,16 @@ export async function discoverTerminalCommandList(profile, {
       shellReported.push(name);
       if (commands.length >= limit) break;
     }
+  }
+  // A shell whose own commands cannot be listed — cmd's internals — contributes
+  // them from the written-down list instead.
+  for (const name of SHELL_INTERNAL_COMMANDS[profile?.family] ?? []) {
+    const identity = windows ? name.toLowerCase() : name;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    commands.push(name);
+    shellReported.push(name);
+    if (commands.length >= limit) break;
   }
   return { names: commands, shellReported };
 }

@@ -13,7 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverTerminalProfileReport } from '../src/terminal-profiles.mjs';
-import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, isReportedCommandName, shellReportCommand } from '../src/terminal-commands.mjs';
+import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, isReportedCommandName, shellInternalCommands, shellReportCommand } from '../src/terminal-commands.mjs';
 import { sessionEnvironment } from '../src/terminal.mjs';
 
 const MARKER = 'SANDKASTEN_SHELL_OK';
@@ -103,7 +103,7 @@ function resolvesName(profile, name) {
     // A cmdlet or function has no Source, so the lookup asks whether the name
     // resolves at all rather than where it comes from.
     case 'powershell': return `if (Get-Command '${name}' -ErrorAction SilentlyContinue) { 'ok' }`;
-    case 'cmd': return `where ${name}`;
+    case 'cmd': return `where ${name} 2>nul || help ${name}`;
     case 'bash':
     case 'posix':
     case 'wsl': return `command -v '${name}'`;
@@ -202,19 +202,23 @@ export async function verifyShells({
         reason = probeVerdict.reason;
       }
       // The list has to carry what the shell says about itself, not just the files on
-      // its PATH: a cmdlet or a builtin is exactly what makes the palette useful in
-      // a PowerShell or bash session. A shell that reports nothing (cmd, a POSIX
-      // shell without compgen) skips the check instead of failing it.
+      // its PATH: a cmdlet, a builtin or a cmd internal is exactly what makes the
+      // palette useful. A shell that has neither (a POSIX shell without compgen)
+      // skips the check instead of failing it.
       const published = await discoverTerminalCommands(profile, { platform });
       const report = shellReportCommand(profile.family);
+      const internals = shellInternalCommands(profile.family);
       let answerNames;
       if (report) {
         const answer = await probe(profile, report, { timeoutMs: profileTimeoutMs, environment });
         // The same filter the discovery applies: a name the renderer cannot offer
         // is not one the list was supposed to carry.
-        answerNames = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter((name) => name && isReportedCommandName(name)));
+        answerNames = answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter((name) => name && isReportedCommandName(name));
       }
-      const selfReport = shellSelfReportVerdict({ reportedNames: report ? answerNames : null, published });
+      // A shell whose own commands cannot be asked for contributes a written-down
+      // list; those names have to reach the list just the same.
+      const expected = [...(answerNames ?? []), ...internals];
+      const selfReport = shellSelfReportVerdict({ reportedNames: expected.length ? new Set(expected) : null, published });
       const selfReported = selfReport.selfReported;
       reason = reason || selfReport.reason;
       // Sample one of the shell's own commands as well, so the check covers both

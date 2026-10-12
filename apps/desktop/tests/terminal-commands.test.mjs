@@ -8,6 +8,7 @@ import {
   discoverTerminalCommands,
   shellArguments,
   isReportedCommandName,
+  shellInternalCommands,
   shellReportCommand,
   shellSearchPath,
 } from '../src/terminal-commands.mjs';
@@ -304,7 +305,7 @@ test('a shell that keeps answering nothing is not asked forever', async () => {
 
 test('a shell with nothing to report about itself is not asked', async () => {
   let calls = 0;
-  const commands = await discoverTerminalCommands(
+  const discovered = await discoverTerminalCommandList(
     { id: 'cmd', family: 'cmd', executable: 'C:\\Windows\\System32\\cmd.exe', pathPrepend: ['C:\\Windows'] },
     {
       platform: 'win32',
@@ -313,8 +314,29 @@ test('a shell with nothing to report about itself is not asked', async () => {
       runShell: async () => { calls += 1; return 'should not be asked'; },
     },
   );
-  assert.deepEqual(commands, ['cmd']);
+  assert.equal(discovered.names[0], 'cmd', 'the PATH names come first');
   assert.equal(calls, 0, 'cmd has no listing of its own to ask for');
+  // Its internals come from the written-down list instead: `copy` is nowhere on
+  // the PATH, and a cmd session runs it anyway.
+  assert.ok(discovered.names.includes('copy'));
+  assert.ok(discovered.names.includes('cls'));
+  assert.ok(discovered.shellReported.includes('copy'));
+});
+
+test('a cmd internal that also exists as a file stays the one on the PATH', async () => {
+  const discovered = await discoverTerminalCommandList(
+    { id: 'cmd', family: 'cmd', executable: 'C:\\Windows\\System32\\cmd.exe', pathPrepend: [] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\tools', PATHEXT: '.EXE' },
+      // MSYS2 ships `dir`, so the name exists twice: the file wins and the
+      // internal is not added a second time, nor claimed as shell-owned.
+      listDirectory: async () => [file('dir.exe')],
+    },
+  );
+  assert.equal(discovered.names.filter((name) => name === 'dir').length, 1);
+  assert.equal(discovered.shellReported.includes('dir'), false);
+  assert.ok(discovered.shellReported.includes('mkdir'));
 });
 
 test('the shell report cannot push the list past its limit', async () => {
@@ -349,6 +371,16 @@ test('only a family that can report its own commands says so', () => {
   assert.equal(shellReportCommand('cmd'), '');
   assert.equal(shellReportCommand('wsl'), '');
   assert.equal(shellReportCommand(undefined), '');
+});
+
+test("cmd's internals are written down, and only cmd has any", () => {
+  const internals = shellInternalCommands('cmd');
+  for (const name of ['copy', 'del', 'cls', 'type', 'set']) assert.ok(internals.includes(name), `cmd runs ${name}`);
+  assert.equal(internals.includes('where'), false, 'a tool with a file behind it is found on the PATH');
+  for (const name of internals) assert.equal(isReportedCommandName(name), true, `${name} has to be a name the renderer can offer`);
+  assert.deepEqual(shellInternalCommands('powershell'), []);
+  assert.deepEqual(shellInternalCommands('bash'), []);
+  assert.deepEqual(shellInternalCommands(undefined), []);
 });
 
 test('the limit leaves room for both the PATH executables and the shell report', () => {
