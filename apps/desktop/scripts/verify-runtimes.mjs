@@ -14,6 +14,10 @@ import { pathToFileURL } from 'node:url';
 import { createLocalRunner, LOCAL_RUNTIMES } from '../src/local-runner.mjs';
 
 export const MARKER = 'SANDKASTEN_RUNTIME_OK';
+// The other half of running code: a program that fails has to fail *visibly* —
+// the exit code and its stderr reach the user, for every runtime.
+export const FAILURE_MARKER = 'SANDKASTEN_RUNTIME_FAILED';
+export const FAILURE_EXIT_CODE = 3;
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 export const RUNTIME_FIXTURES = {
@@ -36,6 +40,26 @@ export const RUNTIME_FIXTURES = {
   powershell: { file: 'main.ps1', source: `Write-Output "${MARKER}:powershell"\n` },
 };
 
+export const RUNTIME_FAILURE_FIXTURES = {
+  python: { file: 'fail.py', source: `import sys\nprint("${FAILURE_MARKER}:python", file=sys.stderr)\nsys.exit(${FAILURE_EXIT_CODE})\n` },
+  javascript: { file: 'fail.mjs', source: `console.error("${FAILURE_MARKER}:javascript");\nprocess.exit(${FAILURE_EXIT_CODE});\n` },
+  typescript: { file: 'fail.ts', source: `const code: number = ${FAILURE_EXIT_CODE};\nconsole.error("${FAILURE_MARKER}:typescript");\nprocess.exit(code);\n` },
+  go: { file: 'fail.go', source: `package main\n\nimport (\n\t"fmt"\n\t"os"\n)\n\nfunc main() {\n\tfmt.Fprintln(os.Stderr, "${FAILURE_MARKER}:go")\n\tos.Exit(${FAILURE_EXIT_CODE})\n}\n` },
+  rust: { file: 'fail.rs', source: `fn main() {\n    eprintln!("${FAILURE_MARKER}:rust");\n    std::process::exit(${FAILURE_EXIT_CODE});\n}\n` },
+  c: { file: 'fail.c', source: `#include <stdio.h>\n\nint main(void) {\n  fprintf(stderr, "${FAILURE_MARKER}:c\\n");\n  return ${FAILURE_EXIT_CODE};\n}\n` },
+  cpp: { file: 'fail.cpp', source: `#include <iostream>\n\nint main() {\n  std::cerr << "${FAILURE_MARKER}:cpp" << std::endl;\n  return ${FAILURE_EXIT_CODE};\n}\n` },
+  java: {
+    file: 'Fail.java',
+    source: `public class Fail {\n  public static void main(String[] args) {\n    System.err.println("${FAILURE_MARKER}:java");\n    System.exit(${FAILURE_EXIT_CODE});\n  }\n}\n`,
+  },
+  ruby: { file: 'fail.rb', source: `$stderr.puts("${FAILURE_MARKER}:ruby")\nexit ${FAILURE_EXIT_CODE}\n` },
+  php: { file: 'fail.php', source: `<?php\nfwrite(STDERR, "${FAILURE_MARKER}:php\\n");\nexit(${FAILURE_EXIT_CODE});\n` },
+  bash: { file: 'fail.sh', source: `echo "${FAILURE_MARKER}:bash" >&2\nexit ${FAILURE_EXIT_CODE}\n` },
+  lua: { file: 'fail.lua', source: `io.stderr:write("${FAILURE_MARKER}:lua\\n")\nos.exit(${FAILURE_EXIT_CODE})\n` },
+  perl: { file: 'fail.pl', source: `print STDERR "${FAILURE_MARKER}:perl\\n";\nexit ${FAILURE_EXIT_CODE};\n` },
+  powershell: { file: 'fail.ps1', source: `[Console]::Error.WriteLine("${FAILURE_MARKER}:powershell")\nexit ${FAILURE_EXIT_CODE}\n` },
+};
+
 function brief(text, limit = 400) {
   const trimmed = String(text ?? '').trim();
   return trimmed.length > limit ? `${trimmed.slice(0, limit)}…` : trimmed;
@@ -47,7 +71,7 @@ function compact(text, limit = 180) {
   return line.length > limit ? `${line.slice(0, limit)}…` : line;
 }
 
-export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS, workRoot } = {}) {
+export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, failures = false } = {}) {
   const root = workRoot ?? await mkdtemp(path.join(os.tmpdir(), 'sandkasten-runtime-verify-'));
   const ownsRoot = !workRoot;
   const selected = languages ? new Set(languages) : undefined;
@@ -86,6 +110,32 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
         hint: result.hint ?? '',
         reason: ok ? '' : result.errorMessage || `marker ${expected} missing (${result.status})`,
       });
+
+      if (!failures) continue;
+      const failureFixture = RUNTIME_FAILURE_FIXTURES[language];
+      await writeFile(path.join(root, failureFixture.file), failureFixture.source, 'utf8');
+      const failure = await createLocalRunner().run(
+        { jobId: `verify-${language}-fail-${randomUUID().slice(0, 8)}`, path: failureFixture.file, language, timeoutMs },
+        { root },
+      );
+      // A failing program has to reach the user as a runtime failure, with the
+      // code it chose and the words it wrote to stderr.
+      const expectedFailure = `${FAILURE_MARKER}:${language}`;
+      const stderr = `${failure.stderr ?? ''}${failure.compileStderr ?? ''}`;
+      const reported = failure.status === 'JOB_STATUS_RUNTIME_FAILED'
+        && failure.exitCode === FAILURE_EXIT_CODE
+        && stderr.includes(expectedFailure);
+      results.push({
+        language, label: `${runtime.label} (failure)`, phase: 'failure',
+        status: reported ? 'ok' : 'failed',
+        jobStatus: failure.status, exitCode: failure.exitCode, durationMs: failure.durationMs,
+        stdout: brief(failure.stdout), stderr: brief(stderr), hint: failure.hint ?? '',
+        reason: reported ? '' : [
+          `expected a runtime failure with exit ${FAILURE_EXIT_CODE} and its stderr`,
+          `got ${failure.status} exit ${failure.exitCode ?? '-'}`,
+          stderr.includes(expectedFailure) ? '' : 'without the program\'s stderr',
+        ].filter(Boolean).join(', '),
+      });
     }
   } finally {
     if (ownsRoot) await rm(root, { recursive: true, force: true });
@@ -108,7 +158,8 @@ function render(results) {
   const ran = results.filter((result) => result.status === 'ok').length;
   const unavailable = results.filter((result) => result.status === 'unavailable').length;
   const failed = results.filter((result) => result.status !== 'ok' && result.status !== 'unavailable');
-  process.stdout.write(`\n${ran} runtimes verified, ${unavailable} unavailable, ${failed.length} failed\n`);
+  const failurePhase = results.some((result) => result.phase === 'failure');
+  process.stdout.write(`\n${ran} runtimes verified${failurePhase ? ' (successes and failures)' : ''}, ${unavailable} unavailable, ${failed.length} failed\n`);
 }
 
 async function main() {
@@ -116,8 +167,8 @@ async function main() {
   const json = args.includes('--json');
   const language = args.find((argument) => argument.startsWith('--language='))?.slice('--language='.length);
   const timeoutMs = Number(args.find((argument) => argument.startsWith('--timeout-ms='))?.slice('--timeout-ms='.length)) || DEFAULT_TIMEOUT_MS;
-  const results = await verifyRuntimes({ languages: language ? [language] : undefined, timeoutMs });
-  if (json) process.stdout.write(`${JSON.stringify({ marker: MARKER, results }, null, 2)}\n`);
+  const results = await verifyRuntimes({ languages: language ? [language] : undefined, timeoutMs, failures: args.includes('--failures') });
+  if (json) process.stdout.write(`${JSON.stringify({ marker: MARKER, failureMarker: FAILURE_MARKER, results }, null, 2)}\n`);
   else render(results);
   process.exitCode = results.some((result) => result.status === 'failed' || result.status === 'unsupported') ? 1 : 0;
 }
