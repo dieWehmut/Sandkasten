@@ -95,6 +95,12 @@ The desktop build adds these things the browser cannot do:
    | `Ctrl+Shift+P` | The command palette, with the active shell's commands |
    | Right-click, middle-click | The same actions as a menu; paste the primary selection on Linux |
 
+   The strip's prefix model follows what the shell echoes, so it offers completions
+   for the line being typed. It stops offering them once an escape sequence — a
+   cursor key, a history recall — has moved the shell's line or cursor where the
+   model cannot see it, and picks up again at the next prompt: guessing there would
+   mean sending the shell edits for the wrong line.
+
    Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
