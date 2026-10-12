@@ -66,6 +66,22 @@ const ISOLATION_FIXTURES = [
     ].join('\n'),
     expect: 'PID1=',
   },
+  {
+    // The namespaces cover user, network and PID; the filesystem is a separate
+    // question, so the payload answers it: a WSL distro exposes the Windows
+    // drives under /mnt, which is where the host files live.
+    id: 'host-files',
+    label: 'Host filesystem',
+    file: 'files.py',
+    source: [
+      "import os",
+      "drives = sorted(os.listdir('/mnt')) if os.path.isdir('/mnt') else []",
+      "print('HOSTFILES=' + ('visible' if drives else 'hidden'))",
+      "print('DRIVES=' + ','.join(drives))",
+      '',
+    ].join('\n'),
+    expect: 'HOSTFILES=',
+  },
 ];
 
 function brief(text, limit = 300) {
@@ -77,6 +93,7 @@ function parseProcessFacts(stdout) {
   return {
     pid1: /PID1=(\S+)/.exec(stdout)?.[1] ?? '',
     processes: Number(/PROCS=(\d+)/.exec(stdout)?.[1] ?? NaN),
+    hostFiles: /HOSTFILES=(\w+)/.exec(stdout)?.[1] ?? '',
   };
 }
 
@@ -137,14 +154,22 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
       const { result, durationMs } = await runFixture(check, 'python');
       const facts = parseProcessFacts(result.stdout);
       let reason = '';
+      let note = '';
       if (result.status !== 'JOB_STATUS_SUCCEEDED' || !result.stdout.includes(check.expect)) {
         reason = result.errorMessage || `marker ${check.expect} missing (${result.status})`;
       } else if (check.id === 'processes' && (facts.pid1 === 'init' || !(facts.processes > 0))) {
         reason = `the payload sees the host process table (PID 1 is ${facts.pid1 || 'unknown'})`;
+      } else if (check.id === 'host-files') {
+        // The namespaces do not cover the filesystem: a distro exposes the
+        // Windows drives under /mnt, so this is a fact to report, not a pass or
+        // a failure.
+        note = facts.hostFiles === 'visible'
+          ? 'the host filesystem is readable (the namespaces do not cover mounts)'
+          : 'the host filesystem is not reachable';
       }
       results.push({
         id: check.id, label: check.label, kind: 'isolation', status: reason ? 'failed' : 'ok',
-        jobStatus: result.status, exitCode: result.exitCode, durationMs,
+        jobStatus: result.status, exitCode: result.exitCode, durationMs, note,
         stdout: brief(result.stdout), stderr: brief(result.stderr),
         pid1: facts.pid1, processes: facts.processes, reason,
       });
@@ -164,7 +189,7 @@ function render({ detection, results }) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
     const detail = result.status === 'ok'
-      ? [brief(result.stdout), result.pid1 ? `pid1=${result.pid1}, ${result.processes} processes` : ''].filter(Boolean).join('; ')
+      ? [brief(result.stdout), result.pid1 ? `pid1=${result.pid1}, ${result.processes} processes` : '', result.note].filter(Boolean).join('; ')
       : result.reason;
     process.stdout.write(`${result.status.padEnd(11)} ${result.label.padEnd(width)} ${String(result.durationMs ?? 0).padStart(6)} ms  ${detail}\n`);
   }

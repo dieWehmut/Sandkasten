@@ -69,11 +69,13 @@ test('a path with a quote stays one shell word', () => {
 
 test('reads the isolation markers a probe prints', () => {
   assert.deepEqual(
-    parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:net-blocked\n'),
-    { ok: true, pidIsolated: true, networkBlocked: true, tools: new Set() },
+    parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:net-blocked\nSANDFACT:mounts:5\n'),
+    { ok: true, pidIsolated: true, networkBlocked: true, hostFilesystem: 'visible', tools: new Set() },
   );
   const facts = parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:tool:python3\nSANDFACT:tool:gcc\n');
   assert.deepEqual([...facts.tools].sort(), ['gcc', 'python3']);
+  assert.equal(facts.hostFilesystem, 'unknown', 'a probe that says nothing about mounts is not assumed to hide them');
+  assert.equal(parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:mounts:0\n').hostFilesystem, 'hidden');
   assert.equal(parseIsolationProbe('nothing here').ok, false);
 });
 
@@ -255,5 +257,8 @@ test('detect skips a distro that cannot isolate and falls back to the next', asy
 
 test('detect reports the backend unavailable when no distro can isolate', async () => {
   const { runner } = runnerWith({ stdout: 'wsl: not installed\n', code: 1 }, { distros: ['Ubuntu-22.04'] });
-  assert.deepEqual(await runner.detect(), { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} });
+  assert.deepEqual(await runner.detect(), {
+    available: false, distro: '', pidIsolated: false, networkBlocked: false,
+    hostFilesystem: 'unknown', languages: {},
+  });
 });

@@ -56,7 +56,7 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
   // Which bridge the active job belongs to, so `stop` cancels the same one.
   let activeBackend: 'local' | 'isolated' = 'local';
   const available = computed(() => bridge !== undefined);
-  const isolation = ref<IsolationStatus>({ available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} });
+  const isolation = ref<IsolationStatus>({ available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} });
 
   let generation = 0;
 
@@ -88,9 +88,9 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
     try {
       isolation.value = bridge.isolated
         ? await bridge.isolated.detect()
-        : { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
+        : { available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} };
     } catch {
-      isolation.value = { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
+      isolation.value = { available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} };
     }
   }
 

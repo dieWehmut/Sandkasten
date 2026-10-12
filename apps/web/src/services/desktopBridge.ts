@@ -41,6 +41,13 @@ export interface IsolationStatus {
   distro: string;
   pidIsolated: boolean;
   networkBlocked: boolean;
+  /**
+   * Whether the payload can read the host filesystem. The namespaces cover
+   * user, network and PID; a distro exposes the Windows drives under /mnt, so a
+   * run is isolated from processes and the network, not from the files it may
+   * read.
+   */
+  hostFilesystem: 'visible' | 'hidden' | 'unknown';
   /** Which isolated languages every required binary exists for, per distro. */
   languages: Record<string, boolean>;
 }

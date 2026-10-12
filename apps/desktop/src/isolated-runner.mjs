@@ -89,10 +89,17 @@ export function parseIsolationProbe(text) {
   const tools = new Set(
     [...facts].filter((fact) => fact.startsWith('tool:')).map((fact) => fact.slice('tool:'.length)).filter(Boolean),
   );
+  // The namespaces cover user, network and PID. The host filesystem is a
+  // separate question, and the payload answers it itself: the probe counts what
+  // it can see under /mnt, which is where a WSL distro exposes the Windows
+  // drives. Nothing under /mnt means the host files are out of reach.
+  const mounts = [...facts].find((fact) => fact.startsWith('mounts:'));
+  const drivers = mounts ? Number.parseInt(mounts.slice('mounts:'.length), 10) : Number.NaN;
   return {
     ok: facts.has('ok'),
     pidIsolated: facts.has('pid1'),
     networkBlocked: facts.has('net-blocked'),
+    hostFilesystem: Number.isFinite(drivers) ? (drivers > 0 ? 'visible' : 'hidden') : 'unknown',
     tools,
   };
 }
@@ -110,6 +117,10 @@ export function isolationProbeScript(tools = isolatedTools()) {
     // "/dev/tcp" is a bash feature; dash fails to open it for an unrelated
     // reason and would report the sandbox as blocking traffic it never tested.
     `command -v bash >/dev/null 2>&1 && { unshare ${ISOLATION_FLAGS.join(' ')} bash -c 'exec 3<>/dev/tcp/1.1.1.1/53' 2>/dev/null && echo ${ISOLATION_MARKER}:net-open || echo ${ISOLATION_MARKER}:net-blocked; }`,
+    // What the payload can read: the Windows drives a distro mounts under /mnt
+    // are the host filesystem, and the UI says so instead of calling the run
+    // isolated without qualification.
+    `unshare ${ISOLATION_FLAGS.join(' ')} sh -c 'set -- /mnt/*; [ -e "$1" ] && echo ${ISOLATION_MARKER}:mounts:$# || echo ${ISOLATION_MARKER}:mounts:0' 2>/dev/null`,
     ...tools.map((tool) => `command -v ${shellQuote(tool)} >/dev/null 2>&1 && echo ${ISOLATION_MARKER}:tool:${tool}`),
   ].join('; ');
 }
@@ -187,11 +198,12 @@ export function createIsolatedRunner(options = {}) {
       if (!facts.ok || !facts.pidIsolated) continue;
       detection = {
         available: true, distro, pidIsolated: true, networkBlocked: facts.networkBlocked,
+        hostFilesystem: facts.hostFilesystem,
         languages: isolatedLanguagesFrom(facts.tools, ISOLATED_LANGUAGES),
       };
       return detection;
     }
-    detection = { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
+    detection = { available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} };
     return detection;
   }
 
