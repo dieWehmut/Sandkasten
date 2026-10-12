@@ -79,7 +79,9 @@ The desktop build adds these things the browser cannot do:
    the active shell can run; choosing one types the rest of the word without
    running it, and `Ctrl+Space` accepts the first suggestion. Once the command
    word is complete, the last argument completes from the workspace files, and a
-   path that needs quoting is inserted with the active shell's own quoting. The
+   workspace folder completes as a directory argument with its separator
+   (`cd scr` → `scripts/`). A path that needs quoting is inserted with the
+   active shell's own quoting. The
    suggestion model gives up whenever it cannot follow the input
    (history, cursor movement), so it never suggests from a line it lost track
    of, and Tab still belongs to the shell. A WSL
