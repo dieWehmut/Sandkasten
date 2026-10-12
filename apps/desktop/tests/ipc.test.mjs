@@ -126,7 +126,10 @@ test('local execution IPC validates its request and forwards to the runner', asy
 test('isolated execution resolves the path inside the root and forwards the request', async (t) => {
   const seen = [];
   const isolated = {
-    detect: async () => ({ available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true }),
+    detect: async () => ({
+      available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true,
+      languages: { python: true, c: false },
+    }),
     run: async (request, context) => {
       seen.push({ request, context });
       return { jobId: request.jobId, status: 'JOB_STATUS_SUCCEEDED', language: request.language, stdout: 'sandboxed\n', stderr: '' };
@@ -137,21 +140,23 @@ test('isolated execution resolves the path inside the root and forwards the requ
 
   assert.deepEqual(
     await ipcMain.invoke(IPC_CHANNELS.isolatedDetect),
-    { available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true },
+    { available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true, languages: { python: true, c: false } },
   );
 
-  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'python', command: 'python3' }), /open a workspace folder/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'python' }), /open a workspace folder/i);
   await session.setRoot(root);
   await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, null), /isolated run request/);
-  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: '', path: 'main.py', language: 'python', command: 'python3' }), /jobId/);
-  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'python' }), /command/);
-  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: '../escape.py', language: 'python', command: 'python3' }), /workspace/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: '', path: 'main.py', language: 'python' }), /jobId/);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'cobol' }), /does not support cobol/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: '../escape.py', language: 'python' }), /workspace/i);
 
-  const result = await ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'python', command: 'python3' });
+  const result = await ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-9', path: 'main.py', language: 'python' });
   assert.equal(result.stdout, 'sandboxed\n');
   assert.equal(seen.length, 1);
   assert.equal(seen[0].request.absolutePath, path.join(path.resolve(root), 'main.py'));
-  assert.deepEqual(seen[0].request.args, ['{file}'], 'a missing arg list defaults to the file placeholder');
+  // The renderer never names a command: the plan comes from the language.
+  assert.equal(seen[0].request.command, 'python3');
+  assert.deepEqual(seen[0].request.args, ['{file}']);
   assert.equal(seen[0].context.root, path.resolve(root));
 
   assert.equal(await ipcMain.invoke(IPC_CHANNELS.isolatedStop, 'job-9'), true);
@@ -163,10 +168,10 @@ test('a build without an isolated runner reports it as unavailable instead of fa
   const { ipcMain } = await harness(t);
   assert.deepEqual(
     await ipcMain.invoke(IPC_CHANNELS.isolatedDetect),
-    { available: false, distro: '', pidIsolated: false, networkBlocked: false },
+    { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} },
   );
   assert.equal(await ipcMain.invoke(IPC_CHANNELS.isolatedStop, 'job-1'), false);
-  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-1', path: 'main.py', language: 'python', command: 'python3' }), /not available in this build/i);
+  await assert.rejects(() => ipcMain.invoke(IPC_CHANNELS.isolatedRun, { jobId: 'job-1', path: 'main.py', language: 'python' }), /not available in this build/i);
 });
 
 test('the initial workspace honours the environment override before the stored folder', async (t) => {

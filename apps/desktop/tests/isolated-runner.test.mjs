@@ -38,16 +38,42 @@ test('builds a bounded unshare invocation that runs inside the file folder', () 
   assert.ok(command.args.includes('--pid'));
   assert.equal(command.workingDirectory, '/mnt/c/ws/pkg');
   const shell = command.args.at(-1);
-  assert.match(shell, /cd "\/mnt\/c\/ws\/pkg"/);
-  assert.match(shell, /python3/);
+  assert.match(shell, /cd '\/mnt\/c\/ws\/pkg'/);
+  assert.match(shell, /'python3'/);
   assert.match(shell, /\/mnt\/c\/ws\/pkg\/main\.py/);
+});
+
+test('quotes every entry word so a payload script keeps its own $1 and substitutions', () => {
+  const command = buildIsolatedCommand({
+    distro: 'Ubuntu-22.04',
+    filePath: 'C:\\ws\\pkg\\main.c',
+    command: 'sh',
+    args: ['-c', 'd=$(mktemp -d) || exit 1; gcc "$1" -o "$d/payload"; "$d/payload"', 'sandkasten', '{file}'],
+  });
+  const shell = command.args.at(-1);
+  assert.ok(shell.includes(`'d=$(mktemp -d) || exit 1; gcc "$1" -o "$d/payload"; "$d/payload"'`),
+    `the script has to survive the entry shell verbatim: ${shell}`);
+  assert.ok(shell.includes(`'sandkasten' '/mnt/c/ws/pkg/main.c'`), shell);
+});
+
+test('a path with a quote stays one shell word', () => {
+  const command = buildIsolatedCommand({
+    distro: 'Ubuntu-22.04',
+    filePath: "C:\\ws\\it's here\\main.py",
+    command: 'python3',
+    args: ['{file}'],
+  });
+  const shell = command.args.at(-1);
+  assert.ok(shell.includes(`'/mnt/c/ws/it'\\''s here/main.py'`), shell);
 });
 
 test('reads the isolation markers a probe prints', () => {
   assert.deepEqual(
     parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:net-blocked\n'),
-    { ok: true, pidIsolated: true, networkBlocked: true },
+    { ok: true, pidIsolated: true, networkBlocked: true, tools: new Set() },
   );
+  const facts = parseIsolationProbe('SANDFACT:ok\nSANDFACT:pid1\nSANDFACT:tool:python3\nSANDFACT:tool:gcc\n');
+  assert.deepEqual([...facts.tools].sort(), ['gcc', 'python3']);
   assert.equal(parseIsolationProbe('nothing here').ok, false);
 });
 
@@ -205,7 +231,7 @@ test('detect skips a distro that cannot isolate and falls back to the next', asy
     child.stdout = new Readable({ read() {} });
     child.stderr = new Readable({ read() {} });
     const stdout = distro === 'Ubuntu'
-      ? `${ISOLATION_MARKER}:ok\n${ISOLATION_MARKER}:pid1\n${ISOLATION_MARKER}:net-blocked\n`
+      ? `${ISOLATION_MARKER}:ok\n${ISOLATION_MARKER}:pid1\n${ISOLATION_MARKER}:net-blocked\n${ISOLATION_MARKER}:tool:python3\n${ISOLATION_MARKER}:tool:sh\n`
       : `${ISOLATION_MARKER}:ok\n`;
     setImmediate(() => {
       child.stdout.push(stdout);
@@ -219,10 +245,15 @@ test('detect skips a distro that cannot isolate and falls back to the next', asy
   const status = await runner.detect();
 
   assert.deepEqual(probes, ['Ubuntu-22.04', 'Ubuntu']);
-  assert.deepEqual(status, { available: true, distro: 'Ubuntu', pidIsolated: true, networkBlocked: true });
+  assert.equal(status.available, true);
+  assert.equal(status.distro, 'Ubuntu');
+  // Only the languages whose every tool the distro answered for are offered.
+  assert.deepEqual(status.languages, {
+    python: true, javascript: false, c: false, cpp: false, java: false, bash: false, perl: false,
+  });
 });
 
 test('detect reports the backend unavailable when no distro can isolate', async () => {
   const { runner } = runnerWith({ stdout: 'wsl: not installed\n', code: 1 }, { distros: ['Ubuntu-22.04'] });
-  assert.deepEqual(await runner.detect(), { available: false, distro: '', pidIsolated: false, networkBlocked: false });
+  assert.deepEqual(await runner.detect(), { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} });
 });

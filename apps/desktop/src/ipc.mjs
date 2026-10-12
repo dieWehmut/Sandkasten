@@ -4,6 +4,7 @@
 import { pathToFileURL } from 'node:url';
 
 import { buildMenuTemplate } from './menu.mjs';
+import { isolatedRunPlan } from './isolated-languages.mjs';
 import { WINDOW_CHROME_THEMES } from './navigation.mjs';
 import {
   createWorkspaceFile,
@@ -177,7 +178,7 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
   ipcMain.handle(IPC_CHANNELS.localStop, async (_event, jobId) => runner.stop(assertString(jobId, 'jobId')));
 
   ipcMain.handle(IPC_CHANNELS.isolatedDetect, async () => (
-    isolated ? isolated.detect() : { available: false, distro: '', pidIsolated: false, networkBlocked: false }
+    isolated ? isolated.detect() : { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} }
   ));
 
   ipcMain.handle(IPC_CHANNELS.isolatedRun, async (_event, request) => {
@@ -185,13 +186,18 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
     if (!request || typeof request !== 'object') throw new Error('an isolated run request is required');
     const root = requireRoot(session);
     const relativePath = assertString(request.path, 'path');
+    const language = assertString(request.language, 'language');
+    // The renderer names a language; the command comes from the main-process
+    // plan, so a compromised page cannot pick a binary to run in the distro.
+    const plan = isolatedRunPlan(language);
+    if (!plan) throw new Error(`Isolated execution does not support ${language}.`);
     return isolated.run({
       jobId: assertString(request.jobId, 'jobId'),
       path: relativePath,
       absolutePath: resolveInsideRoot(root, relativePath),
-      language: assertString(request.language, 'language'),
-      command: assertString(request.command, 'command'),
-      args: Array.isArray(request.args) ? request.args.map((argument) => String(argument)) : ['{file}'],
+      language: plan.language,
+      command: plan.command,
+      args: plan.args,
       timeoutMs: request.timeoutMs,
     }, { root });
   });

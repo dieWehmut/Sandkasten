@@ -16,6 +16,8 @@
 // distro mounts, and the workspace reaches it through the drive mapping.
 import { spawn as nodeSpawn } from 'node:child_process';
 
+import { ISOLATED_LANGUAGES, isolatedLanguagesFrom, isolatedTools } from './isolated-languages.mjs';
+
 export const ISOLATION_FLAGS = ['--user', '--map-root-user', '--net', '--pid', '--fork', '--mount-proc'];
 
 // Preferred distros, richest toolchain first. The first one that answers the
@@ -34,13 +36,20 @@ export function toDistroPath(windowsPath) {
   return `/mnt/${match[1].toLowerCase()}/${rest}`;
 }
 
+// One shell word, quoted so the shell that assembles the entry command cannot
+// expand anything inside it: a payload script legitimately contains `$1` and
+// command substitutions, and a path may contain spaces or quotes.
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
 export function buildIsolatedCommand({ distro, filePath, command, args = [], maxOutputBytes, workingDirectory } = {}) {
   const target = toDistroPath(filePath);
   const inner = [command, ...args.map((argument) => argument.replaceAll('{file}', target))];
   const directory = toDistroPath(workingDirectory) || target.slice(0, target.lastIndexOf('/')) || '/';
   // wsl.exe has no --cd for a namespaced payload, so the entry point moves into
   // the file's own folder before exec'ing the runtime.
-  const entry = ['sh', '-c', `cd ${JSON.stringify(directory)} && exec ${inner.map((part) => JSON.stringify(part)).join(' ')}`];
+  const entry = ['sh', '-c', `cd ${shellQuote(directory)} && exec ${inner.map(shellQuote).join(' ')}`];
   return {
     executable: 'wsl.exe',
     args: [
@@ -77,17 +86,23 @@ export function parseIsolationProbe(text) {
   const facts = new Set(
     lines.filter((line) => line.startsWith(`${ISOLATION_MARKER}:`)).map((line) => line.slice(ISOLATION_MARKER.length + 1)),
   );
+  const tools = new Set(
+    [...facts].filter((fact) => fact.startsWith('tool:')).map((fact) => fact.slice('tool:'.length)).filter(Boolean),
+  );
   return {
     ok: facts.has('ok'),
     pidIsolated: facts.has('pid1'),
     networkBlocked: facts.has('net-blocked'),
+    tools,
   };
 }
 
 
 // Probes one distro: it must answer, ship unshare, and actually create a PID
-// namespace. Anything less and the distro cannot back an isolated run.
-export function isolationProbeScript() {
+// namespace. Anything less and the distro cannot back an isolated run. It also
+// reports which binaries the isolated languages need, so the UI only offers the
+// languages this distro can really run.
+export function isolationProbeScript(tools = isolatedTools()) {
   return [
     `echo ${ISOLATION_MARKER}:ok`,
     `command -v unshare >/dev/null 2>&1 && echo ${ISOLATION_MARKER}:unshare`,
@@ -95,6 +110,7 @@ export function isolationProbeScript() {
     // "/dev/tcp" is a bash feature; dash fails to open it for an unrelated
     // reason and would report the sandbox as blocking traffic it never tested.
     `command -v bash >/dev/null 2>&1 && { unshare ${ISOLATION_FLAGS.join(' ')} bash -c 'exec 3<>/dev/tcp/1.1.1.1/53' 2>/dev/null && echo ${ISOLATION_MARKER}:net-open || echo ${ISOLATION_MARKER}:net-blocked; }`,
+    ...tools.map((tool) => `command -v ${shellQuote(tool)} >/dev/null 2>&1 && echo ${ISOLATION_MARKER}:tool:${tool}`),
   ].join('; ');
 }
 
@@ -169,10 +185,13 @@ export function createIsolatedRunner(options = {}) {
       }
       const facts = parseIsolationProbe(output);
       if (!facts.ok || !facts.pidIsolated) continue;
-      detection = { available: true, distro, pidIsolated: true, networkBlocked: facts.networkBlocked };
+      detection = {
+        available: true, distro, pidIsolated: true, networkBlocked: facts.networkBlocked,
+        languages: isolatedLanguagesFrom(facts.tools, ISOLATED_LANGUAGES),
+      };
       return detection;
     }
-    detection = { available: false, distro: '', pidIsolated: false, networkBlocked: false };
+    detection = { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
     return detection;
   }
 
