@@ -79,7 +79,7 @@ function stubBridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge & { w
     isolated: {
       detect: vi.fn(async () => ({
         available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true,
-        hostFilesystem: 'visible',
+        hostFilesystem: 'hidden',
         languages: { python: true, javascript: true, c: true, cpp: true, java: true, bash: true, perl: true },
       })),
       run: vi.fn(async (request: { jobId: string; language: string }) => ({
@@ -839,9 +839,10 @@ describe('desktop workbench', () => {
 
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('isolated');
     expect(wrapper.get('.ide-status__badge').text()).toBe('Isolated run');
-    // The namespaces do not cover the filesystem, and the hint says so instead of
-    // leaving "isolated" to speak for the files too.
-    expect(wrapper.get('option[value="isolated"]').attributes('title')).toContain('namespaces do not cover the filesystem');
+    // The hint names the namespaces the run really takes, including the mount one
+    // that keeps the machine's files out of reach.
+    expect(wrapper.get('option[value="isolated"]').attributes('title')).toContain('mount namespaces');
+    expect(wrapper.get('option[value="isolated"]').attributes('title')).not.toContain('refused the mount mask');
 
     await wrapper.get('button[aria-label="Run source"]').trigger('click');
     await flushPromises();
@@ -911,13 +912,36 @@ describe('desktop workbench', () => {
     expect(wrapper.get('[data-testid="ide-backend-select"] option[value="isolated"]').attributes('title')).toContain('WSL2');
   });
 
+  test('says when a distro could not hide the files after all', async () => {
+    const bridge = stubBridge({
+      isolated: {
+        detect: vi.fn(async () => ({
+          available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true,
+          hostFilesystem: 'visible',
+          languages: { python: true, javascript: true, c: true, cpp: true, java: true, bash: true, perl: true },
+        })),
+        run: vi.fn(),
+        stop: vi.fn(async () => false),
+      } as unknown as DesktopBridge['isolated'],
+    });
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    const hint = wrapper.get('[data-testid="ide-backend-select"] option[value="isolated"]').attributes('title') ?? '';
+    expect(hint).toContain('mount namespaces');
+    expect(hint).toContain('refused the mount mask');
+  });
+
   test('keeps the browser build from offering either desktop backend', async () => {
     const wrapper = mount(App);
     await flushPromises();
 
     expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="local"]').element.disabled).toBe(true);
     expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="isolated"]').element.disabled).toBe(true);
-  });  test('keeps the browser build on the in-memory workspace and the API backend', async () => {
+  });
+
+  test('keeps the browser build on the in-memory workspace and the API backend', async () => {
     const wrapper = mount(App);
     await flushPromises();
 

@@ -42,15 +42,17 @@ const t = useTranslation();
 // The hint explains the *selected* backend, because the two local backends
 // differ in what the user is about to run: one uses the host toolchain, the
 // other a namespace sandbox inside WSL2.
+const isolatedHint = computed(() => {
+  if (!props.isolatedBackendAvailable) return t('ide.backend.isolatedUnavailable');
+  if (!props.isolatedAvailable) return t('ide.backend.isolatedLanguageUnavailable');
+  return props.isolatedHostFilesystem === 'visible'
+    ? `${t('ide.backend.isolatedHint')} ${t('ide.backend.isolatedFilesVisible')}`
+    : t('ide.backend.isolatedHint');
+});
+
 const backendHint = computed(() => {
   if (props.backend === 'api') return t('ide.backend.apiHint');
-  if (props.backend === 'isolated') {
-    if (!props.isolatedBackendAvailable) return t('ide.backend.isolatedUnavailable');
-    if (!props.isolatedAvailable) return t('ide.backend.isolatedLanguageUnavailable');
-    return props.isolatedHostFilesystem === 'visible'
-      ? `${t('ide.backend.isolatedHint')} ${t('ide.backend.isolatedFilesVisible')}`
-      : t('ide.backend.isolatedHint');
-  }
+  if (props.backend === 'isolated') return isolatedHint.value;
   return props.localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable');
 });
 </script>
@@ -75,7 +77,7 @@ const backendHint = computed(() => {
           <option value="local" :disabled="!localAvailable" :title="localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable')">
             {{ t('ide.backend.local') }}
           </option>
-          <option value="isolated" :disabled="!isolatedAvailable" :title="isolatedAvailable ? backendHint : t('ide.backend.isolatedUnavailable')">
+          <option value="isolated" :disabled="!isolatedAvailable" :title="isolatedHint">
             {{ t('ide.backend.isolated') }}
           </option>
           <option value="api">{{ t('ide.backend.api') }}</option>
