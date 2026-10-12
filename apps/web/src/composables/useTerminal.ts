@@ -588,10 +588,12 @@ export function isSuggestionShortcut(event: KeyboardEvent): boolean {
  * The clipboard keys, which the terminal has to take before xterm sends them to the
  * shell: `Ctrl+V` belongs to the shell, so copy and paste are `Ctrl+Shift+…` on
  * Windows and Linux and plain `Cmd+…` on macOS, as in the terminals people know.
+ * `Shift+Insert` is the older Windows convention for the same thing.
  */
 export function clipboardActionFor(event: KeyboardEvent): 'copy' | 'paste' | 'select-all' | null {
   if (event.altKey) return null;
   const key = event.key?.toLowerCase();
+  if (key === 'insert' && event.shiftKey && !event.ctrlKey && !event.metaKey) return 'paste';
   const command = event.metaKey && !event.ctrlKey;
   const controlShift = event.ctrlKey && event.shiftKey;
   if (!command && !controlShift) return null;

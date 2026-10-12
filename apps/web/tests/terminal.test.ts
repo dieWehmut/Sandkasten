@@ -89,6 +89,11 @@ describe('app-owned terminal sessions', () => {
     // Select all is ours too, and it is not typed into the shell.
     expect(xterm.keyHandler(press({ key: 'a', ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(xterm.selected).toBe(1);
+
+    // Shift+Insert is the older Windows spelling of paste, and plain Insert is not.
+    expect(xterm.keyHandler(press({ key: 'Insert', shiftKey: true }))).toBe(false);
+    await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' }));
+    expect(xterm.keyHandler(press({ key: 'Insert' }))).toBe(true);
     await terminal.dispose();
   });
 
