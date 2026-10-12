@@ -86,7 +86,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
 | `apps/` | 客户端应用:`apps/web` Vue 工作台(IDE 布局)、`apps/cli` 命令行、`apps/desktop` 桌面端 |
-| `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
+| `handbuch/` | 架构与运维文档(含本 README 的多语言译文,以及[全部验证入口索引](handbuch/verification.md)) |
 
 ## 快速开始
 
