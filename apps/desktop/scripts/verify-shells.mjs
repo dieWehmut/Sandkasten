@@ -125,9 +125,9 @@ export function shellMarkerVerdict(marker) {
 }
 
 export function shellSelfReportVerdict({ reportedNames, published, limit = TERMINAL_COMMAND_LIMITS.commands }) {
-  // A shell that reports nothing (cmd, a POSIX shell without compgen) is not
-  // asked; reportedNames is null for it.
-  if (!reportedNames) return { reason: '', selfReported: 0, first: undefined };
+  // A shell that cannot be asked about itself (they are not all able to answer)
+  // passes null; an empty set means it was asked and answered with nothing.
+  if (!reportedNames) return { reason: '', selfReported: 0, first: undefined, note: '' };
   const names = reportedNames instanceof Set ? reportedNames : new Set(reportedNames);
   const shared = published.filter((name) => names.has(name));
   let reason = '';
@@ -139,7 +139,10 @@ export function shellSelfReportVerdict({ reportedNames, published, limit = TERMI
     // does not find.
     reason = `only ${shared.length} of ${names.size} shell-reported commands reached the list`;
   }
-  return { reason, selfReported: shared.length, first: shared[0] };
+  // Worth seeing rather than failing: a shell asked about itself and answering
+  // nothing is a session whose palette is only the files on its PATH.
+  const note = names.size === 0 ? 'the shell reported none of its own commands' : '';
+  return { reason, selfReported: shared.length, first: shared[0], note };
 }
 
 export function shellSampleVerdict(samples, resolved) {
@@ -218,7 +221,8 @@ export async function verifyShells({
       // A shell whose own commands cannot be asked for contributes a written-down
       // list; those names have to reach the list just the same.
       const expected = [...(answerNames ?? []), ...internals];
-      const selfReport = shellSelfReportVerdict({ reportedNames: expected.length ? new Set(expected) : null, published });
+      const canReport = Boolean(report) || internals.length > 0;
+      const selfReport = shellSelfReportVerdict({ reportedNames: canReport ? new Set(expected) : null, published });
       const selfReported = selfReport.selfReported;
       reason = reason || selfReport.reason;
       // Sample one of the shell's own commands as well, so the check covers both
@@ -235,7 +239,7 @@ export async function verifyShells({
       reason = reason || shellSampleVerdict(samples, resolved).reason;
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
-        commands: published.length, commandsReported: selfReported,
+        commands: published.length, commandsReported: selfReported, selfReportNote: selfReport.note,
         // A list at its bound is not a failure —the bound is deliberate —but it
         // is the one case where commands may have been left out.
         atBound: published.length >= TERMINAL_COMMAND_LIMITS.commands,
@@ -254,7 +258,7 @@ function render({ results, missing }) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
     const commands = result.commands
-      ? `${result.commands} commands${result.atBound ? ' (at the list bound)' : ''} (${result.resolved.length}/${result.samples.length} sampled resolve${result.commandsReported ? `, ${result.commandsReported} of them the shell's own` : ''})`
+      ? `${result.commands} commands${result.atBound ? ' (at the list bound)' : ''} (${result.resolved.length}/${result.samples.length} sampled resolve${result.commandsReported ? `, ${result.commandsReported} of them the shell's own` : ''}${result.selfReportNote ? `; ${result.selfReportNote}` : ''})`
       : 'no command list';
     const detail = result.status === 'ok'
       ? `marker ok; path ${result.pathProbe}; ${commands}`

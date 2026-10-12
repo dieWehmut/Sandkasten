@@ -72,7 +72,7 @@ test('a shell that reports commands has to find them in the list it publishes', 
   const published = ['git', 'Get-ChildItem', 'Get-Content'];
   // Both kinds present: nothing to say.
   assert.deepEqual(shellSelfReportVerdict({ reportedNames: new Set(['Get-ChildItem', 'Get-Content']), published }),
-    { reason: '', selfReported: 2, first: 'Get-ChildItem' });
+    { reason: '', selfReported: 2, first: 'Get-ChildItem', note: '' });
   // The list carries none of them — the cmdlets are missing entirely.
   assert.match(shellSelfReportVerdict({ reportedNames: new Set(['Where-Object']), published }).reason,
     /carries none of the commands the shell reports/);
@@ -87,14 +87,25 @@ test('a shell that reports commands has to find them in the list it publishes', 
   });
   assert.equal(atBound.reason, '');
   assert.equal(atBound.selfReported, 2);
-  // A shell that reports nothing about itself is not part of this check.
-  assert.deepEqual(shellSelfReportVerdict({ reportedNames: null, published }), { reason: '', selfReported: 0, first: undefined });
+  // A shell that cannot be asked about itself is not part of this check.
+  assert.deepEqual(shellSelfReportVerdict({ reportedNames: null, published }), { reason: '', selfReported: 0, first: undefined, note: '' });
 });
 
 test('advertised commands that none of which resolve are a failure', () => {
   assert.deepEqual(shellSampleVerdict(['git', 'ls'], ['git']), { reason: '' });
   assert.deepEqual(shellSampleVerdict([], []), { reason: '' });
   assert.match(shellSampleVerdict(['git', 'ls'], []).reason, /resolves none of its advertised commands \(git, ls\)/);
+});
+
+test('a shell that answers about itself with nothing is noted, not failed', () => {
+  // A distro without bash answers nothing: the list is only its PATH files, which
+  // is worth seeing in the row rather than failing the check.
+  const silent = shellSelfReportVerdict({ reportedNames: new Set(), published: ['git'] });
+  assert.deepEqual(silent, { reason: '', selfReported: 0, first: undefined, note: 'the shell reported none of its own commands' });
+  // A shell that cannot be asked at all passes null and gets no note.
+  assert.equal(shellSelfReportVerdict({ reportedNames: null, published: ['git'] }).note, '');
+  // A shell that answered with names it did not get into the list is a failure.
+  assert.match(shellSelfReportVerdict({ reportedNames: new Set(['gci']), published: ['git'] }).reason, /carries none/);
 });
 
 test('the path probe needs its marker, from a command that actually ran', () => {
