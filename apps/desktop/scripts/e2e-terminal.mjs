@@ -7,6 +7,7 @@ import { selectTheme } from './e2e-theme.mjs';
 // accessibility tree, which represents the same screen painted on the canvas.
 export async function verifyTerminal({ page, app, outputRoot }) {
   let reportRunInTerminal = false;
+  let reportSuggestions = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -49,6 +50,28 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   assert.equal(await page.locator('[data-action="ide-tab-hello.py"]').count(), 1, 'terminal Ctrl+W must not close the editor through its native accelerator');
   assert.equal(await page.locator('[data-testid="ide-new-file-form"]').count(), 0, 'terminal Ctrl+N must not create an editor file');
   await page.keyboard.press('Control+c');
+
+  // Typing the start of a command offers the commands this shell can run, and
+  // choosing one types only the rest of the word. The target comes from the
+  // shell's own list, and its three-letter prefix has to be unique so the
+  // suggestion is certain to be in the strip.
+  const published = await page.evaluate((profileId) => window.sandkastenDesktop.terminal.commands(profileId), cmd.id);
+  const byPrefix = new Map();
+  for (const name of published) {
+    const prefix = name.slice(0, 3).toLowerCase();
+    byPrefix.set(prefix, (byPrefix.get(prefix) ?? 0) + 1);
+  }
+  const target = published.find((name) => name.length > 3 && byPrefix.get(name.slice(0, 3).toLowerCase()) === 1);
+  assert.ok(target, 'the shell must publish at least one suggestible command');
+  await page.keyboard.type(target.slice(0, 3));
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="${target}"]`, { timeout: 10_000 });
+  await page.click(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="${target}"]`);
+  await waitScreen(firstId, target);
+  reportSuggestions = true;
+  // Discard the half-typed line before the assertions below reuse the shell.
+  await page.keyboard.press('Control+c');
+  await enter(firstId, 'echo E2E^_CLEAR^_OK');
+  await waitScreen(firstId, 'E2E_CLEAR_OK');
 
   // Escape separators in the entered command: the unescaped marker appears
   // only in shell output, so command echo cannot make this assertion pass.
@@ -134,5 +157,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions };
 }
