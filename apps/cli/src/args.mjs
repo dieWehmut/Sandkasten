@@ -18,7 +18,7 @@ export function usage() {
     '  job <jobId>      Fetch a single job result',
     '',
     'Options:',
-    '  --language <lang>       Runtime for run (default: API default)',
+    '  --language <lang>       Runtime for run (default: inferred from the file, else go)',
     '  --entrypoint <path>     Override the runtime entrypoint',
     '  --stdin <file>          Feed a file to the program standard input',
     '  --poll-interval <ms>    Polling interval for run (default: 1000)',

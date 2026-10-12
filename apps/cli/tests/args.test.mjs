@@ -54,3 +54,7 @@ test('usage names every supported command', () => {
     assert.ok(text.includes(fragment), `usage must mention ${fragment}`);
   }
 });
+
+test('usage says how the runtime is chosen, because the request always names one', () => {
+  assert.match(usage(), /--language <lang>\s+Runtime for run \(default: inferred from the file, else go\)/);
+});

@@ -13,8 +13,9 @@ node apps/cli/bin/sandkasten.mjs job <jobId> --api http://127.0.0.1:8080
 ```
 
 `run` infers the runtime from the file extension for the common languages
-(`.py`, `.go`, `.rs`, `.ts`, `.sh`, ...) and falls back to the API default
-(`go`) when the extension is unknown. Override it with `--language`.
+(`.py`, `.go`, `.rs`, `.ts`, `.sh`, ...) and sends `go` when the extension is
+unknown — the request always names a runtime, so the API's own default is never
+what runs. Override it with `--language`.
 
 Options:
 
