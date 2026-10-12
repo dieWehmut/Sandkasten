@@ -49,15 +49,17 @@ describe('installation guide data', () => {
       const match = buildInstallCommand(mode, preset).match(/sudo \.\/sandkasten-install\.sh (.+)$/);
       expect(match).not.toBeNull();
       const args = match?.[1].split(/\s+/) ?? [];
-      const output = execFileSync('bash', [entrypointForShell, '--dry-run', ...args, 'install'], { encoding: 'utf8', timeout: 30000 });
+      // On Windows `bash` is usually the WSL launcher, so this runs the real
+      // script inside the distro: the parse itself takes milliseconds, but a
+      // cold distro start takes seconds, which the old 30 s budget raced.
+      const output = execFileSync('bash', [entrypointForShell, '--dry-run', ...args, 'install'], { encoding: 'utf8', timeout: 60000 });
       expect(output).toContain(`mode=${mode}`);
       expect(output).toMatch(/^languages=.+$/m);
       expect(output).toContain('command=install');
     }
-    // Each call keeps its own 30 s budget; the test budget has to be wider so a
-    // stalled shell reports its own timeout instead of racing this one. Three
-    // dry-run parses take seconds on a healthy machine.
-  }, 100000);
+    // Each call keeps its own 60 s budget; the test budget has to be wider so a
+    // stalled shell reports its own timeout instead of racing this one.
+  }, 200000);
 
   test('filters operational commands by deployment mode', () => {
     const cli = buildOperationalCommands('cli', 'core');
