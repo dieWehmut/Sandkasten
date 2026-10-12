@@ -5,6 +5,12 @@ ROOT="${SANDKASTEN_QUALITY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && 
 export PATH="/usr/local/go/bin:$PATH:/usr/local/bin:/usr/bin:/bin"
 failures=0
 
+# Go's temporaries live under the repository instead of the system temp: an MSYS2
+# or Git Bash shell maps /tmp onto a Windows path whose test binaries Go cannot
+# always remove, and the suite then reports a passing run as a failure.
+export GOTMPDIR="${GOTMPDIR:-$ROOT/tmp/go-build}"
+mkdir -p "$GOTMPDIR" 2>/dev/null || true
+
 run_or_fail() {
   local label="$1"
   shift

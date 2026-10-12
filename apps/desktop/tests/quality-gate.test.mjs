@@ -64,3 +64,11 @@ test('every check the gate can report missing is one it actually looks for', () 
   const missing = hinted.filter((relative) => !existsSync(path.join(repositoryRoot, relative)));
   assert.deepEqual(missing, []);
 });
+
+test('the gate keeps Go out of the system temp directory', () => {
+  // An MSYS2 or Git Bash shell maps /tmp onto a Windows path whose test binaries Go
+  // cannot always remove, and the suite then reports a passing run as a failure.
+  const declared = /GOTMPDIR="\$\{GOTMPDIR:-([^}]+)\}"/.exec(gateText())?.[1];
+  assert.ok(declared, 'the gate has to set GOTMPDIR rather than leave it to the system');
+  assert.match(declared, /^\$ROOT\//, `Go's temporaries belong inside the repository, saw ${declared}`);
+});
