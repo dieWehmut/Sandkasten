@@ -430,16 +430,16 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
             else await navigator.clipboard?.writeText(selection);
             return;
           }
-          // Paste goes to the shell as input, the same way typed text does — from the
-          // primary selection when a middle-click asked for it.
+          // Paste goes in through xterm rather than straight to the PTY: that is what
+// honours bracketed paste mode — a shell that asked for it gets the text wrapped,
+// so a pasted script does not run one line at a time — and it is what lets the
+// line model see the paste the same way it sees typing.
           const kind = action === 'paste-selection' ? 'selection' as const : 'clipboard' as const;
           const text = bridge.clipboard
             ? await bridge.clipboard.read(kind)
             : await navigator.clipboard?.readText() ?? '';
           if (!text) return;
-          if (sessions.value.find((entry) => entry.id === id)?.exitCode === undefined) {
-            await bridge.write({ id, data: text });
-          }
+          terminal.paste(text);
         } catch (error) {
           report(error);
         }

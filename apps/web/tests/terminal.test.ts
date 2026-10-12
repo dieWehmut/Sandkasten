@@ -10,6 +10,8 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   selection = ''; selected = 0; cleared = 0;
   write = vi.fn(); dispose = vi.fn(); focus = vi.fn(); refresh = vi.fn();
   loadAddon = vi.fn();
+  pasted: string[] = [];
+  paste(data: string) { this.pasted.push(data); this.input(data); }
   getSelection() { return this.selection; }
   selectAll() { this.selected += 1; }
   clear() { this.cleared += 1; }
@@ -116,9 +118,13 @@ describe('app-owned terminal sessions', () => {
     xterm.keyHandler(press({ key: 'c', metaKey: true }));
     await vi.waitFor(() => expect(host.bridge.clipboard!.write).toHaveBeenCalledWith('again'));
 
-    // Paste sends the clipboard to the PTY as input.
+    // Paste goes in through xterm — that is what honours bracketed paste mode —
+    // and reaches the PTY the same way typing does.
     expect(xterm.keyHandler(press({ key: 'v', ctrlKey: true, shiftKey: true }))).toBe(false);
     await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' }));
+    expect(xterm.pasted).toEqual(['pasted text']);
+    // Which also means the line model sees it, as it does for typed input.
+    expect(terminal.inputLine.value).toBe('pasted text');
 
     // Select all is ours too, and it is not typed into the shell.
     expect(xterm.keyHandler(press({ key: 'a', ctrlKey: true, shiftKey: true }))).toBe(false);

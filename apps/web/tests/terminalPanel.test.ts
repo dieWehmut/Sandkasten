@@ -14,6 +14,8 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   constructor(options: any) { this.options = options; xterm.terminals.push(this); }
   open(host: HTMLElement) { this.host = host; host.innerHTML = '<textarea class="xterm-helper-textarea"></textarea><span></span>'; this.write(''); }
   write(data: string) { this.text += data; if (this.host) this.host.querySelector('span')!.textContent = this.text; }
+  pasted: string[] = [];
+  paste(data: string) { this.pasted.push(data); this.input(data); }
   getSelection() { return this.selection; }
   selectAll() { this.selected += 1; }
   clear() { this.cleared += 1; }
