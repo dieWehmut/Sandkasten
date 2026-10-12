@@ -69,6 +69,7 @@ const props = withDefaults(defineProps<{
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
   isolatedBackendAvailable?: boolean;
+  isolatedHostFilesystem?: 'visible' | 'hidden' | 'unknown';
   localRuntimes?: LocalRuntimeInfo[];
   cursor?: { line: number; column: number };
   statusText?: string;
@@ -94,6 +95,7 @@ const props = withDefaults(defineProps<{
   backend: 'api',
   localAvailable: false,
   isolatedAvailable: false,
+  isolatedHostFilesystem: 'unknown',
   localRuntimes: () => [],
   cursor: () => ({ line: 1, column: 1 }),
   statusText: 'Ready',
@@ -261,6 +263,7 @@ const styles = computed(() => (isIde.value
           :local-available="localAvailable"
           :isolated-available="isolatedAvailable"
           :isolated-backend-available="isolatedBackendAvailable"
+          :isolated-host-filesystem="isolatedHostFilesystem"
           :phase="phase"
           :can-run="canRun"
           :can-resume="canResume"

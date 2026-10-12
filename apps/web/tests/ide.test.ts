@@ -79,6 +79,7 @@ function stubBridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge & { w
     isolated: {
       detect: vi.fn(async () => ({
         available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true,
+        hostFilesystem: 'visible',
         languages: { python: true, javascript: true, c: true, cpp: true, java: true, bash: true, perl: true },
       })),
       run: vi.fn(async (request: { jobId: string; language: string }) => ({
@@ -838,6 +839,9 @@ describe('desktop workbench', () => {
 
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('isolated');
     expect(wrapper.get('.ide-status__badge').text()).toBe('Isolated run');
+    // The namespaces do not cover the filesystem, and the hint says so instead of
+    // leaving "isolated" to speak for the files too.
+    expect(wrapper.get('option[value="isolated"]').attributes('title')).toContain('namespaces do not cover the filesystem');
 
     await wrapper.get('button[aria-label="Run source"]').trigger('click');
     await flushPromises();
@@ -894,7 +898,7 @@ describe('desktop workbench', () => {
   test('keeps the isolated backend unavailable when WSL2 cannot sandbox', async () => {
     const bridge = stubBridge({
       isolated: {
-        detect: vi.fn(async () => ({ available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} })),
+        detect: vi.fn(async () => ({ available: false, distro: '', pidIsolated: false, networkBlocked: false, hostFilesystem: 'unknown', languages: {} })),
         run: vi.fn(),
         stop: vi.fn(async () => false),
       } as unknown as DesktopBridge['isolated'],

@@ -15,12 +15,18 @@ const props = withDefaults(defineProps<{
   isolatedAvailable?: boolean;
   /** Whether the distro can sandbox at all, separate from this language. */
   isolatedBackendAvailable?: boolean;
+  /**
+   * Whether the sandbox payload can read this machine's files. The namespaces
+   * cover user, network and PID only, so the hint says so instead of letting the
+   * word "isolated" speak for the filesystem too.
+   */
+  isolatedHostFilesystem?: 'visible' | 'hidden' | 'unknown';
   phase: ExecutionPhase;
   canRun: boolean;
   canResume?: boolean;
   dirty?: boolean;
   disabled?: boolean;
-}>(), { localAvailable: false, isolatedAvailable: false, canResume: false, dirty: false, disabled: false });
+}>(), { localAvailable: false, isolatedAvailable: false, isolatedBackendAvailable: false, isolatedHostFilesystem: 'unknown', canResume: false, dirty: false, disabled: false });
 
 const emit = defineEmits<{
   'update:language': [language: string];
@@ -40,7 +46,10 @@ const backendHint = computed(() => {
   if (props.backend === 'api') return t('ide.backend.apiHint');
   if (props.backend === 'isolated') {
     if (!props.isolatedBackendAvailable) return t('ide.backend.isolatedUnavailable');
-    return props.isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedLanguageUnavailable');
+    if (!props.isolatedAvailable) return t('ide.backend.isolatedLanguageUnavailable');
+    return props.isolatedHostFilesystem === 'visible'
+      ? `${t('ide.backend.isolatedHint')} ${t('ide.backend.isolatedFilesVisible')}`
+      : t('ide.backend.isolatedHint');
   }
   return props.localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable');
 });
@@ -66,7 +75,7 @@ const backendHint = computed(() => {
           <option value="local" :disabled="!localAvailable" :title="localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable')">
             {{ t('ide.backend.local') }}
           </option>
-          <option value="isolated" :disabled="!isolatedAvailable" :title="isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedUnavailable')">
+          <option value="isolated" :disabled="!isolatedAvailable" :title="isolatedAvailable ? backendHint : t('ide.backend.isolatedUnavailable')">
             {{ t('ide.backend.isolated') }}
           </option>
           <option value="api">{{ t('ide.backend.api') }}</option>

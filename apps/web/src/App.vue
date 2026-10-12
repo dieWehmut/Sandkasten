@@ -771,6 +771,7 @@ onBeforeUnmount(() => {
       :local-available="localReady || local.runtimes.value.some((runtime) => runtime.available)"
       :isolated-available="isolatedReady"
       :isolated-backend-available="local.isolation.value.available"
+      :isolated-host-filesystem="local.isolation.value.hostFilesystem"
       :local-runtimes="local.runtimes.value"
       :cursor="cursor"
       :status-text="statusText"
