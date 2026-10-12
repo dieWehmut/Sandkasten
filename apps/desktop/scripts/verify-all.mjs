@@ -13,7 +13,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 export const VERIFY_CHECKS = [
   { id: 'shells', label: 'Terminal shells', script: 'verify-shells.mjs' },
-  { id: 'runtimes', label: 'Local runtimes', script: 'verify-runtimes.mjs' },
+  // Every available runtime proves both halves: that its code runs, and that a
+  // failing program comes back as a failure with its own exit code and stderr.
+  { id: 'runtimes', label: 'Local runtimes', script: 'verify-runtimes.mjs', args: ['--failures'] },
   { id: 'isolated', label: 'Isolated backend', script: 'verify-isolated.mjs' },
 ];
 
@@ -49,7 +51,7 @@ export function summarize(report) {
 export async function verifyAll({ args = [] } = {}) {
   const checks = [];
   for (const check of VERIFY_CHECKS) {
-    const outcome = await runScript(check.script, args);
+    const outcome = await runScript(check.script, [...(check.args ?? []), ...args]);
     let report;
     try {
       report = JSON.parse(outcome.stdout.slice(outcome.stdout.indexOf('{')));

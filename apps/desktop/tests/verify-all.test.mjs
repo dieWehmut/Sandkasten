@@ -7,6 +7,14 @@ test('the aggregate covers the shells, the local runtimes and the isolated backe
   assert.deepEqual(VERIFY_CHECKS.map((check) => check.script), ['verify-shells.mjs', 'verify-runtimes.mjs', 'verify-isolated.mjs']);
 });
 
+test('the aggregate asks the runtime check for both halves of running code', () => {
+  const runtimes = VERIFY_CHECKS.find((check) => check.id === 'runtimes');
+  assert.deepEqual(runtimes.args, ['--failures']);
+  // Nothing else is asked for a phase it does not have.
+  assert.equal(VERIFY_CHECKS.find((check) => check.id === 'shells').args, undefined);
+  assert.equal(VERIFY_CHECKS.find((check) => check.id === 'isolated').args, undefined);
+});
+
 test('an absent backend counts as unavailable while a broken one counts as failed', () => {
   assert.deepEqual(
     summarize({ results: [{ status: 'ok' }, { status: 'unavailable' }, { status: 'failed' }] }),
