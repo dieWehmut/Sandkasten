@@ -12,6 +12,8 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportDirectorySuggestions = false;
   let reportNestedSuggestions = false;
   let reportPowerShellRun = false;
+  let reportJavaScriptRun = false;
+  let reportBashRun = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -24,9 +26,19 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   const firstId = await page.locator('[data-testid="terminal-pane"]:visible').last().getAttribute('data-session-id');
   const pane = (id) => `[data-testid="terminal-pane"][data-session-id="${id}"]`;
   const readScreen = async (id) => page.locator(`${pane(id)} .xterm-accessibility-tree`).innerText();
-  const waitScreen = async (id, text) => page.waitForFunction(({ selector, text }) =>
-    document.querySelector(selector)?.textContent?.includes(text),
-  { selector: `${pane(id)} .xterm-accessibility-tree`, text }, { timeout: 20_000 });
+  const waitScreen = async (id, text) => {
+    try {
+      await page.waitForFunction(({ selector, text }) =>
+        document.querySelector(selector)?.textContent?.includes(text),
+      { selector: `${pane(id)} .xterm-accessibility-tree`, text }, { timeout: 20_000 });
+    } catch (cause) {
+      // A failure here is otherwise a bare timeout: say what the terminal did
+      // show, because the answer is usually in the last rows.
+      const screen = await readScreen(id).catch(() => '<the screen could not be read>');
+      const tail = String(screen).split('\n').filter(Boolean).slice(-12).join('\n');
+      throw new Error(`the terminal never showed ${JSON.stringify(text)}.\nLast screen rows:\n${tail}`);
+    }
+  };
   const enter = async (id, text) => {
     await page.locator(`${pane(id)} .xterm-helper-textarea`).focus();
     await page.keyboard.type(text);
@@ -57,6 +69,26 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.click('[data-command="terminal.runFile"]');
   await waitScreen(firstId, 'E2E_PS1_RUN');
   reportPowerShellRun = true;
+
+  // The same workbench entry runs the other interpreters the terminal shares
+  // with the local runner: node for a JavaScript file, bash for a shell script.
+  // The markers prove the session itself executed them.
+  await page.click('[data-action="ide-open-hello.js"]');
+  await page.waitForSelector('[data-action="ide-tab-hello.js"]');
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-command="terminal.runFile"]');
+  await page.click('[data-command="terminal.runFile"]');
+  await waitScreen(firstId, 'E2E_JS_RUN');
+  reportJavaScriptRun = true;
+
+  await page.click('[data-action="ide-open-hello.sh"]');
+  await page.waitForSelector('[data-action="ide-tab-hello.sh"]');
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-command="terminal.runFile"]');
+  await page.click('[data-command="terminal.runFile"]');
+  await waitScreen(firstId, 'E2E_SH_RUN');
+  reportBashRun = true;
+
   await page.click('[data-action="ide-open-hello.py"]');
   await page.waitForSelector('[data-action="ide-tab-hello.py"]');
 
@@ -205,5 +237,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, powershellRun: reportPowerShellRun };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun };
 }

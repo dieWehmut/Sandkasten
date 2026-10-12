@@ -18,6 +18,10 @@ await writeFile(path.join(workspace, 'hello.py'), 'print("E2E_TERMINAL_RUN")\n')
 // A PowerShell script gives the run-in-terminal command a script to hand to the
 // host PowerShell, which is not an argument to an interpreter.
 await writeFile(path.join(workspace, 'hello.ps1'), 'Write-Output "E2E_PS1_RUN"\n');
+// Two more interpreters, run through the same terminal: the command the
+// workbench types has to be one the session really executes.
+await writeFile(path.join(workspace, 'hello.js'), 'console.log("E2E_JS_RUN");\n');
+await writeFile(path.join(workspace, 'hello.sh'), 'echo E2E_SH_RUN\n');
 // A folder in the workspace gives the terminal a directory argument to complete.
 await mkdir(path.join(workspace, 'scripts'));
 await writeFile(path.join(workspace, 'scripts', 'task.py'), 'print("task")\n');
