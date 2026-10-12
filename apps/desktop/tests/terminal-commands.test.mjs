@@ -6,6 +6,7 @@ import {
   createCommandCatalog,
   discoverTerminalCommands,
   shellArguments,
+  shellReportCommand,
   shellSearchPath,
 } from '../src/terminal-commands.mjs';
 
@@ -275,6 +276,22 @@ test('each shell family gets the argv that runs one command', () => {
   assert.deepEqual(shellArguments({ family: 'wsl' }, 'pwd'), ['-e', 'sh', '-c', 'pwd']);
   assert.deepEqual(shellArguments({ family: 'bash' }, 'compgen -b'), ['-c', 'compgen -b']);
   assert.deepEqual(shellArguments({ family: 'posix' }, 'true'), ['-c', 'true']);
+});
+
+test('only a family that can report its own commands says so', () => {
+  assert.match(shellReportCommand('powershell'), /Get-Command -CommandType Cmdlet,Function/);
+  assert.equal(shellReportCommand('bash'), 'compgen -b');
+  assert.equal(shellReportCommand('posix'), 'compgen -b');
+  // cmd has no comparable listing, and a WSL session is asked inside the distro.
+  assert.equal(shellReportCommand('cmd'), '');
+  assert.equal(shellReportCommand('wsl'), '');
+  assert.equal(shellReportCommand(undefined), '');
+});
+
+test('the limit leaves room for both the PATH executables and the shell report', () => {
+  // A PowerShell session offers about 3 200 names on the machine this was
+  // written on; a bound near that number would cut the cmdlets alphabetically.
+  assert.ok(TERMINAL_COMMAND_LIMITS.commands >= 4_000);
 });
 
 test('a persisted list answers immediately while a fresh one is built in the background', async () => {

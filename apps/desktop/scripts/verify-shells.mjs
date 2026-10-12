@@ -13,7 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
-import { discoverTerminalCommands } from '../src/terminal-commands.mjs';
+import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, shellReportCommand } from '../src/terminal-commands.mjs';
 import { sessionEnvironment } from '../src/terminal.mjs';
 
 const MARKER = 'SANDKASTEN_SHELL_OK';
@@ -145,9 +145,33 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
           reason = run.ok ? 'the probe command did not print its marker' : `the probe command could not run (${run.reason})`;
         }
       }
-      // Sampling proves the advertised list contains commands this shell runs.
+      // The list has to carry what the shell says about itself, not just the files on
+      // its PATH: a cmdlet or a builtin is exactly what makes the palette useful in
+      // a PowerShell or bash session. A shell that reports nothing (cmd, a POSIX
+      // shell without compgen) skips the check instead of failing it.
       const published = await discoverTerminalCommands(profile, { platform });
-      const samples = published.length ? sampleCommands(published) : [];
+      const report = shellReportCommand(profile.family);
+      let selfReported = 0;
+      let extraSample = [];
+      if (report) {
+        const answer = await probe(profile, report, { timeoutMs, environment });
+        const names = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
+        const shared = published.filter((name) => names.has(name));
+        selfReported = shared.length;
+        if (names.size && !shared.length) {
+          reason = reason || 'the list carries none of the commands the shell reports about itself';
+        }
+        // While the list is under its cap nothing may be dropped: a command the
+        // shell reports and the list does not carry is exactly the cmdlet the user
+        // will look for and not find.
+        if (shared.length && shared.length < names.size && published.length < TERMINAL_COMMAND_LIMITS.commands) {
+          reason = reason || `only ${shared.length} of ${names.size} shell-reported commands reached the list`;
+        }
+        // Sample one of the shell's own commands as well, so the check covers both
+        // what the PATH holds and what the shell knows.
+        if (shared.length) extraSample = [shared[0]];
+      }
+      const samples = published.length ? [...new Set([...extraSample, ...sampleCommands(published)])].slice(0, 3) : [];
       const resolved = [];
       for (const name of samples) {
         const resolve = resolvesName(profile, name);
@@ -160,7 +184,7 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       }
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
-        commands: published.length, samples, resolved,
+        commands: published.length, commandsReported: selfReported, samples, resolved,
       });
     }
   } finally {
@@ -173,7 +197,7 @@ function render(results) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
     const commands = result.commands
-      ? `${result.commands} commands (${result.resolved.length}/${result.samples.length} sampled resolve)`
+      ? `${result.commands} commands (${result.resolved.length}/${result.samples.length} sampled resolve${result.commandsReported ? `, ${result.commandsReported} of them the shell's own` : ''})`
       : 'no command list';
     const detail = result.status === 'ok'
       ? `marker ok; path ${result.pathProbe}; ${commands}`

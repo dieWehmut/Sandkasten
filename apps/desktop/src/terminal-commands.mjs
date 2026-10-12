@@ -14,8 +14,11 @@ const execute = promisify(execFile);
 export const TERMINAL_COMMAND_LIMITS = Object.freeze({
   directories: 48,
   // A PowerShell host reports well over a thousand cmdlets and functions next to
-  // the PATH executables, so the list is bounded well above one shell's worth.
-  commands: 2_000,
+  // the PATH executables, so the list is bounded well above what a shell can
+  // offer: this machine needs about 3 200 names for PowerShell once both sources
+  // are merged, and a lower bound silently cut the cmdlets after the first
+  // letters of the alphabet.
+  commands: 5_000,
   cacheMs: 5 * 60 * 1000,
   // How long a persisted list may answer before it has to be re-read: a runtime
   // installed an hour ago shows up on the next scan.
@@ -43,6 +46,11 @@ const SHELL_COMMAND_REPORTS = Object.freeze({
   bash: 'compgen -b',
   posix: 'compgen -b',
 });
+
+/** The command that lists what this family reports about itself, or ''. */
+export function shellReportCommand(family) {
+  return SHELL_COMMAND_REPORTS[String(family ?? '').toLowerCase()] ?? '';
+}
 
 function pathKey(environment) {
   return Object.keys(environment).find((name) => name.toLowerCase() === 'path') ?? 'PATH';
@@ -180,7 +188,7 @@ export async function discoverTerminalCommands(profile, {
   }
   // A cmdlet or a builtin is a command the shell runs without a file behind it,
   // so the shell is asked for its own list and that joins the PATH names.
-  const report = SHELL_COMMAND_REPORTS[profile?.family];
+  const report = shellReportCommand(profile?.family);
   if (report) {
     const reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
     const names = uniqueNames(String(reported ?? '').split(/\r?\n/), limit, windows);
