@@ -11,8 +11,8 @@
 // from the document's own indentation, because CodeMirror's language default
 // reports 2 for a Python file using four spaces.
 
-import { StateField, type EditorState, type Extension } from '@codemirror/state';
-import { Decoration, EditorView, type DecorationSet, type Range } from '@codemirror/view';
+import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { detectIndentation } from './documentFormat';
 
 /** Deepest nesting that gets its own stripe class; deeper lines reuse the last. */

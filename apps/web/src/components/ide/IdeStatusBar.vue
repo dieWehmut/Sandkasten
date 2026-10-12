@@ -93,7 +93,7 @@ const connectionLabel = computed(() => (props.backend === 'api' && props.connect
   ? props.apiHost
   : t(CONNECTION_KEYS[props.connectionState])));
 const connectionTitle = computed(() => `${t('settings.connectionStatus')}: ${t(CONNECTION_KEYS[props.connectionState])}`);
-const activeFileName = computed(() => props.filePath.split(/[\\/]/).at(-1) ?? '');
+const activeFileName = computed(() => (props.filePath ?? '').split(/[\\/]/).at(-1) ?? '');
 const problems = computed(() => runProblemCounts(props.job, props.error));
 const phaseState = computed(() => {
   if (busy.value) return 'busy';

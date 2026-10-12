@@ -15,7 +15,7 @@ export interface BreadcrumbSegment {
   kind: BreadcrumbKind;
 }
 
-function normalize(path: string): string {
+function normalize(path: string | null | undefined): string {
   return String(path ?? '').trim().replace(/\\/g, '/').replace(/\/+$/, '');
 }
 

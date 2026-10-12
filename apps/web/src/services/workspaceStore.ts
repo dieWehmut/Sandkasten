@@ -46,7 +46,7 @@ function parseStoredFiles(raw: string | null): FileMap {
     if (!files || typeof files !== 'object' || Array.isArray(files)) return scratchFiles();
     const entries = Object.entries(files as Record<string, unknown>)
       .filter(([path, value]) => typeof path === 'string' && path.trim() !== '' && typeof value === 'string');
-    return entries.length ? Object.fromEntries(entries) : scratchFiles();
+    return entries.length ? Object.fromEntries(entries) as FileMap : scratchFiles();
   } catch {
     return scratchFiles();
   }
