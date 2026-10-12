@@ -296,8 +296,11 @@ really collapses, and that both screenshots are written — every field the repo
 records is either asserted or listed as evidence for a person, which a test
 enforces. It writes
 `tmp/desktop-ide-light.png` and
-`tmp/desktop-ide-dark.png`. Set `SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/win-unpacked/Sandkasten.exe`
-to run the same checks against a packaged build. It needs Python on `PATH` and
+`tmp/desktop-ide-dark.png`. Set
+`SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/<arch>-unpacked/Sandkasten.exe`
+(relative to the repository root, or absolute; `win-unpacked` on x64 and
+`win-arm64-unpacked` on ARM64) to run the same checks against a packaged build,
+which the report then names as its `mode`. It needs Python on `PATH` and
 reuses the `playwright-core` already installed in `apps/web/node_modules`.
 
 The tray update check is native, so the run cannot click it through the page.
