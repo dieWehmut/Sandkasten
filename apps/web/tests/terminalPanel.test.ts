@@ -273,14 +273,15 @@ describe('desktop terminal panel', () => {
     await suggestion.trigger('click');
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'ipts/' }));
 
-    // A nested file completes through its folder.
+    // Running that command moves the shell into the folder, so what completes next
+// is the name inside it rather than a path from the workspace root.
     xterm.terminals.at(-1).input('\r');
-    xterm.terminals.at(-1).input('cd scripts/task');
+    xterm.terminals.at(-1).input('python ta');
     await flushPromises();
-    const nested = app.find('[data-testid="terminal-suggestion"][data-command="scripts/task.py"]');
+    const nested = app.find('[data-testid="terminal-suggestion"][data-command="task.py"]');
     expect(nested.exists()).toBe(true);
     await nested.trigger('click');
-    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: '.py' }));
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'sk.py' }));
   });
 
   test('a command accepted in the terminal leads the palette after a restart', async () => {

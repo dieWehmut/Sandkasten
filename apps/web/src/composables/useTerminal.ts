@@ -91,6 +91,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // line the terminal emulator has lost track of.
   const inputLine = ref('');
   let inEscape = false;
+  // Where the active session's shell is, as far as a plain `cd` can be followed.
+  // Empty means the workspace root, which is where a session starts.
+  const workspaceCwd = ref('');
   // What the user already accepted, most recent first: among equally matching
   // suggestions the ones already used lead the strip, the way a shell's own
   // history does. It survives a restart, because a shell's habits do.
@@ -186,9 +189,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     if (parts.length > 1) {
       const token = parts.at(-1) ?? '';
       if (!token) return [];
-      const lower = token.toLowerCase();
-      return orderByHistory(inputPaths()
-        .filter((path) => path.toLowerCase().startsWith(lower))
+      return orderByHistory(relativePaths()
+        .filter((path) => path.toLowerCase().startsWith(token.toLowerCase()))
         .map((path) => ({ label: path, value: path })))
         .slice(0, 5);
     }
@@ -200,6 +202,41 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       .slice(0, 5);
   });
 
+  // The workspace paths as the shell would see them: a session that has moved
+  // into a folder completes the names inside it, not paths from the workspace
+  // root that no longer resolve there.
+  function relativePaths(): string[] {
+    const prefix = workspaceCwd.value ? `${workspaceCwd.value}/` : '';
+    if (!prefix) return [...inputPaths()];
+    return inputPaths()
+      .filter((path) => path.startsWith(prefix))
+      .map((path) => path.slice(prefix.length))
+      .filter(Boolean);
+  }
+
+  /**
+   * Follow a plain `cd` so completions keep matching the shell's directory. Only
+   * a single relative path with nothing the shell would expand is tracked: a
+   * directory this model cannot follow leaves it where it was, which is no worse
+   * than the workspace-root assumption it started with.
+   */
+  function noteSubmitted(line: string): void {
+    const match = /^\s*cd\s+(?:\.\/)?([^\s"'`$*?<>|;&]+)\s*\/?$/.exec(line);
+    if (!match) return;
+    const segments = workspaceCwd.value ? workspaceCwd.value.split('/') : [];
+    for (const segment of match[1].split('/')) {
+      if (!segment || segment === '.') continue;
+      if (segment === '..') segments.pop();
+      else segments.push(segment);
+    }
+    const candidate = segments.join('/');
+    // Only a folder the workspace really has is followed: `cd main.py` fails in
+    // the shell anyway, and a path this model cannot see would move the
+    // completions somewhere the shell is not.
+    if (candidate && !inputPaths().includes(`${candidate}/`)) return;
+    workspaceCwd.value = candidate;
+  }
+
   function trackInput(data: string): void {
     for (const character of data) {
       if (inEscape) {
@@ -209,7 +246,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         continue;
       }
       if (character === '\x1b') { inputLine.value = ''; inEscape = true; continue; }
-      if (character === '\r' || character === '\n' || character === '\x03' || character === '\x04') { inputLine.value = ''; continue; }
+      if (character === '\r' || character === '\n') { noteSubmitted(inputLine.value); inputLine.value = ''; continue; }
+      if (character === '\x03' || character === '\x04') { inputLine.value = ''; continue; }
       if (character === '\x7f' || character === '\b') { inputLine.value = inputLine.value.slice(0, -1); continue; }
       if (character === '\t') continue;
       if (character < ' ') { inputLine.value = ''; continue; }
@@ -219,6 +257,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function removeView(id: string): void {
     inputLine.value = '';
+    workspaceCwd.value = '';
     const view = views.get(id);
     if (view?.host.contains(document.activeElement)) setFocused(false);
     view?.subscriptions.forEach((subscription) => subscription.dispose());
@@ -278,8 +317,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       sessions.value = [...sessions.value, session];
       visibleIds.value = splitFrom && views.has(splitFrom) ? [splitFrom, id] : [id];
       activeId.value = id;
-      // A new shell starts on its own empty prompt.
+      // A new shell starts on its own empty prompt, at the workspace root.
       inputLine.value = '';
+      workspaceCwd.value = '';
       // Data/exit subscriptions and the xterm buffer exist before initial replay.
       await bridge.attach(id);
     } catch (cause) {
@@ -293,7 +333,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function select(id: string): void {
     if (!views.has(id)) return;
-    if (activeId.value !== id) inputLine.value = '';
+    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; }
     if (!visibleIds.value.includes(id)) {
       visibleIds.value = visibleIds.value.length === 2
         ? visibleIds.value.map((visible) => visible === activeId.value ? id : visible)

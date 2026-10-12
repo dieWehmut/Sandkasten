@@ -330,18 +330,18 @@ describe('app-owned terminal sessions', () => {
 
     // A path with a space cannot be a continuation of what was typed: the token
     // is replaced, and the shell's own quoting is used for its family.
-    type('\r'); type('type my');
+    type('\x03'); type('type my');
     expect(terminal.suggestions.value).toEqual([{ label: 'my notes.txt', value: 'my notes.txt' }]);
     expect(await terminal.complete({ label: 'my notes.txt', value: 'my notes.txt' })).toBe(true);
     expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: `\x7f\x7f"my notes.txt"` });
     expect(terminal.inputLine.value).toBe('type "my notes.txt"');
 
     // An argument that matches nothing offers nothing.
-    type('\r'); type('python zzz');
+    type('\x03'); type('python zzz');
     expect(terminal.suggestions.value).toEqual([]);
 
     // A folder arrives with its separator, so the next segment can be typed.
-    type('\r'); type('cd scr');
+    type('\x03'); type('cd scr');
     expect(terminal.suggestions.value).toEqual([
       { label: 'scripts/', value: 'scripts/' },
       { label: 'scripts/task.py', value: 'scripts/task.py' },
@@ -351,7 +351,7 @@ describe('app-owned terminal sessions', () => {
     expect(terminal.inputLine.value).toBe('cd scripts/');
 
     // A nested file completes through the folder that contains it.
-    type('\r'); type('cd scripts/task');
+    type('\x03'); type('cd scripts/task');
     expect(terminal.suggestions.value).toEqual([{ label: 'scripts/task.py', value: 'scripts/task.py' }]);
     expect(await terminal.complete({ label: 'scripts/task.py', value: 'scripts/task.py' })).toBe(true);
     expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: '.py' });
@@ -373,6 +373,40 @@ describe('app-owned terminal sessions', () => {
 
     type('\r'); type('gi');
     expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['gitui', 'git', 'git-lfs']);
+    await terminal.dispose();
+  });
+
+  test('completion follows the folder the shell moved into', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'scripts/', 'scripts/task.py'] });
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    // At the workspace root the whole path completes.
+    type('cd scr');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['scripts/', 'scripts/task.py']);
+
+    // Moving in with a real command is followed. The incomplete `cd scr` above was
+    // discarded, so it never moved the shell.
+    type('\x03'); type('cd scripts'); type('\r');
+
+    // After moving in, the names inside the folder complete instead, and the
+    // path that gets typed is relative to where the shell now is.
+    type('cd ta');
+    expect(terminal.suggestions.value).toEqual([{ label: 'task.py', value: 'task.py' }]);
+    expect(await terminal.complete({ label: 'task.py', value: 'task.py' })).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'sk.py' });
+    expect(terminal.inputLine.value).toBe('cd task.py');
+
+    // `cd ..` goes back, so the workspace paths match again.
+    type('\x03'); type('cd ..'); type('\r'); type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+
+    // A directory this model cannot follow leaves it where it was rather than
+    // inventing one.
+    type('\x03'); type('cd $HOME'); type('\r'); type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
     await terminal.dispose();
   });
 
