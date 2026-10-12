@@ -34,9 +34,11 @@ The desktop build adds these things the browser cannot do:
    cursor, the detected indentation and line ending, the encoding, and the
    language mode.
 3. **Isolated execution.** `Execution > Isolated` runs the same workspace file
-   through `unshare` inside a WSL2 distro, in a fresh user, network, and PID
-   namespace. The payload sees uid 0 but holds no host privilege, cannot reach
-   the LAN or the internet, and cannot see or signal host processes. Compiled
+   through `unshare` inside a WSL2 distro, in a fresh user, network, PID, and
+   mount namespace. The payload sees uid 0 but holds no host privilege, cannot
+   reach the LAN or the internet, cannot see or signal host processes, and cannot
+   read the workspace or the Windows drives: it runs in a private directory of
+   its own with the host mounts masked. Compiled
    languages are built inside the namespace and the artifact is run there, so a
    compile-only success is not mistaken for a run. The option stays disabled
    unless a distro answers the probe, can create the namespaces, and has the
@@ -159,13 +161,16 @@ directory and exits instead of starting an empty window.
 - Isolated runs need WSL2 with a distro that ships `unshare` (`Ubuntu-22.04`,
   `Ubuntu`, and `Debian` are probed in that order; the first working one wins).
   Without one the backend reports itself unavailable instead of failing a run.
-  The sandbox bounds what the payload can reach, not what it may read: the
-  namespaces cover user, network and PID, while the filesystem is the distro's
-  own. A payload can therefore read the workspace *and* everything else the
-  distro sees — every Windows drive the distro mounts under `/mnt` and the
-  distro user's home directory — so run code you trust to read your files, or
-  use the API's container backend. `verify:isolated` asks the payload itself and
-  reports what it found instead of assuming either way.
+  A run copies the payload into a private directory of its own, puts a tmpfs
+  over it, and masks the drives and directories a distro would otherwise expose
+  (`/mnt`, `/home`, `/media`) before the runtime starts. The payload therefore
+  reads the distro's own filesystem — what it needs to run — and not the
+  workspace, the Windows drives, or the distro user's files. If a distro refuses
+  the mask, the run still works and `verify:isolated` fails its host-filesystem
+  check instead of pretending otherwise, and the backend hint names the case. It
+  is still not a hardened container — there are no CPU or memory limits and the
+  distro's own files stay readable — so code that must be treated as hostile
+  belongs on the API's container backend.
 
 ## Security defaults
 
@@ -237,8 +242,9 @@ namespaces and which languages it has the binaries for, then runs a fixture for
 every available one — Python, JavaScript, C, C++, Java, Bash and Perl — and
 keeps three sandbox payloads: one that opens a TCP connection (it has to be
 refused), one that reports `/proc`, where PID 1 has to be the payload itself, and
-one that reports what it can read under `/mnt`, because the namespaces do not
-cover mounts and that is a fact worth stating rather than assuming.
+one that reads `/mnt` and the distro home, which has to come back empty — that is
+what proves the run hides the host files rather than only bounding what the
+payload can reach.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
