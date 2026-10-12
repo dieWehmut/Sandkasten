@@ -7,6 +7,10 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyTerminal } from './e2e-terminal.mjs';
 import { selectTheme } from './e2e-theme.mjs';
+// The packaged path is resolved the same way the IDE run resolves it: the value in
+// the README is relative to the repository root, and Playwright needs an absolute
+// one — a relative path fails as "Process failed to launch!".
+import { resolvePackagedExecutable } from './e2e-ide.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -38,7 +42,7 @@ for (const candidate of [
   break;
 }
 if (!driver) throw new Error('Install the WebUI development dependencies before running desktop E2E.');
-const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
+const packagedExecutable = resolvePackagedExecutable(process.env.SANDKASTEN_E2E_EXECUTABLE);
 const executablePath = packagedExecutable ?? (await import('electron')).default;
 const app = await driver.launch({
   executablePath,

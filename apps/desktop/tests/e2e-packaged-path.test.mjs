@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -22,4 +23,14 @@ test('a path relative to the app, or an absolute one, still works', () => {
 test('an executable that is not there fails with every path that was tried', () => {
   assert.equal(resolvePackagedExecutable(undefined), undefined);
   assert.throws(() => resolvePackagedExecutable('tmp/desktop-dist/nowhere/Sandkasten.exe'), /was not found\. Tried: .*nowhere/);
+});
+
+test('every end-to-end entry that takes a packaged build resolves the path', () => {
+  // The refinement run took the raw value and failed with "Process failed to
+  // launch!" for the path the README documents, which the IDE run had already
+  // learned to resolve.
+  for (const file of ['e2e-ide.mjs', 'e2e-refinement.mjs']) {
+    const source = readFileSync(new URL(`../scripts/${file}`, import.meta.url), 'utf8');
+    assert.match(source, /resolvePackagedExecutable\(\s*process\.env\.SANDKASTEN_E2E_EXECUTABLE\s*\)/, `${file} has to resolve it`);
+  }
 });
