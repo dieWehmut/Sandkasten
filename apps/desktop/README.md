@@ -231,6 +231,12 @@ directory and exits instead of starting an empty window.
 - Terminal access requires the trusted bundled top-level frame; the renderer
   picks discovered profile ids and never executable paths, requests are
   validated and bounded, and each session belongs to its creating window.
+- The terminal has no search. `@xterm/addon-search@0.16.0` reports no matches
+  against `@xterm/xterm@6.0.0` for a line that is demonstrably in the buffer, so a
+  find bar was written, verified to work in the unit tests, found not to work in
+  the app, and reverted rather than shipped. Upgrading the terminal and its addons
+  together is the way back in — and the pane's pointer and focus guards, which the
+  find field needed so the terminal would stop taking the keyboard back, go with it.
 
 ## Test and package
 
