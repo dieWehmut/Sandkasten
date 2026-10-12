@@ -3,7 +3,7 @@
 // resolves every command it lists against the repository, the same way the
 // workflow contract resolves the workflow's.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -62,10 +62,27 @@ test('every npm script the index names exists in the app it names', () => {
 test('every path the index names exists', () => {
   const text = indexText();
   const candidates = new Set();
-  for (const match of text.matchAll(/`((?:scripts|werkzeug|laeufer|schnittstelle|handbuch)\/[\w./-]+)/g)) candidates.add(match[1]);
+  for (const match of text.matchAll(/`((?:scripts|werkzeug|laeufer|schnittstelle|handbuch|apps)\/[\w./-]+)/g)) candidates.add(match[1]);
   for (const match of text.matchAll(/\bnode ([\w./-]+\.mjs)/g)) candidates.add(match[1]);
   for (const match of text.matchAll(/`cd ([\w./-]+)/g)) candidates.add(match[1]);
+  // The contract tests the index names, without a path in front of them.
+  for (const match of text.matchAll(/`([\w-]+\.test\.mjs)`/g)) candidates.add(`apps/desktop/tests/${match[1]}`);
   assert.ok(candidates.size >= 8, `expected the index to name paths, saw ${candidates.size}`);
   const missing = [...candidates].filter((candidate) => !existsSync(path.join(repositoryRoot, candidate)));
   assert.deepEqual(missing, []);
+});
+
+test('every test that guards a document is named in the index', () => {
+  // A contract nobody can find is a contract nobody reads: a test that reads the
+  // handbuch or a README to check it has to be listed here.
+  const testsDirectory = path.join(repositoryRoot, 'apps', 'desktop', 'tests');
+  const guarders = readdirSync(testsDirectory)
+    .filter((file) => file.endsWith('.test.mjs'))
+    .filter((file) => /handbuch|README/.test(readFileSync(path.join(testsDirectory, file), 'utf8')))
+    .sort();
+  assert.ok(guarders.length >= 4, `expected document guards in the suite, saw ${guarders.length}`);
+
+  const index = indexText();
+  const unnamed = guarders.filter((file) => !index.includes(file));
+  assert.deepEqual(unnamed, [], 'a document guard has to be listed in the verification index');
 });
