@@ -243,6 +243,8 @@ Go、Assembly、Bash/Shell、C、Cangjie(仓颉)、Clojure、CSS、C++、C#、Co
 
 ## 本地测试
 
+每个验证入口**证明什么、需要什么环境、输出如何解读**,见 [`handbuch/verification.md`](handbuch/verification.md)。
+
 ```bash
 ./werkzeug/quality/test.sh         # Go、Rust、WebUI 单元/构建/工件检查
 ./werkzeug/smoke/smoke-go.sh       # 本地 API + 运行器 Go 执行冒烟
