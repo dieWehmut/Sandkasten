@@ -78,7 +78,8 @@ The desktop build adds these things the browser cannot do:
    what a terminal owes them. A right-click offers the same actions as a menu,
    with copy disabled while nothing is selected, and a middle-click pastes the X11
    primary selection the way Linux terminals do (the main process answers that
-   request on Linux only).
+   request on Linux only). `Ctrl+=`, `Ctrl+-` and `Ctrl+0` zoom the terminal's own
+   font, between 8 and 32 px, and every session takes the size.
    Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
