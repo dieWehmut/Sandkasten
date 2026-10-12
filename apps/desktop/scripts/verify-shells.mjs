@@ -13,7 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverTerminalProfileReport } from '../src/terminal-profiles.mjs';
-import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, shellReportCommand } from '../src/terminal-commands.mjs';
+import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, isReportedCommandName, shellReportCommand } from '../src/terminal-commands.mjs';
 import { sessionEnvironment } from '../src/terminal.mjs';
 
 const MARKER = 'SANDKASTEN_SHELL_OK';
@@ -210,7 +210,9 @@ export async function verifyShells({
       let answerNames;
       if (report) {
         const answer = await probe(profile, report, { timeoutMs: profileTimeoutMs, environment });
-        answerNames = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
+        // The same filter the discovery applies: a name the renderer cannot offer
+        // is not one the list was supposed to carry.
+        answerNames = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter((name) => name && isReportedCommandName(name)));
       }
       const selfReport = shellSelfReportVerdict({ reportedNames: report ? answerNames : null, published });
       const selfReported = selfReport.selfReported;

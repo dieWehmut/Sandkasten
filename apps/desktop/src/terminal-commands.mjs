@@ -41,12 +41,26 @@ const DISTRO_LIST_COMMANDS = 'IFS=:; for d in $PATH; do [ -d "$d" ] || continue;
 
 // What a shell can list about itself. `compgen -b` is a bash builtin and answers
 // in milliseconds, unlike `compgen -c`, which scans the PATH and never returns
-// under MSYS when stdio is piped. cmd has no comparable listing.
+// under MSYS when stdio is piped. PowerShell reports its aliases too: `gci` and
+// `sl` are commands a PowerShell user types, and they are not files anywhere.
+// Bash's aliases are not reported, because a one-shot `bash -c` starts without the
+// shell's own startup files and would see none of them anyway. cmd has no
+// comparable listing.
 const SHELL_COMMAND_REPORTS = Object.freeze({
-  powershell: 'Get-Command -CommandType Cmdlet,Function -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name',
+  powershell: 'Get-Command -CommandType Cmdlet,Function,Alias -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name',
   bash: 'compgen -b',
   posix: 'compgen -b',
 });
+
+// A name the renderer can offer and complete: PowerShell's aliases include `?`,
+// `%` and `#`, which are punctuation rather than words to type. The verification
+// asks the same question, so it uses this rather than its own copy of the rule.
+const REPORTED_NAME = /^[A-Za-z0-9_.-]+$/;
+
+/** Whether a name a shell reports about itself is one the renderer can offer. */
+export function isReportedCommandName(name) {
+  return REPORTED_NAME.test(String(name ?? '').trim());
+}
 
 /** The command that lists what this family reports about itself, or ''. */
 export function shellReportCommand(family) {
@@ -195,17 +209,22 @@ export async function discoverTerminalCommandList(profile, {
       if (commands.length >= limit) break;
     }
   }
-  // A cmdlet or a builtin is a command the shell runs without a file behind it,
-  // so the shell is asked for its own list and that joins the PATH names. A cold
-  // or loaded host can miss the first budget, and the answer is cached for a
-  // while, so one retry is cheaper than a list without the shell's own commands.
+  // A cmdlet, an alias or a builtin is a command the shell runs without a file
+  // behind it, so the shell is asked for its own list and that joins the PATH
+  // names. A cold or loaded host can miss the first budget, and the answer is
+  // cached for a while, so one retry is cheaper than a list without the shell's
+  // own commands.
   const report = shellReportCommand(profile?.family);
   if (report) {
     let reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
     if (!String(reported ?? '').trim()) {
       reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
     }
-    const names = uniqueNames(String(reported ?? '').split(/\r?\n/), limit, windows);
+    const names = uniqueNames(
+      String(reported ?? '').split(/\r?\n/).filter((line) => isReportedCommandName(line)),
+      limit,
+      windows,
+    );
     for (const name of names) {
       const identity = windows ? name.toLowerCase() : name;
       if (seen.has(identity)) continue;

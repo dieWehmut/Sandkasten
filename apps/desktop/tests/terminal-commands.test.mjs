@@ -7,6 +7,7 @@ import {
   discoverTerminalCommandList,
   discoverTerminalCommands,
   shellArguments,
+  isReportedCommandName,
   shellReportCommand,
   shellSearchPath,
 } from '../src/terminal-commands.mjs';
@@ -242,7 +243,27 @@ test('PowerShell is asked for its cmdlets and functions', async () => {
     },
   );
   assert.deepEqual(commands, ['git', 'Get-ChildItem', 'Get-Content']);
-  assert.match(asked[0], /Get-Command -CommandType Cmdlet,Function/);
+  assert.match(asked[0], /Get-Command -CommandType Cmdlet,Function,Alias/);
+});
+
+test('the aliases a shell reports are offered, except punctuation', async () => {
+  // `gci` and `sl` are what a PowerShell user types; `?` and `%` are not words to
+  // complete, so a name the renderer cannot offer is dropped.
+  const commands = await discoverTerminalCommands(
+    { id: 'powershell', family: 'powershell', executable: 'C:\\pwsh.exe', pathPrepend: [] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\tools', PATHEXT: '.EXE' },
+      listDirectory: async () => [file('git.exe')],
+      runShell: async () => 'Get-ChildItem\ngci\nsl\n?\n%\ncd..\n',
+    },
+  );
+  assert.deepEqual(commands, ['git', 'Get-ChildItem', 'gci', 'sl', 'cd..']);
+  // The rule the discovery and the verification share.
+  assert.equal(isReportedCommandName('gci'), true);
+  assert.equal(isReportedCommandName('Get-ChildItem'), true);
+  assert.equal(isReportedCommandName('?'), false);
+  assert.equal(isReportedCommandName(''), false);
 });
 
 test('a report that answers nothing is asked for once more', async () => {
