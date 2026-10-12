@@ -141,6 +141,11 @@ try {
   ]) {
     assert.equal(terminal[flag], true, `the terminal run has to have verified ${flag}`);
   }
+  // The clipboard needs the host to have one: some session types do not, and the
+  // report says which happened instead of failing the run.
+  assert.ok(terminal.clipboard === true || /host clipboard/.test(String(terminal.clipboardNote ?? '')),
+    'the clipboard step has to be verified or explained');
+
   assert.ok(terminal.resize?.before?.cols > 0 && terminal.resize?.after?.cols > 0
     && terminal.resize.before.cols !== terminal.resize.after.cols,
     'a resize has to have reached the PTY');

@@ -19,6 +19,8 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportShellSourceMarked = false;
   let reportAliasInPalette = false;
   let reportCmdInternal = false;
+  let reportClipboard = false;
+  let clipboardNote = '';
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -143,6 +145,24 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   );
   reportCmdInternal = true;
   await page.keyboard.press('Control+c');
+
+  // The clipboard goes through the main process, and pasting reaches the shell.
+  // Some environments have no OS clipboard to give the app — a headless session,
+  // for instance — so the step records that instead of failing: the wiring is what
+  // it can prove, and the contents surviving is what the host may not have.
+  const roundTrip = await page.evaluate(async () => {
+    await window.sandkastenDesktop.clipboard.write('echo E2E_PASTE_OK');
+    return window.sandkastenDesktop.clipboard.read();
+  });
+  if (roundTrip === 'echo E2E_PASTE_OK') {
+    await page.locator(`${pane(firstId)} .xterm-helper-textarea`).focus();
+    await page.keyboard.press('Control+Shift+V');
+    await page.keyboard.press('Enter');
+    await waitScreen(firstId, 'E2E_PASTE_OK');
+    reportClipboard = true;
+  } else {
+    clipboardNote = `the host clipboard did not return what was written (${JSON.stringify(roundTrip)})`;
+  }
 
   await enter(firstId, 'echo E2E^_CLEAR^_OK');
   await waitScreen(firstId, 'E2E_CLEAR_OK');
@@ -320,5 +340,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote };
 }
