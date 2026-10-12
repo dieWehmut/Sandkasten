@@ -8,6 +8,7 @@ import { selectTheme } from './e2e-theme.mjs';
 export async function verifyTerminal({ page, app, outputRoot }) {
   let reportRunInTerminal = false;
   let reportSuggestions = false;
+  let reportArgumentSuggestions = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -72,6 +73,16 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Control+c');
   await enter(firstId, 'echo E2E^_CLEAR^_OK');
   await waitScreen(firstId, 'E2E_CLEAR_OK');
+
+  // An argument completes from the workspace: `echo hel` offers hello.py.
+  await page.keyboard.type('echo hel');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="hello.py"]`, { timeout: 10_000 });
+  await page.click(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="hello.py"]`);
+  await waitScreen(firstId, 'echo hello.py');
+  reportArgumentSuggestions = true;
+  await page.keyboard.press('Control+c');
+  await enter(firstId, 'echo E2E^_ARGS^_OK');
+  await waitScreen(firstId, 'E2E_ARGS_OK');
 
   // Escape separators in the entered command: the unescaped marker appears
   // only in shell output, so command echo cannot make this assertion pass.
@@ -157,5 +168,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions };
 }
