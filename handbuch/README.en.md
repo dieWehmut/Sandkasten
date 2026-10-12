@@ -199,6 +199,11 @@ Go, Assembly, Bash/Shell, C, Cangjie, Clojure, CSS, C++, C#, Coq, Crystal, Dart,
 
 Set `SMOKE_LANGUAGES=ocaml` or `SMOKE_LANGUAGES="markdown graphviz"` to verify a subset.
 
+Every verification entry point, what it proves and what it needs, is indexed in
+[`verification.md`](verification.md). The rest of the handbook:
+[architecture](architecture.md), [API](api.md),
+[runner security](runner-security.md), [deployment](deployment.md).
+
 ## Tooling Layout
 
 Development and quality scripts are grouped under `werkzeug/development/`,

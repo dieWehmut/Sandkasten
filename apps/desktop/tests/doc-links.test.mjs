@@ -49,3 +49,26 @@ test('the index the verification suite relies on is reachable from the READMEs',
     assert.match(text, /handbuch\/verification\.md/, `${file} has to point at the verification index`);
   }
 });
+
+test('every handbook document is linked from somewhere', () => {
+  // Four of them had no inbound link at all: the documents existed and nobody could
+  // navigate to them from anywhere in the repository.
+  const files = markdownFiles();
+  const handbook = files.filter((file) => file.startsWith('handbuch/'));
+  assert.ok(handbook.length >= 5, `expected the handbook to have documents, saw ${handbook.length}`);
+
+  const inbound = new Set();
+  for (const file of files) {
+    const text = readFileSync(path.join(repositoryRoot, file), 'utf8');
+    for (const match of text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+      const target = match[1].trim();
+      if (/^(https?:|mailto:|#|<)/.test(target)) continue;
+      const relative = decodeURIComponent(target.split('#')[0].replace(/^<|>$/g, ''));
+      if (!relative) continue;
+      const resolved = path.relative(repositoryRoot, path.resolve(path.dirname(path.join(repositoryRoot, file)), relative)).replaceAll('\\', '/');
+      if (resolved !== file) inbound.add(resolved);
+    }
+  }
+  const orphaned = handbook.filter((file) => !inbound.has(file));
+  assert.deepEqual(orphaned, [], 'a handbook document nobody links to is a document nobody finds');
+});
