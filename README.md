@@ -252,8 +252,10 @@ npm run verify:isolated # 通过 WSL2 命名空间沙箱运行真实负载,并�
 shell 自己的命令目录,要求 shell 能找到并运行它——这正是终端会话 `PATH` 增强要
 保证的性质。`verify:runtimes` 通过真实的本地运行器执行各语言 hello-world,缺少的
 工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败。
-`verify:isolated` 通过 WSL2 沙箱执行真实负载,并从沙箱内部确认:程序能跑、TCP 连接被拒绝、
-`/proc` 只显示命名空间自己的进程表(负载自身即 PID 1);没有可用发行版时如实报告 unavailable。
+`verify:isolated` 通过 WSL2 沙箱执行真实负载,并从沙箱内部确认:发行版支持的语言逐一跑通
+(Python/JavaScript/C/C++/Java/Bash/Perl,编译型语言在沙箱内构建后再运行)、TCP 连接被拒绝、
+`/proc` 只显示命名空间自己的进程表(负载自身即 PID 1);没有可用发行版或缺少该语言所需
+二进制时如实报告 unavailable,不误报失败。
 `npm run verify`(或根目录 `make verify-desktop`)一次跑完这三项并给出汇总:缺失的后端记为
 unavailable,已安装但损坏的才算失败。三者都支持 `--json` 输出。
 

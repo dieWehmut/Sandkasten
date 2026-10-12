@@ -33,9 +33,12 @@ The desktop build adds these things the browser cannot do:
 3. **Isolated execution.** `Execution > Isolated` runs the same workspace file
    through `unshare` inside a WSL2 distro, in a fresh user, network, and PID
    namespace. The payload sees uid 0 but holds no host privilege, cannot reach
-   the LAN or the internet, and cannot see or signal host processes. The option
-   stays disabled unless a distro answers the probe and can create the
-   namespaces.
+   the LAN or the internet, and cannot see or signal host processes. Compiled
+   languages are built inside the namespace and the artifact is run there, so a
+   compile-only success is not mistaken for a run. The option stays disabled
+   unless a distro answers the probe, can create the namespaces, and has the
+   binaries the selected language needs; the backend hint says which of the two
+   is missing.
 4. **A desktop menu.** File / Run / View / Help forward stable command ids to
    the renderer, so the same shortcuts work from the menu and from the page.
 5. **An integrated title row.** The window runs with a hidden title bar, so
@@ -186,11 +189,13 @@ without a linker, for example) fails with its own output. Pass `--json`,
 `--language=<id>`, or `--timeout-ms=<ms>`.
 
 `verify:isolated` detects whether a WSL2 distro can create the isolation
-namespaces and then runs real payloads through the isolated backend: Python and
-Bash have to run inside it, a payload that opens a TCP connection has to be
-refused, and `/proc` has to show the namespace's own table with the payload as
-PID 1. A machine without a usable distro reports the backend as unavailable
-instead of failing. Pass `--json` or `--timeout-ms=<ms>`.
+namespaces and which languages it has the binaries for, then runs a fixture for
+every available one — Python, JavaScript, C, C++, Java, Bash and Perl — and
+keeps two sandbox payloads: one that opens a TCP connection (it has to be
+refused) and one that reports `/proc`, where PID 1 has to be the payload itself.
+A machine without a usable distro reports the backend as unavailable instead of
+failing, and a language the distro lacks is reported as unavailable rather than
+failed. Pass `--json` or `--timeout-ms=<ms>`.
 
 `npm run e2e` launches the app against a temporary workspace and asserts the
 explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel
