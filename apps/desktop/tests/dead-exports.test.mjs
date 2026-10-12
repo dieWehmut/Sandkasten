@@ -17,7 +17,7 @@ const repositoryRoot = path.resolve(appRoot, '..', '..');
 const ALLOWED = new Set([]);
 
 const TEXT_FILES = /\.(ts|mjs|cjs|vue|md|json|yml|yaml|sh)$/;
-const SOURCE_FILES = /^apps\/(web|desktop|cli)\/src\/.*\.(ts|mjs|cjs)$/;
+const SOURCE_FILES = /^apps\/(web|desktop|cli)\/(src|scripts)\/.*\.(ts|mjs|cjs)$/;
 const DECLARATION = /^export (?:const|function|class|interface|type|enum|async function)\s+([A-Za-z_$][\w$]*)/gm;
 
 function trackedFiles() {
@@ -32,7 +32,7 @@ function read(file) {
 test('every export has a reader somewhere in the repository', () => {
   const files = trackedFiles();
   const sources = files.filter((file) => SOURCE_FILES.test(file));
-  assert.ok(sources.length >= 40, `expected the apps to have sources, saw ${sources.length}`);
+  assert.ok(sources.length >= 60, `expected the apps to have sources and scripts, saw ${sources.length}`);
   const corpus = files.filter((file) => TEXT_FILES.test(file)).map(read).join('\n');
 
   const unused = [];
@@ -47,7 +47,7 @@ test('every export has a reader somewhere in the repository', () => {
       if (mentions <= 1) unused.push(`${file}: ${name}`);
     }
   }
-  assert.ok(checked >= 200, `expected the apps to export their pieces, saw ${checked}`);
+  assert.ok(checked >= 300, `expected the apps to export their pieces, saw ${checked}`);
   assert.deepEqual(unused, []);
 });
 
