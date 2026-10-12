@@ -151,6 +151,10 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // line the terminal emulator has lost track of.
   const inputLine = ref('');
   let inEscape = false;
+  // Whether the line above still describes the shell's line. An arrow key or a
+  // history recall moves the shell's cursor or its line without telling this model,
+  // and completing from a wrong line would send the wrong edits to the PTY.
+  const lineUnknown = ref(false);
   // Where the active session's shell is, as far as a plain `cd` can be followed.
   // Empty means the workspace root, which is where a session starts.
   const workspaceCwd = ref('');
@@ -247,6 +251,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   const suggestions = computed<TerminalSuggestion[]>(() => {
     const line = inputLine.value;
     if (!line) return [];
+    // An escape sequence — an arrow key, a shell history recall — moves the cursor or
+    // replaces the line in ways this model cannot see, so it stops guessing until the
+    // line is submitted or cleared: a completion then would rewrite the shell's line
+    // from the wrong guess.
+    if (lineUnknown.value) return [];
     // Everything after the command word is an argument, so the last token is the
     // one being typed — even when earlier arguments are already on the line.
     const parts = line.split(/\s+/);
@@ -340,9 +349,20 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         if (/[A-Za-z~]/.test(character)) inEscape = false;
         continue;
       }
-      if (character === '\x1b') { inputLine.value = ''; inEscape = true; continue; }
-      if (character === '\r' || character === '\n') { noteSubmitted(inputLine.value); inputLine.value = ''; continue; }
-      if (character === '\x03' || character === '\x04') { inputLine.value = ''; continue; }
+      if (character === '\x1b') { inputLine.value = ''; inEscape = true; lineUnknown.value = true; continue; }
+      if (character === '\r' || character === '\n') {
+        // A new prompt is a line this model can follow again.
+        noteSubmitted(inputLine.value);
+        inputLine.value = '';
+        lineUnknown.value = false;
+        continue;
+      }
+      if (character === '\x03' || character === '\x04' || character === '\x15') {
+        // Interrupt, end of input, and clear-line all leave an empty prompt.
+        inputLine.value = '';
+        lineUnknown.value = false;
+        continue;
+      }
       if (character === '\x7f' || character === '\b') { inputLine.value = inputLine.value.slice(0, -1); continue; }
       if (character === '\t') continue;
       if (character < ' ') { inputLine.value = ''; continue; }
@@ -352,6 +372,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function removeView(id: string): void {
     inputLine.value = '';
+    lineUnknown.value = false;
     workspaceCwd.value = '';
     cwdStack.value = [];
     previousCwd.value = '';
@@ -464,6 +485,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       activeId.value = id;
       // A new shell starts on its own empty prompt, at the workspace root.
       inputLine.value = '';
+      lineUnknown.value = false;
       workspaceCwd.value = '';
       cwdStack.value = [];
       previousCwd.value = '';
@@ -480,7 +502,13 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function select(id: string): void {
     if (!views.has(id)) return;
-    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; cwdStack.value = []; previousCwd.value = ''; }
+    if (activeId.value !== id) {
+      inputLine.value = '';
+      lineUnknown.value = false;
+      workspaceCwd.value = '';
+      cwdStack.value = [];
+      previousCwd.value = '';
+    }
     if (!visibleIds.value.includes(id)) {
       visibleIds.value = visibleIds.value.length === 2
         ? visibleIds.value.map((visible) => visible === activeId.value ? id : visible)
@@ -592,6 +620,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     const line = inputLine.value;
     const value = suggestion?.value ?? '';
     if (!value) return false;
+    // The model cannot say where the shell's cursor is, so it does not edit the line.
+    if (lineUnknown.value) return false;
     const start = Math.max(line.lastIndexOf(' '), line.lastIndexOf('\t')) + 1;
     const token = line.slice(start);
     if (!value.toLowerCase().startsWith(token.toLowerCase())) return false;

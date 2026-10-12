@@ -322,6 +322,32 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('an arrow key stops the model guessing instead of completing from a stale line', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'scripts/task.py'] });
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+
+    // A cursor key is an escape sequence: the shell's line is unchanged, but this
+    // model cannot see where its cursor went.
+    type('\x1b[D');
+    expect(terminal.suggestions.value).toEqual([]);
+    // Completing then would send backspaces for a line it guessed wrong.
+    expect(await terminal.complete({ label: 'main.py', value: 'main.py' })).toBe(false);
+    expect(host.bridge.write).not.toHaveBeenCalledWith({ id: 's1', data: 'n.py' });
+
+    // Submitting the line starts a fresh one this model can follow again.
+    type('\r');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+    expect(await terminal.complete({ label: 'main.py', value: 'main.py' })).toBe(true);
+    await terminal.dispose();
+  });
+
   test('fetches the active shell\'s command names once per profile and caches them', async () => {
     const host = fakeBridge(); const terminal = useTerminal(host.bridge);
     await terminal.create('cmd');
