@@ -41,7 +41,8 @@ The desktop build adds these things the browser cannot do:
    its own with the host mounts masked. Stopping a run reaches the payload too:
    killing the WSL client does not end the Linux process, so a cancelled,
    timed-out or truncated run is followed by a bounded cleanup in the distro that
-   stops it by the sandbox it was given. Compiled
+   stops it by the sandbox it was given, and the stop — plus the app's own quit —
+   waits for that to finish. Compiled
    languages are built inside the namespace and the artifact is run there, so a
    compile-only success is not mistaken for a run. The option stays disabled
    unless a distro answers the probe, can create the namespaces, and has the
