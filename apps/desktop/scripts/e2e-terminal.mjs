@@ -22,6 +22,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportClipboard = false;
   let clipboardNote = '';
   let reportClipboardKeys = false;
+  let reportTerminalMenu = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -164,6 +165,17 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   } else {
     clipboardNote = `the host clipboard did not return what was written (${JSON.stringify(roundTrip)})`;
   }
+
+  // The right-click menu is the mouse path to the same actions.
+  await page.locator(`${pane(firstId)} .xterm-helper-textarea`).focus();
+  await page.click(pane(firstId), { button: 'right' });
+  await page.waitForSelector('[data-testid="context-menu"]', { timeout: 10_000 });
+  for (const id of ['copy', 'paste', 'select-all', 'clear']) {
+    assert.equal(await page.locator(`[data-action="context-menu-${id}"]`).count(), 1, `the terminal menu has to offer ${id}`);
+  }
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('[data-testid="context-menu"]'));
+  reportTerminalMenu = true;
 
   await enter(firstId, 'echo E2E^_CLEAR^_OK');
   await waitScreen(firstId, 'E2E_CLEAR_OK');
@@ -346,5 +358,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu };
 }
