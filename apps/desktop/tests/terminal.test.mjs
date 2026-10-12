@@ -164,12 +164,12 @@ test('the host publishes the commands a profile can run and caches one scan per 
     environment: { Path: 'C:\\Windows' },
     discoverCommands: async (profile, options) => {
       scanned.push([profile.id, options.platform, options.environment.Path]);
-      return ['git', 'ls'];
+      return { names: ['git', 'ls'], shellReported: ['ls'] };
     },
   });
   t.after(() => host.dispose());
-  assert.deepEqual(await host.commands(1, 'git-bash'), ['git', 'ls']);
-  assert.deepEqual(await host.commands(1, 'git-bash'), ['git', 'ls']);
+  assert.deepEqual(await host.commands(1, 'git-bash'), { names: ['git', 'ls'], shellReported: ['ls'] });
+  assert.deepEqual(await host.commands(1, 'git-bash'), { names: ['git', 'ls'], shellReported: ['ls'] });
   assert.equal(scanned.length, 1, 'the catalog must not rescan the same profile');
   assert.deepEqual(scanned[0], ['git-bash', 'win32', 'C:\\Windows']);
   await assert.rejects(() => host.commands(1, 'nope'), /unknown terminal profile/i);

@@ -140,13 +140,17 @@ export function createTerminalHost({
     close(owner, id) { remove(owned(owner, id), true); },
     // The commands a profile can run are profile-scoped, not session-scoped, so
     // they stay available while the panel is hidden. Only names cross the IPC
-    // boundary and the catalog caches the scan per profile.
+    // boundary and the catalog caches the scan per profile. A discovery injected
+    // for a test may answer with names alone, which is the same shape with
+    // nothing reported by the shell.
     async commands(owner, profileId) {
       if (disposed) throw new Error('The terminal host has shut down.');
       if (typeof profileId !== 'string' || profileId === '') throw new Error('Invalid terminal profile.');
       const profile = profiles.find((item) => item.id === profileId);
       if (!profile) throw new Error('Unknown terminal profile.');
-      return commandCatalog.commands(profile, { platform, environment });
+      const discovered = await commandCatalog.commands(profile, { platform, environment });
+      if (Array.isArray(discovered)) return { names: discovered, shellReported: [] };
+      return { names: discovered?.names ?? [], shellReported: discovered?.shellReported ?? [] };
     },
     disposeOwner(owner) {
       for (const terminal of sessions.values()) if (terminal.owner === owner) remove(terminal, true);

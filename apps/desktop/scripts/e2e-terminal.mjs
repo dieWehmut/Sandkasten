@@ -69,15 +69,17 @@ export async function verifyTerminal({ page, app, outputRoot }) {
 
   // Typing the start of a command offers the commands this shell can run, and
   // choosing one types only the rest of the word. The target comes from the
-  // shell's own list, and its three-letter prefix has to be unique so the
-  // suggestion is certain to be in the strip.
+  // shell's own list — the executables on its PATH here, since a cmd session
+  // reports nothing about itself — and its three-letter prefix has to be unique
+  // so the suggestion is certain to be in the strip.
   const published = await page.evaluate((profileId) => window.sandkastenDesktop.terminal.commands(profileId), cmd.id);
+  const names = published.names;
   const byPrefix = new Map();
-  for (const name of published) {
+  for (const name of names) {
     const prefix = name.slice(0, 3).toLowerCase();
     byPrefix.set(prefix, (byPrefix.get(prefix) ?? 0) + 1);
   }
-  const target = published.find((name) => name.length > 3 && byPrefix.get(name.slice(0, 3).toLowerCase()) === 1);
+  const target = names.find((name) => name.length > 3 && byPrefix.get(name.slice(0, 3).toLowerCase()) === 1);
   assert.ok(target, 'the shell must publish at least one suggestible command');
   await page.keyboard.type(target.slice(0, 3));
   await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="${target}"]`, { timeout: 10_000 });

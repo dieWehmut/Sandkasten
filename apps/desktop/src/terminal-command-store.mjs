@@ -5,16 +5,23 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export const COMMAND_STORE_VERSION = 1;
+// Each profile keeps the discovery result: the command names and the ones the
+// shell reported about itself.
+export const COMMAND_STORE_VERSION = 2;
 
 export function createCommandStore(file) {
+  function usable(entry) {
+    return Boolean(entry) && Number.isFinite(entry.at) && Array.isArray(entry.commands?.names);
+  }
+
   return {
     async read() {
       try {
         const parsed = JSON.parse(await readFile(file, 'utf8'));
         if (!parsed || typeof parsed !== 'object' || parsed.version !== COMMAND_STORE_VERSION) return {};
         const profiles = parsed.profiles;
-        return profiles && typeof profiles === 'object' && !Array.isArray(profiles) ? profiles : {};
+        if (!profiles || typeof profiles !== 'object' || Array.isArray(profiles)) return {};
+        return Object.fromEntries(Object.entries(profiles).filter(([, entry]) => usable(entry)));
       } catch {
         return {};
       }

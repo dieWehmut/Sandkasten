@@ -135,7 +135,13 @@ function commandName(fileName, extensions) {
   return fileName.slice(0, -extension.length);
 }
 
-export async function discoverTerminalCommands(profile, {
+/**
+ * The commands a session can run, split by where they come from: the
+ * executables the PATH holds, and the commands the shell reports about itself
+ * (a cmdlet has no file behind it). The renderer shows the difference, so the
+ * two lists are kept apart without a second scan.
+ */
+export async function discoverTerminalCommandList(profile, {
   platform = process.platform,
   environment = process.env,
   listDirectory = readdir,
@@ -146,15 +152,17 @@ export async function discoverTerminalCommands(profile, {
 } = {}) {
   const limit = TERMINAL_COMMAND_LIMITS.commands;
   // A WSL session's PATH belongs to the distro, so the Windows directories
-  // cannot describe what it can run; the distro is asked directly instead.
+  // cannot describe what it can run; the distro is asked directly instead, and
+  // everything it lists is a file of its own.
   if (profile?.family === 'wsl') {
     const listing = await runShell(profile, DISTRO_LIST_COMMANDS, { timeoutMs: distroTimeoutMs });
-    return uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false);
+    return { names: uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false), shellReported: [] };
   }
   const windows = platform === 'win32';
   const extensions = windows ? windowsExtensions(environment) : undefined;
   const seen = new Set();
   const commands = [];
+  const shellReported = [];
   // Directories are visited in the order the shell itself searches them, and
   // each directory is listed alphabetically. Sorting the whole result instead
   // would drop the tail of the alphabet once the cap is reached, which would
@@ -203,10 +211,16 @@ export async function discoverTerminalCommands(profile, {
       if (seen.has(identity)) continue;
       seen.add(identity);
       commands.push(name);
+      shellReported.push(name);
       if (commands.length >= limit) break;
     }
   }
-  return commands;
+  return { names: commands, shellReported };
+}
+
+/** The names alone, for the callers that only need the list. */
+export async function discoverTerminalCommands(profile, options) {
+  return (await discoverTerminalCommandList(profile, options)).names;
 }
 
 /**
@@ -216,7 +230,7 @@ export async function discoverTerminalCommands(profile, {
  * answers immediately while a background refresh replaces it.
  */
 export function createCommandCatalog({
-  discover = discoverTerminalCommands, now = () => Date.now(),
+  discover = discoverTerminalCommandList, now = () => Date.now(),
   cacheMs = TERMINAL_COMMAND_LIMITS.cacheMs,
   persistedMs = TERMINAL_COMMAND_LIMITS.persistedMs,
   store,
@@ -225,13 +239,19 @@ export function createCommandCatalog({
   const pending = new Map();
   let hydrated;
 
+  // A cached entry is the discovery result: the names plus the ones the shell
+  // reported about itself.
+  function usable(entry) {
+    return entry && Number.isFinite(entry.at) && Array.isArray(entry.commands?.names);
+  }
+
   async function hydrate() {
     if (hydrated) return hydrated;
     hydrated = (async () => {
       try {
         const record = await store?.read?.();
         for (const [key, entry] of Object.entries(record ?? {})) {
-          if (entry && Number.isFinite(entry.at) && Array.isArray(entry.commands)) cache.set(key, { at: entry.at, commands: entry.commands });
+          if (usable(entry)) cache.set(key, { at: entry.at, commands: entry.commands });
         }
       } catch {
         // A missing or unreadable cache is simply a cold start.
@@ -258,7 +278,7 @@ export function createCommandCatalog({
         // Only a real list is remembered. An empty result is what a cold or
         // unreachable shell answers with, and caching it would hide the commands
         // even after the shell could report them.
-        if (commands.length) {
+        if (commands?.names?.length) {
           cache.set(key, { at: now(), commands });
           await persist();
         } else cache.delete(key);

@@ -16,8 +16,8 @@ test('a written catalog round-trips and leaves no temporary file behind', async 
   const store = createCommandStore(path.join(root, 'terminal-commands.json'));
 
   assert.deepEqual(await store.read(), {}, 'a missing store is a cold start');
-  await store.write({ bash: { at: 10, commands: ['ls', 'cd'] } });
-  assert.deepEqual(await store.read(), { bash: { at: 10, commands: ['ls', 'cd'] } });
+  await store.write({ bash: { at: 10, commands: { names: ['ls', 'cd'], shellReported: ['cd'] } } });
+  assert.deepEqual(await store.read(), { bash: { at: 10, commands: { names: ['ls', 'cd'], shellReported: ['cd'] } } });
   assert.deepEqual(await readdir(root), ['terminal-commands.json'], 'the write is renamed into place');
 });
 
@@ -30,7 +30,7 @@ test('a malformed, foreign or shapeless store is ignored instead of failing', as
   await writeFile(file, '{ not json at all', 'utf8');
   assert.deepEqual(await store.read(), {});
 
-  await writeFile(file, JSON.stringify({ version: COMMAND_STORE_VERSION + 1, profiles: { bash: { at: 1, commands: [] } } }), 'utf8');
+  await writeFile(file, JSON.stringify({ version: COMMAND_STORE_VERSION + 1, profiles: { bash: { at: 1, commands: { names: ['ls'] } } } }), 'utf8');
   assert.deepEqual(await store.read(), {}, 'another version is a cold start');
 
   await writeFile(file, JSON.stringify({ version: COMMAND_STORE_VERSION, profiles: [] }), 'utf8');
@@ -38,4 +38,11 @@ test('a malformed, foreign or shapeless store is ignored instead of failing', as
 
   await writeFile(file, JSON.stringify({ version: COMMAND_STORE_VERSION }), 'utf8');
   assert.deepEqual(await store.read(), {});
+
+  // The shape of an older or a corrupted entry is dropped, the good one kept.
+  await writeFile(file, JSON.stringify({
+    version: COMMAND_STORE_VERSION,
+    profiles: { bash: { at: 1, commands: ['ls'] }, cmd: { at: 'soon', commands: { names: ['dir'] } }, zsh: { at: 2, commands: { names: ['echo'] } } },
+  }), 'utf8');
+  assert.deepEqual(await store.read(), { zsh: { at: 2, commands: { names: ['echo'] } } });
 });

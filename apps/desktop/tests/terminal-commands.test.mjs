@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   TERMINAL_COMMAND_LIMITS,
   createCommandCatalog,
+  discoverTerminalCommandList,
   discoverTerminalCommands,
   shellArguments,
   shellReportCommand,
@@ -11,6 +12,11 @@ import {
 } from '../src/terminal-commands.mjs';
 
 const file = (name) => ({ name, isFile: () => true });
+
+/** What the discovery answers with: names, plus the ones the shell reported. */
+function list(...names) {
+  return { names, shellReported: [] };
+}
 
 test('the search path puts the profile directories first and drops duplicates', () => {
   const directories = shellSearchPath(
@@ -174,35 +180,35 @@ test('the catalog scans a profile once and refreshes after its window', async ()
   let scans = 0;
   let clock = 1_000;
   const catalog = createCommandCatalog({
-    discover: async () => { scans += 1; return [`scan-${scans}`]; },
+    discover: async () => { scans += 1; return list(`scan-${scans}`); },
     now: () => clock,
     cacheMs: 100,
     // No persisted window here: an expired entry is rebuilt before it answers.
     persistedMs: 0,
   });
   const profile = { id: 'bash' };
-  assert.deepEqual(await catalog.commands(profile), ['scan-1']);
-  assert.deepEqual(await catalog.commands(profile), ['scan-1']);
+  assert.deepEqual(await catalog.commands(profile), list('scan-1'));
+  assert.deepEqual(await catalog.commands(profile), list('scan-1'));
   assert.equal(scans, 1, 'a cached profile must not rescan the PATH');
   clock += 101;
-  assert.deepEqual(await catalog.commands(profile), ['scan-2']);
+  assert.deepEqual(await catalog.commands(profile), list('scan-2'));
   assert.equal(scans, 2);
   catalog.clear();
-  assert.deepEqual(await catalog.commands(profile), ['scan-3']);
+  assert.deepEqual(await catalog.commands(profile), list('scan-3'));
 });
 
 test('an empty scan is retried instead of being cached for the window', async () => {
   let scans = 0;
   const catalog = createCommandCatalog({
-    discover: async () => { scans += 1; return scans === 1 ? [] : ['git']; },
+    discover: async () => { scans += 1; return scans === 1 ? list() : list('git'); },
     now: () => 1_000,
     cacheMs: 100_000,
   });
   const profile = { id: 'wsl' };
-  assert.deepEqual(await catalog.commands(profile), [], 'a shell that answered nothing reports nothing');
-  assert.deepEqual(await catalog.commands(profile), ['git'], 'the next request must ask the shell again');
+  assert.deepEqual(await catalog.commands(profile), list(), 'a shell that answered nothing reports nothing');
+  assert.deepEqual(await catalog.commands(profile), list('git'), 'the next request must ask the shell again');
   assert.equal(scans, 2);
-  assert.deepEqual(await catalog.commands(profile), ['git'], 'a real list is cached');
+  assert.deepEqual(await catalog.commands(profile), list('git'), 'a real list is cached');
   assert.equal(scans, 2);
 });
 
@@ -335,12 +341,12 @@ test('a persisted list answers immediately while a fresh one is built in the bac
   const written = [];
   const clock = 1_000_000;
   const catalog = createCommandCatalog({
-    discover: async () => { scans += 1; return ['fresh']; },
+    discover: async () => { scans += 1; return list('fresh'); },
     now: () => clock,
     cacheMs: 1_000,
     persistedMs: 100_000,
     store: {
-      read: async () => ({ bash: { at: clock - 5_000, commands: ['cached'] } }),
+      read: async () => ({ bash: { at: clock - 5_000, commands: list('cached') } }),
       write: async (record) => { written.push(record); },
     },
   });
@@ -348,32 +354,32 @@ test('a persisted list answers immediately while a fresh one is built in the bac
 
   // Older than the memory window but inside the persisted one: the caller gets
   // the list it has, and the shell is asked again without being waited for.
-  assert.deepEqual(await catalog.commands(profile), ['cached']);
+  assert.deepEqual(await catalog.commands(profile), list('cached'));
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(scans, 1, 'the refresh still runs');
-  assert.deepEqual(await catalog.commands(profile), ['fresh'], 'and replaces the answer');
-  assert.deepEqual(written.at(-1).bash.commands, ['fresh'], 'the new list is written back');
+  assert.deepEqual(await catalog.commands(profile), list('fresh'), 'and replaces the answer');
+  assert.deepEqual(written.at(-1).bash.commands.names, ['fresh'], 'the new list is written back');
 });
 
 test('a persisted list past its window is rebuilt before it is answered with', async () => {
   let scans = 0;
   const catalog = createCommandCatalog({
-    discover: async () => { scans += 1; return ['fresh']; },
+    discover: async () => { scans += 1; return list('fresh'); },
     now: () => 1_000_000,
     cacheMs: 1_000,
     persistedMs: 100_000,
-    store: { read: async () => ({ bash: { at: 1_000_000 - 200_000, commands: ['stale'] } }), write: async () => {} },
+    store: { read: async () => ({ bash: { at: 1_000_000 - 200_000, commands: list('stale') } }), write: async () => {} },
   });
-  assert.deepEqual(await catalog.commands({ id: 'bash' }), ['fresh']);
+  assert.deepEqual(await catalog.commands({ id: 'bash' }), list('fresh'));
   assert.equal(scans, 1);
 });
 
 test('an unreadable store is just a cold start', async () => {
   const catalog = createCommandCatalog({
-    discover: async () => ['fresh'],
+    discover: async () => list('fresh'),
     store: { read: async () => { throw new Error('boom'); }, write: async () => { throw new Error('boom'); } },
   });
-  assert.deepEqual(await catalog.commands({ id: 'bash' }), ['fresh']);
+  assert.deepEqual(await catalog.commands({ id: 'bash' }), list('fresh'));
 });
 
 test('one shell asking while a refresh is in flight does not scan twice', async () => {
@@ -383,7 +389,7 @@ test('one shell asking while a refresh is in flight does not scan twice', async 
     discover: async () => {
       scans += 1;
       await new Promise((resolve) => { release = resolve; });
-      return ['fresh'];
+      return list('fresh');
     },
     store: undefined,
   });
@@ -391,6 +397,28 @@ test('one shell asking while a refresh is in flight does not scan twice', async 
   const second = catalog.commands({ id: 'bash' });
   await new Promise((resolve) => setTimeout(resolve, 0));
   release?.();
-  assert.deepEqual(await Promise.all([first, second]), [['fresh'], ['fresh']]);
+  assert.deepEqual(await Promise.all([first, second]), [list('fresh'), list('fresh')]);
   assert.equal(scans, 1, 'concurrent callers share one scan');
+});
+
+test('the discovery keeps the shell-reported names apart from the PATH ones', async () => {
+  const discovered = await discoverTerminalCommandList(
+    { id: 'bash', family: 'bash', executable: '/bin/bash', pathPrepend: [] },
+    {
+      platform: 'linux',
+      environment: { PATH: '/bin' },
+      listDirectory: async () => [file('ls'), file('git')],
+      isExecutable: () => true,
+      runShell: async () => 'cd\nalias\nls\n',
+    },
+  );
+  assert.deepEqual(discovered, { names: ['git', 'ls', 'cd', 'alias'], shellReported: ['cd', 'alias'] });
+});
+
+test('a WSL listing reports no shell-owned names', async () => {
+  const discovered = await discoverTerminalCommandList(
+    { id: 'wsl', family: 'wsl', executable: 'wsl.exe' },
+    { runShell: async () => 'ls\nsh\n' },
+  );
+  assert.deepEqual(discovered, { names: ['ls', 'sh'], shellReported: [] });
 });
