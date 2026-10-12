@@ -67,7 +67,9 @@ The desktop build adds these things the browser cannot do:
    and the coreutils while PowerShell leads with its own tools — and an entry
    per command types it into that session, revealing the panel first and raising
    a toast when the session will not take the input. The commands typed this
-   session lead the list. A WSL session is asked inside the
+   session lead the list, and a shell that answered with an empty list (a cold
+   distro, a broken shim) is asked again every time the palette opens. A WSL
+   session is asked inside the
    distro instead, because its `PATH` belongs there and Windows names would
    mislead. `Terminal: Run active file in
    terminal` types the file's interpreter command instead, quoted for that
