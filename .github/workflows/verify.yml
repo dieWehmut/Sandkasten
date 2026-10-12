@@ -38,9 +38,8 @@ jobs:
           npm test
 
       # Neither vitest nor the Vite build looks at the types — both compile
-      # through esbuild, which strips them — so the sources get their own step.
-      # Test files are out of this config: their doubles still drift from the
-      # interfaces and are a pass of their own.
+      # through esbuild, which strips them — so the WebUI gets its own step over
+      # the whole project: sources, tests and the Vite config.
       - name: WebUI types
         working-directory: apps/web
         run: npm run typecheck

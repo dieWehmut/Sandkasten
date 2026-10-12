@@ -11,7 +11,7 @@
     "test:loaded": "vitest run --maxWorkers=2 && node --test test.mjs tests/serve.test.mjs ../../scripts/tests/webui-browser-smoke.test.mjs",
     "test:browser": "node ../../scripts/webui-browser-smoke.mjs",
     "test:watch": "vitest",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.typecheck.json"
+    "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.3",
