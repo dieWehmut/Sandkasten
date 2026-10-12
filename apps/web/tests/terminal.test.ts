@@ -316,7 +316,7 @@ describe('app-owned terminal sessions', () => {
 
   test('completes a file argument from the workspace and quotes it when needed', async () => {
     const host = fakeBridge();
-    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'my notes.txt'] });
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'my notes.txt', 'scripts/'] });
     await terminal.loadProfiles();
     await terminal.create('cmd');
     await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
@@ -339,6 +339,13 @@ describe('app-owned terminal sessions', () => {
     // An argument that matches nothing offers nothing.
     type('\r'); type('python zzz');
     expect(terminal.suggestions.value).toEqual([]);
+
+    // A folder arrives with its separator, so the next segment can be typed.
+    type('\r'); type('cd scr');
+    expect(terminal.suggestions.value).toEqual([{ label: 'scripts/', value: 'scripts/' }]);
+    expect(await terminal.complete({ label: 'scripts/', value: 'scripts/' })).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'ipts/' });
+    expect(terminal.inputLine.value).toBe('cd scripts/');
     await terminal.dispose();
   });
 

@@ -21,7 +21,10 @@ interface SessionView {
 }
 
 export interface TerminalOptions {
-  /** Workspace paths offered as arguments once the command word is typed. */
+  /**
+   * Workspace paths offered as arguments once the command word is typed. A
+   * directory is expected to carry a trailing separator.
+   */
   paths?: () => readonly string[];
 }
 

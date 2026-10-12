@@ -36,7 +36,7 @@ import { TRANSLATOR_KEY } from './i18n/useTranslation';
 const bridge = desktopBridge();
 // The workspace paths are read lazily: the controller is created before the
 // workspace, and the argument suggestions only matter once the user types.
-const terminal = bridge?.terminal ? useTerminal(bridge.terminal, { paths: () => workspacePaths.value }) : undefined;
+const terminal = bridge?.terminal ? useTerminal(bridge.terminal, { paths: () => workspaceArguments.value }) : undefined;
 const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
@@ -85,8 +85,19 @@ const activeFile = workspace.activeFile;
 function filePaths(nodes: readonly WorkspaceTreeNode[]): string[] {
   return nodes.flatMap((node) => node.type === 'file' ? [node.path] : filePaths(node.children ?? []));
 }
+// A terminal argument is usually a file, but `cd` and friends want a directory:
+// those carry a trailing separator so the completion says which one it is and
+// the next path segment can be completed.
+function directoryPaths(nodes: readonly WorkspaceTreeNode[]): string[] {
+  return nodes.flatMap((node) => node.type === 'directory'
+    ? [`${node.path}/`, ...directoryPaths(node.children ?? [])]
+    : []);
+}
 const workspacePaths = computed(() => [...new Set([
   ...filePaths(workspace.tree.value), ...workspace.files.value.map((file) => file.path),
+])]);
+const workspaceArguments = computed(() => [...new Set([
+  ...workspacePaths.value, ...directoryPaths(workspace.tree.value),
 ])]);
 // Whether the tree holds anything the "collapse folders" action can fold.
 const hasDirectories = computed(() => {
