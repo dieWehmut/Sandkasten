@@ -64,6 +64,48 @@ function localHistoryStorage(): Storage | undefined {
   }
 }
 
+const CD_VERBS = new Set(['cd', 'chdir', 'sl', 'set-location']);
+const PUSHD_VERB = 'pushd';
+const POPD_VERB = 'popd';
+
+/** The path of one `cd`-like command, or the push/pop shape of a directory stack. */
+function parseDirectoryChange(line: string): { path?: string; push?: boolean; pop?: boolean } | undefined {
+  const parts = /^\s*(\S+)(?:\s+(.*))?$/.exec(line);
+  if (!parts) return undefined;
+  const verb = parts[1].toLowerCase();
+  const rest = (parts[2] ?? '').trim();
+  if (verb === POPD_VERB && !rest) return { pop: true };
+  if (verb !== PUSHD_VERB && !CD_VERBS.has(verb)) return undefined;
+  const path = unquotedPath(rest);
+  return path ? { path, push: verb === PUSHD_VERB } : { push: verb === PUSHD_VERB };
+}
+
+/**
+ * The literal path of one argument. A quoted path keeps its spaces; anything the
+ * shell would expand is rejected, because this model resolves the path itself.
+ */
+function unquotedPath(text: string): string {
+  const quoted = /^"([^"]*)"$/.exec(text) ?? /^'([^']*)'$/.exec(text);
+  if (!quoted && /\s/.test(text)) return '';
+  const value = (quoted ? quoted[1] : text).replace(/^\.\//, '');
+  return /[$`*?<>|;&]/.test(value) ? '' : value;
+}
+
+/** The folder a relative path names, or undefined when it climbs above the root. */
+function resolveRelative(from: string, target: string): string | undefined {
+  const segments = from ? from.split('/') : [];
+  for (const segment of target.split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (!segments.length) return undefined;
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return segments.join('/');
+}
+
 /** The App owns this controller; panel components only borrow its DOM hosts. */
 export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {}) {
   const inputPaths = options.paths ?? (() => []);
@@ -94,6 +136,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // Where the active session's shell is, as far as a plain `cd` can be followed.
   // Empty means the workspace root, which is where a session starts.
   const workspaceCwd = ref('');
+  // Where pushd can send it back to.
+  const cwdStack = ref<string[]>([]);
   // What the user already accepted, most recent first: among equally matching
   // suggestions the ones already used lead the strip, the way a shell's own
   // history does. It survives a restart, because a shell's habits do.
@@ -215,25 +259,30 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   }
 
   /**
-   * Follow a plain `cd` so completions keep matching the shell's directory. Only
-   * a single relative path with nothing the shell would expand is tracked: a
-   * directory this model cannot follow leaves it where it was, which is no worse
-   * than the workspace-root assumption it started with.
+   * Follow the shell's own directory changes so completions keep matching where
+   * it is. `cd` and its synonyms (`chdir`, `sl`, `Set-Location`) are followed,
+   * `pushd`/`popd` keep a stack, and a quoted path may contain spaces. Only a
+   * single path with nothing the shell would expand is tracked, and only into a
+   * folder the workspace really has: a move this model cannot follow leaves it
+   * where it was, which is no worse than the workspace-root assumption it
+   * started with.
    */
   function noteSubmitted(line: string): void {
-    const match = /^\s*cd\s+(?:\.\/)?([^\s"'`$*?<>|;&]+)\s*\/?$/.exec(line);
-    if (!match) return;
-    const segments = workspaceCwd.value ? workspaceCwd.value.split('/') : [];
-    for (const segment of match[1].split('/')) {
-      if (!segment || segment === '.') continue;
-      if (segment === '..') segments.pop();
-      else segments.push(segment);
+    const change = parseDirectoryChange(line);
+    if (!change) return;
+    if (change.pop) {
+      const previous = cwdStack.value.at(-1);
+      if (previous === undefined) return;
+      cwdStack.value = cwdStack.value.slice(0, -1);
+      workspaceCwd.value = previous;
+      return;
     }
-    const candidate = segments.join('/');
-    // Only a folder the workspace really has is followed: `cd main.py` fails in
-    // the shell anyway, and a path this model cannot see would move the
-    // completions somewhere the shell is not.
+    if (!change.path) return;
+    const candidate = resolveRelative(workspaceCwd.value, change.path);
+    // A path that climbs above the workspace root is not one this model can name.
+    if (candidate === undefined) return;
     if (candidate && !inputPaths().includes(`${candidate}/`)) return;
+    if (change.push) cwdStack.value = [...cwdStack.value, workspaceCwd.value];
     workspaceCwd.value = candidate;
   }
 
@@ -258,6 +307,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   function removeView(id: string): void {
     inputLine.value = '';
     workspaceCwd.value = '';
+    cwdStack.value = [];
     const view = views.get(id);
     if (view?.host.contains(document.activeElement)) setFocused(false);
     view?.subscriptions.forEach((subscription) => subscription.dispose());
@@ -320,6 +370,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       // A new shell starts on its own empty prompt, at the workspace root.
       inputLine.value = '';
       workspaceCwd.value = '';
+      cwdStack.value = [];
       // Data/exit subscriptions and the xterm buffer exist before initial replay.
       await bridge.attach(id);
     } catch (cause) {
@@ -333,7 +384,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function select(id: string): void {
     if (!views.has(id)) return;
-    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; }
+    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; cwdStack.value = []; }
     if (!visibleIds.value.includes(id)) {
       visibleIds.value = visibleIds.value.length === 2
         ? visibleIds.value.map((visible) => visible === activeId.value ? id : visible)

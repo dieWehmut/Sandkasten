@@ -410,6 +410,49 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('the directory stack and the shell synonyms are followed too', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, {
+      paths: () => ['main.py', 'my folder/', 'my folder/deep.txt', 'scripts/', 'scripts/task.py'],
+    });
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+    const run = (line: string) => { type(line); type('\r'); };
+
+    // `pushd` moves, and `popd` sends it back to where it was.
+    run('pushd scripts');
+    type('cd ta');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['task.py']);
+    type('\x03'); run('popd');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+
+    // A quoted path is one argument, spaces and all.
+    type('\x03'); run('cd "my folder"');
+    type('python de');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['deep.txt']);
+
+    // The PowerShell and cmd spellings work as well.
+    type('\x03'); run('Set-Location ../scripts');
+    type('python ta');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['task.py']);
+    type('\x03'); run('chdir ..');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+
+    // `popd` with nothing pushed leaves the shell where it is.
+    type('\x03'); run('popd');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+
+    // Nothing the shell would expand is followed: the strip stays usable.
+    type('\x03'); run('cd $HOME');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+    await terminal.dispose();
+  });
+
   test('the accepted suggestions survive a restart', async () => {
     const host = fakeBridge();
     host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);

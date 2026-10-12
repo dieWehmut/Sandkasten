@@ -12,6 +12,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportDirectorySuggestions = false;
   let reportNestedSuggestions = false;
   let reportCwdSuggestions = false;
+  let reportPushdSuggestions = false;
   let reportPowerShellRun = false;
   let reportJavaScriptRun = false;
   let reportBashRun = false;
@@ -169,6 +170,19 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await enter(firstId, 'echo E2E^_CWD^_OK');
   await waitScreen(firstId, 'E2E_CWD_OK');
 
+  // The shell's directory stack is followed as well: `pushd` completes inside
+  // that folder, and `popd` puts the completions back where they were.
+  await enter(firstId, 'pushd scripts');
+  await enter(firstId, 'echo E2E^_PUSHD^_IN');
+  await waitScreen(firstId, 'E2E_PUSHD_IN');
+  await page.keyboard.type('cd ta');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="task.py"]`, { timeout: 10_000 });
+  reportPushdSuggestions = true;
+  await page.keyboard.press('Control+c');
+  await enter(firstId, 'popd');
+  await enter(firstId, 'echo E2E^_PUSHD^_OK');
+  await waitScreen(firstId, 'E2E_PUSHD_OK');
+
   // Escape separators in the entered command: the unescaped marker appears
   // only in shell output, so command echo cannot make this assertion pass.
   await enter(firstId, 'echo E2E^_PTY^_READY');
@@ -253,5 +267,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun };
 }
