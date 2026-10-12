@@ -7,8 +7,12 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   cols = 80; rows = 24; options: any = {}; element?: HTMLElement;
   input = (_data: string) => {}; resized = (_size: { cols: number; rows: number }) => {};
   keyHandler: ((event: any) => boolean) | undefined;
+  selection = ''; selected = 0;
   write = vi.fn(); dispose = vi.fn(); focus = vi.fn(); refresh = vi.fn();
   loadAddon = vi.fn();
+  getSelection() { return this.selection; }
+  selectAll() { this.selected += 1; }
+  clearSelection() { this.selection = ''; }
   attachCustomKeyEventHandler(handler: (event: any) => boolean) { this.keyHandler = handler; }
   constructor(options: any) { this.options = options; mocks.terminals.push(this); }
   open(host: HTMLElement) { this.element = document.createElement('div'); host.append(this.element); }
@@ -30,15 +34,64 @@ function fakeBridge() {
     attach: vi.fn(async (id: string) => { data({ id, data: 'initial prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
+    clipboard: { read: vi.fn(async () => 'pasted text'), write: vi.fn(async (_text: string) => true) },
     onData: vi.fn((handler) => { data = handler; return offData; }),
     onExit: vi.fn((handler) => { exit = handler; return offExit; }),
   } satisfies TerminalBridge;
   return { bridge, offData, offExit, data: (id: string, text: string) => data({ id, data: text }), exit: (id: string, exitCode: number) => exit({ id, exitCode }) };
 }
 
+const press = (keys: { key: string; ctrlKey?: boolean; shiftKey?: boolean; metaKey?: boolean; altKey?: boolean }) => ({
+  key: keys.key, ctrlKey: keys.ctrlKey ?? false, shiftKey: keys.shiftKey ?? false,
+  metaKey: keys.metaKey ?? false, altKey: keys.altKey ?? false,
+  preventDefault: () => {}, stopPropagation: () => {},
+});
+
 afterEach(() => { mocks.terminals.length = 0; mocks.fits.length = 0; window.localStorage.clear(); });
 
+test('a browser preview without a clipboard bridge pastes nothing instead of failing', async () => {
+  // The WebUI runs in a plain browser too, where the desktop bridge is absent: the
+  // keys stay ours, and nothing is sent to a shell that is not there.
+  const host = fakeBridge();
+  delete (host.bridge as { clipboard?: unknown }).clipboard;
+  const terminal = useTerminal(host.bridge); await terminal.create();
+  expect(mocks.terminals[0].keyHandler(press({ key: 'v', ctrlKey: true, shiftKey: true }))).toBe(false);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(host.bridge.write).not.toHaveBeenCalled();
+  await terminal.dispose();
+});
+
 describe('app-owned terminal sessions', () => {
+  test('copy and paste are the host clipboard, while Ctrl+C stays with the shell', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    const xterm = mocks.terminals[0];
+    // Ctrl+C and Ctrl+V belong to the shell: a terminal that swallowed them could
+    // never interrupt a program or send a literal control character.
+    expect(xterm.keyHandler(press({ key: 'c', ctrlKey: true }))).toBe(true);
+    expect(xterm.keyHandler(press({ key: 'v', ctrlKey: true }))).toBe(true);
+    expect(xterm.keyHandler(press({ key: 'a', ctrlKey: true }))).toBe(true);
+    expect(host.bridge.clipboard!.write).not.toHaveBeenCalled();
+
+    // Copy takes the selection and only the selection.
+    expect(xterm.keyHandler(press({ key: 'c', ctrlKey: true, shiftKey: true }))).toBe(false);
+    xterm.selection = 'picked up text';
+    xterm.keyHandler(press({ key: 'c', ctrlKey: true, shiftKey: true }));
+    await vi.waitFor(() => expect(host.bridge.clipboard!.write).toHaveBeenCalledWith('picked up text'));
+    // The macOS spelling is Command+C, without Shift.
+    xterm.selection = 'again';
+    xterm.keyHandler(press({ key: 'c', metaKey: true }));
+    await vi.waitFor(() => expect(host.bridge.clipboard!.write).toHaveBeenCalledWith('again'));
+
+    // Paste sends the clipboard to the PTY as input.
+    expect(xterm.keyHandler(press({ key: 'v', ctrlKey: true, shiftKey: true }))).toBe(false);
+    await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' }));
+
+    // Select all is ours too, and it is not typed into the shell.
+    expect(xterm.keyHandler(press({ key: 'a', ctrlKey: true, shiftKey: true }))).toBe(false);
+    expect(xterm.selected).toBe(1);
+    await terminal.dispose();
+  });
+
   test('discovers actual profiles and installs the buffer before attach replays the prompt', async () => {
     const host = fakeBridge(); const terminal = useTerminal(host.bridge);
     await terminal.loadProfiles(); await terminal.create('cmd');

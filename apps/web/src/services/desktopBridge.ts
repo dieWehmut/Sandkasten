@@ -136,6 +136,14 @@ export interface TerminalBridge {
   setFocused(focused: boolean): Promise<void>;
   onData(handler: (event: { id: string; data: string }) => void): () => void;
   onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
+  /**
+   * The host clipboard. A sandboxed renderer cannot read it without a permission
+   * prompt, so the desktop app goes through the main process.
+   */
+  clipboard?: {
+    read(): Promise<string>;
+    write(text: string): Promise<boolean>;
+  };
 }
 
 export interface DesktopBridge {

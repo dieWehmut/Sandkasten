@@ -379,6 +379,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // taken while a suggestion exists, so the shell keeps every other key.
       terminal.attachCustomKeyEventHandler((event) => {
         if (isTerminalShortcut(event)) return false;
+        const clipboard = clipboardActionFor(event);
+        if (clipboard) {
+          void useClipboard(clipboard);
+          return false;
+        }
         if (isSuggestionShortcut(event) && id === activeId.value && suggestions.value.length) {
           void complete(suggestions.value[0]);
           return false;
@@ -387,6 +392,33 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       });
       const host = document.createElement('div');
       host.className = 'terminal-host';
+
+      /** Copy, paste and select-all for this view. */
+      async function useClipboard(action: 'copy' | 'paste' | 'select-all') {
+        try {
+          if (action === 'select-all') {
+            terminal.selectAll();
+            return;
+          }
+          if (action === 'copy') {
+            const selection = terminal.getSelection();
+            if (!selection) return;
+            if (bridge.clipboard) await bridge.clipboard.write(selection);
+            else await navigator.clipboard?.writeText(selection);
+            return;
+          }
+          // Paste goes to the shell as input, the same way typed text does.
+          const text = bridge.clipboard
+            ? await bridge.clipboard.read()
+            : await navigator.clipboard?.readText() ?? '';
+          if (!text) return;
+          if (sessions.value.find((entry) => entry.id === id)?.exitCode === undefined) {
+            await bridge.write({ id, data: text });
+          }
+        } catch (error) {
+          report(error);
+        }
+      }
       const subscriptions = [
         terminal.onData((data) => {
           // Only the session the user is looking at owns the suggestion model.
@@ -550,6 +582,23 @@ export function isTerminalShortcut(event: KeyboardEvent): boolean {
 /** The editor-style accept key; Tab stays with the shell's own completion. */
 export function isSuggestionShortcut(event: KeyboardEvent): boolean {
   return (event.ctrlKey || event.metaKey) && !event.altKey && (event.code === 'Space' || event.key === ' ');
+}
+
+/**
+ * The clipboard keys, which the terminal has to take before xterm sends them to the
+ * shell: `Ctrl+V` belongs to the shell, so copy and paste are `Ctrl+Shift+…` on
+ * Windows and Linux and plain `Cmd+…` on macOS, as in the terminals people know.
+ */
+export function clipboardActionFor(event: KeyboardEvent): 'copy' | 'paste' | 'select-all' | null {
+  if (event.altKey) return null;
+  const key = event.key?.toLowerCase();
+  const command = event.metaKey && !event.ctrlKey;
+  const controlShift = event.ctrlKey && event.shiftKey;
+  if (!command && !controlShift) return null;
+  if (key === 'c') return 'copy';
+  if (key === 'v') return 'paste';
+  if (key === 'a' && controlShift) return 'select-all';
+  return null;
 }
 
 export type TerminalController = ReturnType<typeof useTerminal>;
