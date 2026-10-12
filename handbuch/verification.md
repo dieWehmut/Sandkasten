@@ -20,7 +20,7 @@ each one.
 
 | Command | Proves |
 | --- | --- |
-| `make test` → `werkzeug/quality/test.sh` | Go API tests, Rust runner tests, WebUI unit tests + production build + distribution freshness + Pages artifact contract, apps layout contract, CLI tests, desktop shell tests. Missing tools are reported as failures here, so it is the repository's strictest entry. |
+| `make test` → `werkzeug/quality/test.sh` | The repository's strictest entry, and it names its steps the way the script does: Go API tests, Rust runner tests, WebUI dependency install, WebUI unit tests, WebUI production build, WebUI distribution freshness, WebUI Pages artifact contract, Apps layout contract, CLI tests, Desktop shell tests. A missing tool is a failure here rather than something to skip. |
 | `make verify-desktop` → `apps/desktop npm run verify` | The three machine checks below, with one summary line each. |
 
 ## Server
