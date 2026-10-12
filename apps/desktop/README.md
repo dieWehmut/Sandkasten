@@ -74,7 +74,9 @@ The desktop build adds these things the browser cannot do:
    and Ctrl+C. `Ctrl+Shift+C`, `Ctrl+Shift+V` and `Ctrl+Shift+A` copy, paste and
    select all (`Cmd+C` and `Cmd+V` on macOS, `Shift+Insert` for paste as well),
    through the main process because a sandboxed renderer cannot read the clipboard
-   without a prompt; `Ctrl+C`, `Ctrl+V` and `Ctrl+A` stay with the shell, which is
+   without a prompt; paste goes back in through xterm, so a shell that asked for
+   bracketed paste gets the text wrapped and a pasted script does not run line by
+   line; `Ctrl+C`, `Ctrl+V` and `Ctrl+A` stay with the shell, which is
    what a terminal owes them. A right-click offers the same actions as a menu,
    with copy disabled while nothing is selected, and a middle-click pastes the X11
    primary selection the way Linux terminals do (the main process answers that
