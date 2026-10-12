@@ -5,12 +5,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createPreviewServer, resolveOptions } from '../scripts/serve.mjs';
+import { createPreviewServer, contentSecurityPolicy, resolveOptions } from '../scripts/serve.mjs';
+
+const POLICY = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'";
 
 async function createDistribution() {
   const directory = await mkdtemp(path.join(tmpdir(), 'sandkasten-serve-'));
   for (const [name, body] of Object.entries({
-    'index.html': '<!doctype html><div id="app"></div>',
+    'index.html': `<!doctype html><head><meta http-equiv="Content-Security-Policy" content="${POLICY}"></head><div id="app"></div>`,
     'app.js': 'globalThis.__PREVIEW__ = true;',
     'styles.css': ':root {}',
     'config.js': "globalThis.SANDKASTEN_CONFIG ??= { apiBaseUrl: '' };",
@@ -39,6 +41,36 @@ test('serves the four distribution files with no-store caching', async () => {
     }
     const index = await fetch(`${origin}/`).then((response) => response.text());
     assert.match(index, /id="app"/);
+  } finally {
+    server.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('sends the policy the shell declares as a header as well', async () => {
+  const directory = await createDistribution();
+  const { server, origin } = await startServer({ directory });
+  try {
+    for (const name of ['index.html', 'app.js', 'styles.css', 'config.js']) {
+      const response = await fetch(`${origin}/${name}`);
+      assert.equal(response.headers.get('content-security-policy'), POLICY, `${name} must carry the policy`);
+    }
+  } finally {
+    server.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a shell without a policy is served without inventing one', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'sandkasten-serve-'));
+  await writeFile(path.join(directory, 'index.html'), '<!doctype html><div id="app"></div>');
+  for (const name of ['app.js', 'styles.css', 'config.js']) await writeFile(path.join(directory, name), '/* x */');
+  const { server, origin } = await startServer({ directory });
+  try {
+    const response = await fetch(`${origin}/`);
+    assert.equal(response.headers.get('content-security-policy'), null);
+    assert.equal(contentSecurityPolicy('<meta http-equiv="content-security-policy" content="x">'), 'x');
+    assert.equal(contentSecurityPolicy(undefined), '');
   } finally {
     server.close();
     await rm(directory, { recursive: true, force: true });

@@ -7,6 +7,18 @@ import { fileURLToPath } from 'node:url';
 
 const distributionFiles = new Set(['index.html', 'app.js', 'styles.css', 'config.js']);
 
+/**
+ * The policy the shell declares in its own `<meta>` tag. A static host cannot set
+ * headers, so the tag is the source of truth and the preview server sends the very
+ * same value as a header, where a header is possible at all.
+ */
+export function contentSecurityPolicy(html) {
+  const tag = /<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i.exec(String(html ?? ''))?.[0] ?? '';
+  // The policy itself contains single quotes, so only the quote that opened the
+  // attribute can close it.
+  return /content="([^"]*)"/i.exec(tag)?.[1] ?? /content='([^']*)'/i.exec(tag)?.[1] ?? '';
+}
+
 export function resolveOptions(argv, environment = process.env) {
   let directory = environment.SANDKASTEN_PREVIEW_DIR ?? null;
   let host = '127.0.0.1';
@@ -43,6 +55,11 @@ export async function createPreviewServer({ directory } = {}) {
     if (!entry || !entry.isFile()) throw new Error(`distribution is missing ${name}: ${root}`);
   }
 
+  const index = await readFile(path.join(root, 'index.html'), 'utf8');
+  // Read once: the shell's own tag is what the header repeats, so the two cannot
+  // drift apart.
+  const policy = contentSecurityPolicy(index);
+
   const server = createServer(async (request, response) => {
     const requested = new URL(request.url, 'http://localhost').pathname;
     const name = requested === '/' ? 'index.html' : requested.replace(/^\/+/, '');
@@ -67,11 +84,13 @@ export async function createPreviewServer({ directory } = {}) {
       'styles.css': 'text/css; charset=utf-8',
     };
     const body = await readFile(target);
-    response.writeHead(200, {
+    const headers = {
       'cache-control': 'no-store',
       'content-length': body.length,
       'content-type': contentTypes[name],
-    });
+    };
+    if (policy) headers['content-security-policy'] = policy;
+    response.writeHead(200, headers);
     response.end(body);
   });
 
