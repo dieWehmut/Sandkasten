@@ -80,8 +80,10 @@ The desktop build adds these things the browser cannot do:
    running it, and `Ctrl+Space` accepts the first suggestion. Once the command
    word is complete, the last argument completes from the workspace files, and a
    workspace folder completes as a directory argument with its separator
-   (`cd scr` → `scripts/`). A path that needs quoting is inserted with the
-   active shell's own quoting. The
+   (`cd scr` → `scripts/`, and `cd scripts/task` → `scripts/task.py`). A path
+   that needs quoting is inserted with the
+   active shell's own quoting, and what the user already accepted this session
+   leads the matching entries. The
    suggestion model gives up whenever it cannot follow the input
    (history, cursor movement), so it never suggests from a line it lost track
    of, and Tab still belongs to the shell. A WSL
