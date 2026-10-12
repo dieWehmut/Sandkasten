@@ -8,14 +8,14 @@ import { useTranslation } from '../../i18n/useTranslation';
 import FileIcon from '../FileIcon.vue';
 
 const props = withDefaults(defineProps<{
-  tree: WorkspaceTreeNode[];
+  tree: readonly WorkspaceTreeNode[];
   root?: WorkspaceRoot;
   kind: 'memory' | 'desktop';
   activePath: string;
   dirtyPaths?: string[];
   busy?: boolean;
   error?: string;
-  runtimes?: Runtime[];
+  runtimes?: readonly Runtime[];
   creating?: boolean;
   hideHeading?: boolean;
   revealRequest?: { path: string; token: number };

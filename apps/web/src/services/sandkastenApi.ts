@@ -5,39 +5,39 @@ import {
 import { isDesktopRuntime } from './desktopBridge';
 
 export interface Runtime {
-  language: string;
-  version?: string;
-  image?: string;
-  requires_vendor?: boolean;
-  aliases?: string[];
-  status?: string;
-  default_entrypoint?: string;
-  compile_phase?: RuntimePhase;
-  run_phase?: RuntimePhase;
-  default_limits?: RuntimeLimits;
-  max_limits?: RuntimeLimits;
-  phases?: Record<string, unknown>;
-  limits?: Record<string, unknown>;
-  [key: string]: unknown;
+  readonly language: string;
+  readonly version?: string;
+  readonly image?: string;
+  readonly requires_vendor?: boolean;
+  readonly aliases?: readonly string[];
+  readonly status?: string;
+  readonly default_entrypoint?: string;
+  readonly compile_phase?: RuntimePhase;
+  readonly run_phase?: RuntimePhase;
+  readonly default_limits?: RuntimeLimits;
+  readonly max_limits?: RuntimeLimits;
+  readonly phases?: Readonly<Record<string, unknown>>;
+  readonly limits?: Readonly<Record<string, unknown>>;
+  readonly [key: string]: unknown;
 }
 
 export interface RuntimePhase {
-  command?: string[];
-  enabled?: boolean;
-  [key: string]: unknown;
+  readonly command?: readonly string[];
+  readonly enabled?: boolean;
+  readonly [key: string]: unknown;
 }
 
 export interface RuntimeLimits {
-  compile_timeout_ms?: number;
-  run_timeout_ms?: number;
-  memory_limit_bytes?: number;
-  cpu_millis?: number;
-  output_bytes?: number;
-  archive_bytes?: number;
-  stdin_bytes?: number;
-  args?: number;
-  arg_bytes?: number;
-  [key: string]: unknown;
+  readonly compile_timeout_ms?: number;
+  readonly run_timeout_ms?: number;
+  readonly memory_limit_bytes?: number;
+  readonly cpu_millis?: number;
+  readonly output_bytes?: number;
+  readonly archive_bytes?: number;
+  readonly stdin_bytes?: number;
+  readonly args?: number;
+  readonly arg_bytes?: number;
+  readonly [key: string]: unknown;
 }
 
 export interface JobResponse {

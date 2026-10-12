@@ -8,7 +8,7 @@ import RuntimeSelect from '../RuntimeSelect.vue';
 import { useTranslation } from '../../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
-  runtimes: Runtime[];
+  runtimes: readonly Runtime[];
   language: string;
   backend: ExecutionBackend;
   localAvailable?: boolean;

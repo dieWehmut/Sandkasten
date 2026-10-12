@@ -10,11 +10,11 @@ import { languageForPath } from '../editor/language';
 export type WorkspaceStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface WorkspaceFile {
-  path: string;
-  name: string;
-  language: string;
-  source: string;
-  dirty: boolean;
+  readonly path: string;
+  readonly name: string;
+  readonly language: string;
+  readonly source: string;
+  readonly dirty: boolean;
 }
 
 export interface WorkspaceController {
@@ -23,8 +23,8 @@ export interface WorkspaceController {
   status: Readonly<Ref<WorkspaceStatus>>;
   error: Readonly<Ref<string | undefined>>;
   root: Readonly<Ref<WorkspaceRoot | undefined>>;
-  tree: Readonly<Ref<WorkspaceTreeNode[]>>;
-  files: Readonly<Ref<WorkspaceFile[]>>;
+  tree: Readonly<Ref<readonly WorkspaceTreeNode[]>>;
+  files: Readonly<Ref<readonly WorkspaceFile[]>>;
   activePath: Readonly<Ref<string>>;
   activeFile: ComputedRef<WorkspaceFile | undefined>;
   dirtyCount: ComputedRef<number>;

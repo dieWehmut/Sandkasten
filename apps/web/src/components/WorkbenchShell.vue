@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<{
   inspectorOpen: boolean;
   layoutMode?: LayoutMode;
   history: readonly DeepReadonly<RunHistoryItem>[];
-  runtimes: Runtime[];
+  runtimes: readonly Runtime[];
   runtime?: Runtime;
   language: string;
   source: string;
@@ -55,7 +55,7 @@ const props = withDefaults(defineProps<{
   panelMaximized?: boolean;
   files?: readonly WorkspaceFile[];
   activePath?: string;
-  tree?: WorkspaceTreeNode[];
+  tree?: readonly WorkspaceTreeNode[];
   workspaceRoot?: WorkspaceRoot;
   workspaceKind?: 'memory' | 'desktop';
   platform?: string;
@@ -70,7 +70,7 @@ const props = withDefaults(defineProps<{
   isolatedAvailable?: boolean;
   isolatedBackendAvailable?: boolean;
   isolatedHostFilesystem?: 'visible' | 'hidden' | 'unknown';
-  localRuntimes?: LocalRuntimeInfo[];
+  localRuntimes?: readonly LocalRuntimeInfo[];
   cursor?: { line: number; column: number };
   statusText?: string;
   connectionState?: ConnectionState;

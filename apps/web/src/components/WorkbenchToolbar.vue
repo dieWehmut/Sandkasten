@@ -5,7 +5,7 @@ import RunControls from './RunControls.vue';
 import RuntimeSelect from './RuntimeSelect.vue';
 
 defineProps<{
-  runtimes: Runtime[];
+  runtimes: readonly Runtime[];
   language: string;
   phase: ExecutionPhase;
   canRun: boolean;

@@ -10,7 +10,7 @@ import WorkbenchToolbar from './WorkbenchToolbar.vue';
 import { useTranslation } from '../i18n/useTranslation';
 
 defineProps<{
-  runtimes: Runtime[];
+  runtimes: readonly Runtime[];
   language: string;
   source: string;
   phase: ExecutionPhase;

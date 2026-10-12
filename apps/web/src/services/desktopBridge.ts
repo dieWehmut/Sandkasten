@@ -8,18 +8,18 @@ export interface WorkspaceRoot {
 }
 
 export interface WorkspaceTreeNode {
-  path: string;
-  name: string;
-  type: 'file' | 'directory';
-  children?: WorkspaceTreeNode[];
+  readonly path: string;
+  readonly name: string;
+  readonly type: 'file' | 'directory';
+  readonly children?: readonly WorkspaceTreeNode[];
 }
 
 export interface LocalRuntimeInfo {
-  language: string;
-  label: string;
-  command: string;
-  available: boolean;
-  extensions: string[];
+  readonly language: string;
+  readonly label: string;
+  readonly command: string;
+  readonly available: boolean;
+  readonly extensions: readonly string[];
 }
 
 export interface LocalRunRequest {

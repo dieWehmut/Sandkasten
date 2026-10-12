@@ -2,7 +2,7 @@
 import type { Runtime } from '../services/sandkastenApi';
 import { useTranslation } from '../i18n/useTranslation';
 
-defineProps<{ modelValue: string; runtimes: Runtime[]; disabled?: boolean }>();
+defineProps<{ modelValue: string; runtimes: readonly Runtime[]; disabled?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 const t = useTranslation();
 
