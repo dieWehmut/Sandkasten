@@ -13,6 +13,8 @@ const props = withDefaults(defineProps<{
   backend: ExecutionBackend;
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
+  /** Whether the distro can sandbox at all, separate from this language. */
+  isolatedBackendAvailable?: boolean;
   phase: ExecutionPhase;
   canRun: boolean;
   canResume?: boolean;
@@ -37,7 +39,8 @@ const t = useTranslation();
 const backendHint = computed(() => {
   if (props.backend === 'api') return t('ide.backend.apiHint');
   if (props.backend === 'isolated') {
-    return props.isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedUnavailable');
+    if (!props.isolatedBackendAvailable) return t('ide.backend.isolatedUnavailable');
+    return props.isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedLanguageUnavailable');
   }
   return props.localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable');
 });

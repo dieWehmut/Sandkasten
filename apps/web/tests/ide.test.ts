@@ -77,7 +77,10 @@ function stubBridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge & { w
       stop: vi.fn(async () => true),
     },
     isolated: {
-      detect: vi.fn(async () => ({ available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true })),
+      detect: vi.fn(async () => ({
+        available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true,
+        languages: { python: true, javascript: true, c: true, cpp: true, java: true, bash: true, perl: true },
+      })),
       run: vi.fn(async (request: { jobId: string; language: string }) => ({
         jobId: request.jobId,
         status: 'JOB_STATUS_SUCCEEDED',
@@ -816,11 +819,11 @@ describe('desktop workbench', () => {
     expect(bridge.isolated.detect).toHaveBeenCalled();
     expect(bridge.isolated.run).toHaveBeenCalledTimes(1);
     expect(bridge.runner.run).not.toHaveBeenCalled();
-    const request = bridge.isolated.run.mock.calls[0][0] as { path: string; language: string; command: string; args: string[]; jobId: string };
+    const request = bridge.isolated.run.mock.calls[0][0] as Record<string, unknown>;
     expect(request.path).toBe('main.py');
     expect(request.language).toBe('python');
-    expect(request.command).toBe('python3');
-    expect(request.args).toEqual(['{file}']);
+    // The renderer names a language only; the main process resolves the command.
+    expect(request.command).toBeUndefined();
     expect(request.jobId).toMatch(/^local-/);
     expect(wrapper.text()).toContain('isolated hello');
     expect(wrapper.get('[data-testid="ide-status-phase"]').text()).toBe('Succeeded');
@@ -862,7 +865,7 @@ describe('desktop workbench', () => {
   test('keeps the isolated backend unavailable when WSL2 cannot sandbox', async () => {
     const bridge = stubBridge({
       isolated: {
-        detect: vi.fn(async () => ({ available: false, distro: '', pidIsolated: false, networkBlocked: false })),
+        detect: vi.fn(async () => ({ available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} })),
         run: vi.fn(),
         stop: vi.fn(async () => false),
       } as unknown as DesktopBridge['isolated'],

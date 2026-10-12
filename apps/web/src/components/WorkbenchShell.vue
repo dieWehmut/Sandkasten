@@ -68,6 +68,7 @@ const props = withDefaults(defineProps<{
   backend?: ExecutionBackend;
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
+  isolatedBackendAvailable?: boolean;
   localRuntimes?: LocalRuntimeInfo[];
   cursor?: { line: number; column: number };
   statusText?: string;
@@ -259,6 +260,7 @@ const styles = computed(() => (isIde.value
           :backend="backend"
           :local-available="localAvailable"
           :isolated-available="isolatedAvailable"
+          :isolated-backend-available="isolatedBackendAvailable"
           :phase="phase"
           :can-run="canRun"
           :can-resume="canResume"

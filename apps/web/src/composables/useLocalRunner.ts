@@ -9,23 +9,6 @@ import { useRunHistory, type RunHistory } from './useRunHistory';
 // it as a local run.
 export type LocalRunnerPhase = 'unavailable' | 'ready' | 'running' | 'completed' | 'error';
 
-// Languages the isolated backend can drive in the distro. The command names the
-// binary inside WSL, which differs from the host names for Python and Node.
-export const ISOLATED_LANGUAGES: ReadonlyMap<string, string> = new Map([
-  ['python', 'python3'],
-  ['javascript', 'node'],
-  ['typescript', 'node'],
-  ['c', 'gcc'],
-  ['cpp', 'g++'],
-  ['java', 'java'],
-  ['bash', 'bash'],
-  ['perl', 'perl'],
-]);
-
-export function isolatedCommandFor(language: string): string {
-  return ISOLATED_LANGUAGES.get(language) ?? '';
-}
-
 export interface LocalRunRequest {
   path: string;
   language: string;
@@ -73,7 +56,7 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
   // Which bridge the active job belongs to, so `stop` cancels the same one.
   let activeBackend: 'local' | 'isolated' = 'local';
   const available = computed(() => bridge !== undefined);
-  const isolation = ref<IsolationStatus>({ available: false, distro: '', pidIsolated: false, networkBlocked: false });
+  const isolation = ref<IsolationStatus>({ available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} });
 
   let generation = 0;
 
@@ -82,11 +65,12 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
     return runtimes.value.some((runtime) => runtime.language === language && runtime.available);
   }
 
-  // An isolated run needs the namespace sandbox to be usable *and* the runtime
-  // to exist inside the distro, which is a narrower set than the host PATH.
+  // An isolated run needs the namespace sandbox to be usable *and* every binary
+  // that language needs to exist inside the distro, which the detection reports
+  // per language.
   function supportsIsolated(language: string): boolean {
     if (!language || !isolation.value.available) return false;
-    return ISOLATED_LANGUAGES.has(language);
+    return isolation.value.languages?.[language] === true;
   }
 
   async function load(): Promise<void> {
@@ -104,9 +88,9 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
     try {
       isolation.value = bridge.isolated
         ? await bridge.isolated.detect()
-        : { available: false, distro: '', pidIsolated: false, networkBlocked: false };
+        : { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
     } catch {
-      isolation.value = { available: false, distro: '', pidIsolated: false, networkBlocked: false };
+      isolation.value = { available: false, distro: '', pidIsolated: false, networkBlocked: false, languages: {} };
     }
   }
 
@@ -168,9 +152,8 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
       phase.value = 'error';
       return;
     }
-    const command = isolatedCommandFor(request.language);
-    if (!command) {
-      error.value = `Isolated execution does not support ${request.language || 'this runtime'}.`;
+    if (!supportsIsolated(request.language)) {
+      error.value = `This distro cannot run ${request.language || 'that runtime'} in isolation.`;
       phase.value = 'error';
       return;
     }
@@ -187,8 +170,6 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
         jobId,
         path: request.path,
         language: request.language,
-        command,
-        args: ['{file}'],
         timeoutMs: request.timeoutMs,
       });
       if (owner !== generation) return;

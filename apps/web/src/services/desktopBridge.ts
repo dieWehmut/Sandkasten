@@ -33,8 +33,6 @@ export interface IsolatedRunRequest {
   jobId: string;
   path: string;
   language: string;
-  command: string;
-  args?: string[];
   timeoutMs?: number;
 }
 
@@ -43,6 +41,8 @@ export interface IsolationStatus {
   distro: string;
   pidIsolated: boolean;
   networkBlocked: boolean;
+  /** Which isolated languages every required binary exists for, per distro. */
+  languages: Record<string, boolean>;
 }
 
 export interface LocalRunOutput {
