@@ -15,6 +15,9 @@ const scratch = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-refinement-'));
 const workspace = path.join(scratch, 'workspace');
 await mkdir(workspace);
 await writeFile(path.join(workspace, 'hello.py'), 'print("E2E_TERMINAL_RUN")\n');
+// A folder in the workspace gives the terminal a directory argument to complete.
+await mkdir(path.join(workspace, 'scripts'));
+await writeFile(path.join(workspace, 'scripts', 'task.py'), 'print("task")\n');
 await mkdir(outputRoot, { recursive: true });
 
 let driver;

@@ -9,6 +9,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportRunInTerminal = false;
   let reportSuggestions = false;
   let reportArgumentSuggestions = false;
+  let reportDirectorySuggestions = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -83,6 +84,16 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Control+c');
   await enter(firstId, 'echo E2E^_ARGS^_OK');
   await waitScreen(firstId, 'E2E_ARGS_OK');
+
+  // A folder completes as a directory argument, carrying its separator.
+  await page.keyboard.type('cd scr');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="scripts/"]`, { timeout: 10_000 });
+  await page.click(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="scripts/"]`);
+  await waitScreen(firstId, 'cd scripts/');
+  reportDirectorySuggestions = true;
+  await page.keyboard.press('Control+c');
+  await enter(firstId, 'echo E2E^_DIRS^_OK');
+  await waitScreen(firstId, 'E2E_DIRS_OK');
 
   // Escape separators in the entered command: the unescaped marker appears
   // only in shell output, so command echo cannot make this assertion pass.
@@ -168,5 +179,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions };
 }
