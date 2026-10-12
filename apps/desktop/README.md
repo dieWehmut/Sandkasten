@@ -72,9 +72,10 @@ The desktop build adds these things the browser cannot do:
    elsewhere — starts sessions with xterm.js over a real PTY in the main
    process, and supports new sessions, switching, split panes, close, resize,
    and Ctrl+C. `Ctrl+Shift+C`, `Ctrl+Shift+V` and `Ctrl+Shift+A` copy, paste and
-   select all (`Cmd+C` and `Cmd+V` on macOS), through the main process because a
-   sandboxed renderer cannot read the clipboard without a prompt; `Ctrl+C`,
-   `Ctrl+V` and `Ctrl+A` stay with the shell, which is what a terminal owes them.
+   select all (`Cmd+C` and `Cmd+V` on macOS, `Shift+Insert` for paste as well),
+   through the main process because a sandboxed renderer cannot read the clipboard
+   without a prompt; `Ctrl+C`, `Ctrl+V` and `Ctrl+A` stay with the shell, which is
+   what a terminal owes them.
    Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
@@ -335,6 +336,9 @@ commands the shell reports about itself, with the real cmdlet list behind it. It
 also writes to the host clipboard and pastes it into the shell, recording that
 instead when the session has no clipboard of its own — a bare Electron probe on
 this machine returns the empty string, so the run says so rather than failing. The
+same step proves the clipboard keys never reach the shell: the running program
+prints again two seconds after `Ctrl+Shift+C` and `Ctrl+Shift+A`, and then `Ctrl+C`
+interrupts it. The
 same command runs against the packaged executable through
 `SANDKASTEN_E2E_EXECUTABLE`.
 
