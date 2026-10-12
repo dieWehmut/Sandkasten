@@ -184,7 +184,8 @@ File / Run / View / Help 菜单(菜单与页面共用同一批快捷键命令)�
 目录并在后台刷新(冷启动的 WSL 扫描需要数秒,而列表极少变化)。` .ps1` 文件也纳入工作台:
 编辑器按 PowerShell 运行时打开,「在终端中运行当前文件」在 PowerShell 会话里用调用运算符直接执行,
 其它 shell 则请宿主 PowerShell 以 `-File` 运行(编辑器与本地运行器的语言/二进制映射由测试保持一致)。在终端里键入命令开头时,会在提示符上方提示该 shell 可运行的命令(最多 5 条,**shell 自报命令与 PATH 可执行
-文件轮流占用名额**,避免 PowerShell 的 cmdlet 被 PATH 上的命令挤掉),点选或 `Ctrl+Space` 只补全
+文件轮流占用名额**,避免 PowerShell 的 cmdlet 被 PATH 上的命令挤掉;shell 自报的条目带虚线下划线,悬停提示
+会说明它是 cmdlet/内建命令),点选或 `Ctrl+Space` 只补全
 剩余字符、不直接执行;命令词之后再输入时,会用**工作区文件与文件夹**补全参数(文件夹带结尾分隔符,
 如 `cd scr` → `scripts/`、`cd scripts/task` → `scripts/task.py`),含空格的路径按当前 shell 家族的
 引用规则插入,本次会话已选用过的条目优先显示(该历史会跨重启保留,并同样影响命令面板中 shell 命令的排序);
