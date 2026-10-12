@@ -172,6 +172,36 @@ function commandName(fileName, extensions) {
 }
 
 /**
+ * Asks a shell for the commands it runs without a file behind it and adds the ones
+ * the list does not carry yet. A cold or loaded host can miss the first budget and
+ * the answer is cached, so one retry is cheaper than a list without them.
+ */
+async function reportShellCommands(profile, { runShell, timeoutMs, limit, windows }) {
+  const command = shellReportCommand(profile?.family);
+  if (!command) return [];
+  let answer = await runShell(profile, command, { timeoutMs });
+  if (!String(answer ?? '').trim()) answer = await runShell(profile, command, { timeoutMs });
+  return uniqueNames(
+    String(answer ?? '').split(/\r?\n/).filter((line) => isReportedCommandName(line)),
+    limit,
+    windows,
+  );
+}
+
+/** Adds names to a list, ignoring the ones it already carries. */
+function mergeCommands(names, shellReported, incoming, { limit, windows }) {
+  const seen = new Set(names.map((name) => (windows ? name.toLowerCase() : name)));
+  for (const name of incoming) {
+    const identity = windows ? name.toLowerCase() : name;
+    if (seen.has(identity)) continue;
+    if (names.length >= limit) break;
+    seen.add(identity);
+    names.push(name);
+    shellReported.push(name);
+  }
+}
+
+/**
  * The commands a session can run, split by where they come from: the
  * executables the PATH holds, and the commands the shell reports about itself
  * (a cmdlet has no file behind it). The renderer shows the difference, so the
@@ -195,26 +225,8 @@ export async function discoverTerminalCommandList(profile, {
     const listing = await runShell(profile, DISTRO_LIST_COMMANDS, { timeoutMs: distroTimeoutMs });
     const names = uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false);
     const shellReported = [];
-    const report = shellReportCommand(profile.family);
-    if (report) {
-      let reported = await runShell(profile, report, { timeoutMs: distroTimeoutMs });
-      if (!String(reported ?? '').trim()) {
-        reported = await runShell(profile, report, { timeoutMs: distroTimeoutMs });
-      }
-      const seen = new Set(names);
-      const found = uniqueNames(
-        String(reported ?? '').split(/\r?\n/).filter((line) => isReportedCommandName(line)),
-        limit,
-        false,
-      );
-      for (const name of found) {
-        if (seen.has(name)) continue;
-        if (names.length >= limit) break;
-        seen.add(name);
-        names.push(name);
-        shellReported.push(name);
-      }
-    }
+    const reported = await reportShellCommands(profile, { runShell, timeoutMs: distroTimeoutMs, limit, windows: false });
+    mergeCommands(names, shellReported, reported, { limit, windows: false });
     return { names, shellReported };
   }
   const windows = platform === 'win32';
@@ -256,39 +268,12 @@ export async function discoverTerminalCommandList(profile, {
   }
   // A cmdlet, an alias or a builtin is a command the shell runs without a file
   // behind it, so the shell is asked for its own list and that joins the PATH
-  // names. A cold or loaded host can miss the first budget, and the answer is
-  // cached for a while, so one retry is cheaper than a list without the shell's
-  // own commands.
-  const report = shellReportCommand(profile?.family);
-  if (report) {
-    let reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
-    if (!String(reported ?? '').trim()) {
-      reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
-    }
-    const names = uniqueNames(
-      String(reported ?? '').split(/\r?\n/).filter((line) => isReportedCommandName(line)),
-      limit,
-      windows,
-    );
-    for (const name of names) {
-      const identity = windows ? name.toLowerCase() : name;
-      if (seen.has(identity)) continue;
-      seen.add(identity);
-      commands.push(name);
-      shellReported.push(name);
-      if (commands.length >= limit) break;
-    }
-  }
+  // names.
+  const reported = await reportShellCommands(profile, { runShell, timeoutMs: reportTimeoutMs, limit, windows });
+  mergeCommands(commands, shellReported, reported, { limit, windows });
   // A shell whose own commands cannot be listed — cmd's internals — contributes
   // them from the written-down list instead.
-  for (const name of SHELL_INTERNAL_COMMANDS[profile?.family] ?? []) {
-    const identity = windows ? name.toLowerCase() : name;
-    if (seen.has(identity)) continue;
-    seen.add(identity);
-    commands.push(name);
-    shellReported.push(name);
-    if (commands.length >= limit) break;
-  }
+  mergeCommands(commands, shellReported, shellInternalCommands(profile?.family), { limit, windows });
   return { names: commands, shellReported };
 }
 
