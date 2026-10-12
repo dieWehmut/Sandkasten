@@ -103,19 +103,13 @@ function parseProcessFacts(stdout) {
   };
 }
 
-/**
- * A cancellation has to reach the payload, not just the WSL client: the fixture
- * starts a payload that sleeps, waits until it is really running in the distro,
- * cancels the run, and then counts what is left. The pattern is written with a
- * character class so the counting command cannot match itself.
- */
-async function runCancellationProbe(runner, root, distro, timeoutMs) {
-  const file = 'cancel.py';
-  await writeFile(path.join(root, file), 'import time\nprint("CANCEL_READY", flush=True)\ntime.sleep(120)\n', 'utf8');
-  const jobId = 'verify-cancellation';
+/** Counts the processes of one sandbox from inside the distro. */
+async function sandboxCounter(distro, jobId) {
   const directory = sandboxDirectory(jobId);
+  // The pattern is written with a character class so the counting command, whose
+  // own command line carries the bracketed form, cannot match itself.
   const pattern = `[${directory.slice(0, 1)}]${directory.slice(1)}/`;
-  const survivors = async () => {
+  return async () => {
     try {
       const { stdout } = await execute('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', `pgrep -f '${pattern}' | wc -l`], {
         encoding: 'utf8', timeout: 30_000, windowsHide: true,
@@ -125,6 +119,18 @@ async function runCancellationProbe(runner, root, distro, timeoutMs) {
       return 0;
     }
   };
+}
+
+/**
+ * A cancellation has to reach the payload, not just the WSL client: the fixture
+ * starts a payload that sleeps, waits until it is really running in the distro,
+ * cancels the run, and then counts what is left.
+ */
+async function runCancellationProbe(runner, root, distro, timeoutMs) {
+  const file = 'cancel.py';
+  await writeFile(path.join(root, file), 'import time\nprint("CANCEL_READY", flush=True)\ntime.sleep(120)\n', 'utf8');
+  const jobId = 'verify-cancellation';
+  const survivors = await sandboxCounter(distro, jobId);
 
   const started = Date.now();
   const pending = runner.run({
@@ -142,6 +148,27 @@ async function runCancellationProbe(runner, root, distro, timeoutMs) {
   // The kill travels on its own; give it a moment before counting the survivors.
   await new Promise((resolve) => setTimeout(resolve, 500));
   return { result, durationMs: Date.now() - started, running, left: await survivors() };
+}
+
+/**
+ * A payload that prints past the cap has to be stopped, not merely truncated:
+ * otherwise it burns the machine until the time limit and is reported as a
+ * timeout, while its output was already discarded.
+ */
+async function runOutputLimitProbe(runner, root, distro, timeoutMs) {
+  const file = 'flood.py';
+  await writeFile(path.join(root, file), 'while True:\n    print("x" * 4096)\n', 'utf8');
+  const jobId = 'verify-output-limit';
+  const survivors = await sandboxCounter(distro, jobId);
+  const maxOutputBytes = 16 * 1024;
+
+  const started = Date.now();
+  const result = await runner.run({
+    jobId, path: file, absolutePath: resolveInsideRoot(root, file),
+    language: 'python', command: 'python3', args: ['{file}'], timeoutMs, maxOutputBytes,
+  }, { root });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { result, durationMs: Date.now() - started, kept: result.stdout.length, left: await survivors(), maxOutputBytes };
 }
 
 export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, distros } = {}) {
@@ -242,6 +269,25 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
         id: 'cancellation', label: 'Cancellation', kind: 'isolation',
         status: reason ? 'failed' : 'ok', jobStatus: result.status, note, reason,
         durationMs: cancellation.durationMs, stdout: brief(result.stdout), stderr: brief(result.stderr),
+      });
+
+      const outputLimit = await runOutputLimitProbe(runner, root, detection.distro, timeoutMs);
+      let outputReason = '';
+      let outputNote = '';
+      if (outputLimit.result.status !== 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED') {
+        outputReason = `a flooding payload reported ${outputLimit.result.status} after ${outputLimit.durationMs} ms`;
+      } else if (outputLimit.left !== 0) {
+        outputReason = `${outputLimit.left} process(es) kept running after the output limit`;
+      } else {
+        outputNote = `stopped at ${outputLimit.kept} characters and left nothing running`;
+      }
+      results.push({
+        id: 'output-limit', label: 'Output limit', kind: 'isolation',
+        status: outputReason ? 'failed' : 'ok', jobStatus: outputLimit.result.status,
+        note: outputNote, reason: outputReason, durationMs: outputLimit.durationMs,
+        // The payload's output is deliberately repetitive; the note says what
+        // matters about it.
+        stdout: '', stderr: brief(outputLimit.result.stderr),
       });
     }
   } finally {
