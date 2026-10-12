@@ -126,9 +126,11 @@ test('ships a default distro preference order', () => {
 // runner: piped stdio, close events, and a kill that ends the process.
 function fakeSpawn(plan) {
   const calls = [];
+  const children = [];
   const spawnImpl = (command, args, options) => {
     calls.push({ command, args, options });
     const child = new EventEmitter();
+    children.push(child);
     child.stdout = new Readable({ read() {} });
     child.stderr = new Readable({ read() {} });
     let closed = false;
@@ -155,7 +157,7 @@ function fakeSpawn(plan) {
     });
     return child;
   };
-  return { spawnImpl, calls };
+  return { spawnImpl, calls, children };
 }
 
 function runnerWith(plan, options = {}) {
@@ -261,6 +263,17 @@ test('a run past its time limit is reported as a time limit failure', async () =
 
   assert.equal(result.status, 'JOB_STATUS_TIME_LIMIT_EXCEEDED');
   assert.equal(runner.activeRuns.size, 0);
+});
+
+test('a payload past its output limit is stopped, not just truncated', async () => {
+  const fake = fakeSpawn({ stdout: 'x'.repeat(4096), code: 0 });
+  const runner = createIsolatedRunner({ spawnImpl: fake.spawnImpl, distros: ['Ubuntu-22.04'] });
+  const result = await runner.run({ ...RUN_ARGUMENTS, maxOutputBytes: 128 }, { root: 'C:\\ws' });
+
+  assert.equal(result.status, 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED');
+  assert.equal(fake.children[0].killedWith, 'SIGKILL', 'the payload is stopped, not only truncated');
+  // And the cleanup still reaches whatever the kill left behind.
+  assert.ok(fake.calls.some((call) => call.args.join(' ').includes('pkill -9 -f')));
 });
 
 test('a spawn failure is reported as a system error', async () => {

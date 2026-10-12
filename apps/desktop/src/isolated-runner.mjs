@@ -205,14 +205,31 @@ export function createIsolatedRunner(options = {}) {
       onSpawn?.(child);
       const out = { stdout: '', stderr: '', truncated: false };
       const limit = Number.isFinite(maxOutputBytes) && maxOutputBytes > 0 ? maxOutputBytes : 1024 * 1024;
+      // The cap bounds what is kept *and* stops the payload that exceeded it: the
+      // rest of its output is discarded anyway, and letting it run on only burns
+      // the machine until the time limit.
+      const overflow = () => {
+        out.truncated = true;
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // Already gone.
+        }
+      };
       const collect = (stream, key) => {
         stream?.setEncoding?.('utf8');
         stream?.on?.('data', (chunk) => {
-          if (out[key].length >= limit) {
-            out.truncated = true;
+          const kept = out[key].length;
+          if (kept >= limit) {
+            overflow();
             return;
           }
-          out[key] += chunk;
+          // A single write can be larger than the whole budget: keep what fits and
+          // stop the payload, rather than storing the chunk in full.
+          const remaining = limit - kept;
+          const text = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+          out[key] += text;
+          if (text.length < chunk.length) overflow();
         });
       };
       collect(child.stdout, 'stdout');

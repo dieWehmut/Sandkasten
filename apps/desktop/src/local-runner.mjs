@@ -205,19 +205,27 @@ function settleAvailability(spawnImpl, command, probe, timeoutMs) {
   });
 }
 
-function collect(stream, limit, state) {
+// The cap bounds what is kept *and* stops the program that exceeded it: the
+// output past the cap is discarded anyway, and letting the process run on only
+// burns the machine until the time limit. The server's runner has always killed
+// on an output limit; the desktop backends behave the same way.
+function collect(stream, limit, state, onOverflow) {
   if (!stream) return;
   stream.setEncoding('utf8');
   stream.on('data', (chunk) => {
     if (state.bytes >= limit) {
       state.truncated = true;
+      onOverflow?.();
       return;
     }
     const remaining = limit - state.bytes;
     const text = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
     state.text += text;
     state.bytes += Buffer.byteLength(text, 'utf8');
-    if (text.length < chunk.length) state.truncated = true;
+    if (text.length < chunk.length) {
+      state.truncated = true;
+      onOverflow?.();
+    }
   });
 }
 
@@ -233,8 +241,15 @@ function runStep(step, { spawnImpl, cwd, timeoutMs, maxOutputBytes, onSpawn }) {
       return;
     }
     onSpawn?.(child);
-    collect(child.stdout, maxOutputBytes, stdout);
-    collect(child.stderr, maxOutputBytes, stderr);
+    const overflow = () => {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // Already gone.
+      }
+    };
+    collect(child.stdout, maxOutputBytes, stdout, overflow);
+    collect(child.stderr, maxOutputBytes, stderr, overflow);
 
     let timedOut = false;
     const timer = setTimeout(() => {

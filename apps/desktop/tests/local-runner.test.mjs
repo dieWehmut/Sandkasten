@@ -19,9 +19,11 @@ import {
 // runner: piped stdio, close events, and a kill that ends the process.
 function fakeSpawn(plan) {
   const calls = [];
+  const children = [];
   const spawnImpl = (command, args, options) => {
     calls.push({ command, args, options });
     const child = new EventEmitter();
+    children.push(child);
     child.stdout = new Readable({ read() {} });
     child.stderr = new Readable({ read() {} });
     if (plan.error) {
@@ -49,7 +51,7 @@ function fakeSpawn(plan) {
     });
     return child;
   };
-  return { spawnImpl, calls };
+  return { spawnImpl, calls, children };
 }
 
 test('local plans substitute the file and executable placeholders', () => {
@@ -297,8 +299,9 @@ test('output beyond the configured limit is truncated', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-run-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await writeFile(path.join(root, 'main.py'), 'print("x" * 100)\n');
+  const fake = fakeSpawn({ stdout: 'x'.repeat(400), code: 0 });
   const runner = createLocalRunner({
-    spawnImpl: fakeSpawn({ stdout: 'x'.repeat(400), code: 0 }).spawnImpl,
+    spawnImpl: fake.spawnImpl,
     platform: 'linux',
     tmpRoot: path.join(root, '.out'),
     maxOutputBytes: 100,
@@ -307,6 +310,9 @@ test('output beyond the configured limit is truncated', async (t) => {
   assert.equal(result.status, 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED');
   assert.equal(result.stdout.length, 100);
   assert.equal(result.truncated.stdout, true);
+  // The program is stopped as well: output past the cap is discarded anyway, and
+  // letting it run on only burns the time limit.
+  assert.equal(fake.children[0].killedWith, 'SIGKILL', 'a payload past its output limit is killed');
 });
 
 test('a missing workspace file or folder is rejected before spawning', async (t) => {
