@@ -11,6 +11,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportArgumentSuggestions = false;
   let reportDirectorySuggestions = false;
   let reportNestedSuggestions = false;
+  let reportPowerShellRun = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -46,6 +47,18 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.click('[data-command="terminal.runFile"]');
   await waitScreen(firstId, 'E2E_TERMINAL_RUN');
   reportRunInTerminal = true;
+
+  // A PowerShell script is not an argument to an interpreter: the host
+  // PowerShell is asked to run the file, which the fixture proves.
+  await page.click('[data-action="ide-open-hello.ps1"]');
+  await page.waitForSelector('[data-action="ide-tab-hello.ps1"]');
+  await page.keyboard.press('Control+Shift+P');
+  await page.waitForSelector('[data-command="terminal.runFile"]');
+  await page.click('[data-command="terminal.runFile"]');
+  await waitScreen(firstId, 'E2E_PS1_RUN');
+  reportPowerShellRun = true;
+  await page.click('[data-action="ide-open-hello.py"]');
+  await page.waitForSelector('[data-action="ide-tab-hello.py"]');
 
   await page.locator(`${pane(firstId)} .xterm-helper-textarea`).focus();
   await page.keyboard.press('Control+w');
@@ -190,5 +203,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, powershellRun: reportPowerShellRun };
 }

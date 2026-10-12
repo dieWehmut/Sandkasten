@@ -6,7 +6,8 @@ export type ShellFamily = 'powershell' | 'cmd' | 'bash' | 'posix' | 'wsl' | 'nu'
 
 // One command that runs a workspace file directly in a shell. Compiled
 // languages are absent on purpose: they need a build step, which is what the
-// run backend is for.
+// run backend is for. PowerShell is handled separately below, because a script
+// file is not an argument to an interpreter.
 const TERMINAL_INTERPRETERS: Readonly<Record<string, string>> = {
   python: 'python',
   javascript: 'node',
@@ -19,6 +20,11 @@ const TERMINAL_INTERPRETERS: Readonly<Record<string, string>> = {
   lua: 'lua',
   perl: 'perl',
 };
+
+/** The host PowerShell: Windows ships Windows PowerShell, elsewhere it is pwsh. */
+export function hostPowerShell(platform: string | undefined | null): string {
+  return String(platform ?? '').toLowerCase() === 'win32' ? 'powershell' : 'pwsh';
+}
 
 export function shellFamily(family: string | undefined | null): ShellFamily {
   switch (String(family ?? '').toLowerCase()) {
@@ -33,6 +39,12 @@ export function shellFamily(family: string | undefined | null): ShellFamily {
 
 export function terminalInterpreter(language: string | undefined | null): string {
   return TERMINAL_INTERPRETERS[String(language ?? '').toLowerCase()] ?? '';
+}
+
+/** Whether one shell command can run this language's files at all. */
+export function terminalRunnable(language: string | undefined | null): boolean {
+  const name = String(language ?? '').toLowerCase();
+  return name === 'powershell' || Boolean(TERMINAL_INTERPRETERS[name]);
 }
 
 /** Quote one argument the way the target shell expects. */
@@ -53,10 +65,27 @@ export function quoteForShell(family: string | undefined | null, value: string):
  * The command that runs `filePath` in the given shell, or '' when the language
  * has no single-command interpreter or the path cannot be represented safely.
  */
-export function terminalRunCommand(language: string | undefined | null, filePath: string | undefined | null, family: string | undefined | null): string {
-  const interpreter = terminalInterpreter(language);
+export function terminalRunCommand(
+  language: string | undefined | null,
+  filePath: string | undefined | null,
+  family: string | undefined | null,
+  platform: string | undefined | null = 'win32',
+): string {
+  const name = String(language ?? '').toLowerCase();
+  const interpreter = terminalInterpreter(name);
   const path = String(filePath ?? '').trim();
-  if (!interpreter || !path) return '';
-  if (shellFamily(family) === 'cmd' && path.includes('"')) return '';
+  if (!path) return '';
+  if ((!interpreter && name !== 'powershell') || path.includes('"') && shellFamily(family) === 'cmd') return '';
+
+  // A PowerShell session runs its own script files, and the call operator is
+  // what keeps a relative path from being read as a bare string. Anywhere else
+  // the host PowerShell is asked for the file, with the same policy bypass the
+  // local runner uses: a default Windows client policy blocks script files.
+  if (name === 'powershell') {
+    const quoted = quoteForShell(family, path);
+    return shellFamily(family) === 'powershell'
+      ? `& ${quoted}`
+      : `${hostPowerShell(platform)} -NoProfile -ExecutionPolicy Bypass -File ${quoted}`;
+  }
   return `${interpreter} ${quoteForShell(family, path)}`;
 }

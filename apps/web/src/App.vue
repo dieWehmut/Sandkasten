@@ -25,7 +25,7 @@ import { useColorScheme } from './composables/useColorScheme';
 import { useAppearance } from './composables/useAppearance';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
-import { terminalInterpreter, terminalRunCommand } from './terminal/terminalCommand';
+import { terminalRunnable, terminalRunCommand } from './terminal/terminalCommand';
 import { desktopBridge } from './services/desktopBridge';
 import { readConfiguredApiBaseUrl, saveConfiguredApiBaseUrl, effectiveApiBaseUrl } from './services/apiEndpoint';
 import { windowTitle } from './editor/windowTitle';
@@ -413,7 +413,7 @@ function toggleTerminal(): void {
 // The palette entry is offered only when one shell command can run the file:
 // compiled languages need a build step, which is what the run backend does.
 const canRunInTerminal = computed(() => Boolean(terminal) && Boolean(activeFile.value)
-  && Boolean(terminalInterpreter(language.value)));
+  && terminalRunnable(language.value));
 
 // Types a command into the shell the user is looking at. The panel is revealed
 // first so the output is never written into a session nobody can see, and a
@@ -437,7 +437,7 @@ async function runActiveInTerminal(): Promise<void> {
   if (!terminal.profiles.value.length) await terminal.loadProfiles();
   const session = terminal.sessions.value.find((entry) => entry.id === terminal.activeId.value);
   const profile = terminal.profiles.value.find((entry) => entry.id === session?.profileId);
-  await sendToTerminal(terminalRunCommand(language.value, file.path, profile?.family), file.path);
+  await sendToTerminal(terminalRunCommand(language.value, file.path, profile?.family, bridge?.platform), file.path);
 }
 
 // The commands typed this session lead the palette list, the way a shell's own
