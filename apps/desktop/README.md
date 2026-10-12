@@ -283,7 +283,9 @@ behind. A fifth floods stdout past the cap, which has to stop the payload — an
 leave nothing behind — rather than run to the time limit with its output
 discarded. A sixth exits with code 3 after writing to both streams, which has to
 come back as a runtime failure carrying that code and both outputs: a sandbox that
-reports a failing program as a success would make the green tick meaningless.
+reports a failing program as a success would make the green tick meaningless. A
+seventh is given four seconds and sleeps for two minutes, so the limit it was given
+has to be the one that stops it — and it has to leave nothing running.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
