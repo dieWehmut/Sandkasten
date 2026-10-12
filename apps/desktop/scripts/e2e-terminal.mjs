@@ -28,11 +28,11 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   const firstId = await page.locator('[data-testid="terminal-pane"]:visible').last().getAttribute('data-session-id');
   const pane = (id) => `[data-testid="terminal-pane"][data-session-id="${id}"]`;
   const readScreen = async (id) => page.locator(`${pane(id)} .xterm-accessibility-tree`).innerText();
-  const waitScreen = async (id, text) => {
+  const waitScreen = async (id, text, timeoutMs = 20_000) => {
     try {
       await page.waitForFunction(({ selector, text }) =>
         document.querySelector(selector)?.textContent?.includes(text),
-      { selector: `${pane(id)} .xterm-accessibility-tree`, text }, { timeout: 20_000 });
+      { selector: `${pane(id)} .xterm-accessibility-tree`, text }, { timeout: timeoutMs });
     } catch (cause) {
       // A failure here is otherwise a bare timeout: say what the terminal did
       // show, because the answer is usually in the last rows.
@@ -88,7 +88,9 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Control+Shift+P');
   await page.waitForSelector('[data-command="terminal.runFile"]');
   await page.click('[data-command="terminal.runFile"]');
-  await waitScreen(firstId, 'E2E_SH_RUN');
+  // `bash` on Windows is usually the WSL launcher, and a cold distro takes
+  // seconds before the script it was handed can print anything.
+  await waitScreen(firstId, 'E2E_SH_RUN', 60_000);
   reportBashRun = true;
 
   await page.click('[data-action="ide-open-hello.py"]');
