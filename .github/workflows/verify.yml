@@ -37,6 +37,14 @@ jobs:
           npm ci
           npm test
 
+      # Neither vitest nor the Vite build looks at the types — both compile
+      # through esbuild, which strips them — so the sources get their own step.
+      # Test files are out of this config: their doubles still drift from the
+      # interfaces and are a pass of their own.
+      - name: WebUI types
+        working-directory: apps/web
+        run: npm run typecheck
+
       # The same command the Pages workflow runs on the same runner image: it
       # drives the built distribution in a real Chrome at three viewports.
       - name: WebUI browser smoke

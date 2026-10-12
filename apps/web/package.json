@@ -10,7 +10,8 @@
     "test": "vitest run && node --test test.mjs tests/serve.test.mjs ../../scripts/tests/webui-browser-smoke.test.mjs",
     "test:loaded": "vitest run --maxWorkers=2 && node --test test.mjs tests/serve.test.mjs ../../scripts/tests/webui-browser-smoke.test.mjs",
     "test:browser": "node ../../scripts/webui-browser-smoke.mjs",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.3",
@@ -40,6 +41,7 @@
     "playwright-core": "1.62.1",
     "typescript": "5.9.3",
     "vite": "8.2.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "vue-tsc": "3.3.13"
   }
 }
