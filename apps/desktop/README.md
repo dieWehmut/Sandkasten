@@ -86,6 +86,7 @@ The desktop build adds these things the browser cannot do:
    | `Ctrl+Shift+C` / `Cmd+C` | Copy the selection |
    | `Ctrl+Shift+V` / `Cmd+V` / `Shift+Insert` | Paste the clipboard as input |
    | `Ctrl+Shift+A` | Select the whole buffer |
+   | `Ctrl+Shift+K` | Clear the buffer |
    | `Ctrl+=`, `Ctrl+-`, `Ctrl+0` | Zoom the terminal font in, out, and back |
    | `Ctrl+Space` | Accept the first suggestion |
    | `Ctrl+\`` | New terminal; `Ctrl+\`` again toggles the panel |
