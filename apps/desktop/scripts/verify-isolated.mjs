@@ -25,7 +25,7 @@ export const MARKER = 'SANDKASTEN_ISOLATED_OK';
 export const NETWORK_BLOCKED = 'NETWORK_BLOCKED';
 const DEFAULT_TIMEOUT_MS = 60_000;
 
-const LANGUAGE_LABELS = {
+export const LANGUAGE_LABELS = {
   python: 'Python', javascript: 'JavaScript', c: 'C', cpp: 'C++', java: 'Java', bash: 'Bash', perl: 'Perl',
 };
 

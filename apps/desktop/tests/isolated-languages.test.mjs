@@ -37,6 +37,17 @@ test('the language list is one word per plan and never names TypeScript', () => 
   for (const id of ids) assert.ok(isolatedRunPlan(id), `${id} must have a plan`);
 });
 
+test('every isolated language has a fixture the verification can run', async () => {
+  // The check reports a language without a fixture as unsupported, which the
+  // aggregate counts as a failure; this says so before anyone runs it.
+  const { LANGUAGE_FIXTURES, LANGUAGE_LABELS } = await import('../scripts/verify-isolated.mjs');
+  assert.deepEqual(Object.keys(LANGUAGE_FIXTURES).sort(), isolatedLanguageIds().sort());
+  for (const id of isolatedLanguageIds()) {
+    assert.ok(LANGUAGE_LABELS[id], `${id} needs a label for the table`);
+    assert.ok(LANGUAGE_FIXTURES[id].source.includes('SANDKASTEN_ISOLATED_OK'), `${id} has to print the marker`);
+  }
+});
+
 test('availability needs every tool of the language, and reports each language', () => {
   assert.deepEqual(isolatedLanguagesFrom(['python3']), {
     python: true, javascript: false, c: false, cpp: false, java: false, bash: false, perl: false,
