@@ -208,6 +208,16 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('prefetches the default profile\'s commands before any session exists', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge);
+    await terminal.loadProfiles();
+    expect(terminal.defaultProfileId.value).toBe('pwsh');
+    await vi.waitFor(() => expect(host.bridge.commands).toHaveBeenCalledWith('pwsh'));
+    expect(terminal.commandNames.value.pwsh).toEqual(['pwsh']);
+    expect(terminal.sessions.value).toEqual([]);
+    await terminal.dispose();
+  });
+
   test('a failed command list is reported and retried without breaking the session', async () => {
     const host = fakeBridge();
     host.bridge.commands.mockRejectedValueOnce(new Error('scan failed'));

@@ -485,7 +485,9 @@ const commandPaletteError = ref('');
 // commands. They are names only: the main process owns the directories.
 const terminalShellCommands = computed<PaletteCommand[]>(() => {
   if (!terminal) return [];
-  const profileId = terminal.activeProfileId.value;
+  // While the panel has no session yet, the entries belong to the shell a new
+  // session would start, so the palette works before the terminal is opened.
+  const profileId = terminal.activeProfileId.value || terminal.defaultProfileId.value;
   if (!profileId) return [];
   const label = terminal.profiles.value.find((profile) => profile.id === profileId)?.label ?? '';
   const names = terminal.commandNames.value[profileId] ?? [];

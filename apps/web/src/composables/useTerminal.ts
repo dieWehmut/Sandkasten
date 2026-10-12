@@ -31,6 +31,9 @@ export function useTerminal(bridge: TerminalBridge) {
   let focused = false;
 
   const activeProfileId = computed(() => sessions.value.find((entry) => entry.id === activeId.value)?.profileId ?? '');
+  // The shell a new session would start: the palette uses it while the panel has
+  // no session yet.
+  const defaultProfileId = computed(() => profiles.value.find((profile) => profile.isDefault)?.id ?? profiles.value[0]?.id ?? '');
 
   const offData = bridge.onData(({ id, data }) => { views.get(id)?.terminal.write(data); });
   const offExit = bridge.onExit(({ id, exitCode }) => {
@@ -66,7 +69,11 @@ export function useTerminal(bridge: TerminalBridge) {
   async function loadProfiles(): Promise<void> {
     try {
       const discovered = await bridge.profiles();
-      if (!disposed) profiles.value = discovered;
+      if (disposed) return;
+      profiles.value = discovered;
+      // The palette offers a shell's commands before the panel is ever opened,
+      // so the default profile's list is fetched with the profiles themselves.
+      if (!activeProfileId.value && defaultProfileId.value) void loadCommands(defaultProfileId.value);
     } catch (cause) { report(cause); }
   }
 
@@ -233,7 +240,7 @@ export function useTerminal(bridge: TerminalBridge) {
 
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
-    activeProfileId, commandNames: readonly(commandNames),
+    activeProfileId, defaultProfileId, commandNames: readonly(commandNames),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },

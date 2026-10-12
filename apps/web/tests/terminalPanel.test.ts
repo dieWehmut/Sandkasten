@@ -191,4 +191,20 @@ describe('desktop terminal panel', () => {
     await app.get('[data-command="shell.git"]').trigger('click');
     await vi.waitFor(() => expect(app.findAll('[data-testid="notification-toast"]').length).toBe(1));
   });
+
+  test('offers the default shell\'s commands before the terminal is ever opened', async () => {
+    const bridge = installDesktop();
+    const app = await mountApp();
+    expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(false);
+    expect(bridge.create).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledWith('pwsh'));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    const git = app.find('[data-command="shell.git"]');
+    expect(git.exists()).toBe(true);
+    // Choosing one starts the default shell and types the command into it.
+    await git.trigger('click');
+    await vi.waitFor(() => expect(bridge.create).toHaveBeenCalledWith({ profileId: undefined, cols: 80, rows: 24 }));
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'git\r' }));
+  });
 });
