@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cancellationVerdict, isolationFailureVerdict, isolationFixtureVerdict, languageVerdict, outputLimitVerdict } from '../scripts/verify-isolated.mjs';
+import { cancellationVerdict, isolationFailureVerdict, isolationFixtureVerdict, languageVerdict, outputLimitVerdict, timeLimitVerdict } from '../scripts/verify-isolated.mjs';
 
 // The isolation check found three real defects by probe: host files readable, a
 // cancelled payload still running, and an output limit that did not stop the
@@ -67,4 +67,20 @@ test('a payload that fails has to be reported as a failure, with its own words',
   assert.match(isolationFailureVerdict({ ...failing, stdout: '' }).reason, /output was not kept/);
   assert.match(isolationFailureVerdict({ ...failing, stderr: '' }).reason, /error output was not kept/);
   assert.match(isolationFailureVerdict({ ...failing, left: 2 }).reason, /2 process\(es\) kept running/);
+});
+
+test('a payload past its time limit is a timeout, and nothing is left behind', () => {
+  const timedOut = {
+    status: 'JOB_STATUS_TIME_LIMIT_EXCEEDED', left: 0, stdout: 'SANDKASTEN_TIME_LIMIT_READY\n',
+    durationMs: 4_200, limitMs: 4_000,
+  };
+  assert.deepEqual(timeLimitVerdict(timedOut),
+    { ok: true, reason: '', note: 'stopped after 4200 ms, its own limit being 4000 ms' });
+
+  assert.match(timeLimitVerdict({ ...timedOut, status: 'JOB_STATUS_SUCCEEDED' }).reason, /past its 4000 ms limit reported JOB_STATUS_SUCCEEDED/);
+  assert.match(timeLimitVerdict({ ...timedOut, stdout: '' }).reason, /never ran/);
+  assert.match(timeLimitVerdict({ ...timedOut, left: 1 }).reason, /1 process\(es\) kept running/);
+  // A run that took far longer than the limit it was given means the limit did not
+  // apply — the payload would otherwise have run for two minutes.
+  assert.match(timeLimitVerdict({ ...timedOut, durationMs: 90_000 }).reason, /took 90000 ms to apply/);
 });

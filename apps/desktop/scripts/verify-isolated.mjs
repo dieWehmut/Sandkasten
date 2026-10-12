@@ -211,6 +211,29 @@ async function runOutputLimitProbe(runner, root, distro, timeoutMs) {
   return { result, durationMs: Date.now() - started, kept: result.stdout.length, left: await survivors(), maxOutputBytes };
 }
 
+export const TIME_LIMIT_MARKER = 'SANDKASTEN_TIME_LIMIT_READY';
+export const TIME_LIMIT_MS = 4_000;
+
+/**
+ * A payload that runs past its time limit has to be stopped and reported as a
+ * timeout, not left running in the distro — and the limit has to be the one the run
+ * was given, not whatever the host defaults to.
+ */
+async function runTimeLimitProbe(runner, root, distro, timeoutMs) {
+  const file = 'slow.py';
+  await writeFile(path.join(root, file), `import time\nprint("${TIME_LIMIT_MARKER}", flush=True)\ntime.sleep(120)\n`, 'utf8');
+  const jobId = 'verify-time-limit';
+  const survivors = await sandboxCounter(distro, jobId);
+
+  const started = Date.now();
+  const result = await runner.run({
+    jobId, path: file, absolutePath: resolveInsideRoot(root, file),
+    language: 'python', command: 'python3', args: ['{file}'], timeoutMs: TIME_LIMIT_MS,
+  }, { root });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { result, durationMs: Date.now() - started, limitMs: TIME_LIMIT_MS, left: await survivors(), outerTimeoutMs: timeoutMs };
+}
+
 /**
  * The verdicts the check reaches, as pure functions: what the payload reported is
  * the input, what the row says is the output. They are the part that has to fail
@@ -253,6 +276,26 @@ export function outputLimitVerdict({ status, left, kept, durationMs }) {
   }
   if (left !== 0) return { ok: false, reason: `${left} process(es) kept running after the output limit`, note: '' };
   return { ok: true, reason: '', note: `stopped at ${kept} characters and left nothing running` };
+}
+
+/**
+ * A run past its time limit is a timeout, and it says so: the payload was stopped,
+ * nothing is left behind, and the limit that applied is the one the run was given.
+ */
+export function timeLimitVerdict({ status, left, stdout, durationMs, limitMs, slackMs = 30_000 }) {
+  if (status !== 'JOB_STATUS_TIME_LIMIT_EXCEEDED') {
+    return { ok: false, reason: `a payload past its ${limitMs} ms limit reported ${status}`, note: '' };
+  }
+  if (!String(stdout ?? '').includes(TIME_LIMIT_MARKER)) {
+    return { ok: false, reason: 'the payload never ran, so the limit was not what stopped it', note: '' };
+  }
+  if (left !== 0) {
+    return { ok: false, reason: `${left} process(es) kept running after the time limit`, note: '' };
+  }
+  if (durationMs > limitMs + slackMs) {
+    return { ok: false, reason: `a ${limitMs} ms limit took ${durationMs} ms to apply`, note: '' };
+  }
+  return { ok: true, reason: '', note: `stopped after ${durationMs} ms, its own limit being ${limitMs} ms` };
 }
 
 export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, distros } = {}) {
@@ -360,6 +403,18 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
         // The payload's output is deliberately repetitive; the note says what
         // matters about it.
         stdout: '', stderr: brief(outputLimit.result.stderr),
+      });
+
+      const timeLimit = await runTimeLimitProbe(runner, root, detection.distro, timeoutMs);
+      const timedOut = timeLimitVerdict({
+        status: timeLimit.result.status, left: timeLimit.left, stdout: timeLimit.result.stdout,
+        durationMs: timeLimit.durationMs, limitMs: timeLimit.limitMs,
+      });
+      results.push({
+        id: 'time-limit', label: 'Time limit', kind: 'isolation',
+        status: timedOut.ok ? 'ok' : 'failed', jobStatus: timeLimit.result.status,
+        note: timedOut.note, reason: timedOut.reason, durationMs: timeLimit.durationMs,
+        stdout: brief(timeLimit.result.stdout), stderr: brief(timeLimit.result.stderr),
       });
     }
   } finally {
