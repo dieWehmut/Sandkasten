@@ -242,6 +242,7 @@ Go、Assembly、Bash/Shell、C、Cangjie(仓颉)、Clojure、CSS、C++、C#、Co
 ```bash
 cd apps/desktop
 npm test                # 桌面端单元测试(工作区守卫、本地运行器、终端、菜单、托盘等)
+npm run verify          # 一次跑完下面三项机器级验证并给出汇总(等价于 make verify-desktop)
 npm run verify:shells   # 发现已安装的 shell,并验证每个 shell 都能真正执行命令
 npm run verify:runtimes # 探测本机工具链,并对每个可用运行时跑一个真实样例
 npm run verify:isolated # 通过 WSL2 命名空间沙箱运行真实负载,并从沙箱内部验证其限制
@@ -253,7 +254,8 @@ shell 自己的命令目录,要求 shell 能找到并运行它——这正是终
 工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败。
 `verify:isolated` 通过 WSL2 沙箱执行真实负载,并从沙箱内部确认:程序能跑、TCP 连接被拒绝、
 `/proc` 只显示命名空间自己的进程表(负载自身即 PID 1);没有可用发行版时如实报告 unavailable。
-三者都支持 `--json` 输出。
+`npm run verify`(或根目录 `make verify-desktop`)一次跑完这三项并给出汇总:缺失的后端记为
+unavailable,已安装但损坏的才算失败。三者都支持 `--json` 输出。
 
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只验证子集。
 

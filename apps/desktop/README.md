@@ -149,6 +149,7 @@ directory and exits instead of starting an empty window.
 ```sh
 cd apps/desktop
 npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, terminal host, window policy
+npm run verify      # all three machine checks below, with one summary
 npm run verify:shells    # discover the installed shells and prove each one runs a command
 npm run verify:runtimes  # detect the local toolchains and run a fixture through every available one
 npm run verify:isolated  # run real payloads through the WSL2 namespace sandbox and ask them what it denies
@@ -158,6 +159,12 @@ npm run e2e:refinement  # setup scrolling, welcome actions, and the real termina
 npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
 npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
+
+`verify` runs the three checks below in sequence and prints one summary line
+each, so a machine can be verified with a single command (`make
+verify-desktop` runs the same thing from the repository root). A backend that is
+simply absent counts as unavailable; anything installed but broken fails the
+command.
 
 `verify:shells` walks the discovered terminal profiles, asks each shell for a
 one-shot marker command, and then proves the session environment reaches it: a
