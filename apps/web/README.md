@@ -229,6 +229,10 @@ can starve its own workers and the run reports timeouts that have nothing to do
 with the tests. `npm run test:loaded` runs the same suite with two workers, which
 completed green on a machine measured at 70–90 % CPU from unrelated programs.
 
+Every verification entry point in this repository, what it proves and what it
+needs, is indexed in
+[`handbuch/verification.md`](../../handbuch/verification.md).
+
 Run the real-browser responsive smoke against the committed distribution with
 the local mock API:
 

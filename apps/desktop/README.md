@@ -225,6 +225,10 @@ npm run package:dir # electron-builder unpacked output under tmp/desktop-dist
 npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 ```
 
+Every entry point above, what it proves and what it needs, is indexed in
+[`handbuch/verification.md`](../../handbuch/verification.md) — and a test keeps
+that index honest by resolving its commands against the repository.
+
 `verify` runs the three checks below in sequence and prints one summary line
 each, so a machine can be verified with a single command (`make
 verify-desktop` runs the same thing from the repository root). It passes
