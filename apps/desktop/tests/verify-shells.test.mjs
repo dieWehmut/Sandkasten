@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { discoverTerminalProfileReport } from '../src/terminal-profiles.mjs';
-import { shellMarkerVerdict, shellSampleVerdict, shellSelfReportVerdict, verifyShells } from '../scripts/verify-shells.mjs';
+import {
+  shellMarkerVerdict,
+  shellPathProbeVerdict,
+  shellSampleVerdict,
+  shellSelfReportVerdict,
+  verifyShells,
+} from '../scripts/verify-shells.mjs';
 
 // The check exists to fail when a shell cannot do what the terminal promises. An
 // injected profile is how these tests make that happen on purpose.
@@ -89,4 +95,15 @@ test('advertised commands that none of which resolve are a failure', () => {
   assert.deepEqual(shellSampleVerdict(['git', 'ls'], ['git']), { reason: '' });
   assert.deepEqual(shellSampleVerdict([], []), { reason: '' });
   assert.match(shellSampleVerdict(['git', 'ls'], []).reason, /resolves none of its advertised commands \(git, ls\)/);
+});
+
+test('the path probe needs its marker, from a command that actually ran', () => {
+  assert.deepEqual(shellPathProbeVerdict({ ok: true, stdout: 'SANDKASTEN_PATH_OK\n' }), { pathProbe: 'reachable', reason: '' });
+  // A shell that ran the probe but never printed the marker.
+  assert.deepEqual(shellPathProbeVerdict({ ok: true, stdout: '' }),
+    { pathProbe: 'unreachable', reason: 'the probe command did not print its marker' });
+  // A shell that could not run it at all says why.
+  assert.deepEqual(shellPathProbeVerdict({ ok: false, stdout: '', reason: 'timed out after 30000 ms' }),
+    { pathProbe: 'unreachable', reason: 'the probe command could not run (timed out after 30000 ms)' });
+  assert.equal(shellPathProbeVerdict(undefined).pathProbe, 'unreachable');
 });

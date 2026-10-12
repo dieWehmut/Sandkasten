@@ -147,6 +147,18 @@ export function shellSampleVerdict(samples, resolved) {
   return { reason: `the shell resolves none of its advertised commands (${samples.join(', ')})` };
 }
 
+/**
+ * The path probe proves the stronger property the terminal relies on: a command
+ * placed in the shell's own directory is one the session can find and run.
+ */
+export function shellPathProbeVerdict(run) {
+  if (run?.ok && String(run?.stdout ?? '').includes(PATH_MARKER)) return { pathProbe: 'reachable', reason: '' };
+  return {
+    pathProbe: 'unreachable',
+    reason: run?.ok ? 'the probe command did not print its marker' : `the probe command could not run (${run?.reason ?? 'no answer'})`,
+  };
+}
+
 export async function verifyShells({
   platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true, profiles: injected,
 } = {}) {
@@ -185,11 +197,9 @@ export async function verifyShells({
           { ...profile, pathPrepend: [commandProbe.directory, ...(profile.pathPrepend ?? [])] }, process.env, platform,
         );
         const run = await probe(profile, commandProbe.command, { timeoutMs, environment: enriched });
-        if (run.ok && run.stdout.includes(PATH_MARKER)) pathProbe = 'reachable';
-        else {
-          pathProbe = 'unreachable';
-          reason = run.ok ? 'the probe command did not print its marker' : `the probe command could not run (${run.reason})`;
-        }
+        const probeVerdict = shellPathProbeVerdict(run);
+        pathProbe = probeVerdict.pathProbe;
+        reason = probeVerdict.reason;
       }
       // The list has to carry what the shell says about itself, not just the files on
       // its PATH: a cmdlet or a builtin is exactly what makes the palette useful in
