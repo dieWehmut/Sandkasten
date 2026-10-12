@@ -23,6 +23,8 @@ interface SessionView {
   host: HTMLElement;
   opened: boolean;
   subscriptions: IDisposable[];
+  /** Copy, paste, select all and clear for this view, shared by keys and menu. */
+  clipboard: (action: TerminalClipboardAction) => Promise<void>;
 }
 
 export interface TerminalOptions {
@@ -393,11 +395,15 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       const host = document.createElement('div');
       host.className = 'terminal-host';
 
-      /** Copy, paste and select-all for this view. */
-      async function useClipboard(action: 'copy' | 'paste' | 'select-all') {
+      /** Copy, paste, select-all and clear for this view. */
+      async function useClipboard(action: TerminalClipboardAction) {
         try {
           if (action === 'select-all') {
             terminal.selectAll();
+            return;
+          }
+          if (action === 'clear') {
+            terminal.clear();
             return;
           }
           if (action === 'copy') {
@@ -433,7 +439,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
           }
         }),
       ];
-      views.set(id, { terminal, fit, host, opened: false, subscriptions });
+      views.set(id, { terminal, fit, host, opened: false, subscriptions, clipboard: useClipboard });
       sessions.value = [...sessions.value, session];
       visibleIds.value = splitFrom && views.has(splitFrom) ? [splitFrom, id] : [id];
       activeId.value = id;
@@ -571,6 +577,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
+    // The pane's context menu runs the same actions the keys do.
+    clipboard: (action: TerminalClipboardAction, sessionId: string = activeId.value) => views.get(sessionId)?.clipboard(action),
+    hasSelection: (sessionId: string = activeId.value) => Boolean(views.get(sessionId)?.terminal.getSelection()),
   };
 }
 
@@ -583,6 +592,9 @@ export function isTerminalShortcut(event: KeyboardEvent): boolean {
 export function isSuggestionShortcut(event: KeyboardEvent): boolean {
   return (event.ctrlKey || event.metaKey) && !event.altKey && (event.code === 'Space' || event.key === ' ');
 }
+
+/** Copy, paste, select all and clear: the actions a terminal's menu and keys share. */
+export type TerminalClipboardAction = 'copy' | 'paste' | 'select-all' | 'clear';
 
 /**
  * The clipboard keys, which the terminal has to take before xterm sends them to the

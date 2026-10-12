@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { TerminalController, TerminalEntry, TerminalSuggestion } from '../../composables/useTerminal';
+import ContextMenu from '../ContextMenu.vue';
+import type { ContextMenuEntry } from '../contextMenu';
+import type { TerminalClipboardAction, TerminalController, TerminalEntry, TerminalSuggestion } from '../../composables/useTerminal';
 import { useTranslation } from '../../i18n/useTranslation';
 
 const props = defineProps<{ controller: TerminalController; session: TerminalEntry; active: boolean }>();
@@ -18,6 +20,36 @@ const shellSource = computed(() => {
 function suggestionTitle(suggestion: TerminalSuggestion): string {
   const base = `${t('terminal.complete')} ${suggestion.label}`;
   return suggestion.source === 'shell' ? `${base} · ${shellSource.value}` : base;
+}
+
+// The right-click menu, the same widget the editor uses: copy, paste, select all
+// and clear, with copy disabled while nothing is selected. A terminal that can only
+// be driven by keys is awkward on a mouse-driven desktop. The entries are built when
+// the menu opens: whether something is selected is a fact about the buffer, not a
+// reactive value the template could watch.
+const menuOpen = ref(false);
+const menuAt = ref({ x: 0, y: 0 });
+const menuEntries = ref<ContextMenuEntry[]>([]);
+
+function buildMenuEntries(): ContextMenuEntry[] {
+  return [
+    { kind: 'item', id: 'copy', label: t('terminal.menu.copy'), keybinding: 'Ctrl+Shift+C', disabled: !props.controller.hasSelection(props.session.id) },
+    { kind: 'item', id: 'paste', label: t('terminal.menu.paste'), keybinding: 'Ctrl+Shift+V' },
+    { kind: 'item', id: 'select-all', label: t('terminal.menu.selectAll'), keybinding: 'Ctrl+Shift+A' },
+    { kind: 'separator' },
+    { kind: 'item', id: 'clear', label: t('terminal.menu.clear') },
+  ];
+}
+
+function openMenu(event: MouseEvent): void {
+  props.controller.select(props.session.id);
+  menuEntries.value = buildMenuEntries();
+  menuAt.value = { x: event.clientX, y: event.clientY };
+  menuOpen.value = true;
+}
+function runMenuItem(id: string): void {
+  menuOpen.value = false;
+  void props.controller.clipboard(id as TerminalClipboardAction, props.session.id);
 }
 
 function labelInput(): void {
@@ -41,8 +73,13 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     class="terminal-pane" :class="{ 'terminal-pane--active': active }"
     data-testid="terminal-pane" :data-session-id="session.id" :data-active="active"
     :aria-label="session.title" @focusin="controller.select(session.id)" @pointerdown="controller.select(session.id)"
+    @contextmenu.prevent="openMenu($event)"
   >
     <div ref="container" class="terminal-pane__viewport" />
+    <ContextMenu
+      :open="menuOpen" :x="menuAt.x" :y="menuAt.y" :entries="menuEntries" :label="t('terminal.menu')"
+      @select="runMenuItem" @close="menuOpen = false"
+    />
     <!-- The shell the user is typing in can run these; the prefix model only
          suggests, it never inserts anything on its own. -->
     <div

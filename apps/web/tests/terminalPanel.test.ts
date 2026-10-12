@@ -10,9 +10,13 @@ vi.mock('../src/services/sandkastenApi', async (original) => ({
 const xterm = vi.hoisted(() => ({ terminals: [] as any[] }));
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
   cols = 80; rows = 24; options: any; host?: HTMLElement; text = ''; input: (data: string) => void = () => {};
+  selection = ''; selected = 0; cleared = 0;
   constructor(options: any) { this.options = options; xterm.terminals.push(this); }
   open(host: HTMLElement) { this.host = host; host.innerHTML = '<textarea class="xterm-helper-textarea"></textarea><span></span>'; this.write(''); }
   write(data: string) { this.text += data; if (this.host) this.host.querySelector('span')!.textContent = this.text; }
+  getSelection() { return this.selection; }
+  selectAll() { this.selected += 1; }
+  clear() { this.cleared += 1; }
   loadAddon() {} attachCustomKeyEventHandler() {} dispose() {} refresh() {}
   focus() { this.host?.querySelector('textarea')?.focus(); }
   onData(handler: any) { this.input = handler; return { dispose() {} }; } onResize() { return { dispose() {} }; }
@@ -33,6 +37,7 @@ function installDesktop(options: { root?: WorkspaceRoot | null; files?: Workspac
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
+    clipboard: { read: vi.fn(async () => 'pasted text'), write: vi.fn(async (_text: string) => true) },
     onData: vi.fn((handler) => { data = handler; return vi.fn(); }), onExit: vi.fn(() => vi.fn()),
   } satisfies TerminalBridge;
   const bridge: DesktopBridge = {
@@ -72,6 +77,43 @@ describe('desktop terminal panel', () => {
     expect(app.get('[data-testid="terminal-pane"][data-session-id="s1"]').attributes('data-active')).toBe('true');
     await app.get('[data-action="terminal-close"]').trigger('click'); await flushPromises();
     expect(bridge.close).toHaveBeenCalledWith('s1');
+  });
+
+  test('the terminal right-click menu copies, pastes, selects all and clears', async () => {
+    const bridge = installDesktop(); const app = await mountApp();
+    await app.get('[data-action="select-output-terminal"]').trigger('click'); await flushPromises();
+    const pane = app.get('[data-testid="terminal-pane"]');
+    const openMenu = async () => { await pane.trigger('contextmenu', { clientX: 40, clientY: 60 }); await flushPromises(); };
+
+    await openMenu();
+    expect(app.find('[data-testid="context-menu"]').exists()).toBe(true);
+    // Copy is offered but disabled while nothing is selected in the terminal.
+    expect(app.get('[data-action="context-menu-copy"]').attributes('disabled')).toBeDefined();
+    expect(app.get('[data-action="context-menu-paste"]').attributes('disabled')).toBeUndefined();
+
+    await app.get('[data-action="context-menu-paste"]').trigger('click'); await flushPromises();
+    expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' });
+    expect(app.find('[data-testid="context-menu"]').exists()).toBe(false);
+
+    await openMenu();
+    await app.get('[data-action="context-menu-select-all"]').trigger('click'); await flushPromises();
+    expect(xterm.terminals[0].selected).toBe(1);
+
+    await openMenu();
+    await app.get('[data-action="context-menu-clear"]').trigger('click'); await flushPromises();
+    expect(xterm.terminals[0].cleared).toBe(1);
+
+    // With a selection, copy hands it to the host clipboard.
+    xterm.terminals[0].selection = 'terminal output';
+    await openMenu();
+    expect(app.get('[data-action="context-menu-copy"]').attributes('disabled')).toBeUndefined();
+    await app.get('[data-action="context-menu-copy"]').trigger('click'); await flushPromises();
+    expect(bridge.clipboard!.write).toHaveBeenCalledWith('terminal output');
+
+    // Escape closes it without running anything.
+    await openMenu();
+    await app.get('[data-testid="context-menu"]').trigger('keydown', { key: 'Escape' }); await flushPromises();
+    expect(app.find('[data-testid="context-menu"]').exists()).toBe(false);
   });
 
   test('retains output and shell identity across output tabs, panel hiding and setup guide', async () => {
