@@ -54,7 +54,10 @@ describe('installation guide data', () => {
       expect(output).toMatch(/^languages=.+$/m);
       expect(output).toContain('command=install');
     }
-  }, 30000);
+    // Each call keeps its own 30 s budget; the test budget has to be wider so a
+    // stalled shell reports its own timeout instead of racing this one. Three
+    // dry-run parses take seconds on a healthy machine.
+  }, 100000);
 
   test('filters operational commands by deployment mode', () => {
     const cli = buildOperationalCommands('cli', 'core');
