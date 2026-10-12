@@ -18,6 +18,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportBashRun = false;
   let reportShellSourceMarked = false;
   let reportAliasInPalette = false;
+  let reportCmdInternal = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -132,6 +133,17 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   reportSuggestions = true;
   // Discard the half-typed line before the assertions below reuse the shell.
   await page.keyboard.press('Control+c');
+
+  // cmd's own commands have no file behind them — `copy` is nowhere on the PATH —
+  // and the strip still has to offer them, marked as the shell's own.
+  await page.keyboard.type('cop');
+  await page.waitForSelector(
+    `${pane(firstId)} [data-testid="terminal-suggestion"][data-command="copy"][data-source="shell"]`,
+    { timeout: 10_000 },
+  );
+  reportCmdInternal = true;
+  await page.keyboard.press('Control+c');
+
   await enter(firstId, 'echo E2E^_CLEAR^_OK');
   await waitScreen(firstId, 'E2E_CLEAR_OK');
 
@@ -308,5 +320,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal };
 }
