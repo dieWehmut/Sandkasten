@@ -26,8 +26,9 @@ export const TERMINAL_COMMAND_LIMITS = Object.freeze({
   // A WSL session may have to cold-start a distro before it can answer.
   distroTimeoutMs: 30_000,
   // A shell that reports its own commands (PowerShell, bash) gets the same kind
-  // of budget: a cold host start is seconds, not milliseconds.
-  reportTimeoutMs: 20_000,
+  // of budget: a cold host start is seconds, not milliseconds, and the answer is
+  // cached for a while.
+  reportTimeoutMs: 30_000,
 });
 
 const WINDOWS_DEFAULT_EXTENSIONS = ['.com', '.exe', '.bat', '.cmd'];
@@ -187,10 +188,15 @@ export async function discoverTerminalCommands(profile, {
     }
   }
   // A cmdlet or a builtin is a command the shell runs without a file behind it,
-  // so the shell is asked for its own list and that joins the PATH names.
+  // so the shell is asked for its own list and that joins the PATH names. A cold
+  // or loaded host can miss the first budget, and the answer is cached for a
+  // while, so one retry is cheaper than a list without the shell's own commands.
   const report = shellReportCommand(profile?.family);
   if (report) {
-    const reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
+    let reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
+    if (!String(reported ?? '').trim()) {
+      reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
+    }
     const names = uniqueNames(String(reported ?? '').split(/\r?\n/), limit, windows);
     for (const name of names) {
       const identity = windows ? name.toLowerCase() : name;

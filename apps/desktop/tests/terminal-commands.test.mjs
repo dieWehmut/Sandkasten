@@ -239,6 +239,42 @@ test('PowerShell is asked for its cmdlets and functions', async () => {
   assert.match(asked[0], /Get-Command -CommandType Cmdlet,Function/);
 });
 
+test('a report that answers nothing is asked for once more', async () => {
+  const asked = [];
+  const commands = await discoverTerminalCommands(
+    { id: 'powershell', family: 'powershell', executable: 'C:\\pwsh.exe', pathPrepend: ['C:\\tools'] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\tools', PATHEXT: '.EXE' },
+      listDirectory: async () => [file('git.exe')],
+      runShell: async (_profile, command) => {
+        asked.push(command);
+        // The first attempt times out (the runner answers with nothing), the
+        // second one is the cold host finally starting.
+        return asked.length === 1 ? '' : 'Get-ChildItem\n';
+      },
+    },
+  );
+  assert.deepEqual(commands, ['git', 'Get-ChildItem']);
+  assert.equal(asked.length, 2, 'an empty report is retried once');
+});
+
+test('a shell that keeps answering nothing is not asked forever', async () => {
+  const asked = [];
+  const commands = await discoverTerminalCommands(
+    { id: 'bash', family: 'bash', executable: '/bin/bash', pathPrepend: [] },
+    {
+      platform: 'linux',
+      environment: { PATH: '/bin' },
+      listDirectory: async () => [file('ls')],
+      isExecutable: () => true,
+      runShell: async (_profile, command) => { asked.push(command); return ''; },
+    },
+  );
+  assert.deepEqual(commands, ['ls']);
+  assert.equal(asked.length, 2, 'one retry, not a loop');
+});
+
 test('a shell with nothing to report about itself is not asked', async () => {
   let calls = 0;
   const commands = await discoverTerminalCommands(
