@@ -1,0 +1,70 @@
+name: Verify
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests (WebUI, desktop, CLI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      # `npm test` is the documented entry for each app: vitest plus the node
+      # test files for the WebUI, `node --test` for the desktop shell and the CLI.
+      - name: WebUI tests
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm test
+
+      - name: Desktop unit tests
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npm test
+
+      - name: CLI tests
+        working-directory: apps/cli
+        run: npm test
+
+  machine:
+    name: Machine checks (shells, local runtimes, isolated backend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+
+      # The checks report what this machine can actually do. A toolchain or a
+      # backend that is simply absent counts as unavailable; only an installed
+      # but broken one fails. The isolated backend needs WSL2, so on this runner
+      # it reports itself unavailable instead of failing.
+      - name: Desktop machine checks
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npm run verify
