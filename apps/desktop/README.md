@@ -160,8 +160,12 @@ directory and exits instead of starting an empty window.
   `Ubuntu`, and `Debian` are probed in that order; the first working one wins).
   Without one the backend reports itself unavailable instead of failing a run.
   The sandbox bounds what the payload can reach, not what it may read: the
-  distro mounts the workspace through `/mnt/<drive>/…`, so workspace files stay
-  reachable while host processes and the network do not.
+  namespaces cover user, network and PID, while the filesystem is the distro's
+  own. A payload can therefore read the workspace *and* everything else the
+  distro sees — every Windows drive the distro mounts under `/mnt` and the
+  distro user's home directory — so run code you trust to read your files, or
+  use the API's container backend. `verify:isolated` asks the payload itself and
+  reports what it found instead of assuming either way.
 
 ## Security defaults
 
@@ -231,8 +235,10 @@ from a failure into `SANDKASTEN_RUNTIME_OK:rust` with no change to the code. Pas
 `verify:isolated` detects whether a WSL2 distro can create the isolation
 namespaces and which languages it has the binaries for, then runs a fixture for
 every available one — Python, JavaScript, C, C++, Java, Bash and Perl — and
-keeps two sandbox payloads: one that opens a TCP connection (it has to be
-refused) and one that reports `/proc`, where PID 1 has to be the payload itself.
+keeps three sandbox payloads: one that opens a TCP connection (it has to be
+refused), one that reports `/proc`, where PID 1 has to be the payload itself, and
+one that reports what it can read under `/mnt`, because the namespaces do not
+cover mounts and that is a fact worth stating rather than assuming.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
