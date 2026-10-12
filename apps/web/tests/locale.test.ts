@@ -7,6 +7,7 @@ import {
   type Locale,
 } from '../src/i18n/locale';
 import type { MessageKey } from '../src/i18n/messages';
+import { messages } from '../src/i18n/messages';
 import { useLocale, type LocaleNavigator, type LocaleStorage } from '../src/composables/useLocale';
 
 function createStorage(saved?: string) {
@@ -113,5 +114,15 @@ describe('useLocale', () => {
     expect(translator('brand.name')).toBe('Sandkasten');
     expect(fallbackTranslator('fallback.only' as MessageKey)).toBe('English fallback');
     expect(fallbackTranslator('missing.translation' as MessageKey)).toBe('missing.translation');
+  });
+
+  test('the English catalogue holds no Chinese text', () => {
+    // A key left in the source language is invisible to the type checker and to
+    // every other test, and it ships to the English workbench.
+    const chinese = /[\u3400-\u9fff]/;
+    const leaked = Object.entries(messages.en)
+      .filter(([, value]) => chinese.test(value))
+      .map(([key, value]) => `${key}: ${value}`);
+    expect(leaked).toEqual([]);
   });
 });

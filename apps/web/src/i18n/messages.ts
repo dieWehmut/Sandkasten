@@ -53,7 +53,7 @@ const en = {
   'terminal.input': 'Terminal input',
   'terminal.exited': 'Process exited with code',
   'terminal.finished': 'Exited',
-  'terminal.starting': '正在启动终端…',
+  'terminal.starting': 'Starting terminal…',
   'terminal.empty': 'No terminal sessions',
   'terminal.runFile': 'Run active file in terminal',
   'terminal.source.cmdlet': 'cmdlet or function',
