@@ -74,6 +74,7 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     data-testid="terminal-pane" :data-session-id="session.id" :data-active="active"
     :aria-label="session.title" @focusin="controller.select(session.id)" @pointerdown="controller.select(session.id)"
     @contextmenu.prevent="openMenu($event)"
+    @mousedown.middle.prevent="controller.clipboard('paste-selection', session.id)"
   >
     <div ref="container" class="terminal-pane__viewport" />
     <ContextMenu

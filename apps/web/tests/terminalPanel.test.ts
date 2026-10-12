@@ -114,6 +114,11 @@ describe('desktop terminal panel', () => {
     await openMenu();
     await app.get('[data-testid="context-menu"]').trigger('keydown', { key: 'Escape' }); await flushPromises();
     expect(app.find('[data-testid="context-menu"]').exists()).toBe(false);
+
+    // A middle-click pastes the primary selection, which is a different buffer.
+    await pane.trigger('mousedown', { button: 1 }); await flushPromises();
+    expect(bridge.clipboard!.read).toHaveBeenLastCalledWith('selection');
+    expect(bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'pasted text' });
   });
 
   test('retains output and shell identity across output tabs, panel hiding and setup guide', async () => {

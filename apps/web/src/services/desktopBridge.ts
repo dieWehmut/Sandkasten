@@ -138,10 +138,11 @@ export interface TerminalBridge {
   onExit(handler: (event: { id: string; exitCode: number }) => void): () => void;
   /**
    * The host clipboard. A sandboxed renderer cannot read it without a permission
-   * prompt, so the desktop app goes through the main process.
+   * prompt, so the desktop app goes through the main process. `selection` is the
+   * X11 primary selection, which only Linux has; elsewhere it answers empty.
    */
   clipboard?: {
-    read(): Promise<string>;
+    read(kind?: 'clipboard' | 'selection'): Promise<string>;
     write(text: string): Promise<boolean>;
   };
 }

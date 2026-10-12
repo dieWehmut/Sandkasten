@@ -94,6 +94,13 @@ describe('app-owned terminal sessions', () => {
     expect(xterm.keyHandler(press({ key: 'Insert', shiftKey: true }))).toBe(false);
     await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' }));
     expect(xterm.keyHandler(press({ key: 'Insert' }))).toBe(true);
+
+    // A middle-click pastes the primary selection, which is a different buffer.
+    await terminal.clipboard('paste-selection');
+    expect(host.bridge.clipboard!.read).toHaveBeenLastCalledWith('selection');
+    await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledTimes(3));
+    await terminal.clipboard('paste');
+    expect(host.bridge.clipboard!.read).toHaveBeenLastCalledWith('clipboard');
     await terminal.dispose();
   });
 

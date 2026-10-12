@@ -413,9 +413,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
             else await navigator.clipboard?.writeText(selection);
             return;
           }
-          // Paste goes to the shell as input, the same way typed text does.
+          // Paste goes to the shell as input, the same way typed text does — from the
+          // primary selection when a middle-click asked for it.
+          const kind = action === 'paste-selection' ? 'selection' as const : 'clipboard' as const;
           const text = bridge.clipboard
-            ? await bridge.clipboard.read()
+            ? await bridge.clipboard.read(kind)
             : await navigator.clipboard?.readText() ?? '';
           if (!text) return;
           if (sessions.value.find((entry) => entry.id === id)?.exitCode === undefined) {
@@ -594,7 +596,7 @@ export function isSuggestionShortcut(event: KeyboardEvent): boolean {
 }
 
 /** Copy, paste, select all and clear: the actions a terminal's menu and keys share. */
-export type TerminalClipboardAction = 'copy' | 'paste' | 'select-all' | 'clear';
+export type TerminalClipboardAction = 'copy' | 'paste' | 'paste-selection' | 'select-all' | 'clear';
 
 /**
  * The clipboard keys, which the terminal has to take before xterm sends them to the
