@@ -281,7 +281,9 @@ payload can reach. A fourth starts a payload that sleeps, waits until it is real
 running, cancels it and counts what is left: a cancelled run has to leave nothing
 behind. A fifth floods stdout past the cap, which has to stop the payload — and
 leave nothing behind — rather than run to the time limit with its output
-discarded.
+discarded. A sixth exits with code 3 after writing to both streams, which has to
+come back as a runtime failure carrying that code and both outputs: a sandbox that
+reports a failing program as a success would make the green tick meaningless.
 A machine without a usable distro reports the backend as unavailable instead of
 failing, and a language the distro lacks is reported as unavailable rather than
 failed. Pass `--json` or `--timeout-ms=<ms>`.
