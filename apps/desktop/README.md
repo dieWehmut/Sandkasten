@@ -73,7 +73,9 @@ The desktop build adds these things the browser cannot do:
    about itself, so PowerShell offers its cmdlets and functions (`Get-ChildItem`)
    and bash its builtins (`cd`, `alias`) — and an entry
    per command types it into that session, revealing the panel first and raising
-   a toast when the session will not take the input. The commands typed this
+   a toast when the session will not take the input. An entry the shell reported
+   about itself says so where an executable shows the shell's name, so the two
+   kinds of command are told apart in the list. The commands typed this
    session lead the list, and a shell that answered with an empty list (a cold
    distro, a broken shim) is asked again every time the palette opens. The
    palette paints the first two hundred matches of a long list and says so;
