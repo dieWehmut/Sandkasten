@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -75,7 +75,7 @@ async function start() {
   };
   const trayProbe = createTrayProbe();
 
-  registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow });
+  registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow: focusedWindow, clipboard });
   const bundledIndex = path.join(activeDistribution, 'index.html');
   const terminal = createTerminalHost({
     spawn: spawnPty,

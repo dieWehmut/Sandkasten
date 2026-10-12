@@ -30,6 +30,8 @@ const CHANNELS = {
   terminalSetFocused: 'sandkasten:terminal:set-focused',
   terminalData: 'sandkasten:terminal:data',
   terminalExit: 'sandkasten:terminal:exit',
+  clipboardRead: 'sandkasten:clipboard:read',
+  clipboardWrite: 'sandkasten:clipboard:write',
   menu: 'sandkasten:menu',
 };
 
@@ -63,6 +65,10 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
     setFocused: (focused) => ipcRenderer.invoke(CHANNELS.terminalSetFocused, focused),
     onData: (handler) => subscribe(CHANNELS.terminalData, handler),
     onExit: (handler) => subscribe(CHANNELS.terminalExit, handler),
+  },
+  clipboard: {
+    read: () => ipcRenderer.invoke(CHANNELS.clipboardRead),
+    write: (text) => ipcRenderer.invoke(CHANNELS.clipboardWrite, text),
   },
   workspace: {
     openFolder: () => ipcRenderer.invoke(CHANNELS.workspaceOpenFolder),

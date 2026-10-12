@@ -41,6 +41,8 @@ export const IPC_CHANNELS = {
   terminalSetFocused: 'sandkasten:terminal:set-focused',
   terminalData: 'sandkasten:terminal:data',
   terminalExit: 'sandkasten:terminal:exit',
+  clipboardRead: 'sandkasten:clipboard:read',
+  clipboardWrite: 'sandkasten:clipboard:write',
   menu: 'sandkasten:menu',
 };
 
@@ -125,7 +127,7 @@ export function registerWindowChromeIpc({ ipcMain, Menu, getWindowForContents, b
   });
 }
 
-export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow }) {
+export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session, getWindow, clipboard }) {
   ipcMain.handle(IPC_CHANNELS.workspaceOpenFolder, async () => {
     const options = {
       title: 'Open workspace folder',
@@ -205,6 +207,15 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
   ipcMain.handle(IPC_CHANNELS.isolatedStop, async (_event, jobId) => (
     isolated ? isolated.stop(assertString(jobId, 'jobId')) : false
   ));
+
+  // The clipboard goes through the main process: a sandboxed renderer cannot read
+  // it without a permission prompt, and a terminal that cannot be pasted into or
+  // copied from is half a terminal.
+  ipcMain.handle(IPC_CHANNELS.clipboardRead, async () => clipboard.readText());
+  ipcMain.handle(IPC_CHANNELS.clipboardWrite, async (_event, text) => {
+    clipboard.writeText(typeof text === 'string' ? text : '');
+    return true;
+  });
 
   return IPC_CHANNELS;
 }

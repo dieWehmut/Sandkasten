@@ -103,3 +103,19 @@ test('the sandbox exposes only narrow promise-based window chrome operations', a
   assert.equal(bridge.ipcRenderer, undefined);
   assert.equal(bridge.invoke, undefined);
 });
+
+test('the clipboard is a read and a write, and nothing else', async () => {
+  let bridge;
+  const calls = [];
+  runInNewContext(read('preload.cjs'), {
+    process: { platform: 'win32', versions: {} },
+    require: () => ({
+      contextBridge: { exposeInMainWorld: (_key, value) => { bridge = value; } },
+      ipcRenderer: { invoke: async (...args) => { calls.push(args); return 'text from the host'; }, on: () => {} },
+    }),
+  });
+  assert.deepEqual(Object.keys(bridge.clipboard).sort(), ['read', 'write']);
+  assert.equal(await bridge.clipboard.read(), 'text from the host');
+  await bridge.clipboard.write('copied');
+  assert.deepEqual(calls, [[IPC_CHANNELS.clipboardRead], [IPC_CHANNELS.clipboardWrite, 'copied']]);
+});
