@@ -9,6 +9,7 @@ import test from 'node:test';
 import {
   LOCAL_RUNTIMES,
   createLocalRunner,
+  diagnoseCompileFailure,
   resolveLocalPlan,
   runtimeForExtension,
 } from '../src/local-runner.mjs';
@@ -109,6 +110,52 @@ test('PowerShell declares a probe budget that covers a cold host start', () => {
   assert.deepEqual(LOCAL_RUNTIMES.powershell.candidates, ['pwsh', 'powershell']);
   assert.ok(LOCAL_RUNTIMES.powershell.probeTimeoutMs >= 10_000,
     'a cold PowerShell host would be reported as missing under the generic budget');
+});
+
+test('a linker failure is named, including the Unix linker that shadows the MSVC one', () => {
+  const shadowed = diagnoseCompileFailure('error: linking with `link.exe` failed: exit code: 1', {
+    platform: 'win32',
+    environment: { Path: 'C:\\msys64\\usr\\bin;C:\\Windows\\System32' },
+    findExecutable: (name, _environment, _platform) => name === 'link.exe' ? 'C:\\msys64\\usr\\bin\\link.exe' : '',
+  });
+  assert.match(shadowed, /shadowing the MSVC linker/);
+  assert.match(shadowed, /msys64/);
+
+  const missing = diagnoseCompileFailure('error: linking with `link.exe` failed', {
+    platform: 'win32', findExecutable: () => '',
+  });
+  assert.match(missing, /Visual Studio C\+\+ build tools/);
+
+  const posix = diagnoseCompileFailure('collect2: error: ld returned 1; linking with `cc` failed', { platform: 'linux' });
+  assert.match(posix, /C toolchain/);
+
+  assert.equal(diagnoseCompileFailure('error[E0425]: cannot find value `x`', { platform: 'win32' }), '');
+  assert.equal(diagnoseCompileFailure('', {}), '');
+  assert.equal(diagnoseCompileFailure(undefined, {}), '');
+});
+
+test('a failed compile carries the diagnosis in the result', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-run-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'main.c'), 'int main(void) { return 0; }\n');
+
+  const linker = createLocalRunner({
+    spawnImpl: fakeSpawn({ stderr: 'error: linking with `link.exe` failed: exit code: 1\n', code: 1 }).spawnImpl,
+    platform: 'win32',
+    tmpRoot: path.join(root, '.out'),
+  });
+  const failed = await linker.run({ jobId: 'job-link', path: 'main.c', language: 'c' }, { root });
+  assert.equal(failed.status, 'JOB_STATUS_COMPILE_FAILED');
+  assert.match(failed.hint, /linker/i);
+
+  const syntax = createLocalRunner({
+    spawnImpl: fakeSpawn({ stderr: 'main.c:1: error: expected `;`\n', code: 1 }).spawnImpl,
+    platform: 'win32',
+    tmpRoot: path.join(root, '.out'),
+  });
+  const plain = await syntax.run({ jobId: 'job-syntax', path: 'main.c', language: 'c' }, { root });
+  assert.equal(plain.status, 'JOB_STATUS_COMPILE_FAILED');
+  assert.equal(plain.hint, '', 'a source error is not a toolchain problem');
 });
 
 test('Go builds explicitly so a locked temporary executable cannot fail a good run', async (t) => {

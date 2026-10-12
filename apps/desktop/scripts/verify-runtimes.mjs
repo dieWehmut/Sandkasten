@@ -83,6 +83,7 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
         language, label: runtime.label, status: ok ? 'ok' : 'failed',
         jobStatus: result.status, exitCode: result.exitCode, durationMs: result.durationMs,
         stdout: brief(result.stdout), stderr: brief(result.stderr || result.compileStderr),
+        hint: result.hint ?? '',
         reason: ok ? '' : result.errorMessage || `marker ${expected} missing (${result.status})`,
       });
     }
@@ -101,7 +102,7 @@ function render(results) {
       ? brief(result.stdout)
       : result.status === 'unavailable'
         ? result.reason
-        : [result.reason, compact(result.stderr)].filter(Boolean).join(' — ');
+        : [result.reason, compact(result.stderr), result.hint ? `hint: ${compact(result.hint, 200)}` : ''].filter(Boolean).join(' — ');
     process.stdout.write(`${result.status.padEnd(11)} ${result.label.padEnd(width)} ${String(result.durationMs ?? 0).padStart(6)} ms  ${detail}\n`);
   }
   const ran = results.filter((result) => result.status === 'ok').length;

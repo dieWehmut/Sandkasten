@@ -3,6 +3,7 @@
 // sandboxed path; this one exists so the desktop workbench can run code without
 // a deployed server.
 import { spawn as nodeSpawn } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { mkdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -130,6 +131,44 @@ export function runtimeForExtension(extension) {
     if (runtime.extensions.includes(normalized)) return language;
   }
   return '';
+}
+
+const LINKER_FAILURE = /linking with .*failed|unable to find linker|linker .*not found/i;
+
+function findOnPath(name, environment = process.env, platform = process.platform) {
+  const key = Object.keys(environment).find((entry) => entry.toLowerCase() === 'path') ?? 'PATH';
+  const separator = platform === 'win32' ? ';' : ':';
+  for (const entry of String(environment[key] ?? '').split(separator)) {
+    const directory = entry.trim().replace(/^"|"$/g, '');
+    if (!directory) continue;
+    const candidate = path.join(directory, name);
+    try {
+      if (statSync(candidate).isFile()) return candidate;
+    } catch {
+      // Keep looking: a missing entry is the normal case for most directories.
+    }
+  }
+  return '';
+}
+
+/**
+ * One actionable sentence for a compile failure, or '' when the cause is not one
+ * we can name. The Windows case is worth naming: a Unix `link.exe` from MSYS2,
+ * Git or Cygwin on PATH shadows the MSVC linker, and the compiler's own message
+ * does not say that.
+ */
+export function diagnoseCompileFailure(stderr, {
+  platform = process.platform, environment = process.env, findExecutable = findOnPath,
+} = {}) {
+  if (!LINKER_FAILURE.test(String(stderr ?? ''))) return '';
+  if (platform !== 'win32') {
+    return 'The linker for this target is missing or unusable: install the host C toolchain (for example build-essential or gcc).';
+  }
+  const linker = findExecutable('link.exe', environment, platform);
+  if (linker && /(?:^|[\\/])(?:msys2?|git|cygwin)[^\\/]*[\\/]/i.test(linker)) {
+    return `A Unix link.exe (${linker}) is shadowing the MSVC linker: run from a Visual Studio developer prompt, install the C++ build tools, or use a GNU toolchain.`;
+  }
+  return 'The MSVC linker is missing: install the Visual Studio C++ build tools (or use a GNU toolchain).';
 }
 
 // A toolchain probe that never exits (a broken shim, a stalled WSL relay, an
@@ -316,6 +355,9 @@ export function createLocalRunner(options = {}) {
           result.status = 'JOB_STATUS_COMPILE_FAILED';
           result.exitCode = compiled.code;
           result.errorMessage = 'Compilation failed';
+          // The toolchain's own words are in compileStderr; say why they happened
+          // when the cause is one we can name.
+          result.hint = diagnoseCompileFailure(compiled.stderr || compiled.stdout, { platform });
           return result;
         }
       }
