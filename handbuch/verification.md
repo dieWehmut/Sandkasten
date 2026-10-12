@@ -20,7 +20,7 @@ each one.
 
 | Command | Proves |
 | --- | --- |
-| `make test` → `werkzeug/quality/test.sh` | The repository's strictest entry, and it names its steps the way the script does: Go API tests, Rust runner tests, WebUI dependency install, WebUI unit tests, WebUI production build, WebUI distribution freshness, WebUI Pages artifact contract, Apps layout contract, CLI tests, Desktop shell tests. A missing tool is a failure here rather than something to skip. Go's build temporaries are kept inside the repository, because a Windows shell's temp mapping is one Go cannot always clean up. |
+| `make test` → `werkzeug/quality/test.sh` | The repository's strictest entry, and it names its steps the way the script does: Go API tests, Rust runner tests, WebUI dependency install, WebUI unit tests, WebUI type check, WebUI production build, WebUI distribution freshness, WebUI Pages artifact contract, Apps layout contract, CLI tests, Desktop shell tests. A missing tool is a failure here rather than something to skip. Go's build temporaries are kept inside the repository, because a Windows shell's temp mapping is one Go cannot always clean up. |
 | `make verify-desktop` → `apps/desktop npm run verify` | The three machine checks below, with one summary line each. |
 
 ## Server

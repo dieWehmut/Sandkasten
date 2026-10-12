@@ -54,6 +54,9 @@ if [[ -f "$ROOT/apps/web/package.json" ]]; then
   if command -v npm >/dev/null 2>&1; then
     run_or_fail "WebUI dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/apps/web"
     run_or_fail "WebUI unit tests" bash -c 'cd "$1" && npm test' bash "$ROOT/apps/web"
+    # Neither npm test nor the build looks at the types: both compile through
+    # esbuild, which strips them.
+    run_or_fail "WebUI type check" bash -c 'cd "$1" && npm run typecheck' bash "$ROOT/apps/web"
     run_or_fail "WebUI production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/apps/web"
   else
     missing npm "Install the pinned Node.js major used by the Pages workflow."
