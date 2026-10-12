@@ -25,7 +25,9 @@ The desktop build adds these things the browser cannot do:
    installed on this computer (`python`, `node`, `go`, `rustc`/`gcc`/`g++`,
    `java`, `ruby`, `php`, `bash`, `lua`, `perl`, and PowerShell through `pwsh`
    or the Windows PowerShell), unsandboxed, with a 20 s
-   default timeout and a 1 MiB output cap. A compile that fails because of the
+   default timeout and a 1 MiB output cap: a program that prints past the cap is
+   stopped rather than left to run with its output discarded, as the server's
+   runner has always done. A compile that fails because of the
    toolchain rather than the source carries one actionable sentence: a Unix
    `link.exe` from MSYS2, Git or Cygwin on `PATH` shadows the MSVC linker, for
    example, and the diagnostics output says so. The status bar always shows which
