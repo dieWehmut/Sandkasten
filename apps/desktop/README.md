@@ -180,6 +180,11 @@ directory and exits instead of starting an empty window.
 ## Security defaults
 
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+- The shell ships a Content-Security-Policy in `apps/web/index.html`: scripts and
+  styles from the app itself, the inlined icon as a data image, and http(s) left
+  open for the API endpoint the user configures. That is what silences Electron's
+  own insecure-policy warning instead of hiding it, and the desktop end-to-end run
+  asserts nothing was refused.
 - The preload is CommonJS (`src/preload.cjs`) because sandboxed preloads cannot
   be ES modules; `tests/preload.test.mjs` fails when the preload and the IPC
   registry drift apart.
