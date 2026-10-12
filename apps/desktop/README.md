@@ -254,8 +254,12 @@ is inert unless that variable is set, so a normal launch never exposes it.
 and compact sizes, drives the empty-editor welcome actions, and exercises a real
 Command Prompt session: state and directory retention across panel and setup
 changes, a split shell, an actual resize reaching the PTY, Ctrl+C on a running
-program, session close, and the rejection of a closed session. The same command
-runs against the packaged executable through `SANDKASTEN_E2E_EXECUTABLE`.
+program, session close, and the rejection of a closed session. It also runs the
+fixture files through that session — Python, PowerShell, JavaScript and a shell
+script — each waiting for the marker the program itself prints, and completes a
+command, a file argument, a folder and a nested path in the suggestion strip. The
+same command runs against the packaged executable through
+`SANDKASTEN_E2E_EXECUTABLE`.
 
 `package:dir` produces an unsigned unpacked build. The bundled WebUI is copied
 into `resources/web-dist`, which the main process resolves through
