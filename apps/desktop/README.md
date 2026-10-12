@@ -25,7 +25,10 @@ The desktop build adds these things the browser cannot do:
    installed on this computer (`python`, `node`, `go`, `rustc`/`gcc`/`g++`,
    `java`, `ruby`, `php`, `bash`, `lua`, `perl`, and PowerShell through `pwsh`
    or the Windows PowerShell), unsandboxed, with a 20 s
-   default timeout and a 1 MiB output cap. The status bar always shows which
+   default timeout and a 1 MiB output cap. A compile that fails because of the
+   toolchain rather than the source carries one actionable sentence: a Unix
+   `link.exe` from MSYS2, Git or Cygwin on `PATH` shadows the MSVC linker, for
+   example, and the diagnostics output says so. The status bar always shows which
    backend ran the code (`Local run` vs `Sandbox API`); the same strip also
    reports the connection, the open file, the problems of the last run, the
    cursor, the detected indentation and line ending, the encoding, and the
@@ -74,7 +77,8 @@ The desktop build adds these things the browser cannot do:
    distro, a broken shim) is asked again every time the palette opens. Typing
    the start of a command in the terminal itself suggests up to five commands
    the active shell can run; choosing one types the rest of the word without
-   running it. The suggestion model gives up whenever it cannot follow the input
+   running it, and `Ctrl+Space` accepts the first suggestion. The suggestion
+   model gives up whenever it cannot follow the input
    (history, cursor movement), so it never suggests from a line it lost track
    of, and Tab still belongs to the shell. A WSL
    session is asked inside the
@@ -190,7 +194,8 @@ the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
 fixture for every available runtime through the real local runner, requiring the
 fixture's marker on stdout. Runtimes whose toolchain is absent are reported as
 unavailable instead of failing; an installed but unusable toolchain (a `rustc`
-without a linker, for example) fails with its own output. Pass `--json`,
+without a linker, for example) fails with its own output, followed by the
+runner's diagnosis when it can name the cause. Pass `--json`,
 `--language=<id>`, or `--timeout-ms=<ms>`.
 
 `verify:isolated` detects whether a WSL2 distro can create the isolation
