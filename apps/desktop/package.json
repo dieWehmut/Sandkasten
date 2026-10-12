@@ -13,6 +13,7 @@
     "test": "node --test tests/*.test.mjs",
     "verify:shells": "node scripts/verify-shells.mjs",
     "verify:runtimes": "node scripts/verify-runtimes.mjs",
+    "verify:isolated": "node scripts/verify-isolated.mjs",
     "smoke": "node scripts/smoke.mjs",
     "e2e": "node scripts/e2e-ide.mjs",
     "e2e:refinement": "node scripts/e2e-refinement.mjs",
