@@ -68,13 +68,16 @@ The desktop build adds these things the browser cannot do:
    on top of the directories the user already had. Hiding the panel, switching
    tabs, or visiting setup keeps the shell, its buffer, and its working
    directory alive; quitting the app disposes them. The command palette offers the
-   commands the active shell can run — discovered from the session `PATH` with
-   the profile's own directories first, so a Git Bash session lists `git`, `ls`
-   and the coreutils while PowerShell leads with its own tools — and an entry
+   commands the active shell can run — the executables on the session `PATH`,
+   with the profile's own directories first, plus the commands the shell reports
+   about itself, so PowerShell offers its cmdlets and functions (`Get-ChildItem`)
+   and bash its builtins (`cd`, `alias`) — and an entry
    per command types it into that session, revealing the panel first and raising
    a toast when the session will not take the input. The commands typed this
    session lead the list, and a shell that answered with an empty list (a cold
-   distro, a broken shim) is asked again every time the palette opens. Typing
+   distro, a broken shim) is asked again every time the palette opens. The
+   palette paints the first two hundred matches of a long list and says so;
+   typing narrows the whole list. Typing
    the start of a command in the terminal itself suggests up to five commands
    the active shell can run; choosing one types the rest of the word without
    running it, and `Ctrl+Space` accepts the first suggestion. Once the command
