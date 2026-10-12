@@ -125,4 +125,33 @@ describe('useLocale', () => {
       .map(([key, value]) => `${key}: ${value}`);
     expect(leaked).toEqual([]);
   });
+
+  test('both catalogues cover exactly the same keys', () => {
+    expect(Object.keys(messages['zh-CN']).sort()).toEqual(Object.keys(messages.en).sort());
+  });
+
+  test('the Chinese catalogue is translated, except where the value is a name', () => {
+    const chinese = /[\u3400-\u9fff]/;
+    // A product name, a URL example, two stream labels and a file name: writing
+    // these in Chinese would be wrong, not helpful.
+    const sameInBoth = new Set([
+      'brand.name', 'setup.mode.webui', 'apiEndpoint.placeholder',
+      'inspector.stdout', 'inspector.stderr', 'ide.explorer.fileNamePlaceholder',
+    ]);
+    const untranslated = Object.entries(messages['zh-CN'])
+      .filter(([key, value]) => !chinese.test(value) && !sameInBoth.has(key))
+      .map(([key, value]) => `${key}: ${value}`);
+    expect(untranslated).toEqual([]);
+  });
+
+  test('a translation keeps every placeholder its English text carries', () => {
+    // Interpolation is done by the translator itself, so a dropped `{current}`
+    // silently prints a message with a hole in it.
+    const placeholders = (value: string) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+    const mismatched = Object.entries(messages.en)
+      .map(([key, value]) => [key, placeholders(value), placeholders(messages['zh-CN'][key as MessageKey])] as const)
+      .filter(([, expected, actual]) => expected.join(',') !== actual.join(','))
+      .map(([key, expected, actual]) => `${key}: ${expected.join(',')} vs ${actual.join(',')}`);
+    expect(mismatched).toEqual([]);
+  });
 });
