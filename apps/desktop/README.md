@@ -96,9 +96,10 @@ The desktop build adds these things the browser cannot do:
    | Right-click, middle-click | The same actions as a menu; paste the primary selection on Linux |
 
    The strip's prefix model follows what the shell echoes, so it offers completions
-   for the line being typed. It stops offering them once an escape sequence — a
-   cursor key, a history recall — has moved the shell's line or cursor where the
-   model cannot see it, and picks up again at the next prompt: guessing there would
+   for the line being typed. It stops offering them once the shell has changed that
+   line where the model cannot see it — a cursor key, a history recall, `Tab` letting
+   the shell complete the word itself, or one of the readline bindings that delete or
+   move within the line — and picks up again at the next prompt. Guessing there would
    mean sending the shell edits for the wrong line.
 
    Each session gets its shell's own command directories on `PATH`
