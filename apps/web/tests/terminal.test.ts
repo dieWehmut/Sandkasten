@@ -316,7 +316,7 @@ describe('app-owned terminal sessions', () => {
 
   test('completes a file argument from the workspace and quotes it when needed', async () => {
     const host = fakeBridge();
-    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'my notes.txt', 'scripts/'] });
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'my notes.txt', 'scripts/', 'scripts/task.py'] });
     await terminal.loadProfiles();
     await terminal.create('cmd');
     await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
@@ -342,10 +342,37 @@ describe('app-owned terminal sessions', () => {
 
     // A folder arrives with its separator, so the next segment can be typed.
     type('\r'); type('cd scr');
-    expect(terminal.suggestions.value).toEqual([{ label: 'scripts/', value: 'scripts/' }]);
+    expect(terminal.suggestions.value).toEqual([
+      { label: 'scripts/', value: 'scripts/' },
+      { label: 'scripts/task.py', value: 'scripts/task.py' },
+    ]);
     expect(await terminal.complete({ label: 'scripts/', value: 'scripts/' })).toBe(true);
     expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'ipts/' });
     expect(terminal.inputLine.value).toBe('cd scripts/');
+
+    // A nested file completes through the folder that contains it.
+    type('\r'); type('cd scripts/task');
+    expect(terminal.suggestions.value).toEqual([{ label: 'scripts/task.py', value: 'scripts/task.py' }]);
+    expect(await terminal.complete({ label: 'scripts/task.py', value: 'scripts/task.py' })).toBe(true);
+    expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: '.py' });
+    expect(terminal.inputLine.value).toBe('cd scripts/task.py');
+    await terminal.dispose();
+  });
+
+  test('the suggestions already accepted this session lead the strip', async () => {
+    const host = fakeBridge();
+    host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    type('gi');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['git', 'git-lfs', 'gitui']);
+    expect(await terminal.complete({ label: 'gitui', value: 'gitui' })).toBe(true);
+
+    type('\r'); type('gi');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['gitui', 'git', 'git-lfs']);
     await terminal.dispose();
   });
 

@@ -10,6 +10,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportSuggestions = false;
   let reportArgumentSuggestions = false;
   let reportDirectorySuggestions = false;
+  let reportNestedSuggestions = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -95,6 +96,16 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await enter(firstId, 'echo E2E^_DIRS^_OK');
   await waitScreen(firstId, 'E2E_DIRS_OK');
 
+  // A file inside that folder completes through the folder.
+  await page.keyboard.type('cd scripts/task');
+  await page.waitForSelector(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="scripts/task.py"]`, { timeout: 10_000 });
+  await page.click(`${pane(firstId)} [data-testid="terminal-suggestion"][data-command="scripts/task.py"]`);
+  await waitScreen(firstId, 'cd scripts/task.py');
+  reportNestedSuggestions = true;
+  await page.keyboard.press('Control+c');
+  await enter(firstId, 'echo E2E^_NESTED^_OK');
+  await waitScreen(firstId, 'E2E_NESTED_OK');
+
   // Escape separators in the entered command: the unescaped marker appears
   // only in shell output, so command echo cannot make this assertion pass.
   await enter(firstId, 'echo E2E^_PTY^_READY');
@@ -179,5 +190,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions };
 }

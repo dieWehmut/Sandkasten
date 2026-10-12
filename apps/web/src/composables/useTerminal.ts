@@ -52,6 +52,10 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // line the terminal emulator has lost track of.
   const inputLine = ref('');
   let inEscape = false;
+  // What the user already accepted in this session, most recent first: among
+  // equally matching suggestions the ones already used lead the strip, the way a
+  // shell's own history does.
+  const acceptedValues = ref<string[]>([]);
   const views = new Map<string, SessionView>();
   let disposed = false;
   let focused = false;
@@ -124,6 +128,12 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   // The command word completes from the shell's published commands, and an
   // argument completes from the workspace, so `python mai…` offers main.py.
+  function orderByHistory<T extends { value: string }>(items: T[]): T[] {
+    const accepted = acceptedValues.value;
+    if (!accepted.length) return items;
+    return [...items.filter((item) => accepted.includes(item.value)), ...items.filter((item) => !accepted.includes(item.value))];
+  }
+
   const suggestions = computed<TerminalSuggestion[]>(() => {
     const line = inputLine.value;
     if (!line) return [];
@@ -134,17 +144,17 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       const token = parts.at(-1) ?? '';
       if (!token) return [];
       const lower = token.toLowerCase();
-      return inputPaths()
+      return orderByHistory(inputPaths()
         .filter((path) => path.toLowerCase().startsWith(lower))
-        .slice(0, 5)
-        .map((path) => ({ label: path, value: path }));
+        .map((path) => ({ label: path, value: path })))
+        .slice(0, 5);
     }
     const lower = line.toLowerCase();
     const names = commandNames.value[activeProfileId.value] ?? [];
-    return names
+    return orderByHistory(names
       .filter((name) => name.toLowerCase().startsWith(lower) && name.toLowerCase() !== lower)
-      .slice(0, 5)
-      .map((name) => ({ label: name, value: name }));
+      .map((name) => ({ label: name, value: name })))
+      .slice(0, 5);
   });
 
   function trackInput(data: string): void {
@@ -342,6 +352,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     const data = insert.startsWith(token) ? insert.slice(token.length) : `${'\x7f'.repeat(token.length)}${insert}`;
     if (!(await writeRaw(data))) return false;
     inputLine.value = line.slice(0, start) + insert;
+    acceptedValues.value = [value, ...acceptedValues.value.filter((entry) => entry !== value)].slice(0, 8);
     return true;
   }
 

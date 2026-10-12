@@ -270,5 +270,14 @@ describe('desktop terminal panel', () => {
     expect(suggestion.exists()).toBe(true);
     await suggestion.trigger('click');
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'ipts/' }));
+
+    // A nested file completes through its folder.
+    xterm.terminals.at(-1).input('\r');
+    xterm.terminals.at(-1).input('cd scripts/task');
+    await flushPromises();
+    const nested = app.find('[data-testid="terminal-suggestion"][data-command="scripts/task.py"]');
+    expect(nested.exists()).toBe(true);
+    await nested.trigger('click');
+    await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: '.py' }));
   });
 });
