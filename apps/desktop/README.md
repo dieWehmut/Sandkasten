@@ -97,7 +97,9 @@ The desktop build adds these things the browser cannot do:
    mislead. `Terminal: Run active file in
    terminal` types the file's interpreter command instead, quoted for that
    shell's family, so the same workspace can be driven from PowerShell, Git Bash
-   or WSL without leaving the workbench.
+   or WSL without leaving the workbench. A PowerShell script is a case of its
+   own: the session's own PowerShell runs it with the call operator, and any other
+   shell asks the host PowerShell for the file.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
