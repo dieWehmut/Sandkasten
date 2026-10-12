@@ -80,6 +80,18 @@ The desktop build adds these things the browser cannot do:
    primary selection the way Linux terminals do (the main process answers that
    request on Linux only). `Ctrl+=`, `Ctrl+-` and `Ctrl+0` zoom the terminal's own
    font, between 8 and 32 px, and every session takes the size.
+
+   | Key | What it does |
+   | --- | --- |
+   | `Ctrl+Shift+C` / `Cmd+C` | Copy the selection |
+   | `Ctrl+Shift+V` / `Cmd+V` / `Shift+Insert` | Paste the clipboard as input |
+   | `Ctrl+Shift+A` | Select the whole buffer |
+   | `Ctrl+=`, `Ctrl+-`, `Ctrl+0` | Zoom the terminal font in, out, and back |
+   | `Ctrl+Space` | Accept the first suggestion |
+   | `Ctrl+\`` | New terminal; `Ctrl+\`` again toggles the panel |
+   | `Ctrl+Shift+P` | The command palette, with the active shell's commands |
+   | Right-click, middle-click | The same actions as a menu; paste the primary selection on Linux |
+
    Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
@@ -342,9 +354,10 @@ instead when the session has no clipboard of its own — a bare Electron probe o
 this machine returns the empty string, so the run says so rather than failing. The
 same step proves the clipboard keys never reach the shell: the running program
 prints again two seconds after `Ctrl+Shift+C` and `Ctrl+Shift+A`, and then `Ctrl+C`
-interrupts it. The
-same command runs against the packaged executable through
-`SANDKASTEN_E2E_EXECUTABLE`.
+interrupts it. Both this run and `npm run e2e` take `SANDKASTEN_E2E_EXECUTABLE` and
+resolve it against the repository root, so either can be pointed at a packaged
+build — the packaged refinement run is what proves the terminal's clipboard, menu
+and zoom actions in the shipped artifact.
 
 `package:dir` produces an unsigned unpacked build. The bundled WebUI is copied
 into `resources/web-dist`, which the main process resolves through
