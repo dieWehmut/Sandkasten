@@ -37,6 +37,19 @@ jobs:
           npm ci
           npm test
 
+      # The same command the Pages workflow runs on the same runner image: it
+      # drives the built distribution in a real Chrome at three viewports.
+      - name: WebUI browser smoke
+        working-directory: apps/web
+        run: npm run test:browser
+
+      # The committed distribution is what Pages and the server installer ship.
+      # This rebuilds it and checks the four-file contract, which the unit suite
+      # leaves out, so a WebUI source change cannot slip through without it.
+      - name: WebUI distribution contract
+        shell: bash
+        run: bash scripts/webui-build-test.sh --test
+
       - name: Desktop unit tests
         working-directory: apps/desktop
         run: |
