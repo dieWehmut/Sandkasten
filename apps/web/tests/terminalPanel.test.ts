@@ -280,4 +280,17 @@ describe('desktop terminal panel', () => {
     await nested.trigger('click');
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: '.py' }));
   });
+
+  test('a command accepted in the terminal leads the palette after a restart', async () => {
+    // What the terminal accepted in an earlier session is in the history store.
+    window.localStorage.setItem('sandkasten-terminal-history-v1', JSON.stringify(['git']));
+    installDesktop();
+    const app = await mountApp();
+    await vi.waitFor(() => expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(false));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    const shellRows = app.findAll('[data-command^="shell."]');
+    expect(shellRows.length).toBeGreaterThan(1);
+    expect(shellRows[0].attributes('data-command')).toBe('shell.git');
+  });
 });

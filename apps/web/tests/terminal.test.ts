@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { useTerminal } from '../src/composables/useTerminal';
+import { TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
 import type { TerminalBridge } from '../src/services/desktopBridge';
 
 const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
@@ -36,7 +36,7 @@ function fakeBridge() {
   return { bridge, offData, offExit, data: (id: string, text: string) => data({ id, data: text }), exit: (id: string, exitCode: number) => exit({ id, exitCode }) };
 }
 
-afterEach(() => { mocks.terminals.length = 0; mocks.fits.length = 0; });
+afterEach(() => { mocks.terminals.length = 0; mocks.fits.length = 0; window.localStorage.clear(); });
 
 describe('app-owned terminal sessions', () => {
   test('discovers actual profiles and installs the buffer before attach replays the prompt', async () => {
@@ -374,6 +374,51 @@ describe('app-owned terminal sessions', () => {
     type('\r'); type('gi');
     expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['gitui', 'git', 'git-lfs']);
     await terminal.dispose();
+  });
+
+  test('the accepted suggestions survive a restart', async () => {
+    const host = fakeBridge();
+    host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
+    mocks.terminals[0].input('gi');
+    await terminal.complete({ label: 'gitui', value: 'gitui' });
+    await terminal.dispose();
+    expect(JSON.parse(window.localStorage.getItem(TERMINAL_HISTORY_KEY) ?? '[]')).toEqual(['gitui']);
+
+    // A fresh controller is what the next start looks like.
+    const restarted = fakeBridge();
+    restarted.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    const next = useTerminal(restarted.bridge);
+    await next.create('cmd');
+    await vi.waitFor(() => expect(next.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
+    mocks.terminals[1].input('gi');
+    expect(next.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['gitui', 'git', 'git-lfs']);
+    await next.dispose();
+  });
+
+  test('a broken or unavailable history store cannot break the terminal', async () => {
+    window.localStorage.setItem(TERMINAL_HISTORY_KEY, '{ not json at all');
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    mocks.terminals[0].input('gi');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['git']);
+    await terminal.dispose();
+
+    const denied = {
+      getItem: () => { throw new Error('denied'); },
+      setItem: () => { throw new Error('denied'); },
+    } as unknown as Storage;
+    const blocked = fakeBridge();
+    const noStorage = useTerminal(blocked.bridge, { history: denied });
+    await noStorage.create('cmd');
+    await vi.waitFor(() => expect(noStorage.commandNames.value.cmd).toEqual(['git', 'ls']));
+    mocks.terminals[1].input('gi');
+    expect(await noStorage.complete({ label: 'git', value: 'git' })).toBe(true);
+    await noStorage.dispose();
   });
 
   test('a failed command list is reported and retried without breaking the session', async () => {

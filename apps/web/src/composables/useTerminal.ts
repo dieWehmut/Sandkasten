@@ -26,6 +26,42 @@ export interface TerminalOptions {
    * directory is expected to carry a trailing separator.
    */
   paths?: () => readonly string[];
+  /** Where the accepted-suggestion history lives; defaults to localStorage. */
+  history?: Storage;
+}
+
+// What the user accepted in earlier sessions. It is a convenience cache, so
+// every read and write is guarded: private mode and a half-written entry must
+// not break the terminal.
+export const TERMINAL_HISTORY_KEY = 'sandkasten-terminal-history-v1';
+export const TERMINAL_HISTORY_LIMIT = 8;
+
+function readHistory(storage: Storage | undefined): string[] {
+  try {
+    const stored = storage?.getItem(TERMINAL_HISTORY_KEY);
+    if (!stored) return [];
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is string => typeof entry === 'string' && entry !== '').slice(0, TERMINAL_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function writeHistory(storage: Storage | undefined, values: readonly string[]): void {
+  try {
+    storage?.setItem(TERMINAL_HISTORY_KEY, JSON.stringify(values));
+  } catch {
+    // Storage can be unavailable or full; the history is only a convenience.
+  }
+}
+
+function localHistoryStorage(): Storage | undefined {
+  try {
+    return typeof localStorage === 'undefined' ? undefined : localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The App owns this controller; panel components only borrow its DOM hosts. */
@@ -52,10 +88,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // line the terminal emulator has lost track of.
   const inputLine = ref('');
   let inEscape = false;
-  // What the user already accepted in this session, most recent first: among
-  // equally matching suggestions the ones already used lead the strip, the way a
-  // shell's own history does.
-  const acceptedValues = ref<string[]>([]);
+  // What the user already accepted, most recent first: among equally matching
+  // suggestions the ones already used lead the strip, the way a shell's own
+  // history does. It survives a restart, because a shell's habits do.
+  const historyStorage = options.history ?? localHistoryStorage();
+  const acceptedValues = ref<string[]>(readHistory(historyStorage));
   const views = new Map<string, SessionView>();
   let disposed = false;
   let focused = false;
@@ -352,14 +389,15 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     const data = insert.startsWith(token) ? insert.slice(token.length) : `${'\x7f'.repeat(token.length)}${insert}`;
     if (!(await writeRaw(data))) return false;
     inputLine.value = line.slice(0, start) + insert;
-    acceptedValues.value = [value, ...acceptedValues.value.filter((entry) => entry !== value)].slice(0, 8);
+    acceptedValues.value = [value, ...acceptedValues.value.filter((entry) => entry !== value)].slice(0, TERMINAL_HISTORY_LIMIT);
+    writeHistory(historyStorage, acceptedValues.value);
     return true;
   }
 
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     activeProfileId, defaultProfileId, commandNames: readonly(commandNames),
-    inputLine: readonly(inputLine), suggestions, complete,
+    inputLine: readonly(inputLine), suggestions, complete, history: readonly(acceptedValues),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
