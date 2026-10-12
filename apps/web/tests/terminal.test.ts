@@ -306,6 +306,22 @@ describe('app-owned terminal sessions', () => {
     expect(await terminal.send('after dispose')).toBe(false);
   });
 
+  test('a command injected by the editor moves the shell the same way typing does', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'scripts/', 'scripts/task.py'] });
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+
+    // The editor's "run active file in terminal" injects the command rather than
+    // typing it, so the model only follows the folder the shell moved into if the
+    // injected bytes reach it too.
+    expect(await terminal.send('cd scripts')).toBe(true);
+    mocks.terminals[0].input('cd ta');
+    expect(terminal.suggestions.value).toEqual([{ label: 'task.py', value: 'task.py' }]);
+    expect(terminal.inputLine.value).toBe('cd ta');
+    await terminal.dispose();
+  });
+
   test('fetches the active shell\'s command names once per profile and caches them', async () => {
     const host = fakeBridge(); const terminal = useTerminal(host.bridge);
     await terminal.create('cmd');

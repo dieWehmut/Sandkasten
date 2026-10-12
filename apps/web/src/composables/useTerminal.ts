@@ -557,7 +557,10 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   }
 
   // Types into the shell the way a keyboard would. Refuses when the active
-  // session is gone, exited, or not mounted as a view.
+  // session is gone, exited, or not mounted as a view. The line model is fed the
+  // same bytes the shell gets: without that, running a file would leave the model
+  // holding whatever was typed before it, and the suggestions would answer the wrong
+  // question until the next keystroke.
   async function writeRaw(data: string): Promise<boolean> {
     if (disposed || data === '') return false;
     const id = activeId.value;
@@ -569,6 +572,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       report(cause);
       return false;
     }
+    trackInput(data);
     views.get(id)?.terminal.focus();
     return true;
   }
