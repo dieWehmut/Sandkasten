@@ -3,7 +3,7 @@
 // assert the Vue shell mounted. Exits non-zero when the window cannot start.
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { resolveVerifiedDistribution } from '../src/distribution.mjs';
 
@@ -39,7 +39,10 @@ async function main() {
   process.exitCode = result.shell ? 0 : 1;
 }
 
-main().catch((error) => {
-  process.stderr.write(`desktop smoke: ${error instanceof Error ? error.message : String(error)}\n`);
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main().catch((error) => {
+    process.stderr.write(`desktop smoke: ${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
-});
+  });
+}

@@ -8,7 +8,7 @@
 import { spawnSync } from 'node:child_process';
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { getPath7za } from 'app-builder-lib/out/toolsets/7zip.js';
 
@@ -47,7 +47,10 @@ async function main() {
   process.stdout.write(`verify-installer: ok (${result.entriesByPayload.length} payload(s))\n`);
 }
 
-main().catch((error) => {
-  process.stderr.write(`verify-installer: ${error instanceof Error ? error.message : String(error)}\n`);
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main().catch((error) => {
+    process.stderr.write(`verify-installer: ${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
-});
+  });
+}

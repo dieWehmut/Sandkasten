@@ -37,6 +37,19 @@ async function loadElectronDriver() {
   throw new Error('playwright-core is required for the desktop E2E run; install WebUI dependencies first');
 }
 
+// The packaged application is checked through
+// `SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/win-unpacked/Sandkasten.exe` — a
+// path relative to the repository root, which is not the directory this script
+// runs in. Handing a relative path to Playwright fails as "Process failed to
+// launch!", which says nothing about the cause, so it is resolved here.
+export function resolvePackagedExecutable(value, { roots = [repositoryRoot, appRoot], exists = existsSync } = {}) {
+  if (!value) return undefined;
+  const candidates = [...roots.map((root) => path.resolve(root, value)), path.resolve(value)];
+  const found = candidates.find((candidate) => exists(candidate));
+  if (!found) throw new Error(`SANDKASTEN_E2E_EXECUTABLE was not found. Tried: ${candidates.join(', ')}`);
+  return found;
+}
+
 async function main() {
   if (!hasPython()) {
     throw new Error('the desktop E2E run needs python on PATH to execute a local file');
@@ -69,7 +82,7 @@ async function main() {
   }
   await mkdir(path.join(outputRoot), { recursive: true });
 
-  const packagedExecutable = process.env.SANDKASTEN_E2E_EXECUTABLE;
+  const packagedExecutable = resolvePackagedExecutable(process.env.SANDKASTEN_E2E_EXECUTABLE);
   const profileArgument = `--user-data-dir=${path.join(testRoot, 'profile')}`;
   // The tray update flow is driven through the app's own probe: the scripted
   // release keeps the check off the network and lets the run assert what the
@@ -627,7 +640,12 @@ async function main() {
   if (failure) throw failure;
 }
 
-main().catch((error) => {
-  process.stderr.write(`desktop ide e2e: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
-  process.exitCode = 1;
-});
+// Only when run, not when imported: a test imports this file for its path helper,
+// and importing a script that launches the application would launch it.
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main().catch((error) => {
+    process.stderr.write(`desktop ide e2e: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}
