@@ -57,11 +57,12 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     exclude: [...configDefaults.exclude, 'tests/build-contract.test.mjs', 'tests/serve.test.mjs'],
     // App-level tests mount the whole workbench (Vue, CodeMirror, xterm) in
-    // jsdom, which takes seconds on a loaded or emulated machine. The 5 s vitest
-    // default turned the documented `npm test` entry red on such a machine for
-    // tests that pass as soon as they are given room; a genuine hang still fails
-    // here, just later.
-    testTimeout: 20_000,
-    hookTimeout: 20_000,
+    // jsdom, which takes seconds on a loaded or emulated machine — a workstation
+    // measured at 70–90 % CPU from unrelated applications pushed a cold mount past
+    // 17 s. The 5 s vitest default turned the documented `npm test` entry red on
+    // such a machine for tests that pass as soon as they are given room; a genuine
+    // hang still fails here, just later.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

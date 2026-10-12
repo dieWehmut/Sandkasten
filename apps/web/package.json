@@ -8,6 +8,7 @@
     "build": "vite build",
     "serve": "node scripts/serve.mjs",
     "test": "vitest run && node --test test.mjs tests/serve.test.mjs ../../scripts/tests/webui-browser-smoke.test.mjs",
+    "test:loaded": "vitest run --maxWorkers=2 && node --test test.mjs tests/serve.test.mjs ../../scripts/tests/webui-browser-smoke.test.mjs",
     "test:browser": "node ../../scripts/webui-browser-smoke.mjs",
     "test:watch": "vitest"
   },

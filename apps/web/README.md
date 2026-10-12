@@ -223,6 +223,12 @@ cd apps/web
 npm test
 ```
 
+`npm test` mounts the whole workbench in jsdom, so it is CPU-hungry: on a
+workstation that is busy with other applications, vitest's default parallelism
+can starve its own workers and the run reports timeouts that have nothing to do
+with the tests. `npm run test:loaded` runs the same suite with two workers, which
+completed green on a machine measured at 70–90 % CPU from unrelated programs.
+
 Run the real-browser responsive smoke against the committed distribution with
 the local mock API:
 
