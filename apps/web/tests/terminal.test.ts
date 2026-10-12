@@ -468,6 +468,9 @@ describe('app-owned terminal sessions', () => {
     type('g');
     expect(terminal.suggestions.value.map((suggestion) => suggestion.value))
       .toEqual(['git', 'Get-ChildItem', 'go', 'Get-Content', 'Get-Help']);
+    // The strip can say which kind each entry is: a cmdlet has no file behind it.
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.source))
+      .toEqual([undefined, 'shell', undefined, 'shell', 'shell']);
 
     // A cmdlet's own prefix still leads, and accepting it marks it as used.
     type('\x03'); type('get-c');

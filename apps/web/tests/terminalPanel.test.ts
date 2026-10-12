@@ -310,4 +310,29 @@ describe('desktop terminal panel', () => {
     // An executable on the PATH keeps the plain profile label.
     expect(app.get('[data-command="shell.python"]').text()).not.toContain('cmdlet');
   });
+
+  test('the suggestion strip marks the commands the shell reports about itself', async () => {
+    const bridge = installDesktop({ shellReported: ['Get-ChildItem'] });
+    const app = await mountApp();
+    menu('terminal.new');
+    await flushPromises();
+    await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledWith('pwsh'));
+    xterm.terminals.at(-1).input('get-ch');
+    await flushPromises();
+
+    const shellSuggestion = app.find('[data-testid="terminal-suggestion"][data-command="Get-ChildItem"]');
+    expect(shellSuggestion.exists()).toBe(true);
+    expect(shellSuggestion.attributes('data-source')).toBe('shell');
+    expect(shellSuggestion.attributes('title')).toContain('cmdlet or function');
+    expect(shellSuggestion.classes()).toContain('terminal-suggestions__item--shell');
+
+    // An executable is offered without a marker.
+    xterm.terminals.at(-1).input('\x03');
+    xterm.terminals.at(-1).input('py');
+    await flushPromises();
+    const executable = app.find('[data-testid="terminal-suggestion"][data-command="python"]');
+    expect(executable.exists()).toBe(true);
+    expect(executable.attributes('data-source')).toBeUndefined();
+    expect(executable.attributes('title')).not.toContain('shell builtin');
+  });
 });

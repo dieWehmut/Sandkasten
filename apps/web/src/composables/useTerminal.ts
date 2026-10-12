@@ -10,6 +10,11 @@ export interface TerminalEntry extends TerminalSession { exitCode?: number }
 export interface TerminalSuggestion {
   label: string;
   value: string;
+  /**
+   * Set when the shell reports this command about itself — a cmdlet or a builtin
+   * has no file behind it — so the strip can say which kind it is offering.
+   */
+  source?: 'shell';
 }
 
 interface SessionView {
@@ -255,14 +260,13 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     // turns, with what the user already accepted leading within its own kind.
     const executables = orderByHistory(matches.filter((entry) => !entry.reported));
     const shellCommands = orderByHistory(matches.filter((entry) => entry.reported));
-    // The marker only exists to share the slots; what the strip shows is a label
-    // and the word it completes to.
+    // The marker shares the slots and also says which kind each entry is.
     const ordered: Array<TerminalSuggestion & { reported: boolean }> = [];
     for (let index = 0; ordered.length < 5 && (index < executables.length || index < shellCommands.length); index += 1) {
       if (executables[index]) ordered.push(executables[index]);
       if (shellCommands[index] && ordered.length < 5) ordered.push(shellCommands[index]);
     }
-    return ordered.map(({ label, value }) => ({ label, value }));
+    return ordered.map(({ label, value, reported }) => (reported ? { label, value, source: 'shell' } : { label, value }));
   });
 
   // The workspace paths as the shell would see them: a session that has moved

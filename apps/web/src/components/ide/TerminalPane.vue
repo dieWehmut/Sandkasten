@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { TerminalController, TerminalEntry } from '../../composables/useTerminal';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { TerminalController, TerminalEntry, TerminalSuggestion } from '../../composables/useTerminal';
 import { useTranslation } from '../../i18n/useTranslation';
 
 const props = defineProps<{ controller: TerminalController; session: TerminalEntry; active: boolean }>();
 const t = useTranslation();
 const container = ref<HTMLElement>();
 let observer: ResizeObserver | undefined;
+
+// A command the shell reports about itself has no file behind it, and the strip
+// says which kind it is offering rather than leaving the difference to the name.
+const shellSource = computed(() => {
+  const family = props.controller.profiles.value
+    .find((profile) => profile.id === props.controller.activeProfileId.value)?.family;
+  return family === 'powershell' ? t('terminal.source.cmdlet') : t('terminal.source.builtin');
+});
+function suggestionTitle(suggestion: TerminalSuggestion): string {
+  const base = `${t('terminal.complete')} ${suggestion.label}`;
+  return suggestion.source === 'shell' ? `${base} · ${shellSource.value}` : base;
+}
 
 function labelInput(): void {
   container.value?.querySelector('textarea')?.setAttribute('aria-label', `${t('terminal.input')}: ${props.session.title}`);
@@ -40,7 +52,9 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     >
       <button
         v-for="suggestion in controller.suggestions.value" :key="suggestion.value" type="button" role="option"
-        data-testid="terminal-suggestion" :data-command="suggestion.label" :title="`${t('terminal.complete')} ${suggestion.label}`"
+        data-testid="terminal-suggestion" :data-command="suggestion.label" :data-source="suggestion.source"
+        class="terminal-suggestions__item" :class="{ 'terminal-suggestions__item--shell': suggestion.source === 'shell' }"
+        :title="suggestionTitle(suggestion)"
         @pointerdown.prevent @click="controller.complete(suggestion)"
       >{{ suggestion.label }}</button>
     </div>
