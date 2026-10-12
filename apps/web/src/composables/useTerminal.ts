@@ -364,8 +364,12 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         continue;
       }
       if (character === '\x7f' || character === '\b') { inputLine.value = inputLine.value.slice(0, -1); continue; }
-      if (character === '\t') continue;
-      if (character < ' ') { inputLine.value = ''; continue; }
+      // Tab belongs to the shell's own completion, which rewrites the line where
+      // this model cannot see it, and every other control character is a shell
+      // binding of the same kind: kill-line, delete-word, move-to-start. None of
+      // them can be followed, so the line stops being known.
+      if (character === '\t') { lineUnknown.value = true; continue; }
+      if (character < ' ') { inputLine.value = ''; lineUnknown.value = true; continue; }
       inputLine.value += character;
     }
   }

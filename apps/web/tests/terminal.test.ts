@@ -348,6 +348,36 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('tab and the line-editing keys leave the model unknown, not wrong', async () => {
+    const host = fakeBridge();
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'scripts/task.py'] });
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'ls']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    // Tab is the shell's own completion: it rewrites the line, and the model only
+    // sees the byte it sent.
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+    type('\t');
+    expect(terminal.suggestions.value).toEqual([]);
+    expect(await terminal.complete({ label: 'main.py', value: 'main.py' })).toBe(false);
+
+    // So are the readline bindings that delete or move within the line.
+    type('\r');
+    type('python mai');
+    type('\x17');
+    expect(terminal.suggestions.value).toEqual([]);
+    expect(await terminal.complete({ label: 'main.py', value: 'main.py' })).toBe(false);
+    expect(host.bridge.write).not.toHaveBeenCalledWith({ id: 's1', data: 'n.py' });
+
+    // A submitted line starts a fresh prompt the model can follow again.
+    type('\r');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+    await terminal.dispose();
+  });
+
   test('fetches the active shell\'s command names once per profile and caches them', async () => {
     const host = fakeBridge(); const terminal = useTerminal(host.bridge);
     await terminal.create('cmd');
