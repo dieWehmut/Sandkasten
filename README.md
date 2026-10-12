@@ -268,7 +268,8 @@ unavailable,已安装但损坏的才算失败。三者都支持 `--json` 输出�
 
 仓库的 `Verify` workflow(`.github/workflows/verify.yml`)在 ubuntu-latest 上运行三个应用
 各自的 `npm test`(WebUI、桌面端、CLI),随后在真实 Chrome 中跑 WebUI 三档视口冒烟、执行
-WebUI 分发契约(重建并校验四文件载荷,单元测试默认不覆盖这几项),最后运行桌面机器级检查:
+WebUI 分发契约(重建并校验四文件载荷,单元测试默认不覆盖这几项)与仓库契约(应用目录布局、
+Pages 产物形状),最后运行桌面机器级检查:
 `npm run verify` 会把缺失的工具链或后端记为 unavailable,只有"已安装但损坏"才失败(隔离后端
 需要 WSL2,在无 WSL 的 runner 上如实报 unavailable)。workflow 里每条命令都是本地可复现的入口,
 并由 `ci-workflow` 契约测试校验其与各 `package.json` 脚本及仓库脚本一致。
