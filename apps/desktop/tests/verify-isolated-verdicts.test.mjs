@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cancellationVerdict, isolationFixtureVerdict, languageVerdict, outputLimitVerdict } from '../scripts/verify-isolated.mjs';
+import { cancellationVerdict, isolationFailureVerdict, isolationFixtureVerdict, languageVerdict, outputLimitVerdict } from '../scripts/verify-isolated.mjs';
 
 // The isolation check found three real defects by probe: host files readable, a
 // cancelled payload still running, and an output limit that did not stop the
@@ -51,4 +51,20 @@ test('an output limit only passes when the flood was stopped', () => {
   assert.equal(slow.ok, false);
   assert.match(slow.reason, /reported JOB_STATUS_TIME_LIMIT_EXCEEDED after 62000 ms/);
   assert.equal(outputLimitVerdict({ status: 'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED', left: 3, kept: 100, durationMs: 900 }).ok, false);
+});
+
+test('a payload that fails has to be reported as a failure, with its own words', () => {
+  const failing = {
+    status: 'JOB_STATUS_RUNTIME_FAILED', exitCode: 3,
+    stdout: 'SANDKASTEN_ISOLATED_FAILED\n', stderr: 'SANDKASTEN_ISOLATED_STDERR\n', left: 0,
+  };
+  assert.deepEqual(isolationFailureVerdict(failing),
+    { ok: true, reason: '', note: 'reported as a failure with exit code 3' });
+
+  // Every way the report can go wrong is a failure of the check, not a pass.
+  assert.match(isolationFailureVerdict({ ...failing, status: 'JOB_STATUS_SUCCEEDED' }).reason, /was reported as JOB_STATUS_SUCCEEDED/);
+  assert.match(isolationFailureVerdict({ ...failing, exitCode: 0 }).reason, /carries exit code 0/);
+  assert.match(isolationFailureVerdict({ ...failing, stdout: '' }).reason, /output was not kept/);
+  assert.match(isolationFailureVerdict({ ...failing, stderr: '' }).reason, /error output was not kept/);
+  assert.match(isolationFailureVerdict({ ...failing, left: 2 }).reason, /2 process\(es\) kept running/);
 });

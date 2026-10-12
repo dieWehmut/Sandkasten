@@ -23,6 +23,9 @@ const execute = promisify(execFile);
 
 export const MARKER = 'SANDKASTEN_ISOLATED_OK';
 export const NETWORK_BLOCKED = 'NETWORK_BLOCKED';
+export const FAILURE_MARKER = 'SANDKASTEN_ISOLATED_FAILED';
+export const FAILURE_STDERR = 'SANDKASTEN_ISOLATED_STDERR';
+export const FAILURE_EXIT_CODE = 3;
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 export const LANGUAGE_LABELS = {
@@ -89,6 +92,43 @@ const ISOLATION_FIXTURES = [
     expect: 'HOSTFILES=',
   },
 ];
+
+/**
+ * A payload that fails has to come back as a failure, with its exit code and its
+ * error output, and with nothing left running: a sandbox that reports every run as
+ * a success would make the IDE's green tick meaningless.
+ */
+export const FAILURE_FIXTURE = {
+  id: 'failure',
+  label: 'Failure report',
+  file: 'failing.py',
+  source: [
+    'import sys',
+    `print("${FAILURE_MARKER}", flush=True)`,
+    `print("${FAILURE_STDERR}", file=sys.stderr, flush=True)`,
+    `sys.exit(${FAILURE_EXIT_CODE})`,
+    '',
+  ].join('\n'),
+};
+
+export function isolationFailureVerdict({ status, exitCode, stdout, stderr, left }) {
+  if (status !== 'JOB_STATUS_RUNTIME_FAILED') {
+    return { ok: false, reason: `a payload that exited ${exitCode} was reported as ${status}`, note: '' };
+  }
+  if (exitCode !== FAILURE_EXIT_CODE) {
+    return { ok: false, reason: `the failure report carries exit code ${exitCode} instead of ${FAILURE_EXIT_CODE}`, note: '' };
+  }
+  if (!String(stdout ?? '').includes(FAILURE_MARKER)) {
+    return { ok: false, reason: 'the failing payload\'s output was not kept', note: '' };
+  }
+  if (!String(stderr ?? '').includes(FAILURE_STDERR)) {
+    return { ok: false, reason: 'the failing payload\'s error output was not kept', note: '' };
+  }
+  if (left !== 0) {
+    return { ok: false, reason: `${left} process(es) kept running after the payload failed`, note: '' };
+  }
+  return { ok: true, reason: '', note: `reported as a failure with exit code ${FAILURE_EXIT_CODE}` };
+}
 
 function brief(text, limit = 300) {
   const trimmed = String(text ?? '').trim();
@@ -281,6 +321,22 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
     }
 
     if (detection.languages.python === true) {
+      const survivors = await sandboxCounter(detection.distro, FAILURE_FIXTURE.id);
+      const { result, durationMs } = await runFixture(FAILURE_FIXTURE, 'python');
+      // The sandbox is torn down on its own; give the kill a moment to land before
+      // counting what is left behind.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const failure = isolationFailureVerdict({
+        status: result.status, exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr,
+        left: await survivors(),
+      });
+      results.push({
+        id: FAILURE_FIXTURE.id, label: FAILURE_FIXTURE.label, kind: 'isolation',
+        status: failure.ok ? 'ok' : 'failed', jobStatus: result.status, exitCode: result.exitCode,
+        note: failure.note, reason: failure.reason, durationMs,
+        stdout: brief(result.stdout), stderr: brief(result.stderr),
+      });
+
       const cancellation = await runCancellationProbe(runner, root, detection.distro, timeoutMs);
       const cancelled = cancellationVerdict({
         running: cancellation.running, status: cancellation.result.status, left: cancellation.left,
