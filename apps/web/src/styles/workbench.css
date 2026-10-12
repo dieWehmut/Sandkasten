@@ -198,6 +198,12 @@
   font-size: 13px;
 }
 
+.command-palette__more {
+  margin: 4px 8px 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .command-palette__error { color: var(--danger); }
 
 @media (max-width: 1199px) {

@@ -47,3 +47,23 @@ test('closes with Escape or an outside press and resets selection when the query
   expect(wrapper.emitted('close')).toHaveLength(2);
   wrapper.unmount();
 });
+
+test('paints a bounded window of a long result list and says there are more', async () => {
+  const items = Array.from({ length: 500 }, (_value, index) => ({ id: `shell.cmd-${index}`, label: `cmd-${index}`, kind: 'command' as const }));
+  const wrapper = mount(CommandPalette, { attachTo: document.body, props: { open: true, query: '>cmd', items } });
+  await nextTick();
+
+  const rows = wrapper.findAll('[data-command]');
+  expect(rows.length).toBe(200);
+  expect(wrapper.get('[data-testid="palette-more"]').text()).toContain('More matches');
+  // The keyboard still walks the painted window, not the whole list.
+  await wrapper.get('input').trigger('keydown', { key: 'ArrowUp' });
+  expect(wrapper.get('[aria-selected="true"]').attributes('data-command')).toBe('shell.cmd-199');
+  await wrapper.get('input').trigger('keydown', { key: 'Enter' });
+  expect(wrapper.emitted('select')).toEqual([['shell.cmd-199']]);
+
+  // A short list has no such note.
+  await wrapper.setProps({ items: items.slice(0, 3) });
+  expect(wrapper.find('[data-testid="palette-more"]').exists()).toBe(false);
+  wrapper.unmount();
+});

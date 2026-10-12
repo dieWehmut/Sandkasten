@@ -15,6 +15,13 @@ const selected = ref(0);
 let opener: HTMLElement | undefined;
 const optionId = (index: number) => `${id}-option-${index}`;
 
+// A shell can publish thousands of commands, and only the ones that match what
+// the user types are ever useful: the list paints a bounded window of matches
+// and says when there are more.
+const RENDER_LIMIT = 200;
+const visibleItems = computed(() => props.items.slice(0, RENDER_LIMIT));
+const hiddenCount = computed(() => Math.max(0, props.items.length - visibleItems.value.length));
+
 function restoreFocus(): void {
   if (opener?.isConnected) opener.focus();
   opener = undefined;
@@ -44,10 +51,10 @@ function onKeydown(event: KeyboardEvent): void {
     event.stopPropagation();
   }
   if (event.key === 'Escape') emit('close');
-  if (event.key === 'Enter' && props.items[selected.value]) emit('select', props.items[selected.value].id);
-  if (!props.items.length) return;
-  if (event.key === 'ArrowDown') selected.value = (selected.value + 1) % props.items.length;
-  if (event.key === 'ArrowUp') selected.value = (selected.value + props.items.length - 1) % props.items.length;
+  if (event.key === 'Enter' && visibleItems.value[selected.value]) emit('select', visibleItems.value[selected.value].id);
+  if (!visibleItems.value.length) return;
+  if (event.key === 'ArrowDown') selected.value = (selected.value + 1) % visibleItems.value.length;
+  if (event.key === 'ArrowUp') selected.value = (selected.value + visibleItems.value.length - 1) % visibleItems.value.length;
 }
 
 function onPointerdown(event: PointerEvent): void {
@@ -63,10 +70,10 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onPointerdow
     <input ref="input" class="command-palette__input" role="combobox" :value="query"
       :aria-label="t('palette.title')" :placeholder="t('palette.placeholder')" autocomplete="off" spellcheck="false"
       aria-autocomplete="list" aria-expanded="true" :aria-controls="`${id}-list`"
-      :aria-activedescendant="items.length ? optionId(selected) : undefined"
+      :aria-activedescendant="visibleItems.length ? optionId(selected) : undefined"
       @input="emit('update:query', ($event.target as HTMLInputElement).value)" />
     <div :id="`${id}-list`" class="command-palette__list" role="listbox" :aria-label="t('palette.results')">
-      <div v-for="(item, index) in items" :id="optionId(index)" :key="`${item.kind}-${item.id}`"
+      <div v-for="(item, index) in visibleItems" :id="optionId(index)" :key="`${item.kind}-${item.id}`"
         class="command-palette__item" role="option" :aria-selected="index === selected"
         :data-kind="item.kind" :data-command="item.kind === 'file' ? undefined : item.id"
         @pointermove="selected = index" @mousedown.prevent @click="emit('select', item.id)">
@@ -78,6 +85,7 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onPointerdow
         <kbd v-if="item.accelerator">{{ item.accelerator }}</kbd>
       </div>
     </div>
+    <p v-if="hiddenCount" class="command-palette__more" data-testid="palette-more" role="status">{{ t('palette.more') }}</p>
     <p v-if="!items.length" class="command-palette__empty" role="status">{{ t('palette.empty') }}</p>
     <p v-if="error" class="command-palette__error" role="alert">{{ error }}</p>
   </section>
