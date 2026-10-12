@@ -126,6 +126,29 @@ try {
   }
   report.welcome = { createFile: true, restoreAfterLastTab: true, setupAction: true };
   report.terminal = await verifyTerminal({ page, app, outputRoot });
+
+  // The terminal checks assert as they go; these flags say which of them ran, so
+  // a step that quietly stopped running — or one skipped because a shell was not
+  // discovered — cannot look like a pass in the report. This run needs the
+  // Command Prompt and a PowerShell profile, both of which ship with Windows.
+  const terminal = report.terminal;
+  assert.ok(Array.isArray(terminal.profiles) && terminal.profiles.length >= 2, 'the run needs several discovered shells');
+  for (const flag of [
+    'persistentState', 'split', 'interrupt', 'close', 'initialOutput', 'runInTerminal',
+    'suggestions', 'argumentSuggestions', 'directorySuggestions', 'nestedSuggestions',
+    'cwdSuggestions', 'pushdSuggestions', 'powershellRun', 'javascriptRun', 'bashRun',
+    'shellSourceMarked',
+  ]) {
+    assert.equal(terminal[flag], true, `the terminal run has to have verified ${flag}`);
+  }
+  assert.ok(terminal.resize?.before?.cols > 0 && terminal.resize?.after?.cols > 0
+    && terminal.resize.before.cols !== terminal.resize.after.cols,
+    'a resize has to have reached the PTY');
+  assert.deepEqual(report.welcome, { createFile: true, restoreAfterLastTab: true, setupAction: true });
+  assert.equal(report.connectionFailureHasNoBanner, true);
+  assert.equal(report.endpointSettingsReachable, true);
+  assert.ok(report.setup.length > 0, 'the setup guide has to have been scrolled');
+
   assert.deepEqual(report.errors, [], 'the renderer must not raise uncaught errors');
 } catch (error) {
   report.failure = error.stack ?? String(error);
