@@ -65,11 +65,12 @@ The desktop build adds these things the browser cannot do:
    commands the active shell can run — discovered from the session `PATH` with
    the profile's own directories first, so a Git Bash session lists `git`, `ls`
    and the coreutils while PowerShell leads with its own tools — and an entry
-   per command types it into that session. `Terminal: Run active file in
+   per command types it into that session. A WSL session is asked inside the
+   distro instead, because its `PATH` belongs there and Windows names would
+   mislead. `Terminal: Run active file in
    terminal` types the file's interpreter command instead, quoted for that
    shell's family, so the same workspace can be driven from PowerShell, Git Bash
-   or WSL without leaving the workbench. A WSL session reports no command list:
-   its `PATH` belongs to the distro, so Windows names would mislead.
+   or WSL without leaving the workbench.
 
 The remote Sandkasten API stays available: switch `Execution` to `Sandbox API`
 in the editor toolbar to submit the active file to the deployed service instead.
@@ -161,7 +162,8 @@ probe command is written into a directory that is added to the profile's
 command path and the shell has to find and run it. It also publishes the
 command list the palette would offer and resolves a sample of those names in
 the shell itself, so the advertised list is one the shell really runs. WSL
-reports both checks as not applicable, because a WSL session's `PATH` belongs to
+reports the path check as not applicable — the probe directory is a Windows one
+and the distro cannot see it — but its command list is real, asked from inside
 the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
 
 `verify:runtimes` detects the toolchains on this machine and runs a hello-world
