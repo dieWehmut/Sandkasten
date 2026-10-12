@@ -75,7 +75,8 @@ The desktop build adds these things the browser cannot do:
    select all (`Cmd+C` and `Cmd+V` on macOS, `Shift+Insert` for paste as well),
    through the main process because a sandboxed renderer cannot read the clipboard
    without a prompt; `Ctrl+C`, `Ctrl+V` and `Ctrl+A` stay with the shell, which is
-   what a terminal owes them.
+   what a terminal owes them. A right-click offers the same actions as a menu,
+   with copy disabled while nothing is selected.
    Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
