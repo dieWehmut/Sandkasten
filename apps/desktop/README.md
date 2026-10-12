@@ -366,7 +366,9 @@ fixture files through that session — Python, PowerShell, JavaScript and a shel
 script — each waiting for the marker the program itself prints, and completes a
 command, a file argument, a folder and a nested path in the suggestion strip.
 A second session with the machine's PowerShell profile proves the strip marks the
-commands the shell reports about itself, with the real cmdlet list behind it. It
+commands the shell reports about itself, with the real cmdlet list behind it. The
+same session proves the strip goes quiet when a cursor key moves the shell's line,
+and that a submitted line brings it back. It
 also writes to the host clipboard and pastes it into the shell, recording that
 instead when the session has no clipboard of its own — a bare Electron probe on
 this machine returns the empty string, so the run says so rather than failing. The
