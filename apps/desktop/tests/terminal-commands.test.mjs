@@ -82,16 +82,49 @@ test('an unreadable PATH entry contributes nothing instead of failing the scan',
   assert.deepEqual(commands, ['sh']);
 });
 
-test('a WSL profile reports no command list instead of the Windows one', async () => {
+test('a WSL profile lists the commands inside the distro, not the Windows ones', async () => {
+  const asked = [];
   const commands = await discoverTerminalCommands(
-    { id: 'wsl', family: 'wsl', pathPrepend: ['C:\\Windows\\System32'] },
+    { id: 'wsl', family: 'wsl', executable: 'C:\\Windows\\System32\\wsl.exe', pathPrepend: ['C:\\Windows\\System32'] },
     {
       platform: 'win32',
       environment: { Path: 'C:\\Windows\\System32' },
+      // The Windows listing must never be consulted for a distro session.
       listDirectory: async () => [file('cmd.exe')],
+      runShell: async (profile, command) => {
+        asked.push([profile.executable, command]);
+        return 'bash\ngit\n\n/usr/bin/coreutils\n';
+      },
     },
   );
-  assert.deepEqual(commands, [], 'the distro owns its PATH; Windows names would mislead');
+  assert.deepEqual(commands, ['bash', 'git', '/usr/bin/coreutils']);
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0][0], 'C:\\Windows\\System32\\wsl.exe');
+  assert.match(asked[0][1], /for d in \$PATH/);
+});
+
+test('a distro that answers nothing or cannot be reached reports no commands', async () => {
+  const silent = await discoverTerminalCommands(
+    { id: 'wsl', family: 'wsl', executable: 'wsl.exe' },
+    { platform: 'win32', environment: { Path: 'C:\\Windows' }, runShell: async () => '' },
+  );
+  assert.deepEqual(silent, []);
+  const unreachable = await discoverTerminalCommands(
+    { id: 'wsl', family: 'wsl' },
+    { platform: 'win32', environment: { Path: 'C:\\Windows' }, runShell: async () => '' },
+  );
+  assert.deepEqual(unreachable, []);
+});
+
+test('a WSL listing is deduplicated and capped like any other list', async () => {
+  const listing = [...Array.from({ length: TERMINAL_COMMAND_LIMITS.commands }, (_value, index) => `tool-${String(index).padStart(3, '0')}`), 'tool-000', 'extra'];
+  const commands = await discoverTerminalCommands(
+    { id: 'wsl', family: 'wsl', executable: 'wsl.exe' },
+    { platform: 'win32', environment: { Path: 'C:\\Windows' }, runShell: async () => listing.join('\n') },
+  );
+  assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.commands);
+  assert.equal(commands[0], 'tool-000');
+  assert.equal(commands.at(-1), `tool-${String(TERMINAL_COMMAND_LIMITS.commands - 1).padStart(3, '0')}`);
 });
 
 test('the scan stops at the command limit while keeping the search-path order', async () => {

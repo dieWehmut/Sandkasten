@@ -2,17 +2,29 @@
 // PATH, with the profile's own command directories first. Only names leave the
 // main process: the directories stay here, and the renderer can never ask for a
 // path or an executable of its own choosing.
+import { execFile } from 'node:child_process';
 import { accessSync, constants } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
+
+const execute = promisify(execFile);
 
 export const TERMINAL_COMMAND_LIMITS = Object.freeze({
   directories: 48,
   commands: 300,
   cacheMs: 5 * 60 * 1000,
+  // A WSL session may have to cold-start a distro before it can answer.
+  distroTimeoutMs: 30_000,
 });
 
 const WINDOWS_DEFAULT_EXTENSIONS = ['.com', '.exe', '.bat', '.cmd'];
+
+// A distro's PATH belongs to the distro, so its commands are listed from inside
+// it. The loop is POSIX sh on purpose: `find -printf` and `compgen` are not
+// available in every distribution, and `[ -x ]` is the executable test the
+// session itself would apply.
+const DISTRO_LIST_COMMANDS = 'IFS=:; for d in $PATH; do [ -d "$d" ] || continue; for f in "$d"/*; do [ -f "$f" ] && [ -x "$f" ] && printf "%s\\n" "${f##*/}"; done; done';
 
 function pathKey(environment) {
   return Object.keys(environment).find((name) => name.toLowerCase() === 'path') ?? 'PATH';
@@ -23,6 +35,35 @@ function onPath(file, platform) {
     accessSync(file, platform === 'win32' ? constants.F_OK : constants.X_OK);
     return true;
   } catch { return false; }
+}
+
+// The default distro runner: one bounded, non-interactive command whose output
+// is the command list. A distro that never answers contributes nothing.
+async function runDistro(profile, command, { timeoutMs = TERMINAL_COMMAND_LIMITS.distroTimeoutMs } = {}) {
+  if (!profile?.executable) return '';
+  try {
+    const { stdout } = await execute(profile.executable, ['-e', 'sh', '-c', command], {
+      windowsHide: true, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
+    });
+    return stdout;
+  } catch {
+    return '';
+  }
+}
+
+function uniqueNames(lines, limit, windows) {
+  const seen = new Set();
+  const commands = [];
+  for (const line of lines) {
+    const name = line.trim();
+    if (!name) continue;
+    const identity = windows ? name.toLowerCase() : name;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    commands.push(name);
+    if (commands.length >= limit) break;
+  }
+  return commands;
 }
 
 function windowsExtensions(environment) {
@@ -62,11 +103,15 @@ export async function discoverTerminalCommands(profile, {
   environment = process.env,
   listDirectory = readdir,
   isExecutable = (file) => onPath(file, platform),
+  runShell = runDistro,
+  distroTimeoutMs = TERMINAL_COMMAND_LIMITS.distroTimeoutMs,
 } = {}) {
   // A WSL session's PATH belongs to the distro, so the Windows directories
-  // cannot describe what it can run; reporting Windows commands there would be
-  // wrong. Such a profile reports no list instead of a misleading one.
-  if (profile?.family === 'wsl') return [];
+  // cannot describe what it can run; the distro is asked directly instead.
+  if (profile?.family === 'wsl') {
+    const listing = await runShell(profile, DISTRO_LIST_COMMANDS, { timeoutMs: distroTimeoutMs });
+    return uniqueNames(String(listing ?? '').split(/\r?\n/), TERMINAL_COMMAND_LIMITS.commands, false);
+  }
   const windows = platform === 'win32';
   const extensions = windows ? windowsExtensions(environment) : undefined;
   const seen = new Set();
