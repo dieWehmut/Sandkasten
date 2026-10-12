@@ -731,6 +731,4 @@ export const messages = {
   'zh-CN': zhCN,
 } as const;
 
-export type LocaleMessages = EnglishMessages;
 export type MessageKey = keyof EnglishMessages;
-export type MessageCatalog = typeof messages;

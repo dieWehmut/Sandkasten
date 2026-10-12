@@ -13,7 +13,3 @@ export type ExecutionBackend = 'local' | 'isolated' | 'api';
 export function isExecutionBusy(phase: ExecutionPhase): boolean {
   return phase === 'submitting' || phase === 'polling' || phase === 'running';
 }
-
-export function isExecutionRunnable(phase: ExecutionPhase): boolean {
-  return !isExecutionBusy(phase) && phase !== 'booting' && phase !== 'unavailable';
-}

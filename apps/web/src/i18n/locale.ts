@@ -2,7 +2,6 @@ import { messages, type MessageKey } from './messages';
 
 export type Locale = 'en' | 'zh-CN';
 
-export const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const satisfies readonly Locale[];
 export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_STORAGE_KEY = 'sandkasten-locale';
 
@@ -21,8 +20,6 @@ export function detectLocale(language?: string | { readonly language?: string } 
     ? 'zh-CN'
     : DEFAULT_LOCALE;
 }
-
-export const detectBrowserLocale = detectLocale;
 
 export function createTranslator(locale: Locale, catalog: LocaleCatalog = messages): Translator {
   return (key: MessageKey): string => {
