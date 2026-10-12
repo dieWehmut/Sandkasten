@@ -283,7 +283,11 @@ failed. Pass `--json` or `--timeout-ms=<ms>`.
 `npm run e2e` launches the app against a temporary workspace and asserts the
 explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel
 toggling, the integrated title row with its native menu popup, close-to-tray,
-the tray update entry, and both themes; it writes `tmp/desktop-ide-light.png` and
+the tray update entry, and both themes; when WSL2 can sandbox it also runs the
+same workspace file through the isolated backend and requires the payload to
+report itself as PID 1 with the network blocked, and the option to be disabled
+exactly when detection says it cannot isolate. It writes
+`tmp/desktop-ide-light.png` and
 `tmp/desktop-ide-dark.png`. Set `SANDKASTEN_E2E_EXECUTABLE=tmp/desktop-dist/win-unpacked/Sandkasten.exe`
 to run the same checks against a packaged build. It needs Python on `PATH` and
 reuses the `playwright-core` already installed in `apps/web/node_modules`.
