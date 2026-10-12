@@ -77,7 +77,9 @@ The desktop build adds these things the browser cannot do:
    session lead the list, and a shell that answered with an empty list (a cold
    distro, a broken shim) is asked again every time the palette opens. The
    palette paints the first two hundred matches of a long list and says so;
-   typing narrows the whole list. Typing
+   typing narrows the whole list. The list is cached per shell in the
+   application state directory and refreshed in the background, because building
+   it costs seconds (a cold WSL scan) and it rarely changes. Typing
    the start of a command in the terminal itself suggests up to five commands
    the active shell can run; choosing one types the rest of the word without
    running it, and `Ctrl+Space` accepts the first suggestion. Once the command
