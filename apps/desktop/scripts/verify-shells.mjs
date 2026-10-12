@@ -186,7 +186,7 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
         commands: published.length, commandsReported: selfReported,
-        // A list at its bound is not a failure â€?the bound is deliberate â€?but it
+        // A list at its bound is not a failure â€”the bound is deliberate â€”but it
         // is the one case where commands may have been left out.
         atBound: published.length >= TERMINAL_COMMAND_LIMITS.commands,
         samples, resolved,
