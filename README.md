@@ -263,7 +263,9 @@ npm run verify:isolated # 通过 WSL2 命名空间沙箱运行真实负载,并�
 `verify:shells` 会为每个发现的 shell 执行一条标记命令,并把一个探针命令写入该
 shell 自己的命令目录,要求 shell 能找到并运行它——这正是终端会话 `PATH` 增强要
 保证的性质。`verify:runtimes` 通过真实的本地运行器执行各语言 hello-world,缺少的
-工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败。
+工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败;
+加 `--failures` 后每个可用运行时还会跑一个"向 stderr 写标记并以退出码 3 结束"的负载,
+要求运行结果确实是运行失败、且带回它自己的退出码与错误输出(能跑通只是一半,失败要如实报出来是另一半)。
 `verify:isolated` 通过 WSL2 沙箱执行真实负载,并从沙箱内部确认:发行版支持的语言逐一跑通
 (Python/JavaScript/C/C++/Java/Bash/Perl,编译型语言在沙箱内构建后再运行)、TCP 连接被拒绝、
 `/proc` 只显示命名空间自己的进程表(负载自身即 PID 1);此外第三个负载会去读 `/mnt` 与发行版用户主

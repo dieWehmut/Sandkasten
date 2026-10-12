@@ -256,8 +256,11 @@ without a linker, for example) fails with its own output, followed by the
 runner's diagnosis when it can name the cause. That diagnosis is worth taking at
 its word: on a workstation whose `link.exe` came from MSYS2, running the check
 from a Visual Studio developer prompt with the x64 toolchain turned the Rust row
-from a failure into `SANDKASTEN_RUNTIME_OK:rust` with no change to the code. Pass
-`--json`, `--language=<id>`, or `--timeout-ms=<ms>`.
+from a failure into `SANDKASTEN_RUNTIME_OK:rust` with no change to the code. Add
+`--failures` and every available runtime also runs a fixture that writes to stderr
+and exits with code 3: running code is only half of it, and the other half is that
+a failing program comes back as a runtime failure carrying its own code and words.
+Pass `--json`, `--language=<id>`, `--failures`, or `--timeout-ms=<ms>`.
 
 `verify:isolated` detects whether a WSL2 distro can create the isolation
 namespaces and which languages it has the binaries for, then runs a fixture for
