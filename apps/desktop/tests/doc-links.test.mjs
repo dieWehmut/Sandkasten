@@ -60,15 +60,42 @@ test('every handbook document is linked from somewhere', () => {
   const inbound = new Set();
   for (const file of files) {
     const text = readFileSync(path.join(repositoryRoot, file), 'utf8');
-    for (const match of text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
-      const target = match[1].trim();
-      if (/^(https?:|mailto:|#|<)/.test(target)) continue;
-      const relative = decodeURIComponent(target.split('#')[0].replace(/^<|>$/g, ''));
-      if (!relative) continue;
-      const resolved = path.relative(repositoryRoot, path.resolve(path.dirname(path.join(repositoryRoot, file)), relative)).replaceAll('\\', '/');
-      if (resolved !== file) inbound.add(resolved);
-    }
+    for (const target of linkedPaths(file, text)) if (target !== file) inbound.add(target);
   }
   const orphaned = handbook.filter((file) => !inbound.has(file));
   assert.deepEqual(orphaned, [], 'a handbook document nobody links to is a document nobody finds');
+});
+
+/** The repository-relative paths one markdown file links to. */
+function linkedPaths(file, text) {
+  const targets = [];
+  for (const match of text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const target = match[1].trim();
+    if (/^(https?:|mailto:|#|<)/.test(target)) continue;
+    const relative = decodeURIComponent(target.split('#')[0].replace(/^<|>$/g, ''));
+    if (!relative) continue;
+    targets.push(path.relative(repositoryRoot, path.resolve(path.dirname(path.join(repositoryRoot, file)), relative)).replaceAll('\\', '/'));
+  }
+  return targets;
+}
+
+test('the translated READMEs offer the same handbook index as the original', () => {
+  // The translations are how a reader who does not read Chinese finds the
+  // handbook; an index in one of them only is an index three quarters of the
+  // audience cannot use.
+  const documentsOf = (file) => new Set(linkedPaths(file, readFileSync(path.join(repositoryRoot, file), 'utf8'))
+    .filter((target) => target.startsWith('handbuch/') && target !== file));
+  const expected = documentsOf('README.md');
+  assert.ok(expected.size >= 5, `expected the README to index the handbook, saw ${expected.size}`);
+
+  const differences = [];
+  for (const translation of ['handbuch/README.en.md', 'handbuch/README.ja.md', 'handbuch/README.zh-TW.md']) {
+    const documents = documentsOf(translation);
+    // A document does not link itself, so its own page is not expected from it.
+    const missing = [...expected].filter((target) => target !== translation && !documents.has(target));
+    // A translation may link its own siblings as well; what it may not do is omit
+    // one of the documents the original points at.
+    if (missing.length) differences.push(`${translation}: ${missing.join(', ')}`);
+  }
+  assert.deepEqual(differences, []);
 });
