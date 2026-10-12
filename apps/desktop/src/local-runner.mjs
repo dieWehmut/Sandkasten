@@ -13,7 +13,11 @@ import { resolveInsideRoot } from './workspace.mjs';
 export const DEFAULT_TIMEOUT_MS = 20_000;
 export const MAX_TIMEOUT_MS = 120_000;
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
-export const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
+// A missing toolchain answers immediately, so this budget only ever bounds a
+// toolchain that is present but slow to start — which a loaded machine makes
+// happen. Five seconds reported installed runtimes as missing during a busy
+// verification run.
+export const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
 
 // {file} is the absolute path of the active workspace file; {exe} is the build
 // output path for compiled languages; {name} is the file's base name, for

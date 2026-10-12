@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 import test from 'node:test';
 
 import {
+  DEFAULT_PROBE_TIMEOUT_MS,
   LOCAL_RUNTIMES,
   createLocalRunner,
   diagnoseCompileFailure,
@@ -110,6 +111,12 @@ test('PowerShell declares a probe budget that covers a cold host start', () => {
   assert.deepEqual(LOCAL_RUNTIMES.powershell.candidates, ['pwsh', 'powershell']);
   assert.ok(LOCAL_RUNTIMES.powershell.probeTimeoutMs >= 10_000,
     'a cold PowerShell host would be reported as missing under the generic budget');
+});
+
+test('the generic probe budget tolerates a toolchain that is slow to start', () => {
+  // A missing tool answers immediately, so this only bounds a slow start; five
+  // seconds reported installed runtimes as missing on a loaded machine.
+  assert.ok(DEFAULT_PROBE_TIMEOUT_MS >= 10_000);
 });
 
 test('a linker failure is named, including the Unix linker that shadows the MSVC one', () => {
