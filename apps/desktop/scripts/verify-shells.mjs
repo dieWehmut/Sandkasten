@@ -21,6 +21,8 @@ const PATH_MARKER = 'SANDKASTEN_PATH_OK';
 // A WSL session may have to cold-start a distro before it can answer, so the
 // verification budget is far larger than an interactive prompt would need.
 const DEFAULT_TIMEOUT_MS = 30_000;
+// Starting a distro is the one step here that can outlast an idle budget.
+const WSL_PROFILE_TIMEOUT_MS = 60_000;
 
 // Each family gets the flag that runs one command and exits: PowerShell's
 // -Command, cmd's /c, and -c for bash, the POSIX shells and NuShell. WSL runs
@@ -120,9 +122,13 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
   const results = [];
   try {
     for (const profile of profiles) {
+      // A WSL session may have to start its distro before it answers anything, and
+      // a loaded machine turns that into tens of seconds: the budget has to cover
+      // a cold distro, not an idle one.
+      const profileTimeoutMs = profile.family === 'wsl' ? Math.max(timeoutMs, WSL_PROFILE_TIMEOUT_MS) : timeoutMs;
       const environment = sessionEnvironment(profile, process.env, platform);
       const marker = await probe(profile, profile.family === 'powershell' ? `Write-Output '${MARKER}'` : `echo ${MARKER}`,
-        { timeoutMs, environment });
+        { timeoutMs: profileTimeoutMs, environment });
       const base = {
         id: profile.id, label: profile.label, family: profile.family, executable: profile.executable,
         durationMs: marker.durationMs, pathPrepend: profile.pathPrepend ?? [],
@@ -155,7 +161,7 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       let selfReported = 0;
       let extraSample = [];
       if (report) {
-        const answer = await probe(profile, report, { timeoutMs, environment });
+        const answer = await probe(profile, report, { timeoutMs: profileTimeoutMs, environment });
         const names = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
         const shared = published.filter((name) => names.has(name));
         selfReported = shared.length;
@@ -177,7 +183,7 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       for (const name of samples) {
         const resolve = resolvesName(profile, name);
         if (!resolve) break;
-        const lookup = await probe(profile, resolve, { timeoutMs, environment });
+        const lookup = await probe(profile, resolve, { timeoutMs: profileTimeoutMs, environment });
         if (lookup.ok && lookup.stdout.trim()) resolved.push(name);
       }
       if (samples.length && !resolved.length) {
