@@ -26,18 +26,26 @@ async function wslDistributions(file) {
 // command set. Prepending those directories is what makes a Git Bash session
 // find `git`, `ls`, `sed` and `ssh`, and a PowerShell session find its modules,
 // while the renderer only ever sees an opaque profile id.
-export async function discoverTerminalProfiles({
+//
+// The report also names the shells that were looked for and not offered. A
+// machine that is busy can miss the WSL launcher's budget, and a profile that
+// simply disappears takes a whole verification with it without saying so.
+export async function discoverTerminalProfileReport({
   platform = process.platform, env = process.env, isExecutable = executable, listWsl = wslDistributions,
 } = {}) {
   const windows = platform === 'win32';
   const normalize = windows ? (file) => path.win32.normalize(file) : (file) => path.posix.normalize(file);
   const dirname = windows ? path.win32.dirname : path.posix.dirname;
   const profiles = [];
+  const missing = [];
   const seen = new Set();
   const identity = (file) => windows ? file.toLowerCase() : file;
   const add = (id, label, family, candidates, args, commandDirs = () => []) => {
     const file = candidates.filter(Boolean).map(normalize).find((candidate) => !seen.has(identity(candidate)) && isExecutable(candidate));
-    if (!file) return undefined;
+    if (!file) {
+      missing.push({ id, label, family, reason: 'no executable was found' });
+      return undefined;
+    }
     seen.add(identity(file));
     const pathPrepend = [...new Set(commandDirs(file).filter(Boolean).map(normalize))];
     profiles.push({ id, label, family, executable: file, args, pathPrepend });
@@ -103,7 +111,15 @@ export async function discoverTerminalProfiles({
       join(systemDrive, 'ProgramData', 'scoop', 'shims', 'nu.exe'),
     ], [], (file) => [dirname(file)]);
     const wsl = join(system, 'System32', 'wsl.exe');
-    if (isExecutable(wsl) && (await listWsl(wsl)).length) add('wsl', 'WSL', 'wsl', [wsl], [], (file) => [dirname(file)]);
+    if (!isExecutable(wsl)) missing.push({ id: 'wsl', label: 'WSL', family: 'wsl', reason: 'no executable was found' });
+    else {
+      // The launcher answers in milliseconds, but a loaded machine can miss its
+      // budget; one retry keeps a shell from vanishing from the list.
+      let distros = await listWsl(wsl);
+      if (!distros.length) distros = await listWsl(wsl);
+      if (distros.length) add('wsl', 'WSL', 'wsl', [wsl], [], (file) => [dirname(file)]);
+      else missing.push({ id: 'wsl', label: 'WSL', family: 'wsl', reason: 'the wsl launcher listed no distribution' });
+    }
   } else {
     const shellFamily = (name) => name === 'bash' ? 'bash' : name === 'nu' ? 'nu' : 'posix';
     const login = env.SHELL;
@@ -112,5 +128,11 @@ export async function discoverTerminalProfiles({
       add(name, name, shellFamily(name), [`/bin/${name}`, `/usr/bin/${name}`, `/usr/local/bin/${name}`], ['-l']);
     }
   }
-  return profiles.map((profile, index) => ({ ...profile, isDefault: index === 0 }));
+  const ordered = profiles.map((profile, index) => ({ ...profile, isDefault: index === 0 }));
+  return { profiles: ordered, missing };
+}
+
+/** The profiles alone, for the callers that only need what is offered. */
+export async function discoverTerminalProfiles(options) {
+  return (await discoverTerminalProfileReport(options)).profiles;
 }

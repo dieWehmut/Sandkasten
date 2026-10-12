@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
+import { discoverTerminalProfileReport } from '../src/terminal-profiles.mjs';
 import { TERMINAL_COMMAND_LIMITS, discoverTerminalCommands, shellReportCommand } from '../src/terminal-commands.mjs';
 import { sessionEnvironment } from '../src/terminal.mjs';
 
@@ -112,7 +112,8 @@ function resolvesName(profile, name) {
 }
 
 export async function verifyShells({ platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true } = {}) {
-  const discovered = await discoverTerminalProfiles({ platform });
+  const report = await discoverTerminalProfileReport({ platform });
+  const discovered = report.profiles;
   const profiles = profileId ? discovered.filter((profile) => profile.id === profileId) : discovered;
   if (!profiles.length) throw new Error(profileId ? `No terminal profile matched "${profileId}".` : 'No shell profile was discovered.');
   const commandProbe = checkPath ? createCommandProbe(platform) : undefined;
@@ -185,7 +186,7 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
         commands: published.length, commandsReported: selfReported,
-        // A list at its bound is not a failure â€” the bound is deliberate â€” but it
+        // A list at its bound is not a failure â€?the bound is deliberate â€?but it
         // is the one case where commands may have been left out.
         atBound: published.length >= TERMINAL_COMMAND_LIMITS.commands,
         samples, resolved,
@@ -194,10 +195,12 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
   } finally {
     commandProbe?.dispose();
   }
-  return results;
+  // The shells that were looked for and not offered travel with the results: a
+  // profile that disappeared under load must not look like coverage.
+  return { results, missing: profileId ? [] : report.missing };
 }
 
-function render(results) {
+function render({ results, missing }) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
     const commands = result.commands
@@ -210,6 +213,9 @@ function render(results) {
   }
   const failed = results.filter((result) => result.status !== 'ok');
   process.stdout.write(`\n${results.length - failed.length}/${results.length} shells verified\n`);
+  if (missing?.length) {
+    process.stdout.write(`not offered: ${missing.map((entry) => `${entry.label} (${entry.reason})`).join('; ')}\n`);
+  }
 }
 
 async function main() {
@@ -217,10 +223,10 @@ async function main() {
   const json = args.includes('--json');
   const profileId = args.find((argument) => argument.startsWith('--profile='))?.slice('--profile='.length);
   const timeoutMs = Number(args.find((argument) => argument.startsWith('--timeout-ms='))?.slice('--timeout-ms='.length)) || DEFAULT_TIMEOUT_MS;
-  const results = await verifyShells({ timeoutMs, profileId, checkPath: !args.includes('--no-path-probe') });
-  if (json) process.stdout.write(`${JSON.stringify({ marker: MARKER, pathMarker: PATH_MARKER, results }, null, 2)}\n`);
-  else render(results);
-  process.exitCode = results.some((result) => result.status !== 'ok') ? 1 : 0;
+  const report = await verifyShells({ timeoutMs, profileId, checkPath: !args.includes('--no-path-probe') });
+  if (json) process.stdout.write(`${JSON.stringify({ marker: MARKER, pathMarker: PATH_MARKER, ...report }, null, 2)}\n`);
+  else render(report);
+  process.exitCode = report.results.some((result) => result.status !== 'ok') ? 1 : 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

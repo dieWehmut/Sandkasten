@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
+import { discoverTerminalProfileReport, discoverTerminalProfiles } from '../src/terminal-profiles.mjs';
 
 test('Windows profiles contain only installed shells, prefer PowerShell and retain executable privacy', async () => {
   const installed = new Set([
@@ -92,4 +92,51 @@ test('Unix offers every installed non-login shell exactly once', async () => {
   assert.deepEqual(profiles.map(({ family }) => family), ['posix', 'bash', 'posix', 'nu', 'posix']);
   assert.equal(profiles.filter(({ isDefault }) => isDefault).length, 1);
   assert.equal(profiles[0].executable, '/bin/zsh');
+});
+
+test('the report names the shells that were looked for and not offered', async () => {
+  const { profiles, missing } = await discoverTerminalProfileReport({
+    platform: 'win32',
+    env: { SystemRoot: 'C:\\Windows' },
+    isExecutable: (file) => file.endsWith('cmd.exe'),
+    listWsl: async () => [],
+  });
+  assert.deepEqual(profiles.map(({ id }) => id), ['cmd']);
+  const byId = Object.fromEntries(missing.map((entry) => [entry.id, entry]));
+  assert.equal(byId['git-bash'].reason, 'no executable was found');
+  assert.equal(byId.nu.label, 'NuShell');
+  // The launcher is not installed in this fixture, so WSL is missing too.
+  assert.equal(byId.wsl.reason, 'no executable was found');
+  // An installed launcher that answers nothing is a different story.
+  const withWsl = await discoverTerminalProfileReport({
+    platform: 'win32',
+    env: { SystemRoot: 'C:\\Windows' },
+    isExecutable: (file) => file.endsWith('cmd.exe') || file.endsWith('wsl.exe'),
+    listWsl: async () => [],
+  });
+  assert.equal(withWsl.missing.find((entry) => entry.id === 'wsl').reason, 'the wsl launcher listed no distribution');
+});
+
+test('a WSL listing that misses its budget once is asked again', async () => {
+  let calls = 0;
+  const { profiles } = await discoverTerminalProfileReport({
+    platform: 'win32',
+    env: { SystemRoot: 'C:\\Windows' },
+    isExecutable: (file) => file.endsWith('wsl.exe'),
+    // The launcher answers nothing on a loaded machine, then lists the distro.
+    listWsl: async () => { calls += 1; return calls === 1 ? [] : ['Ubuntu-22.04']; },
+  });
+  assert.equal(calls, 2, 'one retry keeps the profile from vanishing');
+  assert.deepEqual(profiles.map(({ id }) => id), ['wsl']);
+
+  let attempts = 0;
+  const silent = await discoverTerminalProfileReport({
+    platform: 'win32',
+    env: { SystemRoot: 'C:\\Windows' },
+    isExecutable: (file) => file.endsWith('wsl.exe'),
+    listWsl: async () => { attempts += 1; return []; },
+  });
+  assert.equal(attempts, 2, 'a launcher that never answers is asked twice, not in a loop');
+  assert.deepEqual(silent.profiles, []);
+  assert.equal(silent.missing.find((entry) => entry.id === 'wsl').reason, 'the wsl launcher listed no distribution');
 });
