@@ -85,7 +85,9 @@ The desktop build adds these things the browser cannot do:
    application state directory and refreshed in the background, because building
    it costs seconds (a cold WSL scan) and it rarely changes. Typing
    the start of a command in the terminal itself suggests up to five commands
-   the active shell can run; choosing one types the rest of the word without
+   the active shell can run, taking turns between the shell's own commands and the
+   executables on its `PATH` so neither kind fills every slot; choosing one types
+   the rest of the word without
    running it, and `Ctrl+Space` accepts the first suggestion. What the user
    accepted earlier leads the matching suggestions and the palette's shell
    entries, and that history survives a restart. Once the command
