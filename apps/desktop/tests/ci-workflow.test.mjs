@@ -90,7 +90,9 @@ test('every command the workflow runs is a script of the directory it runs in', 
 
 test('every shell script the workflow runs exists in the repository', () => {
   const scripts = steps().filter((step) => step.command.startsWith('bash ')).map((step) => step.command.slice('bash '.length));
-  assert.ok(scripts.includes('scripts/webui-build-test.sh'), `the workflow must check the committed distribution, saw: ${scripts.join(', ') || 'none'}`);
+  for (const expected of ['scripts/webui-build-test.sh', 'scripts/apps-layout-test.sh', 'scripts/pages-artifact-test.sh']) {
+    assert.ok(scripts.includes(expected), `the workflow must run ${expected}, saw: ${scripts.join(', ') || 'none'}`);
+  }
   for (const script of scripts) {
     assert.equal(existsSync(path.join(repositoryRoot, script)), true, `${script} must exist`);
   }

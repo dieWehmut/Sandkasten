@@ -45,10 +45,22 @@ jobs:
 
       # The committed distribution is what Pages and the server installer ship.
       # This rebuilds it and checks the four-file contract, which the unit suite
-      # leaves out, so a WebUI source change cannot slip through without it.
+      # leaves out, so a WebUI source change cannot slip through without it. It
+      # stops short of comparing the rebuild against the committed bytes: that
+      # payload was produced on another platform, and nothing here can prove two
+      # platforms emit identical bytes.
       - name: WebUI distribution contract
         shell: bash
         run: bash scripts/webui-build-test.sh --test
+
+      # Repository contracts that need no toolchain beyond git and node: the
+      # apps layout and the shape of the Pages artifact. Both are part of the
+      # quality gate, so they run before a branch is merged as well.
+      - name: Repository contracts
+        shell: bash
+        run: |
+          bash scripts/apps-layout-test.sh
+          bash scripts/pages-artifact-test.sh --test
 
       - name: Desktop unit tests
         working-directory: apps/desktop
