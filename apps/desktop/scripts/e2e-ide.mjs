@@ -245,6 +245,7 @@ async function main() {
       checks.isolatedRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
       checks.isolatedRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
       checks.isolatedRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
+      checks.isolatedRunBackend = await page.getAttribute('[data-testid="ide-status-bar"]', 'data-backend');
       await page.selectOption('[data-testid="ide-backend-select"]', 'local');
       await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'local', null, { timeout: 10_000 });
       await page.click('[data-path="hello.py"] .ide-tree__open');
@@ -513,6 +514,20 @@ async function main() {
     // contract so a broken layout or tray behavior makes the command fail.
     assert.equal(checks.bridgeExposed, true);
     assert.equal(checks.localRunOutput, 'E2E-LOCAL-RUN-OK');
+    // The isolated option is offered exactly when the backend can sandbox, and a
+    // run through it executes the file in the sandbox rather than on the host.
+    assert.equal(checks.isolatedOptionDisabled, checks.isolationStatus?.available !== true,
+      'the isolated option must be disabled unless WSL2 can create the namespaces');
+    if (checks.isolationStatus?.available) {
+      // The fixture prints whether it was PID 1 and whether it reached the
+      // network, so the app's own path proves both, not just that it ran.
+      assert.match(checks.isolatedRunOutput ?? '', /^E2E-ISOLATED-RUN-OK True/,
+        'the sandbox run has to be the payload and the payload has to be PID 1');
+      assert.match(checks.isolatedRunOutput ?? '', /E2E-NETWORK-BLOCKED/,
+        'the sandbox run must not reach the network');
+      assert.equal(checks.isolatedRunBackend, 'isolated');
+      assert.match(checks.isolatedRunPhase ?? '', /./, 'the sandbox run has to report a phase');
+    }
     assert.equal(checks.savedRemotely, true);
     assert.equal(checks.createdOnDisk, true);
     assert.equal(checks.panelHidden, true);
