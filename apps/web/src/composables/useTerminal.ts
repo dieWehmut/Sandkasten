@@ -398,6 +398,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
           void useClipboard(clipboard);
           return false;
         }
+        // Ctrl+Shift+K clears the buffer, the way other terminals spell it.
+        if (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.key?.toLowerCase() === 'k') {
+          void useClipboard('clear');
+          return false;
+        }
         if (isSuggestionShortcut(event) && id === activeId.value && suggestions.value.length) {
           void complete(suggestions.value[0]);
           return false;

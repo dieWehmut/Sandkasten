@@ -7,11 +7,12 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   cols = 80; rows = 24; options: any = {}; element?: HTMLElement;
   input = (_data: string) => {}; resized = (_size: { cols: number; rows: number }) => {};
   keyHandler: ((event: any) => boolean) | undefined;
-  selection = ''; selected = 0;
+  selection = ''; selected = 0; cleared = 0;
   write = vi.fn(); dispose = vi.fn(); focus = vi.fn(); refresh = vi.fn();
   loadAddon = vi.fn();
   getSelection() { return this.selection; }
   selectAll() { this.selected += 1; }
+  clear() { this.cleared += 1; }
   clearSelection() { this.selection = ''; }
   attachCustomKeyEventHandler(handler: (event: any) => boolean) { this.keyHandler = handler; }
   constructor(options: any) { this.options = options; mocks.terminals.push(this); }
@@ -127,6 +128,11 @@ describe('app-owned terminal sessions', () => {
     expect(xterm.keyHandler(press({ key: 'Insert', shiftKey: true }))).toBe(false);
     await vi.waitFor(() => expect(host.bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'pasted text' }));
     expect(xterm.keyHandler(press({ key: 'Insert' }))).toBe(true);
+
+    // Ctrl+Shift+K clears the buffer, and plain Ctrl+K is the shell's.
+    expect(xterm.keyHandler(press({ key: 'k', ctrlKey: true, shiftKey: true }))).toBe(false);
+    expect(xterm.cleared).toBe(1);
+    expect(xterm.keyHandler(press({ key: 'k', ctrlKey: true }))).toBe(true);
 
     // A middle-click pastes the primary selection, which is a different buffer.
     await terminal.clipboard('paste-selection');
