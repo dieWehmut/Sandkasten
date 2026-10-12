@@ -227,7 +227,9 @@ npm run package:win # NSIS installer (x64 + arm64) under tmp/desktop-dist
 
 `verify` runs the three checks below in sequence and prints one summary line
 each, so a machine can be verified with a single command (`make
-verify-desktop` runs the same thing from the repository root). A backend that is
+verify-desktop` runs the same thing from the repository root). It passes
+`--failures` to the runtime check, so the gate covers a failing program as well as
+a running one. A backend that is
 simply absent counts as unavailable; anything installed but broken fails the
 command.
 
