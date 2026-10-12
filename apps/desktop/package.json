@@ -11,6 +11,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.mjs",
+    "verify": "node scripts/verify-all.mjs",
     "verify:shells": "node scripts/verify-shells.mjs",
     "verify:runtimes": "node scripts/verify-runtimes.mjs",
     "verify:isolated": "node scripts/verify-isolated.mjs",
