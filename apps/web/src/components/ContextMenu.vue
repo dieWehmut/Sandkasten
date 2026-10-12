@@ -54,11 +54,13 @@ function choose(index: number): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ', 'Escape', 'Tab'];
+  // Escape is handled on the document, so a menu whose focus was taken by whatever
+  // was clicked still closes; this handler owns the navigation keys.
+  const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ', 'Tab'];
   if (!keys.includes(event.key)) return;
   event.preventDefault();
   event.stopPropagation();
-  if (event.key === 'Escape' || event.key === 'Tab') { emit('close'); return; }
+  if (event.key === 'Tab') { emit('close'); return; }
   if (event.key === 'Enter' || event.key === ' ') { choose(active.value); return; }
   if (event.key === 'ArrowDown') move(1);
   else if (event.key === 'ArrowUp') move(-1);
@@ -69,8 +71,19 @@ function onKeydown(event: KeyboardEvent): void {
 function onPointerdown(event: PointerEvent): void {
   if (props.open && event.target instanceof Node && !menu.value?.contains(event.target)) emit('close');
 }
-onMounted(() => document.addEventListener('pointerdown', onPointerdown, true));
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerdown, true));
+// Escape closes the menu wherever focus is: the terminal takes focus back as soon
+// as it is clicked, and a menu that only hears its own keys would stay open.
+function onDocumentKeydown(event: KeyboardEvent): void {
+  if (props.open && event.key === 'Escape') emit('close');
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerdown, true);
+  document.addEventListener('keydown', onDocumentKeydown, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerdown, true);
+  document.removeEventListener('keydown', onDocumentKeydown, true);
+});
 
 async function place(): Promise<void> {
   placed.value = false;
