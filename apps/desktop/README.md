@@ -65,7 +65,9 @@ The desktop build adds these things the browser cannot do:
    commands the active shell can run — discovered from the session `PATH` with
    the profile's own directories first, so a Git Bash session lists `git`, `ls`
    and the coreutils while PowerShell leads with its own tools — and an entry
-   per command types it into that session. A WSL session is asked inside the
+   per command types it into that session, revealing the panel first and raising
+   a toast when the session will not take the input. The commands typed this
+   session lead the list. A WSL session is asked inside the
    distro instead, because its `PATH` belongs there and Windows names would
    mislead. `Terminal: Run active file in
    terminal` types the file's interpreter command instead, quoted for that
@@ -149,6 +151,7 @@ cd apps/desktop
 npm test            # unit tests: workspace guard, local runner, IPC, menu, preload, tray, title row, terminal host, window policy
 npm run verify:shells    # discover the installed shells and prove each one runs a command
 npm run verify:runtimes  # detect the local toolchains and run a fixture through every available one
+npm run verify:isolated  # run real payloads through the WSL2 namespace sandbox and ask them what it denies
 npm run smoke       # headless Electron launch against apps/web/dist
 npm run e2e         # drives the real app: open folder, edit, save, run, screenshots
 npm run e2e:refinement  # setup scrolling, welcome actions, and the real terminal
@@ -172,6 +175,13 @@ fixture's marker on stdout. Runtimes whose toolchain is absent are reported as
 unavailable instead of failing; an installed but unusable toolchain (a `rustc`
 without a linker, for example) fails with its own output. Pass `--json`,
 `--language=<id>`, or `--timeout-ms=<ms>`.
+
+`verify:isolated` detects whether a WSL2 distro can create the isolation
+namespaces and then runs real payloads through the isolated backend: Python and
+Bash have to run inside it, a payload that opens a TCP connection has to be
+refused, and `/proc` has to show the namespace's own table with the payload as
+PID 1. A machine without a usable distro reports the backend as unavailable
+instead of failing. Pass `--json` or `--timeout-ms=<ms>`.
 
 `npm run e2e` launches the app against a temporary workspace and asserts the
 explorer tree, the local run output, `Ctrl+S` persistence, file creation, panel

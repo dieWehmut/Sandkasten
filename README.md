@@ -244,13 +244,16 @@ cd apps/desktop
 npm test                # 桌面端单元测试(工作区守卫、本地运行器、终端、菜单、托盘等)
 npm run verify:shells   # 发现已安装的 shell,并验证每个 shell 都能真正执行命令
 npm run verify:runtimes # 探测本机工具链,并对每个可用运行时跑一个真实样例
+npm run verify:isolated # 通过 WSL2 命名空间沙箱运行真实负载,并从沙箱内部验证其限制
 ```
 
 `verify:shells` 会为每个发现的 shell 执行一条标记命令,并把一个探针命令写入该
 shell 自己的命令目录,要求 shell 能找到并运行它——这正是终端会话 `PATH` 增强要
 保证的性质。`verify:runtimes` 通过真实的本地运行器执行各语言 hello-world,缺少的
 工具链记为 unavailable,已安装但不可用(例如没有链接器的 `rustc`)则以其自身输出失败。
-两者都支持 `--json` 输出。
+`verify:isolated` 通过 WSL2 沙箱执行真实负载,并从沙箱内部确认:程序能跑、TCP 连接被拒绝、
+`/proc` 只显示命名空间自己的进程表(负载自身即 PID 1);没有可用发行版时如实报告 unavailable。
+三者都支持 `--json` 输出。
 
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只验证子集。
 
