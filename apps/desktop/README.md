@@ -211,7 +211,8 @@ command list the palette would offer and resolves a sample of those names in
 the shell itself, so the advertised list is one the shell really runs. It also
 asks the shell what it reports about itself and requires the list to carry it,
 which is how a bound that cut PowerShell's cmdlets after the first letters of the
-alphabet was found. WSL
+alphabet was found. A list that reaches its bound is marked as such in the output,
+since that is the one case where a command may have been left out. WSL
 reports the path check as not applicable — the probe directory is a Windows one
 and the distro cannot see it — but its command list is real, asked from inside
 the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
@@ -221,8 +222,11 @@ fixture for every available runtime through the real local runner, requiring the
 fixture's marker on stdout. Runtimes whose toolchain is absent are reported as
 unavailable instead of failing; an installed but unusable toolchain (a `rustc`
 without a linker, for example) fails with its own output, followed by the
-runner's diagnosis when it can name the cause. Pass `--json`,
-`--language=<id>`, or `--timeout-ms=<ms>`.
+runner's diagnosis when it can name the cause. That diagnosis is worth taking at
+its word: on a workstation whose `link.exe` came from MSYS2, running the check
+from a Visual Studio developer prompt with the x64 toolchain turned the Rust row
+from a failure into `SANDKASTEN_RUNTIME_OK:rust` with no change to the code. Pass
+`--json`, `--language=<id>`, or `--timeout-ms=<ms>`.
 
 `verify:isolated` detects whether a WSL2 distro can create the isolation
 namespaces and which languages it has the binaries for, then runs a fixture for
