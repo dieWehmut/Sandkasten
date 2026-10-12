@@ -528,6 +528,31 @@ async function main() {
       assert.equal(checks.isolatedRunBackend, 'isolated');
       assert.match(checks.isolatedRunPhase ?? '', /./, 'the sandbox run has to report a phase');
     }
+
+    // The workspace the app opened, as the bridge reports it and as the explorer
+    // draws it: the fixtures on disk have to be the fixtures on screen.
+    assert.equal(checks.workspaceRoot?.path, workspace);
+    assert.ok(checks.bridgeTree?.some((node) => node.name === 'hello.py'), 'the bridge tree must list the opened workspace');
+    assert.ok(checks.explorerRows > 0);
+    for (const name of ['hello.py', 'pkg', 'hello.py']) assert.ok(checks.tree.includes(name), `the explorer must list ${name}`);
+    assert.equal(checks.activeTab, 'hello.py');
+    assert.match(checks.editorText ?? '', /E2E-LOCAL-RUN-OK/, 'the editor must show the file that was opened');
+    assert.match(checks.windowTitle ?? '', /Sandkasten/, 'the window title must name the workbench');
+
+    // Collapsing a folder really collapses it.
+    assert.equal(checks.toggleExpandedBefore !== checks.toggleExpandedAfter, true, 'the folder toggle must change state');
+    assert.ok(checks.collapsedRows < checks.rowsBeforeCollapse, 'a collapsed folder must hide its children');
+    assert.equal(checks.utilRowAfterCollapse, 0);
+
+    // The viewport stays bounded at the minimum window size, and the screenshots
+    // the run promises are real files.
+    assert.equal(checks.minimumWindowBodyScrollTop, 0);
+    assert.ok(checks.lightScreenshotBytes > 0 && checks.darkScreenshotBytes > 0, 'both theme screenshots must be written');
+
+    // Everything else in the report is evidence for a person rather than a
+    // contract: the raw theme values, the sidebar preview, the screenshot paths,
+    // the menu shape, and the localized phase and badge labels, which the
+    // locale-independent `data-backend` attribute already covers.
     assert.equal(checks.savedRemotely, true);
     assert.equal(checks.createdOnDisk, true);
     assert.equal(checks.panelHidden, true);
