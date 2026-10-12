@@ -184,7 +184,11 @@ export async function verifyShells({ platform = process.platform, timeoutMs = DE
       }
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
-        commands: published.length, commandsReported: selfReported, samples, resolved,
+        commands: published.length, commandsReported: selfReported,
+        // A list at its bound is not a failure — the bound is deliberate — but it
+        // is the one case where commands may have been left out.
+        atBound: published.length >= TERMINAL_COMMAND_LIMITS.commands,
+        samples, resolved,
       });
     }
   } finally {
@@ -197,7 +201,7 @@ function render(results) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
     const commands = result.commands
-      ? `${result.commands} commands (${result.resolved.length}/${result.samples.length} sampled resolve${result.commandsReported ? `, ${result.commandsReported} of them the shell's own` : ''})`
+      ? `${result.commands} commands${result.atBound ? ' (at the list bound)' : ''} (${result.resolved.length}/${result.samples.length} sampled resolve${result.commandsReported ? `, ${result.commandsReported} of them the shell's own` : ''})`
       : 'no command list';
     const detail = result.status === 'ok'
       ? `marker ok; path ${result.pathProbe}; ${commands}`
