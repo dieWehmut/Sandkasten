@@ -91,9 +91,10 @@ The desktop build adds these things the browser cannot do:
    entries, and that history survives a restart. Once the command
    word is complete, the last argument completes from the workspace files, and a
    workspace folder completes as a directory argument with its separator
-   (`cd scr` → `scripts/`, and `cd scripts/task` → `scripts/task.py`), and a plain
-   `cd` is followed, so after moving into a folder the names inside it are what
-   completes. A path
+   (`cd scr` → `scripts/`, and `cd scripts/task` → `scripts/task.py`), and the
+   shell's directory changes are followed — `cd` and its synonyms, `pushd` and
+   `popd`, a quoted path with spaces — so after moving into a folder the names
+   inside it are what completes. A path
    that needs quoting is inserted with the
    active shell's own quoting, and what the user already accepted this session
    leads the matching entries. The
