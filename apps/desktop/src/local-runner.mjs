@@ -85,6 +85,10 @@ export const LOCAL_RUNTIMES = {
     // local execution is already an explicit, unsandboxed opt-in.
     args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '{file}'],
     probe: ['-NoProfile', '-Command', 'exit 0'],
+    // A cold PowerShell host start takes seconds on a loaded or emulated
+    // machine, and the generic budget would report an installed shell as
+    // missing.
+    probeTimeoutMs: 15_000,
     extensions: ['.ps1'],
   },
 };

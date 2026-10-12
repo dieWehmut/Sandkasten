@@ -105,6 +105,12 @@ test('Bash declares a probe budget that covers a cold WSL distro start', () => {
     'the generic probe budget would report an installed WSL-backed Bash as missing');
 });
 
+test('PowerShell declares a probe budget that covers a cold host start', () => {
+  assert.deepEqual(LOCAL_RUNTIMES.powershell.candidates, ['pwsh', 'powershell']);
+  assert.ok(LOCAL_RUNTIMES.powershell.probeTimeoutMs >= 10_000,
+    'a cold PowerShell host would be reported as missing under the generic budget');
+});
+
 test('Go builds explicitly so a locked temporary executable cannot fail a good run', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-run-'));
   t.after(() => rm(root, { recursive: true, force: true }));
