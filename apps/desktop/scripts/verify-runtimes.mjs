@@ -71,6 +71,34 @@ function compact(text, limit = 180) {
   return line.length > limit ? `${line.slice(0, limit)}…` : line;
 }
 
+/**
+ * What decides a row, without a machine: the runner's report goes in, the verdict
+ * comes out. These are the parts that have to fail when a runtime stops behaving,
+ * so they are tested directly.
+ */
+export function runtimeVerdict(result, language) {
+  const expected = `${MARKER}:${language}`;
+  const ok = result.status === 'JOB_STATUS_SUCCEEDED' && String(result.stdout ?? '').includes(expected);
+  return { ok, reason: ok ? '' : result.errorMessage || `marker ${expected} missing (${result.status})` };
+}
+
+export function runtimeFailureVerdict(result, language) {
+  const expected = `${FAILURE_MARKER}:${language}`;
+  const stderr = `${result.stderr ?? ''}${result.compileStderr ?? ''}`;
+  const ok = result.status === 'JOB_STATUS_RUNTIME_FAILED'
+    && result.exitCode === FAILURE_EXIT_CODE
+    && stderr.includes(expected);
+  return {
+    ok,
+    stderr,
+    reason: ok ? '' : [
+      `expected a runtime failure with exit ${FAILURE_EXIT_CODE} and its stderr`,
+      `got ${result.status} exit ${result.exitCode ?? '-'}`,
+      stderr.includes(expected) ? '' : 'without the program\'s stderr',
+    ].filter(Boolean).join(', '),
+  };
+}
+
 export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS, workRoot, failures = false } = {}) {
   const root = workRoot ?? await mkdtemp(path.join(os.tmpdir(), 'sandkasten-runtime-verify-'));
   const ownsRoot = !workRoot;
@@ -101,14 +129,12 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
         { jobId: `verify-${language}-${randomUUID().slice(0, 8)}`, path: fixture.file, language, timeoutMs },
         { root },
       );
-      const expected = `${MARKER}:${language}`;
-      const ok = result.status === 'JOB_STATUS_SUCCEEDED' && result.stdout.includes(expected);
+      const verdict = runtimeVerdict(result, language);
       results.push({
-        language, label: runtime.label, status: ok ? 'ok' : 'failed',
+        language, label: runtime.label, status: verdict.ok ? 'ok' : 'failed',
         jobStatus: result.status, exitCode: result.exitCode, durationMs: result.durationMs,
         stdout: brief(result.stdout), stderr: brief(result.stderr || result.compileStderr),
-        hint: result.hint ?? '',
-        reason: ok ? '' : result.errorMessage || `marker ${expected} missing (${result.status})`,
+        hint: result.hint ?? '', reason: verdict.reason,
       });
 
       if (!failures) continue;
@@ -120,21 +146,13 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
       );
       // A failing program has to reach the user as a runtime failure, with the
       // code it chose and the words it wrote to stderr.
-      const expectedFailure = `${FAILURE_MARKER}:${language}`;
-      const stderr = `${failure.stderr ?? ''}${failure.compileStderr ?? ''}`;
-      const reported = failure.status === 'JOB_STATUS_RUNTIME_FAILED'
-        && failure.exitCode === FAILURE_EXIT_CODE
-        && stderr.includes(expectedFailure);
+      const reported = runtimeFailureVerdict(failure, language);
       results.push({
         language, label: `${runtime.label} (failure)`, phase: 'failure',
-        status: reported ? 'ok' : 'failed',
+        status: reported.ok ? 'ok' : 'failed',
         jobStatus: failure.status, exitCode: failure.exitCode, durationMs: failure.durationMs,
-        stdout: brief(failure.stdout), stderr: brief(stderr), hint: failure.hint ?? '',
-        reason: reported ? '' : [
-          `expected a runtime failure with exit ${FAILURE_EXIT_CODE} and its stderr`,
-          `got ${failure.status} exit ${failure.exitCode ?? '-'}`,
-          stderr.includes(expectedFailure) ? '' : 'without the program\'s stderr',
-        ].filter(Boolean).join(', '),
+        stdout: brief(failure.stdout), stderr: brief(reported.stderr), hint: failure.hint ?? '',
+        reason: reported.reason,
       });
     }
   } finally {

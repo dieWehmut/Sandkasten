@@ -113,6 +113,40 @@ function resolvesName(profile, name) {
   }
 }
 
+/**
+ * The verdicts that decide a shell's row, without a machine: what the probes
+ * answered goes in, the reason comes out. They encode the guarantees this check
+ * exists for — the marker, the shell's own commands reaching the list, and the
+ * advertised names resolving in the shell.
+ */
+export function shellMarkerVerdict(marker) {
+  const ok = Boolean(marker?.ok) && String(marker?.stdout ?? '').includes(MARKER);
+  return { ok, reason: ok ? '' : (marker?.ok ? 'marker missing from output' : marker?.reason ?? 'the shell did not answer') };
+}
+
+export function shellSelfReportVerdict({ reportedNames, published, limit = TERMINAL_COMMAND_LIMITS.commands }) {
+  // A shell that reports nothing (cmd, a POSIX shell without compgen) is not
+  // asked; reportedNames is null for it.
+  if (!reportedNames) return { reason: '', selfReported: 0, first: undefined };
+  const names = reportedNames instanceof Set ? reportedNames : new Set(reportedNames);
+  const shared = published.filter((name) => names.has(name));
+  let reason = '';
+  if (names.size && !shared.length) {
+    reason = 'the list carries none of the commands the shell reports about itself';
+  } else if (shared.length && shared.length < names.size && published.length < limit) {
+    // While the list is under its cap nothing may be dropped: a command the shell
+    // reports and the list does not carry is the cmdlet the user looks for and
+    // does not find.
+    reason = `only ${shared.length} of ${names.size} shell-reported commands reached the list`;
+  }
+  return { reason, selfReported: shared.length, first: shared[0] };
+}
+
+export function shellSampleVerdict(samples, resolved) {
+  if (!samples.length || resolved.length) return { reason: '' };
+  return { reason: `the shell resolves none of its advertised commands (${samples.join(', ')})` };
+}
+
 export async function verifyShells({
   platform = process.platform, timeoutMs = DEFAULT_TIMEOUT_MS, profileId, checkPath = true, profiles: injected,
 } = {}) {
@@ -137,8 +171,9 @@ export async function verifyShells({
         id: profile.id, label: profile.label, family: profile.family, executable: profile.executable,
         durationMs: marker.durationMs, pathPrepend: profile.pathPrepend ?? [],
       };
-      if (!marker.ok || !marker.stdout.includes(MARKER)) {
-        results.push({ ...base, status: 'failed', reason: marker.ok ? 'marker missing from output' : marker.reason, pathProbe: 'not-checked' });
+      const markerVerdict = shellMarkerVerdict(marker);
+      if (!markerVerdict.ok) {
+        results.push({ ...base, status: 'failed', reason: markerVerdict.reason, pathProbe: 'not-checked' });
         continue;
       }
       let pathProbe = 'not-applicable';
@@ -162,26 +197,17 @@ export async function verifyShells({
       // shell without compgen) skips the check instead of failing it.
       const published = await discoverTerminalCommands(profile, { platform });
       const report = shellReportCommand(profile.family);
-      let selfReported = 0;
-      let extraSample = [];
+      let answerNames;
       if (report) {
         const answer = await probe(profile, report, { timeoutMs: profileTimeoutMs, environment });
-        const names = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
-        const shared = published.filter((name) => names.has(name));
-        selfReported = shared.length;
-        if (names.size && !shared.length) {
-          reason = reason || 'the list carries none of the commands the shell reports about itself';
-        }
-        // While the list is under its cap nothing may be dropped: a command the
-        // shell reports and the list does not carry is exactly the cmdlet the user
-        // will look for and not find.
-        if (shared.length && shared.length < names.size && published.length < TERMINAL_COMMAND_LIMITS.commands) {
-          reason = reason || `only ${shared.length} of ${names.size} shell-reported commands reached the list`;
-        }
-        // Sample one of the shell's own commands as well, so the check covers both
-        // what the PATH holds and what the shell knows.
-        if (shared.length) extraSample = [shared[0]];
+        answerNames = new Set(answer.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
       }
+      const selfReport = shellSelfReportVerdict({ reportedNames: report ? answerNames : null, published });
+      const selfReported = selfReport.selfReported;
+      reason = reason || selfReport.reason;
+      // Sample one of the shell's own commands as well, so the check covers both
+      // what the PATH holds and what the shell knows.
+      const extraSample = selfReport.first ? [selfReport.first] : [];
       const samples = published.length ? [...new Set([...extraSample, ...sampleCommands(published)])].slice(0, 3) : [];
       const resolved = [];
       for (const name of samples) {
@@ -190,9 +216,7 @@ export async function verifyShells({
         const lookup = await probe(profile, resolve, { timeoutMs: profileTimeoutMs, environment });
         if (lookup.ok && lookup.stdout.trim()) resolved.push(name);
       }
-      if (samples.length && !resolved.length) {
-        reason = reason || `the shell resolves none of its advertised commands (${samples.join(', ')})`;
-      }
+      reason = reason || shellSampleVerdict(samples, resolved).reason;
       results.push({
         ...base, status: reason ? 'failed' : 'ok', reason, pathProbe,
         commands: published.length, commandsReported: selfReported,
