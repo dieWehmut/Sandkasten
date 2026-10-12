@@ -71,7 +71,11 @@ The desktop build adds these things the browser cannot do:
    MSYS2/Cygwin, NuShell, WSL when a distro answers, and the POSIX login shells
    elsewhere — starts sessions with xterm.js over a real PTY in the main
    process, and supports new sessions, switching, split panes, close, resize,
-   and Ctrl+C. Each session gets its shell's own command directories on `PATH`
+   and Ctrl+C. `Ctrl+Shift+C`, `Ctrl+Shift+V` and `Ctrl+Shift+A` copy, paste and
+   select all (`Cmd+C` and `Cmd+V` on macOS), through the main process because a
+   sandboxed renderer cannot read the clipboard without a prompt; `Ctrl+C`,
+   `Ctrl+V` and `Ctrl+A` stay with the shell, which is what a terminal owes them.
+   Each session gets its shell's own command directories on `PATH`
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
    tabs, or visiting setup keeps the shell, its buffer, and its working
@@ -327,7 +331,10 @@ fixture files through that session — Python, PowerShell, JavaScript and a shel
 script — each waiting for the marker the program itself prints, and completes a
 command, a file argument, a folder and a nested path in the suggestion strip.
 A second session with the machine's PowerShell profile proves the strip marks the
-commands the shell reports about itself, with the real cmdlet list behind it. The
+commands the shell reports about itself, with the real cmdlet list behind it. It
+also writes to the host clipboard and pastes it into the shell, recording that
+instead when the session has no clipboard of its own — a bare Electron probe on
+this machine returns the empty string, so the run says so rather than failing. The
 same command runs against the packaged executable through
 `SANDKASTEN_E2E_EXECUTABLE`.
 

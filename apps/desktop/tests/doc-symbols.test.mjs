@@ -13,8 +13,12 @@ import { fileURLToPath } from 'node:url';
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
 
-/** Kernel and libc constants a document quotes, not names this repository defines. */
-const EXTERNAL_CONSTANTS = new Set(['CLOSE_RANGE_UNSHARE', 'UINT_MAX']);
+/**
+ * Names a document quotes about the platform or a toolchain rather than about this
+ * repository: two Linux constants, and the variable rustup reads to pick a
+ * toolchain.
+ */
+const EXTERNAL_CONSTANTS = new Set(['CLOSE_RANGE_UNSHARE', 'UINT_MAX', 'RUSTUP_TOOLCHAIN']);
 
 // This file names the allowlisted constants, so it is not evidence that they exist
 // in the code — the first run passed only because the file was still untracked.
