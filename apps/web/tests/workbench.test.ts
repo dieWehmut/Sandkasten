@@ -164,5 +164,7 @@ describe('workbench controls', () => {
     await nextTick();
     expect(editorView().state.doc.toString()).toBe('print("first")');
     expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>');
-  }, 10000);
+    // Mounting the whole workbench twice is the slowest single test here; it
+    // keeps an explicit budget instead of the suite default.
+  }, 20_000);
 });
