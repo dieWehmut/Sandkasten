@@ -221,7 +221,10 @@ the shell itself, so the advertised list is one the shell really runs. It also
 asks the shell what it reports about itself and requires the list to carry it,
 which is how a bound that cut PowerShell's cmdlets after the first letters of the
 alphabet was found. A list that reaches its bound is marked as such in the output,
-since that is the one case where a command may have been left out. WSL
+since that is the one case where a command may have been left out. The shells
+that were looked for and not offered are named too: a busy machine can miss the
+WSL launcher's budget, and a profile that quietly disappears must not look like
+coverage. WSL
 reports the path check as not applicable — the probe directory is a Windows one
 and the distro cannot see it — but its command list is real, asked from inside
 the distro. Pass `--json`, `--profile=<id>`, or `--timeout-ms=<ms>`.
