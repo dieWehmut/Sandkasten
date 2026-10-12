@@ -6,6 +6,7 @@
 //
 //   node scripts/verify-runtimes.mjs [--json] [--language=go] [--timeout-ms=60000]
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -40,6 +41,12 @@ function brief(text, limit = 400) {
   return trimmed.length > limit ? `${trimmed.slice(0, limit)}…` : trimmed;
 }
 
+// One table cell, not a compiler transcript: the JSON keeps the full output.
+function compact(text, limit = 180) {
+  const line = String(text ?? '').replace(/\s+/g, ' ').trim();
+  return line.length > limit ? `${line.slice(0, limit)}…` : line;
+}
+
 export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS, workRoot } = {}) {
   const root = workRoot ?? await mkdtemp(path.join(os.tmpdir(), 'sandkasten-runtime-verify-'));
   const ownsRoot = !workRoot;
@@ -63,8 +70,11 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
         continue;
       }
       await writeFile(path.join(root, fixture.file), fixture.source, 'utf8');
+      // Every run gets its own job id: the runner builds into a directory named after
+// it, and a locked build output left by an earlier verification must never make
+// a later, otherwise healthy run fail.
       const result = await createLocalRunner().run(
-        { jobId: `verify-${language}`, path: fixture.file, language, timeoutMs },
+        { jobId: `verify-${language}-${randomUUID().slice(0, 8)}`, path: fixture.file, language, timeoutMs },
         { root },
       );
       const expected = `${MARKER}:${language}`;
@@ -85,9 +95,13 @@ export async function verifyRuntimes({ languages, timeoutMs = DEFAULT_TIMEOUT_MS
 function render(results) {
   const width = Math.max(...results.map((result) => result.label.length), 5);
   for (const result of results) {
+    // A failure is only actionable with the toolchain's own words: the reason
+    // alone ("Compilation failed") hides which step refused and why.
     const detail = result.status === 'ok'
       ? brief(result.stdout)
-      : result.status === 'unavailable' ? result.reason : result.reason || result.stderr;
+      : result.status === 'unavailable'
+        ? result.reason
+        : [result.reason, compact(result.stderr)].filter(Boolean).join(' — ');
     process.stdout.write(`${result.status.padEnd(11)} ${result.label.padEnd(width)} ${String(result.durationMs ?? 0).padStart(6)} ms  ${detail}\n`);
   }
   const ran = results.filter((result) => result.status === 'ok').length;
