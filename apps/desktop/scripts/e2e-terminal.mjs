@@ -16,10 +16,12 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportPowerShellRun = false;
   let reportJavaScriptRun = false;
   let reportBashRun = false;
+  let reportShellSourceMarked = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
   assert.ok(cmd, 'Windows validation needs the installed Command Prompt profile');
+  const powershell = profiles.find((profile) => profile.family === 'powershell');
   await page.keyboard.press('Control+Shift+Backquote');
   await page.waitForSelector('[data-testid="terminal-pane"]');
   const before = await page.locator('[data-testid="terminal-session"]').count();
@@ -29,10 +31,15 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   const pane = (id) => `[data-testid="terminal-pane"][data-session-id="${id}"]`;
   const readScreen = async (id) => page.locator(`${pane(id)} .xterm-accessibility-tree`).innerText();
   const waitScreen = async (id, text, timeoutMs = 20_000) => {
+    // The accessibility tree puts every terminal row on its own line, so a long
+    // echoed command is split across rows when the pane is narrow. Comparing
+    // without whitespace is what makes the assertion about the text, not about
+    // where the terminal happened to wrap it.
+    const squeeze = (value) => String(value).replace(/\s+/g, '');
     try {
       await page.waitForFunction(({ selector, text }) =>
-        document.querySelector(selector)?.textContent?.includes(text),
-      { selector: `${pane(id)} .xterm-accessibility-tree`, text }, { timeout: timeoutMs });
+        (document.querySelector(selector)?.textContent ?? '').replace(/\s+/g, '').includes(text),
+      { selector: `${pane(id)} .xterm-accessibility-tree`, text: squeeze(text) }, { timeout: timeoutMs });
     } catch (cause) {
       // A failure here is otherwise a bare timeout: say what the terminal did
       // show, because the answer is usually in the last rows.
@@ -269,5 +276,27 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     catch { return true; }
   }, secondId);
   assert.equal(rejected, true);
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun };
+
+  // A PowerShell session publishes its cmdlets through the host, and the strip
+  // marks the ones the shell reports about itself. This is the whole path with
+  // the real list — about three thousand names — rather than a test double.
+  if (powershell) {
+    const beforePowerShell = await page.locator('[data-testid="terminal-session"]').count();
+    await page.selectOption('[data-testid="terminal-profile"]', powershell.id);
+    await page.waitForFunction((count) => document.querySelectorAll('[data-testid="terminal-session"]').length > count, beforePowerShell);
+    const shellId = await page.locator('[data-testid="terminal-pane"]:visible').last().getAttribute('data-session-id');
+    await page.locator(`${pane(shellId)} .xterm-helper-textarea`).focus();
+    await page.keyboard.type('Get-Ch');
+    const marked = `${pane(shellId)} [data-testid="terminal-suggestion"][data-source="shell"]`;
+    await page.waitForSelector(marked, { timeout: 60_000 });
+    const title = await page.locator(marked).first().getAttribute('title');
+    assert.match(title, /cmdlet/i, 'the marked entry has to say what kind of command it is');
+    reportShellSourceMarked = true;
+    await page.keyboard.press('Control+c');
+    await page.click(`[data-testid="terminal-session"][data-session-id="${shellId}"]`);
+    await page.click('[data-action="terminal-close"]');
+    await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
+  }
+
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked };
 }
