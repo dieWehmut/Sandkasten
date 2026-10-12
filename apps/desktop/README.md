@@ -78,8 +78,8 @@ The desktop build adds these things the browser cannot do:
    directory alive; quitting the app disposes them. The command palette offers the
    commands the active shell can run — the executables on the session `PATH`,
    with the profile's own directories first, plus the commands the shell reports
-   about itself, so PowerShell offers its cmdlets and functions (`Get-ChildItem`)
-   and bash its builtins (`cd`, `alias`) — and an entry
+   about itself, so PowerShell offers its cmdlets, functions and aliases
+   (`Get-ChildItem`, `gci`) and bash its builtins (`cd`, `alias`) — and an entry
    per command types it into that session, revealing the panel first and raising
    a toast when the session will not take the input. An entry the shell reported
    about itself says so where an executable shows the shell's name, so the two
