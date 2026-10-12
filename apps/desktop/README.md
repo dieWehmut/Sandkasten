@@ -99,7 +99,9 @@ The desktop build adds these things the browser cannot do:
    (Git Bash finds `git`, `ls`, `sed` and `ssh`; PowerShell finds its modules),
    on top of the directories the user already had. Hiding the panel, switching
    tabs, or visiting setup keeps the shell, its buffer, and its working
-   directory alive; quitting the app disposes them. The command palette offers the
+   directory alive; quitting the app disposes them. Running the active file from the
+   editor injects the command the same way typing it would, so the shell's directory
+   follows that command too. The command palette offers the
    commands the active shell can run — the executables on the session `PATH`,
    with the profile's own directories first, plus the commands the shell reports
    about itself, so PowerShell offers its cmdlets, functions and aliases
