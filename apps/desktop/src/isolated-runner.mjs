@@ -2,8 +2,8 @@
 //
 // The desktop app ships two local backends: the plain local runner, which uses
 // the toolchains on PATH, and this one, which runs the same workspace file
-// inside a Linux user, network, and PID namespace. The namespace set is what
-// makes it a sandbox rather than a convenience:
+// inside a Linux user, network, PID, and mount namespace. The namespace set is
+// what makes it a sandbox rather than a convenience:
 //
 //   --user --map-root-user  the payload sees uid 0 but holds no host privilege
 //   --net                   a fresh network namespace with only loopback, so the
@@ -11,14 +11,35 @@
 //   --pid --fork            a fresh PID namespace, so it cannot see or signal
 //                           host processes
 //   --mount-proc            /proc reflects that PID namespace, not the host's
+//   --mount                 a private mount namespace, which is what lets the
+//                           run hide the host files instead of only bounding
+//                           what the payload can reach
 //
-// WSL is the boundary to Windows: the payload reads only what the selected
-// distro mounts, and the workspace reaches it through the drive mapping.
+// WSL is the boundary to Windows, and the mount namespace is the boundary to
+// the files: the payload's own copy of its source lives in a directory this run
+// owns, and the drives a distro mounts under /mnt are masked before the payload
+// starts.
 import { spawn as nodeSpawn } from 'node:child_process';
 
 import { ISOLATED_LANGUAGES, isolatedLanguagesFrom, isolatedTools } from './isolated-languages.mjs';
 
-export const ISOLATION_FLAGS = ['--user', '--map-root-user', '--net', '--pid', '--fork', '--mount-proc'];
+export const ISOLATION_FLAGS = ['--user', '--map-root-user', '--net', '--pid', '--mount', '--fork', '--mount-proc'];
+
+// What a run hides from the payload once its file is safely inside a private
+// directory: the Windows drives a distro mounts under /mnt, the distro user's
+// own files, and removable media.
+export const ISOLATION_MASKS = ['/mnt', '/home', '/media'];
+
+// The private directory a run copies its payload into. It is named after the
+// job so concurrent runs cannot collide, and the run puts a tmpfs over it, so
+// nothing the payload writes survives the namespace.
+const SANDBOX_PREFIX = '/tmp/sandkasten';
+
+/** The job id as one path segment: safe for a shell word and for the distro. */
+export function sandboxName(jobId) {
+  const cleaned = String(jobId ?? '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 64);
+  return cleaned || 'run';
+}
 
 // Preferred distros, richest toolchain first. The first one that answers the
 // probe wins; a machine without a usable distro reports the backend as
@@ -43,13 +64,34 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
-export function buildIsolatedCommand({ distro, filePath, command, args = [], maxOutputBytes, workingDirectory } = {}) {
-  const target = toDistroPath(filePath);
+// Inside a double-quoted shell word, these four characters still have a meaning:
+// a file name may legitimately contain any of them on Windows.
+function shellDoubleQuote(value) {
+  return `"${String(value).replace(/[\\$"`]/g, (character) => `\\${character}`)}"`;
+}
+
+export function buildIsolatedCommand({ distro, filePath, command, args = [], maxOutputBytes, workingDirectory, jobId } = {}) {
+  const source = toDistroPath(filePath);
+  const name = source.slice(source.lastIndexOf('/') + 1) || 'payload';
+  const sandbox = `${SANDBOX_PREFIX}-${sandboxName(jobId)}`;
+  const target = `${sandbox}/${name}`;
   const inner = [command, ...args.map((argument) => argument.replaceAll('{file}', target))];
-  const directory = toDistroPath(workingDirectory) || target.slice(0, target.lastIndexOf('/')) || '/';
-  // wsl.exe has no --cd for a namespaced payload, so the entry point moves into
-  // the file's own folder before exec'ing the runtime.
-  const entry = ['sh', '-c', `cd ${shellQuote(directory)} && exec ${inner.map(shellQuote).join(' ')}`];
+  // The folder the user's file lives in is what the command preview should show;
+  // the payload itself runs in the private directory.
+  const display = toDistroPath(workingDirectory) || source.slice(0, source.lastIndexOf('/')) || '/';
+  // wsl.exe has no --cd for a namespaced payload, so the entry point prepares the
+  // private directory, masks the host, and only then exec's the runtime. The copy
+  // happens before the masks, which is what makes hiding the host files possible
+  // at all.
+  const entry = ['sh', '-c', [
+    `d=${shellQuote(sandbox)}`,
+    'mkdir -p "$d" || exit 1',
+    'mount -t tmpfs tmpfs "$d" 2>/dev/null || true',
+    `cp -- ${shellQuote(source)} "$d/${name.replace(/[\\$"`]/g, (character) => `\\${character}`)}" || exit 1`,
+    ...ISOLATION_MASKS.map((mount) => `mount -t tmpfs tmpfs ${shellQuote(mount)} 2>/dev/null || true`),
+    'cd "$d" || exit 1',
+    `exec ${inner.map(shellQuote).join(' ')}`,
+  ].join('; ')];
   return {
     executable: 'wsl.exe',
     args: [
@@ -60,7 +102,8 @@ export function buildIsolatedCommand({ distro, filePath, command, args = [], max
       ...entry,
     ],
     filePath: target,
-    workingDirectory: directory,
+    sandboxDirectory: sandbox,
+    workingDirectory: display,
     timedOut: false,
     maxOutputBytes,
   };
@@ -117,10 +160,11 @@ export function isolationProbeScript(tools = isolatedTools()) {
     // "/dev/tcp" is a bash feature; dash fails to open it for an unrelated
     // reason and would report the sandbox as blocking traffic it never tested.
     `command -v bash >/dev/null 2>&1 && { unshare ${ISOLATION_FLAGS.join(' ')} bash -c 'exec 3<>/dev/tcp/1.1.1.1/53' 2>/dev/null && echo ${ISOLATION_MARKER}:net-open || echo ${ISOLATION_MARKER}:net-blocked; }`,
-    // What the payload can read: the Windows drives a distro mounts under /mnt
-    // are the host filesystem, and the UI says so instead of calling the run
-    // isolated without qualification.
-    `unshare ${ISOLATION_FLAGS.join(' ')} sh -c 'set -- /mnt/*; [ -e "$1" ] && echo ${ISOLATION_MARKER}:mounts:$# || echo ${ISOLATION_MARKER}:mounts:0' 2>/dev/null`,
+    // What the payload can read: a run copies its file into a private directory and
+// masks the drives a distro mounts under /mnt, so the probe applies the same
+// masks and counts what is left. A distro that refuses the mount still lists the
+// drives, and the fact says so.
+    `unshare ${ISOLATION_FLAGS.join(' ')} sh -c '${ISOLATION_MASKS.map((mount) => `mount -t tmpfs tmpfs ${mount} 2>/dev/null;`).join(' ')} set -- /mnt/*; [ -e "$1" ] && echo ${ISOLATION_MARKER}:mounts:$# || echo ${ISOLATION_MARKER}:mounts:0' 2>/dev/null`,
     ...tools.map((tool) => `command -v ${shellQuote(tool)} >/dev/null 2>&1 && echo ${ISOLATION_MARKER}:tool:${tool}`),
   ].join('; ');
 }
@@ -218,6 +262,7 @@ export function createIsolatedRunner(options = {}) {
       command: request.command,
       args: request.args ?? ['{file}'],
       maxOutputBytes: request.maxOutputBytes,
+      jobId,
       workingDirectory: request.workingDirectory ?? (windowsPath.includes('\\') ? windowsPath.slice(0, windowsPath.lastIndexOf('\\')) : ''),
     });
     const state = { canceled: false, child: undefined };

@@ -7,16 +7,19 @@ import {
   DEFAULT_DISTRO_CANDIDATES,
   ISOLATION_FLAGS,
   ISOLATION_MARKER,
+  ISOLATION_MASKS,
   buildIsolatedCommand,
   createIsolatedRunner,
   isolationProbeScript,
   parseIsolationProbe,
+  sandboxName,
   sanitizeWslNoise,
   toDistroPath,
 } from '../src/isolated-runner.mjs';
 
-test('isolation always drops into user, network, and pid namespaces', () => {
-  assert.deepEqual(ISOLATION_FLAGS, ['--user', '--map-root-user', '--net', '--pid', '--fork', '--mount-proc']);
+test('isolation always drops into user, network, pid, and mount namespaces', () => {
+  assert.deepEqual(ISOLATION_FLAGS, ['--user', '--map-root-user', '--net', '--pid', '--mount', '--fork', '--mount-proc']);
+  assert.deepEqual(ISOLATION_MASKS, ['/mnt', '/home', '/media']);
 });
 
 test('turns a Windows path into the WSL mount path', () => {
@@ -25,9 +28,10 @@ test('turns a Windows path into the WSL mount path', () => {
   assert.equal(toDistroPath('/already/posix.py'), '/already/posix.py');
 });
 
-test('builds a bounded unshare invocation that runs inside the file folder', () => {
+test('builds a bounded unshare invocation that hides the host files', () => {
   const command = buildIsolatedCommand({
     distro: 'Ubuntu-22.04',
+    jobId: 'job-1',
     filePath: 'C:\\ws\\pkg\\main.py',
     command: 'python3',
     args: ['{file}'],
@@ -36,16 +40,33 @@ test('builds a bounded unshare invocation that runs inside the file folder', () 
   assert.deepEqual(command.args.slice(0, 4), ['-d', 'Ubuntu-22.04', '--exec', 'unshare']);
   assert.ok(command.args.includes('--net'));
   assert.ok(command.args.includes('--pid'));
-  assert.equal(command.workingDirectory, '/mnt/c/ws/pkg');
+  assert.ok(command.args.includes('--mount'), 'hiding the host files needs a mount namespace');
+  assert.equal(command.workingDirectory, '/mnt/c/ws/pkg', 'the preview keeps the user\'s folder');
+  assert.equal(command.sandboxDirectory, '/tmp/sandkasten-job-1');
+  assert.equal(command.filePath, '/tmp/sandkasten-job-1/main.py');
   const shell = command.args.at(-1);
-  assert.match(shell, /cd '\/mnt\/c\/ws\/pkg'/);
-  assert.match(shell, /'python3'/);
-  assert.match(shell, /\/mnt\/c\/ws\/pkg\/main\.py/);
+  // The copy has to happen before the masks: afterwards /mnt is gone.
+  const copy = shell.indexOf(`cp -- '/mnt/c/ws/pkg/main.py'`);
+  const mask = shell.indexOf(`mount -t tmpfs tmpfs '/mnt'`);
+  assert.ok(copy >= 0 && mask > copy, `the file is copied before the host is masked: ${shell}`);
+  assert.match(shell, /cd "\$d" \|\| exit 1/);
+  assert.match(shell, /'python3' '\/tmp\/sandkasten-job-1\/main\.py'/);
+});
+
+test('each run gets its own private directory', () => {
+  const first = buildIsolatedCommand({ distro: 'Ubuntu-22.04', jobId: 'job a/../b', filePath: 'C:\\ws\\main.py', command: 'python3', args: ['{file}'] });
+  // A job id is not allowed to escape the sandbox prefix.
+  assert.equal(first.sandboxDirectory, '/tmp/sandkasten-job_a_.._b');
+  assert.equal(sandboxName(''), 'run');
+  assert.equal(sandboxName('../etc'), '.._etc');
+  const second = buildIsolatedCommand({ distro: 'Ubuntu-22.04', jobId: 'other', filePath: 'C:\\ws\\main.py', command: 'python3', args: ['{file}'] });
+  assert.notEqual(first.sandboxDirectory, second.sandboxDirectory);
 });
 
 test('quotes every entry word so a payload script keeps its own $1 and substitutions', () => {
   const command = buildIsolatedCommand({
     distro: 'Ubuntu-22.04',
+    jobId: 'job-1',
     filePath: 'C:\\ws\\pkg\\main.c',
     command: 'sh',
     args: ['-c', 'd=$(mktemp -d) || exit 1; gcc "$1" -o "$d/payload"; "$d/payload"', 'sandkasten', '{file}'],
@@ -53,7 +74,7 @@ test('quotes every entry word so a payload script keeps its own $1 and substitut
   const shell = command.args.at(-1);
   assert.ok(shell.includes(`'d=$(mktemp -d) || exit 1; gcc "$1" -o "$d/payload"; "$d/payload"'`),
     `the script has to survive the entry shell verbatim: ${shell}`);
-  assert.ok(shell.includes(`'sandkasten' '/mnt/c/ws/pkg/main.c'`), shell);
+  assert.ok(shell.includes(`'sandkasten' '/tmp/sandkasten-job-1/main.c'`), shell);
 });
 
 test('a path with a quote stays one shell word', () => {

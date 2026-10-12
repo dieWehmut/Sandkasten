@@ -160,12 +160,14 @@ export async function verifyIsolated({ timeoutMs = DEFAULT_TIMEOUT_MS, workRoot,
       } else if (check.id === 'processes' && (facts.pid1 === 'init' || !(facts.processes > 0))) {
         reason = `the payload sees the host process table (PID 1 is ${facts.pid1 || 'unknown'})`;
       } else if (check.id === 'host-files') {
-        // The namespaces do not cover the filesystem: a distro exposes the
-        // Windows drives under /mnt, so this is a fact to report, not a pass or
-        // a failure.
-        note = facts.hostFiles === 'visible'
-          ? 'the host filesystem is readable (the namespaces do not cover mounts)'
-          : 'the host filesystem is not reachable';
+        // A run copies its payload into a private directory and masks the drives
+        // a distro mounts, so a payload that can still read them means the
+        // sandbox is not doing what the backend says it does.
+        if (facts.hostFiles === 'visible') {
+          reason = 'the payload can still read the host filesystem (the distro refused the mask)';
+        } else {
+          note = 'the host filesystem is out of reach';
+        }
       }
       results.push({
         id: check.id, label: check.label, kind: 'isolation', status: reason ? 'failed' : 'ok',
