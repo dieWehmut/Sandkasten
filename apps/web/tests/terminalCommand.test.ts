@@ -80,6 +80,6 @@ describe('shell-aware terminal commands', () => {
     // The editor opens a .ps1 file as the runtime the runner registers for it.
     expect(languageForPath('main.ps1')).toBe('powershell');
     expect(languageModeLabel('powershell')).toBe('PowerShell');
-    expect((LOCAL_RUNTIMES as Record<string, { extensions: string[] }>).powershell.extensions).toContain('.ps1');
+    expect([...(LOCAL_RUNTIMES.powershell.extensions ?? [])]).toContain('.ps1');
   });
 });

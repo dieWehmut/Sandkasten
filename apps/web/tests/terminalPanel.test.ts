@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../src/App.vue';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
-import type { DesktopBridge, TerminalBridge, WorkspaceRoot, WorkspaceTreeNode } from '../src/services/desktopBridge';
+import type { DesktopBridge, TerminalBridge, TerminalCommandList, WorkspaceRoot, WorkspaceTreeNode } from '../src/services/desktopBridge';
 
 vi.mock('../src/services/sandkastenApi', async (original) => ({
   ...await original<typeof import('../src/services/sandkastenApi')>(), loadRuntimes: vi.fn(async () => []),
@@ -31,7 +31,7 @@ function installDesktop(options: { root?: WorkspaceRoot | null; files?: Workspac
   const terminal = {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
-    commands: vi.fn(async (profileId: string) => (profileId === 'cmd'
+    commands: vi.fn(async (profileId: string): Promise<TerminalCommandList> => (profileId === 'cmd'
       ? { names: ['git', 'ls'], shellReported: [] }
       : { names: ['python', 'git', ...(options.shellReported ?? [])], shellReported: options.shellReported ?? [] })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
@@ -260,7 +260,7 @@ describe('desktop terminal panel', () => {
 
   test('opening the palette retries a shell that answered with an empty list', async () => {
     const bridge = installDesktop();
-    bridge.commands.mockResolvedValueOnce([]);
+    bridge.commands.mockResolvedValueOnce({ names: [], shellReported: [] });
     const app = await mountApp();
     await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledTimes(1));
     expect(app.findAll('[data-command^="shell."]').length).toBe(0);

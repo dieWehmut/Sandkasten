@@ -65,6 +65,7 @@ describe('API endpoint configuration', () => {
     const storage = {
       getItem: vi.fn(() => { throw new Error('blocked'); }),
       setItem: vi.fn(() => { throw new Error('blocked'); }),
+      removeItem: vi.fn(() => { throw new Error('blocked'); }),
     };
     expect(readConfiguredApiBaseUrl(storage)).toBe('');
     expect(() => saveConfiguredApiBaseUrl(storage, 'https://run.example.com')).not.toThrow();

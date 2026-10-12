@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { describe, expect, test, vi } from 'vitest';
 import ContextMenu from '../src/components/ContextMenu.vue';
-import { menuSeparator, type ContextMenuEntry } from '../src/components/contextMenu';
+import { menuSeparator, type ContextMenuEntry, type ContextMenuItem } from '../src/components/contextMenu';
 import { editorMenuEntries } from '../src/editor/editorMenu';
 import { createTranslator } from '../src/i18n/locale';
 
@@ -134,7 +134,7 @@ describe('editor menu entries', () => {
     const entries = editorMenuEntries(t, { hasSelection: false, canPaste: true, canUndo: false, canRedo: false, modifier: 'Ctrl' });
     expect(entries.filter((entry) => entry.kind === 'item').map((entry) => entry.id))
       .toEqual(['cut', 'copy', 'paste', 'selectAll', 'undo', 'redo', 'find']);
-    const byId = (id: string) => entries.find((entry) => entry.kind === 'item' && entry.id === id);
+    const byId = (id: string) => entries.find((entry): entry is ContextMenuItem => entry.kind === 'item' && entry.id === id);
     expect(byId('cut')).toMatchObject({ label: 'Cut', keybinding: 'Ctrl+X', disabled: true });
     expect(byId('copy')).toMatchObject({ disabled: true });
     expect(byId('paste')).toMatchObject({ disabled: false, keybinding: 'Ctrl+V' });

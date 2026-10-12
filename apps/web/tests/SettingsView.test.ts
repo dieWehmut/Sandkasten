@@ -23,7 +23,7 @@ describe('settings view', () => {
     const wrapper = mount(SettingsView, { props });
     await wrapper.get('input[type="search"]').setValue('API');
     expect(wrapper.find('[data-section="appearance"]').exists()).toBe(false);
-    expect(wrapper.get('[data-section="connection"]').exists()).toBe(true);
+    expect(wrapper.find('[data-section="connection"]').exists()).toBe(true);
     await wrapper.get('[data-action="open-api-endpoint"]').trigger('click');
     expect(wrapper.emitted('openApiEndpoint')).toHaveLength(1);
     await wrapper.get('input[type="search"]').setValue('missing setting');

@@ -482,12 +482,12 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-activity="context"]').trigger('click');
     await flushPromises();
     expect(wrapper.get('.ide-sidebar__title').text()).toBe('Inspector');
-    expect(wrapper.get('#inspector-panel').exists()).toBe(true);
+    expect(wrapper.find('#inspector-panel').exists()).toBe(true);
     expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
 
     await wrapper.get('[data-activity="explorer"]').trigger('click');
     await flushPromises();
-    expect(wrapper.get('.ide-sidebar').exists()).toBe(true);
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(true);
     expect(wrapper.get('[data-activity="explorer"]').attributes('aria-pressed')).toBe('true');
   });
 
@@ -512,14 +512,14 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-activity="runs"]').trigger('click');
     await flushPromises();
     expect(wrapper.get('.ide-sidebar__title').text()).toBe('Recent runs');
-    expect(wrapper.get('[data-action="ide-collapse-sidebar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-action="ide-collapse-sidebar"]').exists()).toBe(true);
     expect(wrapper.find('[data-action="ide-refresh-tree"]').exists()).toBe(false);
     expect(wrapper.find('.run-history .pane-heading').exists()).toBe(false);
 
     await wrapper.get('[data-activity="context"]').trigger('click');
     await flushPromises();
     expect(wrapper.get('.ide-sidebar__title').text()).toBe('Inspector');
-    expect(wrapper.get('#inspector-panel').exists()).toBe(true);
+    expect(wrapper.find('#inspector-panel').exists()).toBe(true);
     expect(wrapper.find('.inspector-panel .pane-heading').exists()).toBe(false);
   });
 
@@ -584,7 +584,7 @@ describe('desktop workbench', () => {
     // A job that settles after the panel was closed is announced instead: the
     // workbench opens the panel when a run starts, so this is the real case.
     let settle: ((value: unknown) => void) | undefined;
-    bridge.runner.run.mockImplementationOnce((request: { jobId: string; language: string }) => new Promise((resolve) => {
+    vi.mocked(bridge.runner.run).mockImplementationOnce((request: { jobId: string; language: string }) => new Promise((resolve) => {
       settle = () => resolve({
         jobId: request.jobId,
         status: 'JOB_STATUS_SUCCEEDED',
@@ -709,7 +709,7 @@ describe('desktop workbench', () => {
 
     expect(bridge.workspace.write).toHaveBeenCalledWith('main.py', 'print("disk")\n');
     expect(bridge.runner.run).toHaveBeenCalledTimes(1);
-    const request = bridge.runner.run.mock.calls[0][0] as { path: string; language: string; jobId: string };
+    const request = vi.mocked(bridge.runner.run).mock.calls[0][0] as { path: string; language: string; jobId: string };
     expect(request.path).toBe('main.py');
     expect(request.language).toBe('python');
     expect(request.jobId).toMatch(/^local-/);
@@ -720,7 +720,7 @@ describe('desktop workbench', () => {
 
   test('shows the toolchain hint when a local compile fails', async () => {
     const bridge = stubBridge();
-    bridge.runner.run.mockResolvedValueOnce({
+    vi.mocked(bridge.runner.run).mockResolvedValueOnce({
       jobId: 'local-1',
       status: 'JOB_STATUS_COMPILE_FAILED',
       language: 'python',
@@ -795,7 +795,7 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-testid="ide-new-file-form"]').trigger('submit');
     await flushPromises();
     expect(bridge.workspace.create).toHaveBeenCalledTimes(1);
-    expect(bridge.workspace.create.mock.calls[0][0]).toBe('helper.py');
+    expect(vi.mocked(bridge.workspace.create).mock.calls[0][0]).toBe('helper.py');
     expect(wrapper.text()).toContain('helper.py');
 
     await wrapper.get('[data-path="helper.py"] .ide-tree__remove').trigger('click');
@@ -813,7 +813,7 @@ describe('desktop workbench', () => {
     await flushPromises();
     expect(bridge.workspace.openFolder).toHaveBeenCalledTimes(1);
 
-    const handler = bridge.onMenuCommand.mock.calls[0][0] as (command: string) => void;
+    const handler = vi.mocked(bridge.onMenuCommand).mock.calls[0][0] as (command: string) => void;
     handler('view.togglePanel');
     await nextTick();
     expect(wrapper.find('.ide-panel').exists()).toBe(false);
@@ -850,10 +850,10 @@ describe('desktop workbench', () => {
     // The isolated backend still writes the buffer first, because the payload
     // reads the file from disk inside the distro.
     expect(bridge.workspace.write).toHaveBeenCalledWith('main.py', 'print("disk")\n');
-    expect(bridge.isolated.detect).toHaveBeenCalled();
-    expect(bridge.isolated.run).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(bridge.isolated!.detect)).toHaveBeenCalled();
+    expect(vi.mocked(bridge.isolated!.run)).toHaveBeenCalledTimes(1);
     expect(bridge.runner.run).not.toHaveBeenCalled();
-    const request = bridge.isolated.run.mock.calls[0][0] as Record<string, unknown>;
+    const request = vi.mocked(bridge.isolated!.run).mock.calls[0][0] as unknown as Record<string, unknown>;
     expect(request.path).toBe('main.py');
     expect(request.language).toBe('python');
     // The renderer names a language only; the main process resolves the command.
@@ -867,7 +867,7 @@ describe('desktop workbench', () => {
   test('cancels an isolated run through the isolated bridge, not the local one', async () => {
     const bridge = stubBridge();
     let release: (() => void) | undefined;
-    bridge.isolated.run.mockImplementation(async (request: { jobId: string; language: string }) => {
+    vi.mocked(bridge.isolated!.run).mockImplementation(async (request: { jobId: string; language: string }) => {
       await new Promise<void>((resolve) => { release = resolve; });
       return {
         jobId: request.jobId,
@@ -890,7 +890,7 @@ describe('desktop workbench', () => {
 
     await wrapper.get('button[aria-label="Stop run"]').trigger('click');
     await flushPromises();
-    expect(bridge.isolated.stop).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(bridge.isolated!.stop)).toHaveBeenCalledTimes(1);
     expect(bridge.runner.stop).not.toHaveBeenCalled();
     release?.();
     await flushPromises();

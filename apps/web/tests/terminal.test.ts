@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
-import type { TerminalBridge } from '../src/services/desktopBridge';
+import type { TerminalBridge, TerminalCommandList } from '../src/services/desktopBridge';
 
 const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
@@ -30,7 +30,9 @@ function fakeBridge() {
   const bridge = {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++count}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
-    commands: vi.fn(async (profileId: string) => profileId === 'cmd' ? ['git', 'ls'] : ['pwsh']),
+    commands: vi.fn(async (profileId: string): Promise<TerminalCommandList> => (profileId === 'cmd'
+      ? { names: ['git', 'ls'], shellReported: [] }
+      : { names: ['pwsh'], shellReported: [] })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'initial prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
@@ -287,7 +289,9 @@ describe('app-owned terminal sessions', () => {
 
   test('retries a shell that answered with an empty command list', async () => {
     const host = fakeBridge();
-    host.bridge.commands.mockResolvedValueOnce([]).mockResolvedValueOnce(['git']);
+    host.bridge.commands
+      .mockResolvedValueOnce({ names: [], shellReported: [] })
+      .mockResolvedValueOnce({ names: ['git'], shellReported: [] });
     const terminal = useTerminal(host.bridge);
     await terminal.create();
     await vi.waitFor(() => expect(host.bridge.commands).toHaveBeenCalledTimes(1));
@@ -316,8 +320,8 @@ describe('app-owned terminal sessions', () => {
     expect(await terminal.complete({ label: 'git', value: 'git' })).toBe(true);
     expect(host.bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 't' });
     expect(terminal.inputLine.value).toBe('git');
-    expect(await terminal.complete({ label: 'git', value: 'git' })).toBe(false, 'a finished word has nothing to type');
-    expect(await terminal.complete({ label: 'ls', value: 'ls' })).toBe(false, 'a suggestion has to continue the typed word');
+    expect(await terminal.complete({ label: 'git', value: 'git' }), 'a finished word has nothing to type').toBe(false);
+    expect(await terminal.complete({ label: 'ls', value: 'ls' }), 'a suggestion has to continue the typed word').toBe(false);
     await terminal.dispose();
   });
 
@@ -333,13 +337,13 @@ describe('app-owned terminal sessions', () => {
     type('it');
     expect(terminal.inputLine.value).toBe('git');
     type('\t');
-    expect(terminal.inputLine.value).toBe('git', 'the shell keeps Tab for its own completion');
+    expect(terminal.inputLine.value, 'the shell keeps Tab for its own completion').toBe('git');
     type('\r');
     expect(terminal.inputLine.value).toBe('');
     type('gi'); type('\x03');
     expect(terminal.inputLine.value).toBe('');
     type('gi'); type('\x1b[A');
-    expect(terminal.inputLine.value).toBe('', 'history navigation is not input the model can follow');
+    expect(terminal.inputLine.value, 'history navigation is not input the model can follow').toBe('');
     type('\x1b[C'); type('g');
     expect(terminal.inputLine.value).toBe('g');
     await terminal.dispose();
@@ -353,11 +357,11 @@ describe('app-owned terminal sessions', () => {
     expect(terminal.inputLine.value).toBe('git co');
     expect(terminal.suggestions.value).toEqual([]);
     await terminal.create('cmd');
-    expect(terminal.inputLine.value).toBe('', 'a new session starts on a fresh prompt');
+    expect(terminal.inputLine.value, 'a new session starts on a fresh prompt').toBe('');
     mocks.terminals[1].input('l');
     expect(terminal.suggestions.value).toEqual([{ label: 'ls', value: 'ls' }]);
     terminal.select('s1');
-    expect(terminal.inputLine.value).toBe('', 'switching panes cannot keep the other shell\'s line');
+    expect(terminal.inputLine.value, "switching panes cannot keep the other shell's line").toBe('');
     await terminal.dispose();
   });
 
@@ -426,7 +430,7 @@ describe('app-owned terminal sessions', () => {
 
   test('the suggestions already accepted this session lead the strip', async () => {
     const host = fakeBridge();
-    host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    host.bridge.commands.mockResolvedValue({ names: ['git', 'git-lfs', 'gitui'], shellReported: [] });
     const terminal = useTerminal(host.bridge);
     await terminal.create('cmd');
     await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
@@ -583,7 +587,7 @@ describe('app-owned terminal sessions', () => {
 
   test('the accepted suggestions survive a restart', async () => {
     const host = fakeBridge();
-    host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    host.bridge.commands.mockResolvedValue({ names: ['git', 'git-lfs', 'gitui'], shellReported: [] });
     const terminal = useTerminal(host.bridge);
     await terminal.create('cmd');
     await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
@@ -594,7 +598,7 @@ describe('app-owned terminal sessions', () => {
 
     // A fresh controller is what the next start looks like.
     const restarted = fakeBridge();
-    restarted.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
+    restarted.bridge.commands.mockResolvedValue({ names: ['git', 'git-lfs', 'gitui'], shellReported: [] });
     const next = useTerminal(restarted.bridge);
     await next.create('cmd');
     await vi.waitFor(() => expect(next.commandNames.value.cmd).toEqual(['git', 'git-lfs', 'gitui']));
