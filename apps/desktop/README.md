@@ -82,7 +82,9 @@ The desktop build adds these things the browser cannot do:
    it costs seconds (a cold WSL scan) and it rarely changes. Typing
    the start of a command in the terminal itself suggests up to five commands
    the active shell can run; choosing one types the rest of the word without
-   running it, and `Ctrl+Space` accepts the first suggestion. Once the command
+   running it, and `Ctrl+Space` accepts the first suggestion. What the user
+   accepted earlier leads the matching suggestions and the palette's shell
+   entries, and that history survives a restart. Once the command
    word is complete, the last argument completes from the workspace files, and a
    workspace folder completes as a directory argument with its separator
    (`cd scr` → `scripts/`, and `cd scripts/task` → `scripts/task.py`). A path
