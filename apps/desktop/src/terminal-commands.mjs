@@ -165,7 +165,11 @@ export function createCommandCatalog({
       const cached = cache.get(key);
       if (cached && now() - cached.at < cacheMs) return cached.commands;
       const commands = await discover(profile, options);
-      cache.set(key, { at: now(), commands });
+      // Only a real list is remembered. An empty result is what a cold or
+      // unreachable shell answers with, and caching it for the whole window
+      // would hide the commands even after the shell could report them.
+      if (commands.length) cache.set(key, { at: now(), commands });
+      else cache.delete(key);
       return commands;
     },
     clear: () => cache.clear(),

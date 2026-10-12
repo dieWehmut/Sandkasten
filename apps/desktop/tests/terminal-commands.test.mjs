@@ -181,3 +181,18 @@ test('the catalog scans a profile once and refreshes after its window', async ()
   catalog.clear();
   assert.deepEqual(await catalog.commands(profile), ['scan-3']);
 });
+
+test('an empty scan is retried instead of being cached for the window', async () => {
+  let scans = 0;
+  const catalog = createCommandCatalog({
+    discover: async () => { scans += 1; return scans === 1 ? [] : ['git']; },
+    now: () => 1_000,
+    cacheMs: 100_000,
+  });
+  const profile = { id: 'wsl' };
+  assert.deepEqual(await catalog.commands(profile), [], 'a shell that answered nothing reports nothing');
+  assert.deepEqual(await catalog.commands(profile), ['git'], 'the next request must ask the shell again');
+  assert.equal(scans, 2);
+  assert.deepEqual(await catalog.commands(profile), ['git'], 'a real list is cached');
+  assert.equal(scans, 2);
+});

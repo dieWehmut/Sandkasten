@@ -26,6 +26,10 @@ export function useTerminal(bridge: TerminalBridge) {
   // session: the list is what the palette offers for the shell in front of the
   // user, and the main process only ever sends names.
   const commandNames = shallowRef<Record<string, readonly string[]>>({});
+  // Profiles whose list actually arrived. An empty answer is not a result: it is
+  // what a cold or unreachable shell reports, so the next request has to ask
+  // again instead of serving the empty list for the rest of the session.
+  const loadedCommands = new Set<string>();
   const views = new Map<string, SessionView>();
   let disposed = false;
   let focused = false;
@@ -79,12 +83,12 @@ export function useTerminal(bridge: TerminalBridge) {
 
   async function loadCommands(profileId = activeProfileId.value): Promise<readonly string[]> {
     if (disposed || !profileId) return [];
-    const cached = commandNames.value[profileId];
-    if (cached) return cached;
+    if (loadedCommands.has(profileId)) return commandNames.value[profileId] ?? [];
     try {
       const names = await bridge.commands(profileId);
       if (disposed) return [];
       commandNames.value = { ...commandNames.value, [profileId]: names };
+      if (names.length) loadedCommands.add(profileId);
       return names;
     } catch (cause) {
       report(cause);

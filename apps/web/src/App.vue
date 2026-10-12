@@ -542,6 +542,11 @@ const commandCenter = useCommandCenter({
 function openPalette(mode: 'files' | 'commands' = 'files'): void {
   commandPaletteError.value = '';
   commandCenter.openPalette(mode);
+  // A shell that answered with an empty list (cold WSL, a broken shim) gets
+  // another chance each time the palette is opened, so a slow shell heals
+  // itself instead of staying command-less for the session.
+  const profileId = terminal?.activeProfileId.value || terminal?.defaultProfileId.value;
+  if (profileId) void terminal?.loadCommands(profileId);
 }
 
 async function selectPaletteItem(id: string): Promise<void> {

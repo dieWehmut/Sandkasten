@@ -218,6 +218,23 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('retries a shell that answered with an empty command list', async () => {
+    const host = fakeBridge();
+    host.bridge.commands.mockResolvedValueOnce([]).mockResolvedValueOnce(['git']);
+    const terminal = useTerminal(host.bridge);
+    await terminal.create();
+    await vi.waitFor(() => expect(host.bridge.commands).toHaveBeenCalledTimes(1));
+    expect(terminal.commandNames.value.pwsh).toEqual([]);
+    // The empty answer is not a result, so the next request asks again.
+    expect(await terminal.loadCommands()).toEqual(['git']);
+    expect(host.bridge.commands).toHaveBeenCalledTimes(2);
+    expect(terminal.commandNames.value.pwsh).toEqual(['git']);
+    // A real list is served from the session cache.
+    expect(await terminal.loadCommands()).toEqual(['git']);
+    expect(host.bridge.commands).toHaveBeenCalledTimes(2);
+    await terminal.dispose();
+  });
+
   test('a failed command list is reported and retried without breaking the session', async () => {
     const host = fakeBridge();
     host.bridge.commands.mockRejectedValueOnce(new Error('scan failed'));

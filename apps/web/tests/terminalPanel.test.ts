@@ -207,4 +207,17 @@ describe('desktop terminal panel', () => {
     await vi.waitFor(() => expect(bridge.create).toHaveBeenCalledWith({ profileId: undefined, cols: 80, rows: 24 }));
     await vi.waitFor(() => expect(bridge.write).toHaveBeenCalledWith({ id: 's1', data: 'git\r' }));
   });
+
+  test('opening the palette retries a shell that answered with an empty list', async () => {
+    const bridge = installDesktop();
+    bridge.commands.mockResolvedValueOnce([]);
+    const app = await mountApp();
+    await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledTimes(1));
+    expect(app.findAll('[data-command^="shell."]').length).toBe(0);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    await vi.waitFor(() => expect(bridge.commands).toHaveBeenCalledTimes(2));
+    await flushPromises();
+    expect(app.find('[data-command="shell.git"]').exists()).toBe(true);
+  });
 });
