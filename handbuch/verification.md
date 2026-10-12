@@ -80,11 +80,12 @@ A verification index that drifts is worse than none, so the desktop suite resolv
 what the documentation claims against the repository: the workflow's commands
 (`ci-workflow.test.mjs`), this index and its paths (`verification-index.test.mjs`),
 the quality gate's steps, paths and scripts (`quality-gate.test.mjs`), the
-deployment guide's installer and dev-up flags (`deployment-guide.test.mjs`),
-every environment variable and constant the handbuch names
-(`handbuch-symbols.test.mjs`), and every relative link between the markdown files
-(`doc-links.test.mjs`). A renamed script or a dropped variable fails the unit suite
-instead of sending a reader down a dead end.
+deployment guide's installer and dev-up flags (`deployment-guide.test.mjs`), every
+environment variable and constant the reader-facing documents name
+(`doc-symbols.test.mjs`) — the dated plans and specs under `docs/superpowers/` are
+records of what was intended, not promises, and are excluded — and every relative
+link between the markdown files (`doc-links.test.mjs`). A renamed script or a
+dropped variable fails the unit suite instead of sending a reader down a dead end.
 
 ## What this repository does not prove here
 
