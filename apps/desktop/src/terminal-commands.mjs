@@ -50,6 +50,9 @@ const SHELL_COMMAND_REPORTS = Object.freeze({
   powershell: 'Get-Command -CommandType Cmdlet,Function,Alias -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name',
   bash: 'compgen -b',
   posix: 'compgen -b',
+  // A WSL session runs bash inside the distro; the entry point runs sh there, so
+  // the builtins are asked for through bash explicitly.
+  wsl: "bash -c 'compgen -b'",
 });
 
 // cmd's internal commands. They have no file behind them — `copy`, `del` and `cls`
@@ -186,10 +189,33 @@ export async function discoverTerminalCommandList(profile, {
   const limit = TERMINAL_COMMAND_LIMITS.commands;
   // A WSL session's PATH belongs to the distro, so the Windows directories
   // cannot describe what it can run; the distro is asked directly instead, and
-  // everything it lists is a file of its own.
+  // everything it lists is a file of its own. Its shell is bash, so its builtins
+  // are asked for in there too — they have no files either.
   if (profile?.family === 'wsl') {
     const listing = await runShell(profile, DISTRO_LIST_COMMANDS, { timeoutMs: distroTimeoutMs });
-    return { names: uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false), shellReported: [] };
+    const names = uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false);
+    const shellReported = [];
+    const report = shellReportCommand(profile.family);
+    if (report) {
+      let reported = await runShell(profile, report, { timeoutMs: distroTimeoutMs });
+      if (!String(reported ?? '').trim()) {
+        reported = await runShell(profile, report, { timeoutMs: distroTimeoutMs });
+      }
+      const seen = new Set(names);
+      const found = uniqueNames(
+        String(reported ?? '').split(/\r?\n/).filter((line) => isReportedCommandName(line)),
+        limit,
+        false,
+      );
+      for (const name of found) {
+        if (seen.has(name)) continue;
+        if (names.length >= limit) break;
+        seen.add(name);
+        names.push(name);
+        shellReported.push(name);
+      }
+    }
+    return { names, shellReported };
   }
   const windows = platform === 'win32';
   const extensions = windows ? windowsExtensions(environment) : undefined;

@@ -178,7 +178,7 @@ cd apps/web && npm ci && npm run build && cd ../desktop && npm install && npm st
 `bash`、PowerShell(`pwsh` 或 Windows PowerShell)等工具链,不做沙箱隔离,默认 20 s 超时、
 1 MiB 输出上限)、**集成终端**(列出本机所有已安装 shell,会话带各自命令目录的 `PATH`),以及
 File / Run / View / Help 菜单(菜单与页面共用同一批快捷键命令)。终端面板把当前 shell 能运行的
-命令交给命令面板(会话 `PATH` 上的可执行文件,加上 **shell 自报的命令**:PowerShell 的 cmdlet/函数/别名、bash 的内建命令、cmd 的内部命令(`dir`/`copy`/`cls` 等,磁盘上没有对应文件);WSL 会话改在发行版内部
+命令交给命令面板(会话 `PATH` 上的可执行文件,加上 **shell 自报的命令**:PowerShell 的 cmdlet/函数/别名、bash 的内建命令、cmd 的内部命令(`dir`/`copy`/`cls` 等,磁盘上没有对应文件)、以及 WSL 会话中发行版的 bash 内建命令;WSL 会话改在发行版内部
 询问,因为其 `PATH` 属于发行版),并提供「在终端中运行当前文件」入口,按当前 shell 家族正确引用路径;
 面板对超长列表只绘制前 200 条并提示还有更多,输入会过滤完整列表;命令列表按 shell 缓存在应用状态
 目录并在后台刷新(冷启动的 WSL 扫描需要数秒,而列表极少变化)。` .ps1` 文件也纳入工作台:

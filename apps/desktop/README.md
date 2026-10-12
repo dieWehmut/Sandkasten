@@ -79,9 +79,9 @@ The desktop build adds these things the browser cannot do:
    commands the active shell can run — the executables on the session `PATH`,
    with the profile's own directories first, plus the commands the shell reports
    about itself, so PowerShell offers its cmdlets, functions and aliases
-   (`Get-ChildItem`, `gci`), bash its builtins (`cd`, `alias`) and Command Prompt
-   its internal commands (`dir`, `copy`, `cls`), none of which has a file behind it
-   — and an entry
+   (`Get-ChildItem`, `gci`), bash its builtins (`cd`, `alias`), Command Prompt its
+   internal commands (`dir`, `copy`, `cls`) and a WSL session the builtins of the
+   bash inside its distro — none of which has a file behind it — and an entry
    per command types it into that session, revealing the panel first and raising
    a toast when the session will not take the input. An entry the shell reported
    about itself says so where an executable shows the shell's name, so the two

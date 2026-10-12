@@ -103,14 +103,29 @@ test('a WSL profile lists the commands inside the distro, not the Windows ones',
       listDirectory: async () => [file('cmd.exe')],
       runShell: async (profile, command) => {
         asked.push([profile.executable, command]);
-        return 'bash\ngit\n\n/usr/bin/coreutils\n';
+        return /compgen -b/.test(command) ? 'cd\nalias\n' : 'bash\ngit\n\n/usr/bin/coreutils\n';
       },
     },
   );
-  assert.deepEqual(commands, ['bash', 'git', '/usr/bin/coreutils']);
-  assert.equal(asked.length, 1);
+  assert.deepEqual(commands, ['bash', 'git', '/usr/bin/coreutils', 'cd', 'alias']);
+  // One call for the distro's PATH listing, one for its shell's builtins.
+  assert.equal(asked.length, 2);
   assert.equal(asked[0][0], 'C:\\Windows\\System32\\wsl.exe');
   assert.match(asked[0][1], /for d in \$PATH/);
+  assert.match(asked[1][1], /bash -c 'compgen -b'/);
+});
+
+test("a WSL session's builtins are marked as the shell's own", async () => {
+  const discovered = await discoverTerminalCommandList(
+    { id: 'wsl', family: 'wsl', executable: 'wsl.exe' },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\Windows' },
+      runShell: async (_profile, command) => (/compgen -b/.test(command) ? 'cd\nalias\nls\n' : 'ls\nsh\n'),
+    },
+  );
+  // `ls` is a file in the distro; `cd` and `alias` are builtins it runs anyway.
+  assert.deepEqual(discovered, { names: ['ls', 'sh', 'cd', 'alias'], shellReported: ['cd', 'alias'] });
 });
 
 test('a distro that answers nothing or cannot be reached reports no commands', async () => {
@@ -369,7 +384,8 @@ test('only a family that can report its own commands says so', () => {
   assert.equal(shellReportCommand('posix'), 'compgen -b');
   // cmd has no comparable listing, and a WSL session is asked inside the distro.
   assert.equal(shellReportCommand('cmd'), '');
-  assert.equal(shellReportCommand('wsl'), '');
+  // A WSL session's shell is bash, and it is asked in there through bash.
+  assert.match(shellReportCommand('wsl'), /compgen -b/);
   assert.equal(shellReportCommand(undefined), '');
 });
 
@@ -468,10 +484,12 @@ test('the discovery keeps the shell-reported names apart from the PATH ones', as
   assert.deepEqual(discovered, { names: ['git', 'ls', 'cd', 'alias'], shellReported: ['cd', 'alias'] });
 });
 
-test('a WSL listing reports no shell-owned names', async () => {
+test('a distro whose bash answers nothing reports only the files it lists', async () => {
+  // A distro without bash (or one that refused the report) still publishes its
+  // PATH listing; the builtins are simply absent.
   const discovered = await discoverTerminalCommandList(
     { id: 'wsl', family: 'wsl', executable: 'wsl.exe' },
-    { runShell: async () => 'ls\nsh\n' },
+    { runShell: async (_profile, command) => (/compgen -b/.test(command) ? '' : 'ls\nsh\n') },
   );
   assert.deepEqual(discovered, { names: ['ls', 'sh'], shellReported: [] });
 });
