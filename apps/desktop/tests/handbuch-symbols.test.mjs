@@ -1,0 +1,64 @@
+// The handbuch tells operators which environment variables, flags and syscall
+// constants matter. A name that no longer exists sends them looking for it in the
+// code and not finding it, so every symbol the docs name is resolved against the
+// repository. The two exceptions are constants the documents quote *about the
+// platform* rather than about this repository.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const repositoryRoot = path.resolve(appRoot, '..', '..');
+
+/** Kernel and libc constants a document quotes, not names this repository defines. */
+const EXTERNAL_CONSTANTS = new Set(['CLOSE_RANGE_UNSHARE', 'UINT_MAX']);
+
+const SYMBOL = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+
+function trackedFiles() {
+  return execFileSync('git', ['ls-files'], { cwd: repositoryRoot, encoding: 'utf8' })
+    .split('\n').map((line) => line.trim()).filter(Boolean);
+}
+
+test('every symbol the handbuch names exists somewhere in the repository', () => {
+  const files = trackedFiles();
+  const docs = files.filter((file) => file.startsWith('handbuch/') && file.endsWith('.md'));
+  assert.ok(docs.length >= 5, `expected the handbuch to have documents, saw ${docs.length}`);
+  const corpus = files
+    .filter((file) => !docs.includes(file))
+    .map((file) => { try { return readFileSync(path.join(repositoryRoot, file), 'utf8'); } catch { return ''; } })
+    .join('\n');
+
+  const unknown = [];
+  let checked = 0;
+  for (const doc of docs) {
+    const text = readFileSync(path.join(repositoryRoot, doc), 'utf8');
+    for (const symbol of new Set([...text.matchAll(SYMBOL)].map((match) => match[0]))) {
+      if (EXTERNAL_CONSTANTS.has(symbol)) continue;
+      checked += 1;
+      if (!corpus.includes(symbol)) unknown.push(`${doc}: ${symbol}`);
+    }
+  }
+  // A parse that finds nothing would pass for the wrong reason.
+  assert.ok(checked >= 50, `expected the handbuch to name its symbols, saw ${checked}`);
+  assert.deepEqual(unknown, []);
+});
+
+test('the external-constant list only holds constants the documents quote', () => {
+  // Each entry has to be absent from the repository and present in the docs, so the
+  // list cannot quietly absorb a name that really did disappear from the code.
+  const files = trackedFiles();
+  const docs = files.filter((file) => file.startsWith('handbuch/') && file.endsWith('.md'));
+  const docText = docs.map((file) => readFileSync(path.join(repositoryRoot, file), 'utf8')).join('\n');
+  const corpus = files
+    .filter((file) => !docs.includes(file))
+    .map((file) => { try { return readFileSync(path.join(repositoryRoot, file), 'utf8'); } catch { return ''; } })
+    .join('\n');
+  for (const name of EXTERNAL_CONSTANTS) {
+    assert.ok(docText.includes(name), `${name} is listed as external but no document quotes it`);
+    assert.equal(corpus.includes(name), false, `${name} exists in the repository, so it is not external`);
+  }
+});
