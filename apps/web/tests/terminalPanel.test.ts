@@ -22,12 +22,14 @@ vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit() {} } }));
 let wrapper: ReturnType<typeof mount> | undefined;
 let menu: (command: string) => void;
 let data: (event: { id: string; data: string }) => void;
-function installDesktop(options: { root?: WorkspaceRoot | null; files?: WorkspaceTreeNode[]; source?: string } = {}) {
+function installDesktop(options: { root?: WorkspaceRoot | null; files?: WorkspaceTreeNode[]; source?: string; shellReported?: string[] } = {}) {
   let index = 0;
   const terminal = {
     profiles: vi.fn(async () => [{ id: 'pwsh', label: 'PowerShell', family: 'powershell', isDefault: true }, { id: 'cmd', label: 'Command Prompt', family: 'cmd' }]),
     create: vi.fn(async ({ profileId }: { profileId?: string }) => ({ id: `s${++index}`, profileId: profileId ?? 'pwsh', title: profileId ?? 'PowerShell', cwd: 'C:\\workspace' })),
-    commands: vi.fn(async (profileId: string) => profileId === 'cmd' ? ['git', 'ls'] : ['python', 'git']),
+    commands: vi.fn(async (profileId: string) => (profileId === 'cmd'
+      ? { names: ['git', 'ls'], shellReported: [] }
+      : { names: ['python', 'git', ...(options.shellReported ?? [])], shellReported: options.shellReported ?? [] })),
     attach: vi.fn(async (id: string) => { data({ id, data: 'prompt> ' }); }),
     write: vi.fn(async () => {}), resize: vi.fn(async () => {}), close: vi.fn(async () => {}),
     setFocused: vi.fn(async (_focused: boolean) => {}),
@@ -292,5 +294,19 @@ describe('desktop terminal panel', () => {
     const shellRows = app.findAll('[data-command^="shell."]');
     expect(shellRows.length).toBeGreaterThan(1);
     expect(shellRows[0].attributes('data-command')).toBe('shell.git');
+  });
+
+  test('the palette says which commands the shell reports about itself', async () => {
+    installDesktop({ shellReported: ['Get-ChildItem'] });
+    const app = await mountApp();
+    await vi.waitFor(() => expect(app.find('[data-testid="terminal-panel"]').exists()).toBe(false));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+
+    const cmdlet = app.find('[data-command="shell.Get-ChildItem"]');
+    expect(cmdlet.exists()).toBe(true);
+    expect(cmdlet.text()).toContain('cmdlet or function');
+    // An executable on the PATH keeps the plain profile label.
+    expect(app.get('[data-command="shell.python"]').text()).not.toContain('cmdlet');
   });
 });

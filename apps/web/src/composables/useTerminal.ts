@@ -78,6 +78,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // session: the list is what the palette offers for the shell in front of the
   // user, and the main process only ever sends names.
   const commandNames = shallowRef<Record<string, readonly string[]>>({});
+  // The subset the shell reports about itself (a cmdlet, a builtin). The palette
+  // shows the difference, so the user can tell `Get-ChildItem` from `git`.
+  const shellReportedNames = shallowRef<Record<string, readonly string[]>>({});
   // Profiles whose list actually arrived. An empty answer is not a result: it is
   // what a cold or unreachable shell reports, so the next request has to ask
   // again instead of serving the empty list for the rest of the session.
@@ -148,9 +151,12 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     if (disposed || !profileId) return [];
     if (loadedCommands.has(profileId)) return commandNames.value[profileId] ?? [];
     try {
-      const names = await bridge.commands(profileId);
+      const list = await bridge.commands(profileId);
       if (disposed) return [];
+      const names = Array.isArray(list) ? list : list?.names ?? [];
+      const reported = Array.isArray(list) ? [] : list?.shellReported ?? [];
       commandNames.value = { ...commandNames.value, [profileId]: names };
+      shellReportedNames.value = { ...shellReportedNames.value, [profileId]: reported };
       if (names.length) loadedCommands.add(profileId);
       return names;
     } catch (cause) {
@@ -397,6 +403,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   return {
     profiles: readonly(profiles), sessions: readonly(sessions), activeId: readonly(activeId),
     activeProfileId, defaultProfileId, commandNames: readonly(commandNames),
+    shellReportedNames: readonly(shellReportedNames),
     inputLine: readonly(inputLine), suggestions, complete, history: readonly(acceptedValues),
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,

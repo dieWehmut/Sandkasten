@@ -504,13 +504,21 @@ const terminalShellCommands = computed<PaletteCommand[]>(() => {
   if (!profileId) return [];
   const label = terminal.profiles.value.find((profile) => profile.id === profileId)?.label ?? '';
   const names = terminal.commandNames.value[profileId] ?? [];
+  // A cmdlet or a builtin has no file behind it, so the palette says where the
+  // command comes from instead of repeating the profile label for every row.
+  const reported = new Set(terminal.shellReportedNames.value[profileId] ?? []);
+  const sourceLabel = reported.size
+    ? (terminal.profiles.value.find((profile) => profile.id === profileId)?.family === 'powershell'
+      ? locale.t('terminal.source.cmdlet') : locale.t('terminal.source.builtin'))
+    : '';
   // What the user ran from this palette and what they accepted in the terminal
   // are the same habit: both lead the entries that match.
   const recent = [...new Set([
     ...recentShellCommands.value, ...terminal.history.value,
   ])].filter((name) => names.includes(name));
   return [...recent, ...names.filter((name) => !recent.includes(name))].map((name) => ({
-    id: `shell.${name}`, label: name, detail: label,
+    id: `shell.${name}`, label: name,
+    detail: reported.has(name) && sourceLabel ? `${label} · ${sourceLabel}` : label,
     execute: () => { void runShellCommand(name); },
   }));
 });

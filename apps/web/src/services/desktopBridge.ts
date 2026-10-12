@@ -105,11 +105,21 @@ export interface TerminalSession {
   cwd: string;
 }
 
+/**
+ * The command names a session can run, split by where they come from: the
+ * executables the session PATH holds, and the commands the shell reports about
+ * itself (a cmdlet or a builtin has no file behind it). Paths stay in main.
+ */
+export interface TerminalCommandList {
+  names: string[];
+  shellReported: string[];
+}
+
 export interface TerminalBridge {
   profiles(): Promise<TerminalProfile[]>;
   create(request: { profileId?: string; cols: number; rows: number }): Promise<TerminalSession>;
   /** The command names a session of this profile can run; paths stay in main. */
-  commands(profileId: string): Promise<string[]>;
+  commands(profileId: string): Promise<TerminalCommandList>;
   /** Release initial output only once the renderer owns the session buffer. */
   attach(id: string): Promise<void>;
   write(request: { id: string; data: string }): Promise<void>;
