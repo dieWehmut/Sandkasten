@@ -137,7 +137,7 @@ try {
     'persistentState', 'split', 'interrupt', 'close', 'initialOutput', 'runInTerminal',
     'suggestions', 'argumentSuggestions', 'directorySuggestions', 'nestedSuggestions',
     'cwdSuggestions', 'pushdSuggestions', 'powershellRun', 'javascriptRun', 'bashRun',
-    'shellSourceMarked', 'aliasInPalette', 'cmdInternal', 'clipboardKeys', 'terminalMenu',
+    'shellSourceMarked', 'aliasInPalette', 'cmdInternal', 'clipboardKeys', 'terminalMenu', 'zoom',
   ]) {
     assert.equal(terminal[flag], true, `the terminal run has to have verified ${flag}`);
   }

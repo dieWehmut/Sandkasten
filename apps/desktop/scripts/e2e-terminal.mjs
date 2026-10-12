@@ -23,6 +23,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let clipboardNote = '';
   let reportClipboardKeys = false;
   let reportTerminalMenu = false;
+  let reportZoom = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -176,6 +177,20 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('[data-testid="context-menu"]'));
   reportTerminalMenu = true;
+
+  // Zooming is a terminal setting: the pane publishes the size it took.
+  const fontOf = () => page.getAttribute(pane(firstId), 'style');
+  assert.match(await fontOf(), /--terminal-font-size: 13px/, 'the terminal starts at its default size');
+  for (const [id, expected] of [['zoom-in', 14], ['zoom-in', 15], ['zoom-out', 14], ['zoom-reset', 13]]) {
+    await page.click(pane(firstId), { button: 'right' });
+    await page.waitForSelector(`[data-action="context-menu-${id}"]`, { timeout: 10_000 });
+    await page.click(`[data-action="context-menu-${id}"]`);
+    await page.waitForFunction(
+      ([selector, size]) => document.querySelector(selector)?.getAttribute('style')?.includes(`--terminal-font-size: ${size}px`),
+      [pane(firstId), expected], { timeout: 10_000 },
+    );
+  }
+  reportZoom = true;
 
   await enter(firstId, 'echo E2E^_CLEAR^_OK');
   await waitScreen(firstId, 'E2E_CLEAR_OK');
@@ -358,5 +373,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu, zoom: reportZoom };
 }
