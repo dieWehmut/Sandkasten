@@ -17,6 +17,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportJavaScriptRun = false;
   let reportBashRun = false;
   let reportShellSourceMarked = false;
+  let reportAliasInPalette = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -293,10 +294,19 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     assert.match(title, /cmdlet/i, 'the marked entry has to say what kind of command it is');
     reportShellSourceMarked = true;
     await page.keyboard.press('Control+c');
+
+    // An alias is a command too: `gci` is not a file anywhere, and the palette has
+    // to offer it because the shell reported it.
+    await page.keyboard.press('Control+Shift+P');
+    await page.fill('[role="combobox"]', '>gci');
+    await page.waitForSelector('[data-command="shell.gci"]', { timeout: 30_000 });
+    reportAliasInPalette = true;
+    await page.keyboard.press('Escape');
+
     await page.click(`[data-testid="terminal-session"][data-session-id="${shellId}"]`);
     await page.click('[data-action="terminal-close"]');
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette };
 }
