@@ -67,6 +67,10 @@ function localHistoryStorage(): Storage | undefined {
 const CD_VERBS = new Set(['cd', 'chdir', 'sl', 'set-location']);
 const PUSHD_VERB = 'pushd';
 const POPD_VERB = 'popd';
+// `cd -` means "the directory I came from" in the POSIX shells and in NuShell.
+// cmd has no such thing, and Windows PowerShell's `cd -` fails too, so neither is
+// followed there: guessing would move the completions somewhere the shell is not.
+const PREVIOUS_DIRECTORY_FAMILIES = new Set(['bash', 'posix', 'wsl', 'nu']);
 
 /** The path of one `cd`-like command, or the push/pop shape of a directory stack. */
 function parseDirectoryChange(line: string): { path?: string; push?: boolean; pop?: boolean } | undefined {
@@ -138,6 +142,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   const workspaceCwd = ref('');
   // Where pushd can send it back to.
   const cwdStack = ref<string[]>([]);
+  // Where cd - sends the shell back to.
+  const previousCwd = ref('');
   // What the user already accepted, most recent first: among equally matching
   // suggestions the ones already used lead the strip, the way a shell's own
   // history does. It survives a restart, because a shell's habits do.
@@ -240,10 +246,23 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     }
     const lower = line.toLowerCase();
     const names = commandNames.value[activeProfileId.value] ?? [];
-    return orderByHistory(names
+    const reported = new Set(shellReportedNames.value[activeProfileId.value] ?? []);
+    const matches = names
       .filter((name) => name.toLowerCase().startsWith(lower) && name.toLowerCase() !== lower)
-      .map((name) => ({ label: name, value: name })))
-      .slice(0, 5);
+      .map((name) => ({ label: name, value: name, reported: reported.has(name) }));
+    // The list puts the PATH executables first, so in a PowerShell session a
+    // cmdlet would never reach the five entries the strip shows. Both kinds take
+    // turns, with what the user already accepted leading within its own kind.
+    const executables = orderByHistory(matches.filter((entry) => !entry.reported));
+    const shellCommands = orderByHistory(matches.filter((entry) => entry.reported));
+    // The marker only exists to share the slots; what the strip shows is a label
+    // and the word it completes to.
+    const ordered: Array<TerminalSuggestion & { reported: boolean }> = [];
+    for (let index = 0; ordered.length < 5 && (index < executables.length || index < shellCommands.length); index += 1) {
+      if (executables[index]) ordered.push(executables[index]);
+      if (shellCommands[index] && ordered.length < 5) ordered.push(shellCommands[index]);
+    }
+    return ordered.map(({ label, value }) => ({ label, value }));
   });
 
   // The workspace paths as the shell would see them: a session that has moved
@@ -274,16 +293,30 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       const previous = cwdStack.value.at(-1);
       if (previous === undefined) return;
       cwdStack.value = cwdStack.value.slice(0, -1);
+      rememberDirectory();
       workspaceCwd.value = previous;
       return;
     }
     if (!change.path) return;
+    if (change.path === '-') {
+      const family = profiles.value.find((profile) => profile.id === activeProfileId.value)?.family ?? '';
+      if (!PREVIOUS_DIRECTORY_FAMILIES.has(family)) return;
+      const target = previousCwd.value;
+      previousCwd.value = workspaceCwd.value;
+      workspaceCwd.value = target;
+      return;
+    }
     const candidate = resolveRelative(workspaceCwd.value, change.path);
     // A path that climbs above the workspace root is not one this model can name.
     if (candidate === undefined) return;
     if (candidate && !inputPaths().includes(`${candidate}/`)) return;
     if (change.push) cwdStack.value = [...cwdStack.value, workspaceCwd.value];
+    rememberDirectory();
     workspaceCwd.value = candidate;
+  }
+
+  function rememberDirectory(): void {
+    previousCwd.value = workspaceCwd.value;
   }
 
   function trackInput(data: string): void {
@@ -308,6 +341,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     inputLine.value = '';
     workspaceCwd.value = '';
     cwdStack.value = [];
+    previousCwd.value = '';
     const view = views.get(id);
     if (view?.host.contains(document.activeElement)) setFocused(false);
     view?.subscriptions.forEach((subscription) => subscription.dispose());
@@ -371,6 +405,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       inputLine.value = '';
       workspaceCwd.value = '';
       cwdStack.value = [];
+      previousCwd.value = '';
       // Data/exit subscriptions and the xterm buffer exist before initial replay.
       await bridge.attach(id);
     } catch (cause) {
@@ -384,7 +419,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 
   function select(id: string): void {
     if (!views.has(id)) return;
-    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; cwdStack.value = []; }
+    if (activeId.value !== id) { inputLine.value = ''; workspaceCwd.value = ''; cwdStack.value = []; previousCwd.value = ''; }
     if (!visibleIds.value.includes(id)) {
       visibleIds.value = visibleIds.value.length === 2
         ? visibleIds.value.map((visible) => visible === activeId.value ? id : visible)

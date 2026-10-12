@@ -453,6 +453,66 @@ describe('app-owned terminal sessions', () => {
     await terminal.dispose();
   });
 
+  test('a PowerShell cmdlet is not starved by the PATH executables', async () => {
+    const host = fakeBridge();
+    host.bridge.commands.mockResolvedValue({
+      names: ['git', 'go', 'Get-ChildItem', 'Get-Content', 'Get-Help'],
+      shellReported: ['Get-ChildItem', 'Get-Content', 'Get-Help'],
+    });
+    const terminal = useTerminal(host.bridge);
+    await terminal.create('cmd');
+    await vi.waitFor(() => expect(terminal.commandNames.value.cmd).toHaveLength(5));
+    const type = (data: string) => mocks.terminals[0].input(data);
+
+    // Both kinds take turns, so the five entries the strip holds cover both.
+    type('g');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value))
+      .toEqual(['git', 'Get-ChildItem', 'go', 'Get-Content', 'Get-Help']);
+
+    // A cmdlet's own prefix still leads, and accepting it marks it as used.
+    type('\x03'); type('get-c');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['Get-ChildItem', 'Get-Content']);
+    expect(await terminal.complete({ label: 'Get-Content', value: 'Get-Content' })).toBe(true);
+    type('\x03'); type('get-c');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['Get-Content', 'Get-ChildItem']);
+    await terminal.dispose();
+  });
+
+  test('`cd -` goes back only where the shell really means it', async () => {
+    const host = fakeBridge();
+    host.bridge.profiles.mockResolvedValue([
+      { id: 'git-bash', label: 'Git Bash', family: 'bash', isDefault: true },
+      { id: 'cmd', label: 'Command Prompt', family: 'cmd' },
+    ]);
+    const terminal = useTerminal(host.bridge, { paths: () => ['main.py', 'scripts/', 'scripts/task.py'] });
+    await terminal.loadProfiles();
+    await terminal.create('git-bash');
+    await vi.waitFor(() => expect(terminal.commandNames.value['git-bash']).toEqual(['pwsh']));
+    const type = (data: string) => mocks.terminals[0].input(data);
+    const run = (line: string) => { type(line); type('\r'); };
+
+    run('cd scripts');
+    type('python ta');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['task.py']);
+
+    // The POSIX shells know `cd -` as the directory they came from.
+    type('\x03'); run('cd -');
+    type('python mai');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['main.py']);
+    type('\x03'); await terminal.close('s1');
+
+    // cmd does not, so following it would put the completions somewhere the shell
+    // never went.
+    await terminal.create('cmd');
+    const second = (data: string) => mocks.terminals[1].input(data);
+    const run2 = (line: string) => { second(line); second('\r'); };
+    run2('cd scripts');
+    second('\x03'); run2('cd -');
+    second('python ta');
+    expect(terminal.suggestions.value.map((suggestion) => suggestion.value)).toEqual(['task.py']);
+    await terminal.dispose();
+  });
+
   test('the accepted suggestions survive a restart', async () => {
     const host = fakeBridge();
     host.bridge.commands.mockResolvedValue(['git', 'git-lfs', 'gitui']);
