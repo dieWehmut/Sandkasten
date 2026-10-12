@@ -116,11 +116,15 @@ export function useLocalRunner(dependencies: LocalRunnerDependencies = {}): Loca
         timeoutMs: request.timeoutMs,
       });
       if (owner !== generation) return;
-      const completed = output as unknown as JobResponse;
+      const completed = output as unknown as JobResponse & { hint?: string };
       result.value = completed;
       activeJobId.value = undefined;
       phase.value = completed.status === 'JOB_STATUS_SUCCEEDED' ? 'completed' : 'error';
-      if (completed.errorMessage) error.value = completed.errorMessage;
+      if (completed.errorMessage) {
+        // A toolchain diagnosis travels with the failure so the request-error
+        // output says why the run never started.
+        error.value = completed.hint ? `${completed.errorMessage} — ${completed.hint}` : completed.errorMessage;
+      }
       history.add({
         source: request.source,
         language: completed.language || request.language,

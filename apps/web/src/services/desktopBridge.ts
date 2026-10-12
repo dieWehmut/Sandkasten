@@ -61,6 +61,8 @@ export interface LocalRunOutput {
   signal?: number;
   durationMs?: number;
   errorMessage?: string;
+  /** One sentence naming a toolchain problem the compile output alone hides. */
+  hint?: string;
   truncated?: { stdout?: boolean; stderr?: boolean };
   command?: string;
 }

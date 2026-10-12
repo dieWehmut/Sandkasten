@@ -717,6 +717,35 @@ describe('desktop workbench', () => {
     expect(api.submitJob).not.toHaveBeenCalled();
   });
 
+  test('shows the toolchain hint when a local compile fails', async () => {
+    const bridge = stubBridge();
+    bridge.runner.run.mockResolvedValueOnce({
+      jobId: 'local-1',
+      status: 'JOB_STATUS_COMPILE_FAILED',
+      language: 'python',
+      stdout: '',
+      stderr: '',
+      stdoutEncoding: 'utf8',
+      stderrEncoding: 'utf8',
+      exitCode: 1,
+      errorMessage: 'Compilation failed',
+      hint: 'The MSVC linker is missing: install the Visual Studio C++ build tools.',
+    });
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Run source"]').trigger('click');
+    await flushPromises();
+
+    // The hint reaches the diagnostics output, where the user looks when a run
+    // fails before it produces anything.
+    await wrapper.get('[data-action="select-output-diagnostics"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Compilation failed');
+    expect(wrapper.text()).toContain('The MSVC linker is missing');
+  });
+
   test('refuses an unsupported local runtime and can switch back to the API backend', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
