@@ -98,7 +98,9 @@ function sampleCommands(published) {
 
 function resolvesName(profile, name) {
   switch (profile.family) {
-    case 'powershell': return `(Get-Command '${name}' -ErrorAction SilentlyContinue).Source`;
+    // A cmdlet or function has no Source, so the lookup asks whether the name
+    // resolves at all rather than where it comes from.
+    case 'powershell': return `if (Get-Command '${name}' -ErrorAction SilentlyContinue) { 'ok' }`;
     case 'cmd': return `where ${name}`;
     case 'bash':
     case 'posix':

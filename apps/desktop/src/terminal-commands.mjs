@@ -1,7 +1,8 @@
-// The commands a shell can actually run are the executables on the session
-// PATH, with the profile's own command directories first. Only names leave the
-// main process: the directories stay here, and the renderer can never ask for a
-// path or an executable of its own choosing.
+// The commands a shell can actually run: the executables on the session PATH
+// (the profile's own command directories first) plus the commands the shell
+// itself reports, because a PowerShell cmdlet or a bash builtin is not a file on
+// the PATH. Only names leave the main process: the directories stay here, and
+// the renderer can never ask for a path or an executable of its own choosing.
 import { execFile } from 'node:child_process';
 import { accessSync, constants } from 'node:fs';
 import { readdir } from 'node:fs/promises';
@@ -12,10 +13,15 @@ const execute = promisify(execFile);
 
 export const TERMINAL_COMMAND_LIMITS = Object.freeze({
   directories: 48,
-  commands: 300,
+  // A PowerShell host reports well over a thousand cmdlets and functions next to
+  // the PATH executables, so the list is bounded well above one shell's worth.
+  commands: 2_000,
   cacheMs: 5 * 60 * 1000,
   // A WSL session may have to cold-start a distro before it can answer.
   distroTimeoutMs: 30_000,
+  // A shell that reports its own commands (PowerShell, bash) gets the same kind
+  // of budget: a cold host start is seconds, not milliseconds.
+  reportTimeoutMs: 20_000,
 });
 
 const WINDOWS_DEFAULT_EXTENSIONS = ['.com', '.exe', '.bat', '.cmd'];
@@ -25,6 +31,15 @@ const WINDOWS_DEFAULT_EXTENSIONS = ['.com', '.exe', '.bat', '.cmd'];
 // available in every distribution, and `[ -x ]` is the executable test the
 // session itself would apply.
 const DISTRO_LIST_COMMANDS = 'IFS=:; for d in $PATH; do [ -d "$d" ] || continue; for f in "$d"/*; do [ -f "$f" ] && [ -x "$f" ] && printf "%s\\n" "${f##*/}"; done; done';
+
+// What a shell can list about itself. `compgen -b` is a bash builtin and answers
+// in milliseconds, unlike `compgen -c`, which scans the PATH and never returns
+// under MSYS when stdio is piped. cmd has no comparable listing.
+const SHELL_COMMAND_REPORTS = Object.freeze({
+  powershell: 'Get-Command -CommandType Cmdlet,Function -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name',
+  bash: 'compgen -b',
+  posix: 'compgen -b',
+});
 
 function pathKey(environment) {
   return Object.keys(environment).find((name) => name.toLowerCase() === 'path') ?? 'PATH';
@@ -37,13 +52,23 @@ function onPath(file, platform) {
   } catch { return false; }
 }
 
-// The default distro runner: one bounded, non-interactive command whose output
-// is the command list. A distro that never answers contributes nothing.
-async function runDistro(profile, command, { timeoutMs = TERMINAL_COMMAND_LIMITS.distroTimeoutMs } = {}) {
+/** The argv that runs one command in this shell, for a bounded one-shot call. */
+export function shellArguments(profile, command) {
+  switch (profile?.family) {
+    case 'powershell': return ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command];
+    case 'cmd': return ['/d', '/c', command];
+    case 'wsl': return ['-e', 'sh', '-c', command];
+    default: return ['-c', command];
+  }
+}
+
+// The default one-shot runner: a command whose output is a list of names. A
+// shell that never answers contributes nothing.
+async function runShellDefault(profile, command, { timeoutMs = TERMINAL_COMMAND_LIMITS.reportTimeoutMs } = {}) {
   if (!profile?.executable) return '';
   try {
-    const { stdout } = await execute(profile.executable, ['-e', 'sh', '-c', command], {
-      windowsHide: true, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
+    const { stdout } = await execute(profile.executable, shellArguments(profile, command), {
+      windowsHide: true, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8',
     });
     return stdout;
   } catch {
@@ -103,14 +128,16 @@ export async function discoverTerminalCommands(profile, {
   environment = process.env,
   listDirectory = readdir,
   isExecutable = (file) => onPath(file, platform),
-  runShell = runDistro,
+  runShell = runShellDefault,
   distroTimeoutMs = TERMINAL_COMMAND_LIMITS.distroTimeoutMs,
+  reportTimeoutMs = TERMINAL_COMMAND_LIMITS.reportTimeoutMs,
 } = {}) {
+  const limit = TERMINAL_COMMAND_LIMITS.commands;
   // A WSL session's PATH belongs to the distro, so the Windows directories
   // cannot describe what it can run; the distro is asked directly instead.
   if (profile?.family === 'wsl') {
     const listing = await runShell(profile, DISTRO_LIST_COMMANDS, { timeoutMs: distroTimeoutMs });
-    return uniqueNames(String(listing ?? '').split(/\r?\n/), TERMINAL_COMMAND_LIMITS.commands, false);
+    return uniqueNames(String(listing ?? '').split(/\r?\n/), limit, false);
   }
   const windows = platform === 'win32';
   const extensions = windows ? windowsExtensions(environment) : undefined;
@@ -121,7 +148,7 @@ export async function discoverTerminalCommands(profile, {
   // would drop the tail of the alphabet once the cap is reached, which would
   // hide exactly the tools the user is looking for.
   for (const directory of shellSearchPath(profile, environment, platform)) {
-    if (commands.length >= TERMINAL_COMMAND_LIMITS.commands) break;
+    if (commands.length >= limit) break;
     let entries;
     try {
       entries = await listDirectory(directory, { withFileTypes: true });
@@ -145,7 +172,21 @@ export async function discoverTerminalCommands(profile, {
       if (seen.has(identity)) continue;
       seen.add(identity);
       commands.push(name);
-      if (commands.length >= TERMINAL_COMMAND_LIMITS.commands) break;
+      if (commands.length >= limit) break;
+    }
+  }
+  // A cmdlet or a builtin is a command the shell runs without a file behind it,
+  // so the shell is asked for its own list and that joins the PATH names.
+  const report = SHELL_COMMAND_REPORTS[profile?.family];
+  if (report) {
+    const reported = await runShell(profile, report, { timeoutMs: reportTimeoutMs });
+    const names = uniqueNames(String(reported ?? '').split(/\r?\n/), limit, windows);
+    for (const name of names) {
+      const identity = windows ? name.toLowerCase() : name;
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      commands.push(name);
+      if (commands.length >= limit) break;
     }
   }
   return commands;

@@ -5,6 +5,7 @@ import {
   TERMINAL_COMMAND_LIMITS,
   createCommandCatalog,
   discoverTerminalCommands,
+  shellArguments,
   shellSearchPath,
 } from '../src/terminal-commands.mjs';
 
@@ -128,21 +129,26 @@ test('a WSL listing is deduplicated and capped like any other list', async () =>
 });
 
 test('the scan stops at the command limit while keeping the search-path order', async () => {
-  const crowded = Array.from({ length: TERMINAL_COMMAND_LIMITS.commands + 100 }, (_value, index) => file(`cmd-${String(index).padStart(3, '0')}`));
+  // Padded to four digits so the alphabetical order the scan produces is also
+  // the numeric order the assertion expects, whatever the limit is.
+  const name = (index) => `cmd-${String(index).padStart(4, '0')}`;
+  const crowded = Array.from({ length: TERMINAL_COMMAND_LIMITS.commands + 100 }, (_value, index) => file(name(index)));
   const scanned = [];
   const commands = await discoverTerminalCommands(
     { id: 'bash', pathPrepend: [] },
     {
       platform: 'linux',
       environment: { PATH: '/first:/second' },
+      // The profile asks bash for its builtins too; that report is empty here.
       listDirectory: async (directory) => { scanned.push(directory); return directory === '/first' ? crowded : [file('later')]; },
       isExecutable: () => true,
+      runShell: async () => '',
     },
   );
   assert.deepEqual(scanned, ['/first'], 'a full list must stop the scan');
   assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.commands);
-  assert.equal(commands[0], 'cmd-000');
-  assert.equal(commands.at(-1), `cmd-${String(TERMINAL_COMMAND_LIMITS.commands - 1).padStart(3, '0')}`);
+  assert.equal(commands[0], name(0));
+  assert.equal(commands.at(-1), name(TERMINAL_COMMAND_LIMITS.commands - 1));
 });
 
 test('the scan visits at most the directory limit', async () => {
@@ -195,4 +201,76 @@ test('an empty scan is retried instead of being cached for the window', async ()
   assert.equal(scans, 2);
   assert.deepEqual(await catalog.commands(profile), ['git'], 'a real list is cached');
   assert.equal(scans, 2);
+});
+
+test('the shell reports its own commands next to the PATH executables', async () => {
+  const asked = [];
+  const commands = await discoverTerminalCommands(
+    { id: 'bash', family: 'bash', executable: '/bin/bash', pathPrepend: [] },
+    {
+      platform: 'linux',
+      environment: { PATH: '/bin' },
+      listDirectory: async () => [file('ls'), file('cp')],
+      isExecutable: () => true,
+      runShell: async (profile, command) => { asked.push(command); return 'cd\necho\nls\ncompgen\n'; },
+    },
+  );
+  // PATH order first (that is what a shell resolves first, alphabetical inside a
+  // directory), then the builtins the shell reported, without repeating a name.
+  assert.deepEqual(commands, ['cp', 'ls', 'cd', 'echo', 'compgen']);
+  assert.deepEqual(asked, ['compgen -b'], 'bash is asked for its builtins');
+});
+
+test('PowerShell is asked for its cmdlets and functions', async () => {
+  const asked = [];
+  const commands = await discoverTerminalCommands(
+    { id: 'powershell', family: 'powershell', executable: 'C:\\pwsh.exe', pathPrepend: ['C:\\tools'] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\tools', PATHEXT: '.EXE' },
+      listDirectory: async () => [file('git.exe')],
+      runShell: async (_profile, command) => { asked.push(command); return 'Get-ChildItem\nGet-Content\n'; },
+    },
+  );
+  assert.deepEqual(commands, ['git', 'Get-ChildItem', 'Get-Content']);
+  assert.match(asked[0], /Get-Command -CommandType Cmdlet,Function/);
+});
+
+test('a shell with nothing to report about itself is not asked', async () => {
+  let calls = 0;
+  const commands = await discoverTerminalCommands(
+    { id: 'cmd', family: 'cmd', executable: 'C:\\Windows\\System32\\cmd.exe', pathPrepend: ['C:\\Windows'] },
+    {
+      platform: 'win32',
+      environment: { Path: 'C:\\Windows', PATHEXT: '.EXE' },
+      listDirectory: async () => [file('cmd.exe')],
+      runShell: async () => { calls += 1; return 'should not be asked'; },
+    },
+  );
+  assert.deepEqual(commands, ['cmd']);
+  assert.equal(calls, 0, 'cmd has no listing of its own to ask for');
+});
+
+test('the shell report cannot push the list past its limit', async () => {
+  const reported = Array.from({ length: TERMINAL_COMMAND_LIMITS.commands + 500 }, (_value, index) => `builtin-${String(index).padStart(4, '0')}`).join('\n');
+  const commands = await discoverTerminalCommands(
+    { id: 'bash', family: 'bash', executable: '/bin/bash', pathPrepend: [] },
+    {
+      platform: 'linux',
+      environment: { PATH: '/bin' },
+      listDirectory: async () => [file('ls')],
+      isExecutable: () => true,
+      runShell: async () => reported,
+    },
+  );
+  assert.equal(commands.length, TERMINAL_COMMAND_LIMITS.commands);
+  assert.equal(commands[0], 'ls');
+});
+
+test('each shell family gets the argv that runs one command', () => {
+  assert.deepEqual(shellArguments({ family: 'powershell' }, 'exit 0'), ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', 'exit 0']);
+  assert.deepEqual(shellArguments({ family: 'cmd' }, 'echo hi'), ['/d', '/c', 'echo hi']);
+  assert.deepEqual(shellArguments({ family: 'wsl' }, 'pwd'), ['-e', 'sh', '-c', 'pwd']);
+  assert.deepEqual(shellArguments({ family: 'bash' }, 'compgen -b'), ['-c', 'compgen -b']);
+  assert.deepEqual(shellArguments({ family: 'posix' }, 'true'), ['-c', 'true']);
 });
