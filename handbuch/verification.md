@@ -28,7 +28,7 @@ each one.
 | Command | Proves | Needs |
 | --- | --- | --- |
 | `cd schnittstelle && go test ./...` | API packages: config, gRPC, HTTP, jobs, Postgres access. | Go 1.25+. |
-| `cd laeufer && cargo test --all` | The runner: leases, cgroup limits, sandbox setup. | A Rust toolchain whose linker works; on Windows an MSYS2 `link.exe` on `PATH` shadows MSVC and the failure names it. |
+| `cd laeufer && cargo test --all` | The runner: leases, cgroup limits, sandbox setup. | A POSIX host. The crate maps nine POSIX signal numbers (`SIGKILL`, `SIGTERM`, `SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGABRT`, `SIGSYS`, `SIGXCPU`, `SIGXFSZ`) that `libc` does not define on Windows, so on a Windows workstation it does not compile at all — the runner is Linux-only by design, and its suite runs in CI. |
 | `make smoke-go` | A real job through the API and runner. | Postgres, the API, and the runner. |
 | `make smoke-languages` | One HTTP job per enabled language. | The same, plus the installed toolchains and network. |
 | `node werkzeug/smoke/smoke-concurrency.mjs` | Queue behaviour under concurrent jobs. | The same stack. |
@@ -100,3 +100,9 @@ dropped variable fails the unit suite instead of sending a reader down a dead en
 - **Every language the API offers.** The API ships 58 runtimes; this workstation
   can verify 11 locally and 7 in the sandbox, and the rest are reported as
   unavailable rather than assumed to work.
+- **The Rust runner's own suite**, from a Windows workstation: `cargo test --all`
+  stops at `laeufer-core` because nine POSIX signal constants it maps are not in
+  `libc` there. The MSVC toolchain does fix the linker (an MSYS2 `link.exe` on
+  `PATH` shadows it, and `vcvars64.bat` with
+  `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-msvc` gets as far as the compile),
+  which is where it ends. The runner is Linux-only; its suite is a CI entry.
