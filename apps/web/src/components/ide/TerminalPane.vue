@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ContextMenu from '../ContextMenu.vue';
 import type { ContextMenuEntry } from '../contextMenu';
 import type { TerminalClipboardAction, TerminalController, TerminalEntry, TerminalSuggestion } from '../../composables/useTerminal';
+import { TERMINAL_FONT_SIZE } from '../../composables/useTerminal';
 import { useTranslation } from '../../i18n/useTranslation';
 
 const props = defineProps<{ controller: TerminalController; session: TerminalEntry; active: boolean }>();
@@ -37,6 +38,10 @@ function buildMenuEntries(): ContextMenuEntry[] {
     { kind: 'item', id: 'paste', label: t('terminal.menu.paste'), keybinding: 'Ctrl+Shift+V' },
     { kind: 'item', id: 'select-all', label: t('terminal.menu.selectAll'), keybinding: 'Ctrl+Shift+A' },
     { kind: 'separator' },
+    { kind: 'item', id: 'zoom-in', label: t('terminal.menu.zoomIn'), keybinding: 'Ctrl+=' },
+    { kind: 'item', id: 'zoom-out', label: t('terminal.menu.zoomOut'), keybinding: 'Ctrl+-' },
+    { kind: 'item', id: 'zoom-reset', label: t('terminal.menu.zoomReset'), keybinding: 'Ctrl+0' },
+    { kind: 'separator' },
     { kind: 'item', id: 'clear', label: t('terminal.menu.clear') },
   ];
 }
@@ -49,6 +54,9 @@ function openMenu(event: MouseEvent): void {
 }
 function runMenuItem(id: string): void {
   menuOpen.value = false;
+  if (id === 'zoom-in') { props.controller.zoom(1); return; }
+  if (id === 'zoom-out') { props.controller.zoom(-1); return; }
+  if (id === 'zoom-reset') { props.controller.zoom(TERMINAL_FONT_SIZE.default - props.controller.fontSize.value); return; }
   void props.controller.clipboard(id as TerminalClipboardAction, props.session.id);
 }
 
@@ -72,6 +80,7 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
   <section
     class="terminal-pane" :class="{ 'terminal-pane--active': active }"
     data-testid="terminal-pane" :data-session-id="session.id" :data-active="active"
+    :style="{ '--terminal-font-size': `${controller.fontSize.value}px` }"
     :aria-label="session.title" @focusin="controller.select(session.id)" @pointerdown="controller.select(session.id)"
     @contextmenu.prevent="openMenu($event)"
     @mousedown.middle.prevent="controller.clipboard('paste-selection', session.id)"

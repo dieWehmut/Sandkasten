@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
+import { TERMINAL_FONT_SIZE, TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
 import type { TerminalBridge, TerminalCommandList } from '../src/services/desktopBridge';
 
 const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
@@ -60,6 +60,37 @@ test('a browser preview without a clipboard bridge pastes nothing instead of fai
   expect(mocks.terminals[0].keyHandler(press({ key: 'v', ctrlKey: true, shiftKey: true }))).toBe(false);
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(host.bridge.write).not.toHaveBeenCalled();
+  await terminal.dispose();
+});
+
+test('zoom steps the terminal font, within bounds, across sessions', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  expect(terminal.fontSize.value).toBe(13);
+  expect(xterm.options.fontSize).toBe(13);
+
+  // Ctrl+= and Ctrl+- are the terminal's; Ctrl+A without Shift is still the shell's.
+  expect(xterm.keyHandler(press({ key: '=', ctrlKey: true }))).toBe(false);
+  expect(terminal.fontSize.value).toBe(14);
+  expect(xterm.options.fontSize).toBe(14);
+  xterm.keyHandler(press({ key: '-', ctrlKey: true }));
+  expect(terminal.fontSize.value).toBe(13);
+  expect(xterm.keyHandler(press({ key: 'a', ctrlKey: true }))).toBe(true);
+
+  // The bounds are bounds: zooming past them changes nothing.
+  for (let step = 0; step < 30; step += 1) terminal.zoom(1);
+  expect(terminal.fontSize.value).toBe(32);
+  for (let step = 0; step < 40; step += 1) terminal.zoom(-1);
+  expect(terminal.fontSize.value).toBe(8);
+  terminal.zoom(TERMINAL_FONT_SIZE.default - terminal.fontSize.value);
+  expect(terminal.fontSize.value).toBe(13);
+  expect(xterm.options.fontSize).toBe(13);
+
+  // Every session takes the size, not only the one in front.
+  await terminal.split();
+  terminal.zoom(1);
+  terminal.zoom(1);
+  expect(mocks.terminals.map((view) => view.options.fontSize)).toEqual([15, 15]);
   await terminal.dispose();
 });
 

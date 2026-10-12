@@ -4,6 +4,9 @@ import { FitAddon } from '@xterm/addon-fit';
 import type { TerminalBridge, TerminalProfile, TerminalSession } from '../services/desktopBridge';
 import { quoteForShell } from '../terminal/terminalCommand';
 
+/** The terminal font size, and the bounds zooming it stays inside. */
+export const TERMINAL_FONT_SIZE = Object.freeze({ default: 13, min: 8, max: 32 });
+
 export interface TerminalEntry extends TerminalSession { exitCode?: number }
 
 /** What the suggestion strip offers: a label to show and the word it completes to. */
@@ -127,6 +130,10 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   const shown = ref(false);
   const pending = ref(0);
   const error = ref('');
+  // The terminal's own font size: zooming it is a terminal setting rather than a
+  // window one, and the pane publishes it as a CSS property so styling and tests
+  // can see it.
+  const fontSize = ref<number>(TERMINAL_FONT_SIZE.default);
   // Command names per profile id, fetched once per profile and kept for the
   // session: the list is what the palette offers for the shell in front of the
   // user, and the main process only ever sends names.
@@ -371,7 +378,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
       if (disposed) { await bridge.close(session.id); return; }
       const id = session.id;
       const terminal = new Terminal({
-        cols: 80, rows: 24, cursorBlink: true, fontSize: 13,
+        cols: 80, rows: 24, cursorBlink: true, fontSize: fontSize.value,
         fontFamily: 'Cascadia Code, Consolas, monospace', scrollback: 5000,
         theme: terminalTheme(), allowProposedApi: false, screenReaderMode: true,
       });
@@ -381,6 +388,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // taken while a suggestion exists, so the shell keeps every other key.
       terminal.attachCustomKeyEventHandler((event) => {
         if (isTerminalShortcut(event)) return false;
+        const zooming = zoomActionFor(event);
+        if (zooming) {
+          if (id === activeId.value) zoom(zooming === 'in' ? 1 : zooming === 'out' ? -1 : TERMINAL_FONT_SIZE.default - fontSize.value);
+          return false;
+        }
         const clipboard = clipboardActionFor(event);
         if (clipboard) {
           void useClipboard(clipboard);
@@ -486,6 +498,20 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     view.terminal.refresh(0, view.terminal.rows - 1);
   }
 
+  /**
+   * One step of terminal zoom: every session takes the size, and each one refits so
+   * the columns and rows follow the glyphs rather than the pane.
+   */
+  function zoom(delta: number): void {
+    const next = Math.min(TERMINAL_FONT_SIZE.max, Math.max(TERMINAL_FONT_SIZE.min, fontSize.value + delta));
+    if (next === fontSize.value) return;
+    fontSize.value = next;
+    for (const [id, view] of views) {
+      view.terminal.options.fontSize = next;
+      fit(id);
+    }
+  }
+
   function mount(id: string, container: HTMLElement): void {
     const view = views.get(id);
     if (!view) return;
@@ -578,6 +604,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     visibleIds: readonly(visibleIds), shown: readonly(shown), pending: readonly(pending), error: readonly(error),
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
+    fontSize: readonly(fontSize),
+    zoom,
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
     // The pane's context menu runs the same actions the keys do.
     clipboard: (action: TerminalClipboardAction, sessionId: string = activeId.value) => views.get(sessionId)?.clipboard(action),
@@ -588,6 +616,15 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
 export function isTerminalShortcut(event: KeyboardEvent): boolean {
   return (event.ctrlKey || event.metaKey) && !event.altKey
     && (event.code === 'Backquote' || event.key === '`' || event.key === '~');
+}
+
+/** The key that resets the terminal's zoom, and the ones that step it. */
+export function zoomActionFor(event: KeyboardEvent): 'in' | 'out' | 'reset' | null {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
+  if (event.key === '=' || event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd') return 'in';
+  if (event.key === '-' || event.key === '_' || event.code === 'Minus' || event.code === 'NumpadSubtract') return 'out';
+  if (event.key === '0' || event.code === 'Digit0' || event.code === 'Numpad0') return 'reset';
+  return null;
 }
 
 /** The editor-style accept key; Tab stays with the shell's own completion. */

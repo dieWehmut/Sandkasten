@@ -121,6 +121,28 @@ describe('desktop terminal panel', () => {
     expect(bridge.write).toHaveBeenLastCalledWith({ id: 's1', data: 'pasted text' });
   });
 
+  test('the menu zooms the terminal font, and the pane publishes the size', async () => {
+    const bridge = installDesktop(); const app = await mountApp();
+    await app.get('[data-action="select-output-terminal"]').trigger('click'); await flushPromises();
+    const pane = app.get('[data-testid="terminal-pane"]');
+    expect(pane.attributes('style')).toContain('--terminal-font-size: 13px');
+
+    const zoom = async (id: string) => {
+      await pane.trigger('contextmenu', { clientX: 12, clientY: 12 }); await flushPromises();
+      await app.get(`[data-action="context-menu-${id}"]`).trigger('click'); await flushPromises();
+    };
+    await zoom('zoom-in');
+    expect(pane.attributes('style')).toContain('--terminal-font-size: 14px');
+    expect(xterm.terminals[0].options.fontSize).toBe(14);
+    await zoom('zoom-in');
+    expect(pane.attributes('style')).toContain('--terminal-font-size: 15px');
+    await zoom('zoom-out');
+    expect(pane.attributes('style')).toContain('--terminal-font-size: 14px');
+    await zoom('zoom-reset');
+    expect(pane.attributes('style')).toContain('--terminal-font-size: 13px');
+    expect(xterm.terminals.every((view) => view.options.fontSize === 13)).toBe(true);
+  });
+
   test('retains output and shell identity across output tabs, panel hiding and setup guide', async () => {
     const bridge = installDesktop(); const app = await mountApp(); menu('terminal.new'); await flushPromises();
     await app.get('[data-action="select-output-output"]').trigger('click'); data({ id: 's1', data: 'while output hidden' });
