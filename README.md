@@ -265,6 +265,12 @@ unavailable,已安装但损坏的才算失败。三者都支持 `--json` 输出�
 
 可用 `SMOKE_LANGUAGES=ocaml` 或 `SMOKE_LANGUAGES="markdown graphviz"` 只验证子集。
 
+仓库的 `Verify` workflow(`.github/workflows/verify.yml`)在 ubuntu-latest 上运行三个应用
+各自的 `npm test`(WebUI、桌面端、CLI),随后运行桌面机器级检查:`npm run verify` 会把缺失的
+工具链或后端记为 unavailable,只有"已安装但损坏"才失败(隔离后端需要 WSL2,在无 WSL 的 runner
+上如实报 unavailable)。workflow 里每条命令都是本地可复现的入口,并由 `ci-workflow` 契约测试
+校验其与各 `package.json` 脚本一致。
+
 ## 工具目录
 
 开发与质量脚本按用途归档在 `werkzeug/development/`、`werkzeug/quality/`、

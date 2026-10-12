@@ -106,6 +106,12 @@ npm install
 npm start
 ```
 
+`node-pty` builds its native module from an install script, and the manifest
+approves that script (`allowScripts`) because a recent npm skips unapproved
+install scripts and node-pty ships no Linux prebuild. Electron's own postinstall
+is not approved: `npm ci && npm test` needs no Electron binary, so a developer
+who wants `npm start` on such an npm runs `npm approve-scripts electron` once.
+
 The window loads `apps/web/dist/index.html` directly. API requests default to
 same-origin paths; set `SANDKASTEN_API_BASE_URL` before launching to point at a
 remote API. Because the committed `dist/` is shared with Pages and the server
