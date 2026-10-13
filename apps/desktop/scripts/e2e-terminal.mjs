@@ -214,6 +214,22 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   const foundCount = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
   assert.match(foundCount, /^\d+\/\d+$/, `the find bar has to report where it is among the matches, showed ${foundCount}`);
 
+  // All sixty filler lines share a prefix, so the count says where F3 moved to.
+  await page.locator('[data-testid="terminal-find-input"]').fill('');
+  await page.keyboard.type('PAD');
+  await page.waitForFunction(
+    () => (document.querySelector('[data-testid="terminal-find-count"]')?.textContent ?? '').includes('/'),
+    null, { timeout: 10_000 },
+  );
+  const firstMatch = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  await page.keyboard.press('F3');
+  await page.waitForTimeout(300);
+  const nextMatch = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  assert.notEqual(nextMatch, firstMatch, 'F3 has to move to the next match');
+  await page.keyboard.press('Shift+F3');
+  await page.waitForTimeout(300);
+  assert.equal((await page.locator('[data-testid="terminal-find-count"]').innerText()).trim(), firstMatch, 'Shift+F3 has to go back');
+
   // Sixty filler lines pushed the first language's marker off the screen; finding it
   // proves the search walked the scrollback and scrolled the terminal back to it.
   await page.locator('[data-testid="terminal-find-input"]').fill('');
