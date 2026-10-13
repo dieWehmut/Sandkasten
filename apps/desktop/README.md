@@ -93,6 +93,7 @@ The desktop build adds these things the browser cannot do:
    | `Ctrl+Space` | Accept the first suggestion |
    | `Ctrl+\`` | New terminal; `Ctrl+\`` again toggles the panel |
    | `Ctrl+Shift+F` | Find in the terminal's scrollback |
+   | `F3` / `Shift+F3`, `Enter` / `Shift+Enter` | Next and previous match, while the find bar is open |
    | `Ctrl+Shift+P` | The command palette, with the active shell's commands |
    | Right-click, middle-click | The same actions as a menu; paste the primary selection on Linux |
 
@@ -249,8 +250,10 @@ directory and exits instead of starting an empty window.
   `@xterm/xterm@6.0.0` for a line that is demonstrably in the buffer. The rows a
   terminal marks as wrapped are joined into one logical line before matching, because
   a deep `workspace>` prompt wraps — which is what a per-row scan misses, and what the
-  end-to-end run caught. Upgrading the terminal and its addons together is the way
-  back to the addon, if its search is ever needed beyond the buffer scan.
+  end-to-end run caught. Every match is marked and the current one stands out, up to
+  two hundred marks; the count still covers the whole buffer. Upgrading the terminal
+  and its addons together is the way back to the addon, if its search is ever needed
+  beyond the buffer scan.
 - The pane's pointer and focus handling leaves the find field its keyboard: the
   terminal takes focus back for a click anywhere else in the pane, and not for a
   click in the bar.
