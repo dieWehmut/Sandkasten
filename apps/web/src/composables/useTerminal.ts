@@ -7,6 +7,9 @@ import { quoteForShell } from '../terminal/terminalCommand';
 /** The terminal font size, and the bounds zooming it stays inside. */
 export const TERMINAL_FONT_SIZE = Object.freeze({ default: 13, min: 8, max: 32 });
 
+/** How many matches the find bar marks: a search can hold thousands, a screen cannot. */
+export const SEARCH_HIGHLIGHT_LIMIT = 200;
+
 export interface TerminalEntry extends TerminalSession { exitCode?: number }
 
 /** What the suggestion strip offers: a label to show and the word it completes to. */
@@ -160,9 +163,12 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // no matches for lines that are demonstrably in the buffer — and the current match
   // is scrolled to and highlighted.
   const searchOpen = ref(false);
+  // The query lives with the search rather than with the pane's input, because the
+  // keys that walk the matches — F3 and Shift+F3 — are the terminal's to handle.
+  const searchQuery = ref('');
   const searchResults = ref({ index: 0, count: 0, sessionId: '' });
   let searchLine: number | null = null;
-  let searchHighlight: IDecoration | undefined;
+  let searchHighlights: IDecoration[] = [];
   // Where the active session's shell is, as far as a plain `cd` can be followed.
   // Empty means the workspace root, which is where a session starts.
   const workspaceCwd = ref('');
@@ -416,31 +422,41 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   }
 
   /**
-   * A highlight is a nicety — the count and the scroll are the search — so a
-   * terminal that declines the decoration, or a marker it cannot place, leaves the
-   * find bar working.
+   * Every match is marked, and the one the find bar is on is marked differently, so
+   * the scrollback shows where the rest of them are. Highlights are a nicety — the
+   * count and the scroll are the search — so a terminal that declines a decoration,
+   * or a marker it cannot place, leaves the find bar working.
    */
-  function highlightMatch(terminal: Terminal, match: { line: number; column: number }, needle: string): void {
-    searchHighlight?.dispose();
-    searchHighlight = undefined;
-    try {
-      const text = terminal.buffer.active.getLine(match.line)?.translateToString(true) ?? '';
-      const column = Math.min(match.column, Math.max(0, text.length - 1));
-      const width = Math.max(1, Math.min(needle.length, text.length - column));
-      const buffer = terminal.buffer.active;
-      const marker = terminal.registerMarker(match.line - (buffer.baseY + buffer.cursorY));
-      if (!marker) return;
-      searchHighlight = terminal.registerDecoration({
-        marker, x: column, width, backgroundColor: 'rgba(126, 168, 116, 0.45)',
-      });
-    } catch {
-      searchHighlight = undefined;
+  function decorateMatches(terminal: Terminal, matches: { line: number; column: number }[], current: number, needle: string): void {
+    disposeHighlights();
+    const buffer = terminal.buffer.active;
+    for (const [index, match] of matches.slice(0, SEARCH_HIGHLIGHT_LIMIT).entries()) {
+      try {
+        const text = buffer.getLine(match.line)?.translateToString(true) ?? '';
+        const column = Math.min(match.column, Math.max(0, text.length - 1));
+        const width = Math.max(1, Math.min(needle.length, text.length - column));
+        const marker = terminal.registerMarker(match.line - (buffer.baseY + buffer.cursorY));
+        if (!marker) continue;
+        const decoration = terminal.registerDecoration({
+          marker,
+          x: column,
+          width,
+          backgroundColor: index === current ? 'rgba(126, 168, 116, 0.6)' : 'rgba(126, 168, 116, 0.28)',
+        });
+        if (decoration) searchHighlights.push(decoration);
+      } catch {
+        // One decoration the terminal refuses is not the end of the search.
+      }
     }
   }
 
+  function disposeHighlights(): void {
+    for (const decoration of searchHighlights) decoration.dispose();
+    searchHighlights = [];
+  }
+
   function forgetSearch(): void {
-    searchHighlight?.dispose();
-    searchHighlight = undefined;
+    disposeHighlights();
     searchLine = null;
     searchResults.value = { index: 0, count: 0, sessionId: activeId.value };
   }
@@ -459,9 +475,10 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         ? [...matches].reverse().find((candidate) => candidate.line < searchLine!) ?? matches.at(-1)!
         : matches.find((candidate) => candidate.line > searchLine!) ?? matches[0];
     searchLine = line.line;
-    searchResults.value = { index: matches.findIndex((candidate) => candidate.line === line.line) + 1, count: matches.length, sessionId: activeId.value };
+    const current = matches.findIndex((candidate) => candidate.line === line.line);
+    searchResults.value = { index: current + 1, count: matches.length, sessionId: activeId.value };
     view.terminal.scrollToLine(line.line);
-    highlightMatch(view.terminal, line, needle);
+    decorateMatches(view.terminal, matches, current, needle);
   }
 
   function openSearch(): void {
@@ -475,6 +492,12 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   function closeSearch(): void {
     forgetSearch();
     searchOpen.value = false;
+    searchQuery.value = '';
+  }
+
+  /** The pane's field sets the query; the search below reads it back. */
+  function setSearchQuery(value: string): void {
+    searchQuery.value = value;
   }
 
   function removeView(id: string): void {
@@ -519,6 +542,13 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         if (isFindShortcut(event)) {
           if (id === activeId.value) searchOpen.value ? closeSearch() : openSearch();
           else select(id);
+          return false;
+        }
+        // F3 walks the matches while the find bar is open, the way every editor and
+        // terminal spells it, and belongs to the shell while it is closed.
+        if (searchOpen.value && id === activeId.value && event.key === 'F3' && !event.altKey && !event.metaKey) {
+          const open = views.get(activeId.value);
+          if (open) findSearch(searchQuery.value, event.shiftKey);
           return false;
         }
         const zooming = zoomActionFor(event);
@@ -758,7 +788,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     fontSize: readonly(fontSize),
     searchOpen: readonly(searchOpen),
     searchResults: readonly(searchResults),
-    findSearch, openSearch, closeSearch,
+    findSearch, openSearch, closeSearch, searchQuery: readonly(searchQuery), setSearchQuery,
     zoom,
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
     // The pane's context menu runs the same actions the keys do.

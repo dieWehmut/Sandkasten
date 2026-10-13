@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { TERMINAL_FONT_SIZE, TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
+import { SEARCH_HIGHLIGHT_LIMIT, TERMINAL_FONT_SIZE, TERMINAL_HISTORY_KEY, useTerminal } from '../src/composables/useTerminal';
 import type { TerminalBridge, TerminalCommandList } from '../src/services/desktopBridge';
 
 const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
@@ -33,7 +33,19 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   }
   scrollToLine(line: number) { this.scrolled.push(line); }
   registerMarker() { return { dispose: vi.fn() }; }
-  registerDecoration(options: any) { const decoration = { options, dispose: vi.fn() }; this.decorations.push(decoration); return decoration; }
+  registerDecoration(options: any) {
+    const decoration: any = {
+      options,
+      dispose: () => {
+        const index = this.decorations.indexOf(decoration);
+        if (index >= 0) this.decorations.splice(index, 1);
+        this.disposedDecorations.push(decoration);
+      },
+    };
+    this.decorations.push(decoration);
+    return decoration;
+  }
+  disposedDecorations: any[] = [];
   pasted: string[] = [];
   paste(data: string) { this.pasted.push(data); this.input(data); }
   getSelection() { return this.selection; }
@@ -136,29 +148,48 @@ test('the find bar walks the matches the terminal actually holds', async () => {
   terminal.findSearch('E2E_MARK');
   expect(terminal.searchResults.value).toEqual({ index: 1, count: 2, sessionId: 's1' });
   expect(xterm.scrolled).toEqual([1]);
-  // The terminal is scrolled to the match, and the one it picked is highlighted.
-  expect(xterm.decorations.at(-1)?.options).toMatchObject({ x: 6, width: 8 });
+  // Both matches are marked, and the one the bar is on stands out from the rest.
+  expect(xterm.decorations).toHaveLength(2);
+  expect(xterm.decorations[0].options).toMatchObject({ x: 6, width: 8 });
+  expect(xterm.decorations[0].options.backgroundColor).not.toBe(xterm.decorations[1].options.backgroundColor);
 
   // Next wraps through the rest of them; previous goes back.
   terminal.findSearch('E2E_MARK');
   expect(terminal.searchResults.value).toMatchObject({ index: 2, count: 2 });
   expect(xterm.scrolled).toEqual([1, 3]);
+  // Moving on re-marks them, so the highlight follows the current match.
+  expect(xterm.decorations).toHaveLength(2);
+  expect(xterm.decorations[0].options.backgroundColor).toBe('rgba(126, 168, 116, 0.28)');
+  expect(xterm.decorations[1].options.backgroundColor).toBe('rgba(126, 168, 116, 0.6)');
   terminal.findSearch('E2E_MARK');
   expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
   terminal.findSearch('E2E_MARK', true);
   expect(terminal.searchResults.value).toMatchObject({ index: 2, count: 2 });
   expect(xterm.scrolled).toEqual([1, 3, 1, 3]);
 
-  // Nothing found is not a crash: the count goes to zero and the highlight goes.
+  // Nothing found is not a crash: the count goes to zero and the marks go.
   terminal.findSearch('not in the buffer');
   expect(terminal.searchResults.value).toEqual({ index: 0, count: 0, sessionId: 's1' });
-  expect(xterm.decorations.at(-1)?.dispose).toHaveBeenCalled();
+  expect(xterm.decorations).toHaveLength(0);
 
-  // Closing takes the highlight with it and gives the keyboard back to the shell.
+  // Closing takes the marks with it and gives the keyboard back to the shell.
   terminal.findSearch('E2E_MARK');
+  expect(xterm.decorations).toHaveLength(2);
   terminal.closeSearch();
   expect(terminal.searchOpen.value).toBe(false);
-  expect(xterm.decorations.at(-1)?.dispose).toHaveBeenCalled();
+  expect(xterm.decorations).toHaveLength(0);
+  await terminal.dispose();
+});
+
+test('a search with more matches than the screen can mark stops marking', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  const many = Array.from({ length: SEARCH_HIGHLIGHT_LIMIT + 40 }, (_value, index) => `hit ${index} E2E_MANY`);
+  xterm.lines = many;
+  terminal.findSearch('E2E_MANY');
+  // The count covers the whole buffer; the marks stay bounded.
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: many.length });
+  expect(xterm.decorations).toHaveLength(SEARCH_HIGHLIGHT_LIMIT);
   await terminal.dispose();
 });
 
@@ -177,6 +208,30 @@ test('a line the terminal wrapped is one line to the search', async () => {
   // highlights.
   expect(xterm.scrolled).toEqual([1]);
   expect(xterm.decorations.at(-1)?.options).toMatchObject({ x: 0, width: 12 });
+  await terminal.dispose();
+});
+
+test('F3 walks the matches while the find bar is open, and the shell keeps it otherwise', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  xterm.lines = ['one E2E_MARK', 'two', 'three E2E_MARK'];
+
+  // Closed: F3 is the shell's, and nothing is searched.
+  expect(xterm.keyHandler(press({ key: 'F3' }))).toBe(true);
+
+  terminal.openSearch();
+  terminal.setSearchQuery('E2E_MARK');
+  terminal.findSearch('E2E_MARK');
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
+  expect(xterm.keyHandler(press({ key: 'F3' }))).toBe(false);
+  expect(terminal.searchResults.value).toMatchObject({ index: 2, count: 2 });
+  expect(xterm.keyHandler(press({ key: 'F3', shiftKey: true }))).toBe(false);
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
+
+  // Closing it hands F3 back to the shell, and clears the query with the marks.
+  terminal.closeSearch();
+  expect(terminal.searchQuery.value).toBe('');
+  expect(xterm.keyHandler(press({ key: 'F3' }))).toBe(true);
   await terminal.dispose();
 });
 
