@@ -166,6 +166,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // The query lives with the search rather than with the pane's input, because the
   // keys that walk the matches — F3 and Shift+F3 — are the terminal's to handle.
   const searchQuery = ref('');
+  // Whether the query has to match the shell's casing. Terminals find either way by
+  // default, and the toggle is what asks for the stricter one.
+  const searchCaseSensitive = ref(false);
   const searchResults = ref({ index: 0, count: 0, sessionId: '' });
   let searchLine: number | null = null;
   let searchHighlights: IDecoration[] = [];
@@ -406,7 +409,8 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
         rows.push(buffer.getLine(next)?.translateToString(true) ?? '');
         next += 1;
       }
-      const index = rows.join('').toLowerCase().indexOf(needle);
+      const text = rows.join('');
+      const index = (searchCaseSensitive.value ? text : text.toLowerCase()).indexOf(needle);
       if (index >= 0) {
         let offset = index;
         let matchRow = row;
@@ -464,8 +468,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   /** Move to the next or previous match, wrapping around the buffer. */
   function findSearch(query: string, backwards = false): void {
     const view = views.get(activeId.value);
-    const needle = query.trim().toLowerCase();
-    if (!view || !needle) { forgetSearch(); return; }
+    const typed = query.trim();
+    const needle = searchCaseSensitive.value ? typed : typed.toLowerCase();
+    if (!view || !typed) { forgetSearch(); return; }
     const matches = matchingLines(view.terminal, needle);
     if (!matches.length) { forgetSearch(); return; }
 
@@ -498,6 +503,13 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   /** The pane's field sets the query; the search below reads it back. */
   function setSearchQuery(value: string): void {
     searchQuery.value = value;
+  }
+
+  /** The case toggle re-runs whatever query is in the field. */
+  function toggleSearchCase(): boolean {
+    searchCaseSensitive.value = !searchCaseSensitive.value;
+    findSearch(searchQuery.value);
+    return searchCaseSensitive.value;
   }
 
   function removeView(id: string): void {
@@ -789,6 +801,7 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     searchOpen: readonly(searchOpen),
     searchResults: readonly(searchResults),
     findSearch, openSearch, closeSearch, searchQuery: readonly(searchQuery), setSearchQuery,
+    searchCaseSensitive: readonly(searchCaseSensitive), toggleSearchCase,
     zoom,
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
     // The pane's context menu runs the same actions the keys do.

@@ -150,6 +150,12 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
       >
       <span v-if="findCount" class="terminal-find__count" data-testid="terminal-find-count">{{ findCount }}</span>
       <button
+        type="button" class="terminal-find__button" :class="{ 'terminal-find__button--on': controller.searchCaseSensitive.value }"
+        :aria-pressed="controller.searchCaseSensitive.value ? 'true' : 'false'"
+        data-action="terminal-find-case" data-testid="terminal-find-case"
+        :title="t('terminal.findCase')" :aria-label="t('terminal.findCase')" @click="controller.toggleSearchCase()"
+      >Aa</button>
+      <button
         type="button" class="terminal-find__button" data-action="terminal-find-previous"
         :title="t('terminal.findPrevious')" :aria-label="t('terminal.findPrevious')" @click="search(true)"
       >↑</button>

@@ -190,6 +190,18 @@ describe('desktop terminal panel', () => {
     await app.get('[data-testid="terminal-find-input"]').setValue('not in the buffer'); await flushPromises();
     expect(count()).toBe('No matches');
 
+    // The case toggle re-runs the query that is in the field.
+    await app.get('[data-testid="terminal-find-input"]').setValue('e2e_find'); await flushPromises();
+    expect(count()).toBe('1/2');
+    const toggle = app.get('[data-testid="terminal-find-case"]');
+    expect(toggle.attributes('aria-pressed')).toBe('false');
+    await toggle.trigger('click'); await flushPromises();
+    expect(toggle.attributes('aria-pressed')).toBe('true');
+    // The shell printed the marker in capitals, so the strict search finds nothing.
+    expect(count()).toBe('No matches');
+    await toggle.trigger('click'); await flushPromises();
+    expect(count()).toBe('1/2');
+
     // Escape closes it and gives the keyboard back to the shell.
     await app.get('[data-testid="terminal-find-input"]').trigger('keydown', { key: 'Escape' }); await flushPromises();
     expect(app.find('[data-testid="terminal-find"]').exists()).toBe(false);

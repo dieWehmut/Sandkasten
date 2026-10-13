@@ -235,6 +235,26 @@ test('F3 walks the matches while the find bar is open, and the shell keeps it ot
   await terminal.dispose();
 });
 
+test('the case toggle decides whether the query has to match casing', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  xterm.lines = ['E2E_MARK one', 'e2e_mark two'];
+
+  // Terminals find either way by default.
+  terminal.findSearch('e2e_mark');
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
+  // Asking for the stricter one re-runs the query the field holds.
+  terminal.setSearchQuery('e2e_mark');
+  expect(terminal.toggleSearchCase()).toBe(true);
+  expect(terminal.searchCaseSensitive.value).toBe(true);
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 1 });
+  expect(xterm.decorations).toHaveLength(1);
+  // And back again.
+  expect(terminal.toggleSearchCase()).toBe(false);
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
+  await terminal.dispose();
+});
+
 describe('app-owned terminal sessions', () => {
   test('copy and paste are the host clipboard, while Ctrl+C stays with the shell', async () => {
     const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
