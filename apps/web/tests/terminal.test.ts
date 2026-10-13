@@ -8,8 +8,32 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
   input = (_data: string) => {}; resized = (_size: { cols: number; rows: number }) => {};
   keyHandler: ((event: any) => boolean) | undefined;
   selection = ''; selected = 0; cleared = 0;
-  write = vi.fn(); dispose = vi.fn(); focus = vi.fn(); refresh = vi.fn();
+  lines: string[] = []; pending = ''; scrolled: number[] = []; decorations: any[] = [];
+  wrappedRows = new Set<number>();
+  write = vi.fn((data: string) => { this.feed(data); });
+  dispose = vi.fn(); focus = vi.fn(); blur = vi.fn(); refresh = vi.fn();
   loadAddon = vi.fn();
+  /** A small scrollback: what the terminal shows is what the search reads. */
+  feed(data: string) {
+    this.pending += data;
+    while (this.pending.includes('\n')) {
+      const [line, ...rest] = this.pending.split('\n');
+      this.lines.push(line.replace(/\r$/, ''));
+      this.pending = rest.join('\n');
+    }
+  }
+  get buffer() {
+    return { active: {
+      length: this.lines.length, baseY: 0, cursorY: 0,
+      getLine: (line: number) => (this.lines[line] === undefined ? undefined : {
+        isWrapped: this.wrappedRows.has(line),
+        translateToString: () => this.lines[line],
+      }),
+    } };
+  }
+  scrollToLine(line: number) { this.scrolled.push(line); }
+  registerMarker() { return { dispose: vi.fn() }; }
+  registerDecoration(options: any) { const decoration = { options, dispose: vi.fn() }; this.decorations.push(decoration); return decoration; }
   pasted: string[] = [];
   paste(data: string) { this.pasted.push(data); this.input(data); }
   getSelection() { return this.selection; }
@@ -94,6 +118,65 @@ test('zoom steps the terminal font, within bounds, across sessions', async () =>
   terminal.zoom(1);
   terminal.zoom(1);
   expect(mocks.terminals.map((view) => view.options.fontSize)).toEqual([15, 15]);
+  await terminal.dispose();
+});
+
+test('the find bar walks the matches the terminal actually holds', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  // The attach replay left a prompt line in the buffer; end it, then write output.
+  xterm.write('\r\nfirst E2E_MARK\r\nsecond\r\nE2E_MARK again\r\n');
+
+  // The key opens and closes the bar, and the shell keeps its own Ctrl+F.
+  expect(xterm.keyHandler(press({ key: 'f', ctrlKey: true, shiftKey: true }))).toBe(false);
+  expect(terminal.searchOpen.value).toBe(true);
+  expect(xterm.keyHandler(press({ key: 'f', ctrlKey: true }))).toBe(true);
+
+  // Two lines hold the marker, and the search starts at the first of them.
+  terminal.findSearch('E2E_MARK');
+  expect(terminal.searchResults.value).toEqual({ index: 1, count: 2, sessionId: 's1' });
+  expect(xterm.scrolled).toEqual([1]);
+  // The terminal is scrolled to the match, and the one it picked is highlighted.
+  expect(xterm.decorations.at(-1)?.options).toMatchObject({ x: 6, width: 8 });
+
+  // Next wraps through the rest of them; previous goes back.
+  terminal.findSearch('E2E_MARK');
+  expect(terminal.searchResults.value).toMatchObject({ index: 2, count: 2 });
+  expect(xterm.scrolled).toEqual([1, 3]);
+  terminal.findSearch('E2E_MARK');
+  expect(terminal.searchResults.value).toMatchObject({ index: 1, count: 2 });
+  terminal.findSearch('E2E_MARK', true);
+  expect(terminal.searchResults.value).toMatchObject({ index: 2, count: 2 });
+  expect(xterm.scrolled).toEqual([1, 3, 1, 3]);
+
+  // Nothing found is not a crash: the count goes to zero and the highlight goes.
+  terminal.findSearch('not in the buffer');
+  expect(terminal.searchResults.value).toEqual({ index: 0, count: 0, sessionId: 's1' });
+  expect(xterm.decorations.at(-1)?.dispose).toHaveBeenCalled();
+
+  // Closing takes the highlight with it and gives the keyboard back to the shell.
+  terminal.findSearch('E2E_MARK');
+  terminal.closeSearch();
+  expect(terminal.searchOpen.value).toBe(false);
+  expect(xterm.decorations.at(-1)?.dispose).toHaveBeenCalled();
+  await terminal.dispose();
+});
+
+test('a line the terminal wrapped is one line to the search', async () => {
+  const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+  const xterm = mocks.terminals[0];
+  // A deep prompt wraps, so the marker sits entirely on the row the terminal
+  // continued on — which is what a per-row scan misses, and what the real session
+  // did with its long `workspace>` prompt.
+  xterm.lines = ['C:\\Users\\someone\\a\\deep\\workspace>echo', 'E2E_CLEAR_OK', 'other'];
+  xterm.wrappedRows = new Set([1]);
+
+  terminal.findSearch('E2E_CLEAR_OK');
+  expect(terminal.searchResults.value).toEqual({ index: 1, count: 1, sessionId: 's1' });
+  // The match starts on the continuation row, and that is where it scrolls and
+  // highlights.
+  expect(xterm.scrolled).toEqual([1]);
+  expect(xterm.decorations.at(-1)?.options).toMatchObject({ x: 0, width: 12 });
   await terminal.dispose();
 });
 

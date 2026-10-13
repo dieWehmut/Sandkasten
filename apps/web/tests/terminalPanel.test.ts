@@ -11,15 +11,34 @@ const xterm = vi.hoisted(() => ({ terminals: [] as any[] }));
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
   cols = 80; rows = 24; options: any; host?: HTMLElement; text = ''; input: (data: string) => void = () => {};
   selection = ''; selected = 0; cleared = 0;
+  lines: string[] = []; pending = ''; scrolled: number[] = []; decorations: any[] = [];
   constructor(options: any) { this.options = options; xterm.terminals.push(this); }
   open(host: HTMLElement) { this.host = host; host.innerHTML = '<textarea class="xterm-helper-textarea"></textarea><span></span>'; this.write(''); }
-  write(data: string) { this.text += data; if (this.host) this.host.querySelector('span')!.textContent = this.text; }
+  write(data: string) {
+    this.text += data;
+    if (this.host) this.host.querySelector('span')!.textContent = this.text;
+    this.pending += data;
+    while (this.pending.includes('\n')) {
+      const [line, ...rest] = this.pending.split('\n');
+      this.lines.push(line.replace(/\r$/, ''));
+      this.pending = rest.join('\n');
+    }
+  }
+  get buffer() {
+    return { active: {
+      length: this.lines.length, baseY: 0, cursorY: 0,
+      getLine: (line: number) => (this.lines[line] === undefined ? undefined : { translateToString: () => this.lines[line] }),
+    } };
+  }
+  scrollToLine(line: number) { this.scrolled.push(line); }
+  registerMarker() { return { dispose() {} }; }
+  registerDecoration(options: any) { const decoration = { options, dispose: vi.fn() }; this.decorations.push(decoration); return decoration; }
   pasted: string[] = [];
   paste(data: string) { this.pasted.push(data); this.input(data); }
   getSelection() { return this.selection; }
   selectAll() { this.selected += 1; }
   clear() { this.cleared += 1; }
-  loadAddon() {} attachCustomKeyEventHandler() {} dispose() {} refresh() {}
+  loadAddon() {} attachCustomKeyEventHandler() {} dispose() {} refresh() {} blur() {}
   focus() { this.host?.querySelector('textarea')?.focus(); }
   onData(handler: any) { this.input = handler; return { dispose() {} }; } onResize() { return { dispose() {} }; }
 } }));
@@ -143,6 +162,38 @@ describe('desktop terminal panel', () => {
     await zoom('zoom-reset');
     expect(pane.attributes('style')).toContain('--terminal-font-size: 13px');
     expect(xterm.terminals.every((view) => view.options.fontSize === 13)).toBe(true);
+  });
+
+  test('the find bar walks the scrollback, from the menu and by key', async () => {
+    const bridge = installDesktop(); const app = await mountApp();
+    await app.get('[data-action="select-output-terminal"]').trigger('click'); await flushPromises();
+    // The shell printed two lines that hold the marker.
+    data({ id: 's1', data: 'E2E_FIND one\r\nplain\r\nE2E_FIND two\r\n' }); await flushPromises();
+    const pane = app.get('[data-testid="terminal-pane"]');
+    expect(app.find('[data-testid="terminal-find"]').exists()).toBe(false);
+
+    await pane.trigger('contextmenu', { clientX: 8, clientY: 8 }); await flushPromises();
+    await app.get('[data-action="context-menu-find"]').trigger('click'); await flushPromises();
+    expect(app.find('[data-testid="terminal-find"]').exists()).toBe(true);
+
+    const count = () => app.find('[data-testid="terminal-find-count"]').text();
+    await app.get('[data-testid="terminal-find-input"]').setValue('E2E_FIND'); await flushPromises();
+    expect(count()).toBe('1/2');
+    // The terminal was scrolled to the line it picked.
+    expect(xterm.terminals[0].scrolled).toEqual([0]);
+    await app.get('[data-action="terminal-find-next"]').trigger('click'); await flushPromises();
+    expect(count()).toBe('2/2');
+    await app.get('[data-action="terminal-find-previous"]').trigger('click'); await flushPromises();
+    expect(count()).toBe('1/2');
+
+    // A query nothing holds says so instead of pretending.
+    await app.get('[data-testid="terminal-find-input"]').setValue('not in the buffer'); await flushPromises();
+    expect(count()).toBe('No matches');
+
+    // Escape closes it and gives the keyboard back to the shell.
+    await app.get('[data-testid="terminal-find-input"]').trigger('keydown', { key: 'Escape' }); await flushPromises();
+    expect(app.find('[data-testid="terminal-find"]').exists()).toBe(false);
+    expect(document.activeElement?.className).toContain('xterm-helper-textarea');
   });
 
   test('retains output and shell identity across output tabs, panel hiding and setup guide', async () => {
