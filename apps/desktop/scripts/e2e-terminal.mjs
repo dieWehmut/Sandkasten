@@ -230,6 +230,21 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.waitForTimeout(300);
   assert.equal((await page.locator('[data-testid="terminal-find-count"]').innerText()).trim(), firstMatch, 'Shift+F3 has to go back');
 
+  // The case toggle re-runs the query: the filler lines are capitals, so a lowercase
+  // query stops matching once casing matters. The count reads as `n/m` either way it
+  // finds something, and as a word when it does not — which keeps this locale-blind.
+  await page.locator('[data-testid="terminal-find-input"]').fill('');
+  await page.keyboard.type('pad');
+  const caseOff = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  assert.match(caseOff, /^\d+\/\d+$/, `a terminal finds either way by default, showed ${caseOff}`);
+  await page.click('[data-testid="terminal-find-case"]');
+  await page.waitForTimeout(300);
+  const caseOn = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  assert.doesNotMatch(caseOn, /^\d+\/\d+$/, `with casing the capitals stop matching, showed ${caseOn}`);
+  await page.click('[data-testid="terminal-find-case"]');
+  await page.waitForTimeout(300);
+  assert.equal((await page.locator('[data-testid="terminal-find-count"]').innerText()).trim(), caseOff, 'turning it back off finds them again');
+
   // Sixty filler lines pushed the first language's marker off the screen; finding it
   // proves the search walked the scrollback and scrolled the terminal back to it.
   await page.locator('[data-testid="terminal-find-input"]').fill('');
