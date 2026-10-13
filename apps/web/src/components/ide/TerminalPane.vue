@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ContextMenu from '../ContextMenu.vue';
 import type { ContextMenuEntry } from '../contextMenu';
 import type { TerminalClipboardAction, TerminalController, TerminalEntry, TerminalSuggestion } from '../../composables/useTerminal';
@@ -38,6 +38,7 @@ function buildMenuEntries(): ContextMenuEntry[] {
     { kind: 'item', id: 'paste', label: t('terminal.menu.paste'), keybinding: 'Ctrl+Shift+V' },
     { kind: 'item', id: 'select-all', label: t('terminal.menu.selectAll'), keybinding: 'Ctrl+Shift+A' },
     { kind: 'separator' },
+    { kind: 'item', id: 'find', label: t('terminal.menu.find'), keybinding: 'Ctrl+Shift+F' },
     { kind: 'item', id: 'zoom-in', label: t('terminal.menu.zoomIn'), keybinding: 'Ctrl+=' },
     { kind: 'item', id: 'zoom-out', label: t('terminal.menu.zoomOut'), keybinding: 'Ctrl+-' },
     { kind: 'item', id: 'zoom-reset', label: t('terminal.menu.zoomReset'), keybinding: 'Ctrl+0' },
@@ -57,11 +58,47 @@ function runMenuItem(id: string): void {
   if (id === 'zoom-in') { props.controller.zoom(1); return; }
   if (id === 'zoom-out') { props.controller.zoom(-1); return; }
   if (id === 'zoom-reset') { props.controller.zoom(TERMINAL_FONT_SIZE.default - props.controller.fontSize.value); return; }
+  if (id === 'find') { props.controller.openSearch(); return; }
   void props.controller.clipboard(id as TerminalClipboardAction, props.session.id);
+}
+
+// The find bar searches the scrollback through the terminal's own buffer: it shows
+// where the current match sits among them, walks them with the arrows, and scrolls
+// the terminal to the one it picked.
+const findQuery = ref('');
+const findField = ref<HTMLInputElement>();
+const findCount = computed(() => {
+  const { index, count, sessionId } = props.controller.searchResults.value;
+  if (sessionId !== props.session.id) return '';
+  if (!findQuery.value.trim()) return '';
+  return count ? `${index}/${count}` : t('terminal.findNone');
+});
+watch(() => props.controller.searchOpen.value, async (open) => {
+  if (!open) { findQuery.value = ''; return; }
+  await nextTick();
+  findField.value?.focus();
+});
+function search(backwards = false): void {
+  props.controller.findSearch(findQuery.value, backwards);
+}
+function closeFind(): void {
+  props.controller.closeSearch();
+  props.controller.focus();
 }
 
 function labelInput(): void {
   container.value?.querySelector('textarea')?.setAttribute('aria-label', `${t('terminal.input')}: ${props.session.title}`);
+}
+// Selecting the session focuses its shell, which is right for a click anywhere in
+// the pane except the find bar: that one hands the keyboard back to the terminal and
+// the field would never see a keystroke.
+function onPointerDown(event: PointerEvent): void {
+  if (event.target instanceof Element && event.target.closest('[data-testid="terminal-find"]')) return;
+  props.controller.select(props.session.id);
+}
+function onFocusIn(event: FocusEvent): void {
+  if (event.target instanceof Element && event.target.closest('[data-testid="terminal-find"]')) return;
+  props.controller.select(props.session.id);
 }
 onMounted(() => {
   if (!container.value) return;
@@ -81,7 +118,7 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
     class="terminal-pane" :class="{ 'terminal-pane--active': active }"
     data-testid="terminal-pane" :data-session-id="session.id" :data-active="active"
     :style="{ '--terminal-font-size': `${controller.fontSize.value}px` }"
-    :aria-label="session.title" @focusin="controller.select(session.id)" @pointerdown="controller.select(session.id)"
+    :aria-label="session.title" @focusin="onFocusIn" @pointerdown="onPointerDown"
     @contextmenu.prevent="openMenu($event)"
     @mousedown.middle.prevent="controller.clipboard('paste-selection', session.id)"
   >
@@ -90,6 +127,32 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
       :open="menuOpen" :x="menuAt.x" :y="menuAt.y" :entries="menuEntries" :label="t('terminal.menu')"
       @select="runMenuItem" @close="menuOpen = false"
     />
+    <div
+      v-if="active && controller.searchOpen.value" class="terminal-find" data-testid="terminal-find"
+      role="search" :aria-label="t('terminal.find')"
+    >
+      <input
+        ref="findField" v-model="findQuery" type="search" class="terminal-find__input"
+        data-testid="terminal-find-input" :placeholder="t('terminal.find')" :aria-label="t('terminal.find')"
+        @input="search()"
+        @keydown.enter.exact.prevent="search()"
+        @keydown.shift.enter.prevent="search(true)"
+        @keydown.esc.prevent="closeFind()"
+      >
+      <span v-if="findCount" class="terminal-find__count" data-testid="terminal-find-count">{{ findCount }}</span>
+      <button
+        type="button" class="terminal-find__button" data-action="terminal-find-previous"
+        :title="t('terminal.findPrevious')" :aria-label="t('terminal.findPrevious')" @click="search(true)"
+      >↑</button>
+      <button
+        type="button" class="terminal-find__button" data-action="terminal-find-next"
+        :title="t('terminal.findNext')" :aria-label="t('terminal.findNext')" @click="search()"
+      >↓</button>
+      <button
+        type="button" class="terminal-find__button" data-action="terminal-find-close"
+        :title="t('terminal.findClose')" :aria-label="t('terminal.findClose')" @click="closeFind()"
+      >✕</button>
+    </div>
     <!-- The shell the user is typing in can run these; the prefix model only
          suggests, it never inserts anything on its own. -->
     <div

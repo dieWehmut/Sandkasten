@@ -1,5 +1,5 @@
 import { computed, readonly, ref, shallowRef, watch } from 'vue';
-import { Terminal, type IDisposable, type ITheme } from '@xterm/xterm';
+import { Terminal, type IDecoration, type IDisposable, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import type { TerminalBridge, TerminalProfile, TerminalSession } from '../services/desktopBridge';
 import { quoteForShell } from '../terminal/terminalCommand';
@@ -155,6 +155,14 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // history recall moves the shell's cursor or its line without telling this model,
   // and completing from a wrong line would send the wrong edits to the PTY.
   const lineUnknown = ref(false);
+  // The find bar: the buffer is scanned through xterm's public API rather than
+  // through an addon — the search addon published for this terminal version reports
+  // no matches for lines that are demonstrably in the buffer — and the current match
+  // is scrolled to and highlighted.
+  const searchOpen = ref(false);
+  const searchResults = ref({ index: 0, count: 0, sessionId: '' });
+  let searchLine: number | null = null;
+  let searchHighlight: IDecoration | undefined;
   // Where the active session's shell is, as far as a plain `cd` can be followed.
   // Empty means the workspace root, which is where a session starts.
   const workspaceCwd = ref('');
@@ -374,6 +382,101 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     }
   }
 
+  /**
+   * Every place the query appears, top to bottom, as the row the match starts on
+   * and its column there. A long line the terminal wrapped spans several buffer
+   * rows, and a prompt carrying a deep path wraps often, so the rows a terminal
+   * marked as wrapped are joined into one logical line before matching — a
+   * per-row scan would miss exactly the lines a user wants to find.
+   */
+  function matchingLines(terminal: Terminal, needle: string): { line: number; column: number }[] {
+    const buffer = terminal.buffer.active;
+    const found: { line: number; column: number }[] = [];
+    let row = 0;
+    while (row < buffer.length) {
+      const rows = [buffer.getLine(row)?.translateToString(true) ?? ''];
+      let next = row + 1;
+      while (next < buffer.length && buffer.getLine(next)?.isWrapped) {
+        rows.push(buffer.getLine(next)?.translateToString(true) ?? '');
+        next += 1;
+      }
+      const index = rows.join('').toLowerCase().indexOf(needle);
+      if (index >= 0) {
+        let offset = index;
+        let matchRow = row;
+        while (matchRow - row < rows.length - 1 && offset >= rows[matchRow - row].length) {
+          offset -= rows[matchRow - row].length;
+          matchRow += 1;
+        }
+        found.push({ line: matchRow, column: offset });
+      }
+      row = next;
+    }
+    return found;
+  }
+
+  /**
+   * A highlight is a nicety — the count and the scroll are the search — so a
+   * terminal that declines the decoration, or a marker it cannot place, leaves the
+   * find bar working.
+   */
+  function highlightMatch(terminal: Terminal, match: { line: number; column: number }, needle: string): void {
+    searchHighlight?.dispose();
+    searchHighlight = undefined;
+    try {
+      const text = terminal.buffer.active.getLine(match.line)?.translateToString(true) ?? '';
+      const column = Math.min(match.column, Math.max(0, text.length - 1));
+      const width = Math.max(1, Math.min(needle.length, text.length - column));
+      const buffer = terminal.buffer.active;
+      const marker = terminal.registerMarker(match.line - (buffer.baseY + buffer.cursorY));
+      if (!marker) return;
+      searchHighlight = terminal.registerDecoration({
+        marker, x: column, width, backgroundColor: 'rgba(126, 168, 116, 0.45)',
+      });
+    } catch {
+      searchHighlight = undefined;
+    }
+  }
+
+  function forgetSearch(): void {
+    searchHighlight?.dispose();
+    searchHighlight = undefined;
+    searchLine = null;
+    searchResults.value = { index: 0, count: 0, sessionId: activeId.value };
+  }
+
+  /** Move to the next or previous match, wrapping around the buffer. */
+  function findSearch(query: string, backwards = false): void {
+    const view = views.get(activeId.value);
+    const needle = query.trim().toLowerCase();
+    if (!view || !needle) { forgetSearch(); return; }
+    const matches = matchingLines(view.terminal, needle);
+    if (!matches.length) { forgetSearch(); return; }
+
+    const line = searchLine === null
+      ? (backwards ? matches.at(-1)! : matches[0])
+      : backwards
+        ? [...matches].reverse().find((candidate) => candidate.line < searchLine!) ?? matches.at(-1)!
+        : matches.find((candidate) => candidate.line > searchLine!) ?? matches[0];
+    searchLine = line.line;
+    searchResults.value = { index: matches.findIndex((candidate) => candidate.line === line.line) + 1, count: matches.length, sessionId: activeId.value };
+    view.terminal.scrollToLine(line.line);
+    highlightMatch(view.terminal, line, needle);
+  }
+
+  function openSearch(): void {
+    // The terminal gives the keyboard up, or the field would never see a keystroke.
+    views.get(activeId.value)?.terminal.blur();
+    searchOpen.value = true;
+    searchLine = null;
+    searchResults.value = { index: 0, count: 0, sessionId: activeId.value };
+  }
+
+  function closeSearch(): void {
+    forgetSearch();
+    searchOpen.value = false;
+  }
+
   function removeView(id: string): void {
     inputLine.value = '';
     lineUnknown.value = false;
@@ -413,6 +516,11 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
   // taken while a suggestion exists, so the shell keeps every other key.
       terminal.attachCustomKeyEventHandler((event) => {
         if (isTerminalShortcut(event)) return false;
+        if (isFindShortcut(event)) {
+          if (id === activeId.value) searchOpen.value ? closeSearch() : openSearch();
+          else select(id);
+          return false;
+        }
         const zooming = zoomActionFor(event);
         if (zooming) {
           if (id === activeId.value) zoom(zooming === 'in' ? 1 : zooming === 'out' ? -1 : TERMINAL_FONT_SIZE.default - fontSize.value);
@@ -648,6 +756,9 @@ export function useTerminal(bridge: TerminalBridge, options: TerminalOptions = {
     loadProfiles, create, split, select, close, mount, unmount, fit, syncTheme, dispose, setFocused, send, loadCommands,
     show: () => { shown.value = true; }, showOutput: () => { shown.value = false; },
     fontSize: readonly(fontSize),
+    searchOpen: readonly(searchOpen),
+    searchResults: readonly(searchResults),
+    findSearch, openSearch, closeSearch,
     zoom,
     focus: () => { views.get(activeId.value)?.terminal.focus(); },
     // The pane's context menu runs the same actions the keys do.
@@ -668,6 +779,13 @@ export function zoomActionFor(event: KeyboardEvent): 'in' | 'out' | 'reset' | nu
   if (event.key === '-' || event.key === '_' || event.code === 'Minus' || event.code === 'NumpadSubtract') return 'out';
   if (event.key === '0' || event.code === 'Digit0' || event.code === 'Numpad0') return 'reset';
   return null;
+}
+
+/** The find key, which every editor and terminal uses for its search bar. */
+export function isFindShortcut(event: KeyboardEvent): boolean {
+  const command = event.metaKey && !event.ctrlKey;
+  const controlShift = event.ctrlKey && event.shiftKey;
+  return (command || controlShift) && !event.altKey && event.key?.toLowerCase() === 'f';
 }
 
 /** The editor-style accept key; Tab stays with the shell's own completion. */
