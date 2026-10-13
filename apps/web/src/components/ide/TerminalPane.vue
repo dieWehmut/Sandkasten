@@ -39,6 +39,9 @@ function buildMenuEntries(): ContextMenuEntry[] {
     { kind: 'item', id: 'select-all', label: t('terminal.menu.selectAll'), keybinding: 'Ctrl+Shift+A' },
     { kind: 'separator' },
     { kind: 'item', id: 'find', label: t('terminal.menu.find'), keybinding: 'Ctrl+Shift+F' },
+    { kind: 'separator' },
+    { kind: 'item', id: 'find-next', label: t('terminal.findNext'), keybinding: 'F3', disabled: !props.controller.searchOpen.value },
+    { kind: 'item', id: 'find-previous', label: t('terminal.findPrevious'), keybinding: 'Shift+F3', disabled: !props.controller.searchOpen.value },
     { kind: 'item', id: 'zoom-in', label: t('terminal.menu.zoomIn'), keybinding: 'Ctrl+=' },
     { kind: 'item', id: 'zoom-out', label: t('terminal.menu.zoomOut'), keybinding: 'Ctrl+-' },
     { kind: 'item', id: 'zoom-reset', label: t('terminal.menu.zoomReset'), keybinding: 'Ctrl+0' },
@@ -59,27 +62,33 @@ function runMenuItem(id: string): void {
   if (id === 'zoom-out') { props.controller.zoom(-1); return; }
   if (id === 'zoom-reset') { props.controller.zoom(TERMINAL_FONT_SIZE.default - props.controller.fontSize.value); return; }
   if (id === 'find') { props.controller.openSearch(); return; }
+  if (id === 'find-next') { search(); return; }
+  if (id === 'find-previous') { search(true); return; }
   void props.controller.clipboard(id as TerminalClipboardAction, props.session.id);
 }
 
 // The find bar searches the scrollback through the terminal's own buffer: it shows
-// where the current match sits among them, walks them with the arrows, and scrolls
-// the terminal to the one it picked.
-const findQuery = ref('');
+// where the current match sits among them, walks them with the arrows or F3, and
+// scrolls the terminal to the one it picked. The query itself lives with the search,
+// because the keys that walk the matches are the terminal's to handle.
 const findField = ref<HTMLInputElement>();
 const findCount = computed(() => {
   const { index, count, sessionId } = props.controller.searchResults.value;
   if (sessionId !== props.session.id) return '';
-  if (!findQuery.value.trim()) return '';
+  if (!props.controller.searchQuery.value.trim()) return '';
   return count ? `${index}/${count}` : t('terminal.findNone');
 });
 watch(() => props.controller.searchOpen.value, async (open) => {
-  if (!open) { findQuery.value = ''; return; }
+  if (!open) return;
   await nextTick();
   findField.value?.focus();
 });
 function search(backwards = false): void {
-  props.controller.findSearch(findQuery.value, backwards);
+  props.controller.findSearch(props.controller.searchQuery.value, backwards);
+}
+function onFindInput(event: Event): void {
+  props.controller.setSearchQuery((event.target as HTMLInputElement).value);
+  search();
 }
 function closeFind(): void {
   props.controller.closeSearch();
@@ -132,11 +141,11 @@ onBeforeUnmount(() => { observer?.disconnect(); props.controller.unmount(props.s
       role="search" :aria-label="t('terminal.find')"
     >
       <input
-        ref="findField" v-model="findQuery" type="search" class="terminal-find__input"
+        ref="findField" :value="controller.searchQuery.value" type="search" class="terminal-find__input"
         data-testid="terminal-find-input" :placeholder="t('terminal.find')" :aria-label="t('terminal.find')"
-        @input="search()"
-        @keydown.enter.exact.prevent="search()"
-        @keydown.shift.enter.prevent="search(true)"
+        @input="onFindInput"
+        @keydown.enter.prevent="search($event.shiftKey)"
+        @keydown.f3.prevent="search($event.shiftKey)"
         @keydown.esc.prevent="closeFind()"
       >
       <span v-if="findCount" class="terminal-find__count" data-testid="terminal-find-count">{{ findCount }}</span>
