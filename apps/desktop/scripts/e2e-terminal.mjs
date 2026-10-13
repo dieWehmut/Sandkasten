@@ -25,6 +25,7 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   let reportTerminalMenu = false;
   let reportZoom = false;
   let reportQuietLine = false;
+  let reportSearch = false;
   const profiles = await page.evaluate(() => window.sandkastenDesktop.terminal.profiles());
   assert.ok(profiles.length, 'at least one installed shell profile must be offered');
   const cmd = profiles.find((profile) => /command prompt|\bcmd\b/i.test(profile.label));
@@ -196,6 +197,34 @@ export async function verifyTerminal({ page, app, outputRoot }) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('[data-testid="context-menu"]'));
   reportTerminalMenu = true;
+
+  // The find bar searches the buffer the terminal really holds, and the count it
+// shows is locale-independent. The just-printed filler line is certainly in the
+// buffer, so that is where the count is checked.
+  await enter(firstId, 'for /l %i in (1,1,60) do @echo PAD%i');
+  await waitScreen(firstId, 'PAD60');
+  assert.equal((await readScreen(firstId)).includes('E2E_TERMINAL_RUN'), false, 'the marker has to be off the screen first');
+  await page.click(pane(firstId), { button: 'right' });
+  await page.waitForSelector('[data-action="context-menu-find"]', { timeout: 10_000 });
+  await page.click('[data-action="context-menu-find"]');
+  await page.waitForSelector('[data-testid="terminal-find"]', { timeout: 10_000 });
+  await page.locator('[data-testid="terminal-find-input"]').click();
+  await page.keyboard.type('PAD60');
+  await page.waitForSelector('[data-testid="terminal-find-count"]', { timeout: 10_000 });
+  const foundCount = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  assert.match(foundCount, /^\d+\/\d+$/, `the find bar has to report where it is among the matches, showed ${foundCount}`);
+
+  // Sixty filler lines pushed the first language's marker off the screen; finding it
+  // proves the search walked the scrollback and scrolled the terminal back to it.
+  await page.locator('[data-testid="terminal-find-input"]').fill('');
+  await page.keyboard.type('E2E_TERMINAL_RUN');
+  await page.waitForTimeout(500);
+  const offScreenCount = (await page.locator('[data-testid="terminal-find-count"]').innerText()).trim();
+  assert.match(offScreenCount, /^\d+\/\d+$/, `the search has to find the marker in the scrollback, showed ${offScreenCount}`);
+  await waitScreen(firstId, 'E2E_TERMINAL_RUN', 10_000);
+  await page.click('[data-action="terminal-find-close"]');
+  await page.waitForFunction(() => !document.querySelector('[data-testid="terminal-find"]'));
+  reportSearch = true;
 
   // Zooming is a terminal setting: the pane publishes the size it took.
   const fontOf = () => page.getAttribute(pane(firstId), 'style');
@@ -392,5 +421,5 @@ export async function verifyTerminal({ page, app, outputRoot }) {
     await page.waitForFunction((id) => !document.querySelector(`[data-testid="terminal-session"][data-session-id="${id}"]`), shellId);
   }
 
-  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu, zoom: reportZoom, quietLine: reportQuietLine };
+  return { profiles: profiles.map((profile) => profile.label), persistentState: true, split: true, interrupt: true, resize: { before: sizeBefore, after: sizeAfter }, close: true, initialOutput: true, runInTerminal: reportRunInTerminal, suggestions: reportSuggestions, argumentSuggestions: reportArgumentSuggestions, directorySuggestions: reportDirectorySuggestions, nestedSuggestions: reportNestedSuggestions, cwdSuggestions: reportCwdSuggestions, pushdSuggestions: reportPushdSuggestions, powershellRun: reportPowerShellRun, javascriptRun: reportJavaScriptRun, bashRun: reportBashRun, shellSourceMarked: reportShellSourceMarked, aliasInPalette: reportAliasInPalette, cmdInternal: reportCmdInternal, clipboard: reportClipboard, clipboardNote, clipboardKeys: reportClipboardKeys, terminalMenu: reportTerminalMenu, zoom: reportZoom, quietLine: reportQuietLine, search: reportSearch };
 }
