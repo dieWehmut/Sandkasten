@@ -251,7 +251,9 @@ directory and exits instead of starting an empty window.
   terminal marks as wrapped are joined into one logical line before matching, because
   a deep `workspace>` prompt wraps — which is what a per-row scan misses, and what the
   end-to-end run caught. Every match is marked and the current one stands out, up to
-  two hundred marks; the count still covers the whole buffer. Upgrading the terminal
+  two hundred marks; the count still covers the whole buffer, and the `Aa` button
+  asks for the stricter comparison when a lowercase query should not find it.
+  Upgrading the terminal
   and its addons together is the way back to the addon, if its search is ever needed
   beyond the buffer scan.
 - The pane's pointer and focus handling leaves the find field its keyboard: the
