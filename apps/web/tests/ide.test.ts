@@ -741,6 +741,36 @@ describe('desktop workbench', () => {
     expect(wrapper.get('[data-activity="explorer"]').attributes('aria-pressed')).toBe('true');
   });
 
+  test('toggles the theme from the activity bar directly above settings', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The two app-wide leaves sit together at the bottom of the lane, the theme
+    // toggle first and settings last.
+    const buttons = wrapper.findAll('.ide-activity__button');
+    expect(buttons.at(-2)?.attributes('data-action')).toBe('toggle-theme');
+    expect(buttons.at(-1)?.attributes('data-action')).toBe('open-settings');
+
+    const toggle = wrapper.get('[data-action="toggle-theme"]');
+    expect(toggle.classes()).toContain('ide-activity__button--footer');
+    // The label names the theme the click moves to, so the control reads as an
+    // action rather than a state.
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(toggle.attributes('aria-label')).toBe('Use dark theme');
+
+    await toggle.trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('sandkasten-theme')).toBe('dark');
+    expect(wrapper.get('[data-action="toggle-theme"]').attributes('aria-label')).toBe('Use light theme');
+
+    await wrapper.get('[data-action="toggle-theme"]').trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
   test('keeps the sidebar collapse control at the top-right of the sidebar header', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
