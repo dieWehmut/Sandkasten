@@ -647,8 +647,11 @@
   background: transparent;
 }
 
+/* Every label in the tree reads at the strong text role: a folder differs from
+   a file by its weight, not by a grey it does not share with the rest of the
+   list. */
 .ide-tree__row--directory .ide-tree__toggle {
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 600;
 }
 

@@ -183,6 +183,9 @@ describe('workbench style boundaries', () => {
     expect(ide).toMatch(/\.ide-tree__row--active \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
     expect(ide).toMatch(/\.ide-tree__guides i \{[^}]*background: var\(--border\);[^}]*opacity: 0;/s);
     expect(ide).toMatch(/\.ide-tree__row:hover \.ide-tree__guides i,\s*\.ide-tree__row--active \.ide-tree__guides i \{\s*opacity: 1;/);
+    // Every tree label reads at the strong text role: a folder separates itself
+    // by its weight, not by a grey the rest of the list does not share.
+    expect(ide).toMatch(/\.ide-tree__row--directory \.ide-tree__toggle \{\s*color: var\(--text\);\s*font-weight: 600;\s*\}/);
   });
 
   test('keeps the VS Code editor typography and gutter roles', () => {
