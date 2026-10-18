@@ -237,17 +237,22 @@ describe('workbench style boundaries', () => {
     expect(welcome).toMatch(/\.editor-welcome__path \{[^}]*text-overflow: ellipsis;/s);
   });
 
-  test('frames the settings screen like the settings editor', () => {
+  test('frames the settings screen like the get-started page', () => {
     const settings = style('settings.css');
-    // Measured from the settings editor: a 1400 px frame, a header with 24 px
-    // insets over a rule, rows with the 12/14/18 padding and a hover highlight,
-    // the two-pixel accent bar that marks a changed setting, and 22 px TOC rows.
-    expect(settings).toMatch(/\.settings-header \{\s*max-width: 1400px;\s*margin: 0 auto;\s*padding: 12px 24px 0;/);
-    expect(settings).toMatch(/\.settings-header__controls \{\s*margin-top: 10px;\s*border-bottom: 1px solid var\(--border\);/);
-    expect(settings).toMatch(/\.settings-content__inner \{\s*max-width: 1400px;\s*margin: 0 auto;\s*padding: 6px 24px 48px;/);
-    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 12px 14px 18px;/s);
-    expect(settings).toMatch(/\.settings-row--modified::before \{[^}]*left: 5px;[^}]*top: 15px;[^}]*bottom: 18px;[^}]*width: 2px;/s);
-    expect(settings).toMatch(/\.settings-sections button\[aria-current="page"\] \{\s*color: var\(--text\);\s*font-weight: 700;/);
+    // Settings is the welcome page's sibling: the same 13 px/16 px page type, a
+    // 1200 px centred frame whose header carries the product mark, a 2.7em page
+    // title at weight 400, 1.5em section titles, and one action tile per row
+    // (1 px border, 6 px corners, the raised surface). The two roles that stay
+    // the settings editor's own are the search field and the two-pixel marker
+    // on a setting the user changed.
+    expect(settings).toMatch(/\.settings-view \{[^}]*font-size: 13px;[^}]*line-height: 16px;/s);
+    expect(settings).toMatch(/\.settings-page \{[^}]*max-width: 1200px;[^}]*grid-template-columns: minmax\(180px, 3fr\) minmax\(0, 8fr\);/s);
+    expect(settings).toMatch(/\.settings-page__title \{[^}]*font-size: 2\.7em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-page__subtitle \{[^}]*font-size: 1\.35em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-card h2 \{[^}]*font-size: 1\.5em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 8px 10px;[^}]*border: 1px solid var\(--border\);[^}]*border-radius: 6px;/s);
+    expect(settings).toMatch(/\.settings-row--modified::before \{[^}]*left: 0;[^}]*top: 8px;[^}]*bottom: 8px;[^}]*width: 2px;/s);
+    expect(settings).toMatch(/\.settings-sections button\[aria-current="page"\] \{[^}]*color: var\(--text\);[^}]*font-weight: 700;/s);
   });
 
   test('shapes the context menu like the reference context view', () => {
