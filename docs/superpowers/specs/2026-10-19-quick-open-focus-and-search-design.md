@@ -59,6 +59,23 @@ with the `--accent-soft` input-option fill while pressed, labelled through
 `aria-pressed` and asks for the next value rather than carrying `checked`
 state, so both search surfaces describe the option identically.
 
+## The theme toggle in the compact layouts
+
+The activity bar is the only route to the theme toggle, and the compact layouts
+drop the bar: below the 1200 px desktop track the workbench folds to one column
+and the app floats a single settings entry at the bottom-right. A narrow window
+therefore had no way to change the theme at all, which the toggle added for the
+activity bar had not covered.
+
+The floating entry is now a pair — the icon-only toggle, then settings — so the
+two app-wide leaves the lane carries stay together at every width. The toggle
+keeps the lane's label rule and takes the same square box; the pair keeps the
+sheet shadow and the bordered tile the single entry already had.
+
+`tests/accessibility.test.ts` mounts the app on the compact media track, asserts
+the activity bar is absent, checks the entry order, and drives the toggle to
+prove it flips and persists the theme.
+
 ## Contrast audit
 
 A probe walked every text node in ten theme × scheme combinations across nine
@@ -79,6 +96,8 @@ itself.
   override.
 - `tests/workspaceSearch.test.ts`, `tests/ide.test.ts` — the option is driven
   as a pressed button end to end.
-- Full `apps/web` suite: 51 files / 358 tests. Desktop `node --test`: 147.
+- `tests/accessibility.test.ts` — the compact layout keeps both floating
+  entries and the toggle still flips and persists the theme.
+- Full `apps/web` suite: 51 files / 359 tests. Desktop `node --test`: 147.
 - `scripts/webui-browser-smoke.mjs` passes at three viewports; the tracked
   distribution is still exactly four files and is rebuilt from these sources.
