@@ -61,6 +61,17 @@ select:disabled {
   box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
+/* A heading that takes focus on mount is a reading position, not a control, so
+   it announces itself to assistive technology without painting the control's
+   two-layer focus ring. Only the programmatic focus is exempt: a heading that a
+   keyboard user actually tabs to still shows the ring. */
+h1[tabindex="-1"]:focus-visible,
+h2[tabindex="-1"]:focus-visible,
+h3[tabindex="-1"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 ::selection {
   background: var(--selection);
 }

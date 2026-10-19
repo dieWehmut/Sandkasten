@@ -169,6 +169,16 @@ describe('workbench style boundaries', () => {
     expect(output).toContain('text-transform: uppercase;');
   });
 
+  test('keeps the control focus ring off a heading that only takes focus on mount', () => {
+    const base = style('base.css');
+    // The setup and settings pages move focus to their page heading so assistive
+    // technology reads it first. That heading is a reading position, not a
+    // control, so the shared rule drops both layers of the control ring instead
+    // of every page patching its own heading.
+    expect(base).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--accent\);\s*outline-offset: 2px;\s*box-shadow: 0 0 0 4px var\(--focus-ring\);\s*\}/);
+    expect(base).toMatch(/h1\[tabindex="-1"\]:focus-visible,\s*h2\[tabindex="-1"\]:focus-visible,\s*h3\[tabindex="-1"\]:focus-visible \{\s*outline: none;\s*box-shadow: none;\s*\}/);
+  });
+
   test('draws the overlay slider and the tree roles VS Code uses', () => {
     const base = style('base.css');
     const ide = style('ide.css');
