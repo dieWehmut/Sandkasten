@@ -70,7 +70,7 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onPointerdow
         class="command-palette__item" role="option" :aria-selected="index === selected"
         :data-kind="item.kind" :data-command="item.kind === 'file' ? undefined : item.id"
         @pointermove="selected = index" @mousedown.prevent @click="emit('select', item.id)">
-        <FileIcon v-if="item.kind === 'file'" :name="item.id" />
+        <FileIcon v-if="item.kind === 'file'" :path="item.id" />
         <ChevronRight v-else :size="16" aria-hidden="true" />
         <span class="command-palette__label">{{ item.label }}</span>
         <span v-if="item.detail" class="command-palette__detail">{{ item.detail }}</span>

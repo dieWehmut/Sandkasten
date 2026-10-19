@@ -41,6 +41,28 @@ test('Ctrl+P/E searches and opens workspace files, then shows most recent files 
   } finally { app.unmount(); }
 });
 
+test('gives each quick-open file the same file-type icon the explorer shows', async () => {
+  window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({
+    files: { 'main.py': 'print(1)', 'app.ts': 'export {};', 'LICENSE': 'MIT' },
+  }));
+  const app = mount(App, { attachTo: document.body });
+  try {
+    await flushPromises();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, cancelable: true }));
+    await flushPromises();
+    // The palette used to hand FileIcon the entry's name, while the resolver
+    // reads the path, so every row fell back to the neutral document glyph.
+    const rows = app.findAll('.command-palette__item[data-kind="file"]');
+    const iconOf = (path: string) => {
+      const row = rows.find((candidate) => candidate.text().startsWith(path));
+      return row?.get('.file-icon').attributes('data-icon');
+    };
+    expect(iconOf('main.py')).toBe('_f_python');
+    expect(iconOf('app.ts')).toBe('_f_typescript');
+    expect(iconOf('LICENSE')).toBe('_f_license');
+  } finally { app.unmount(); }
+});
+
 test('Ctrl+Shift+P executes real commands and excludes desktop-only operations in the browser', async () => {
   const app = mount(App);
   try {
