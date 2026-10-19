@@ -88,17 +88,21 @@ function emptyLabel(): string {
         </button>
       </div>
       <div class="ide-search__toggles">
-        <label class="ide-search__toggle" :title="t('ide.search.matchCase')">
-          <input
-            data-testid="workspace-search-case"
-            type="checkbox"
-            :checked="caseSensitive"
-            :disabled="!desktop"
-            @change="toggleCase(($event.target as HTMLInputElement).checked)"
-          >
+        <!-- The reference toggles these as icon buttons that stay pressed, the
+             same pattern the editor's find widget uses; a checkbox with a
+             printed label is a second control language for the same idea. -->
+        <button
+          type="button"
+          class="ide-search__toggle"
+          data-testid="workspace-search-case"
+          :aria-pressed="caseSensitive"
+          :aria-label="t('ide.search.matchCase')"
+          :title="t('ide.search.matchCase')"
+          :disabled="!desktop"
+          @click="toggleCase(!caseSensitive)"
+        >
           <CaseSensitive :size="14" aria-hidden="true" />
-          <span class="ide-search__toggle-text">{{ t('ide.search.matchCase') }}</span>
-        </label>
+        </button>
       </div>
     </form>
 

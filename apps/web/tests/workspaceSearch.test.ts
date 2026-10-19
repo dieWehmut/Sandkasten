@@ -119,7 +119,10 @@ describe('workspace search view', () => {
     await wrapper.get('[data-match-path="pkg/util.py"] [data-line="9"]').trigger('click');
     expect(wrapper.emitted('select')).toEqual([['pkg/util.py']]);
 
-    await wrapper.get('[data-testid="workspace-search-case"]').setValue(true);
+    // The case control is a pressed-state button, so it reports the next value
+    // rather than carrying its own checked state.
+    expect(wrapper.get('[data-testid="workspace-search-case"]').attributes('aria-pressed')).toBe('false');
+    await wrapper.get('[data-testid="workspace-search-case"]').trigger('click');
     expect(wrapper.emitted('update:caseSensitive')).toEqual([[true]]);
     await wrapper.get('[data-testid="workspace-search-input"]').setValue('beta');
     expect(wrapper.emitted('update:query')).toEqual([['beta']]);

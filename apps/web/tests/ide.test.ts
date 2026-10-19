@@ -1088,8 +1088,10 @@ describe('desktop workbench', () => {
     await flushPromises();
     expect(bridge.workspace.read).toHaveBeenCalledWith('main.py');
 
-    await wrapper.get('[data-testid="workspace-search-case"]').setValue(true);
-    expect(wrapper.get('[data-testid="workspace-search-case"]').element.checked).toBe(true);
+    // Clicking the case toggle asks for case-sensitive search and shows as pressed.
+    await wrapper.get('[data-testid="workspace-search-case"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search-case"]').attributes('aria-pressed')).toBe('true');
   });
 
   test('explains that search needs the desktop app in the browser build', async () => {

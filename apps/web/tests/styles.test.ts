@@ -169,6 +169,17 @@ describe('workbench style boundaries', () => {
     expect(output).toContain('text-transform: uppercase;');
   });
 
+  test('lights the sidebar search toggles like the find widget options', () => {
+    const ide = style('ide.css');
+    const editor = style('editor.css');
+    // Both search surfaces toggle options the same way: a 22 px icon button in
+    // the muted role, lit with the input-option accent while pressed, instead of
+    // a native checkbox with a printed label.
+    expect(editor).toMatch(/\.find-widget__option\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
+    expect(ide).toMatch(/\.ide-search__toggle \{[^}]*min-width: 22px;[^}]*height: 22px;[^}]*border-radius: 5px;[^}]*color: var\(--text-muted\);/s);
+    expect(ide).toMatch(/\.ide-search__toggle\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
+  });
+
   test('keeps the control focus ring off a heading that only takes focus on mount', () => {
     const base = style('base.css');
     // The setup and settings pages move focus to their page heading so assistive
