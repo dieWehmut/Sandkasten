@@ -7,7 +7,7 @@ import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import SettingsView from './components/SettingsView.vue';
 import NotificationToasts from './components/NotificationToasts.vue';
-import { Settings } from '@lucide/vue';
+import { Moon, Settings, Sun } from '@lucide/vue';
 import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner, type OutputTab } from './composables/useRunner';
@@ -818,7 +818,16 @@ onBeforeUnmount(() => {
       @close-inspector="compactInspectorOpen = false"
     />
     <NotificationToasts :toasts="notifications.toasts.value" @dismiss="notifications.dismiss" />
-    <button v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    <div v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" class="compact-entries">
+      <!-- The compact layouts have no activity bar, so the two app-wide leaves
+           the lane carries have to float here as well; without the toggle the
+           narrow layout would have no way to change the theme at all. -->
+      <button type="button" class="compact-settings-entry compact-settings-entry--icon" data-action="toggle-theme" :aria-label="theme.theme.value === 'light' ? locale.t('header.theme.useDark') : locale.t('header.theme.useLight')" :title="theme.theme.value === 'light' ? locale.t('header.theme.useDark') : locale.t('header.theme.useLight')" @click="theme.toggleTheme">
+        <Sun v-if="theme.theme.value === 'dark'" :size="17" aria-hidden="true" />
+        <Moon v-else :size="17" aria-hidden="true" />
+      </button>
+      <button type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    </div>
     <SettingsView
       v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
       :preference="theme.preference.value"

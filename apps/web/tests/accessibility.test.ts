@@ -124,6 +124,31 @@ describe('EdgeSheet', () => {
     wrapper.unmount();
   });
 
+  test('keeps the theme toggle reachable when the compact layout hides the activity bar', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact layouts drop the activity bar, so both app-wide leaves the
+    // lane carries have to float instead; without the toggle a narrow window
+    // would have no way to change the theme.
+    expect(wrapper.find('[data-testid="ide-activity-bar"]').exists()).toBe(false);
+    const entries = wrapper.get('.compact-entries');
+    const actions = entries.findAll('button').map((button) => button.attributes('data-action'));
+    expect(actions).toEqual(['toggle-theme', 'open-settings']);
+
+    const toggle = entries.get('[data-action="toggle-theme"]');
+    const before = document.documentElement.dataset.theme;
+    await toggle.trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).not.toBe(before);
+    expect(window.localStorage.getItem('sandkasten-theme')).toBe(document.documentElement.dataset.theme);
+    // The label names the theme the next click moves to.
+    expect(wrapper.get('[data-action="toggle-theme"]').attributes('aria-label')).toMatch(/theme/i);
+
+    wrapper.unmount();
+  });
+
   test('wires the compact history and inspector commands to one active sheet at a time', async () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
     const wrapper = mount(App, { attachTo: document.body });

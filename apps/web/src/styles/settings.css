@@ -513,15 +513,21 @@
   color: var(--text-muted);
 }
 
-/* The compact layouts have no activity bar, so the settings entry floats above
-   the workbench at the bottom-right. In the document flow it pushed the page
-   past the viewport, and the sticky title row then covered the run bar controls
-   once the page scrolled. */
-.compact-settings-entry {
+/* The compact layouts have no activity bar, so the two app-wide leaves the lane
+   carries — the theme toggle and settings — float above the workbench at the
+   bottom-right. In the document flow they pushed the page past the viewport, and
+   the sticky title row then covered the run bar controls once the page scrolled. */
+.compact-entries {
   position: fixed;
   right: 14px;
   bottom: 14px;
   z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compact-settings-entry {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -530,6 +536,14 @@
   padding: 7px 12px;
   background: var(--surface);
   box-shadow: var(--shadow-sheet);
+}
+
+/* The toggle is an icon-only leaf, so it keeps the button's height while taking
+   the square box the activity bar gives it. */
+.compact-settings-entry--icon {
+  width: 38px;
+  justify-content: center;
+  padding: 0;
 }
 
 /* The page folds into one column when the workbench is narrow, the way the
