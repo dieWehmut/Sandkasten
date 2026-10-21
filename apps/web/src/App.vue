@@ -20,7 +20,7 @@ import { useRemoteHosts } from './composables/useRemoteHosts';
 import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
-import { useIdeLayout } from './composables/useIdeLayout';
+import { useIdeLayout, type IdeActivity } from './composables/useIdeLayout';
 import { useNotifications } from './composables/useNotifications';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
@@ -475,6 +475,14 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'file.closeTab': closeActiveFile,
   'run.start': () => { void runActive(); },
   'run.stop': stopActive,
+  // Each sidebar view is a command, so both the keyboard shortcut and the
+  // palette reach it the way VS Code's View menu does.
+  'view.showExplorer': () => ide.showActivity('explorer'),
+  'view.showSearch': () => ide.showActivity('search'),
+  'view.showSourceControl': () => ide.showActivity('source-control'),
+  'view.showRuns': () => ide.showActivity('runs'),
+  'view.showRemote': () => ide.showActivity('remote'),
+  'view.showContext': () => ide.showActivity('context'),
   'view.toggleSidebar': ide.toggleSidebar,
   'view.togglePanel': ide.togglePanel,
   'view.toggleSetup': setupWelcome.reopen,
@@ -500,6 +508,16 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'view.restorePanel': () => ide.togglePanelMaximize(),
 };
 
+// The letter after Ctrl+Shift that opens each sidebar view. These are the
+// reference's own bindings, so a user who knows them can reach every view.
+const VIEW_SHORTCUTS: Record<string, IdeActivity> = {
+  e: 'explorer',
+  f: 'search',
+  g: 'source-control',
+  u: 'runs',
+  m: 'remote',
+  i: 'context',
+};
 const commandPaletteError = ref('');
 const paletteCommands = computed<PaletteCommand[]>(() => {
   const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
@@ -516,6 +534,12 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('run.stop', 'palette.stop', 'Shift+F5', isExecutionBusy(executionPhase.value)),
     command('navigation.back', 'navigation.back', 'Alt+Left', editorHistory.canBack.value),
     command('navigation.forward', 'navigation.forward', 'Alt+Right', editorHistory.canForward.value),
+    command('view.showExplorer', 'ide.activity.explorer', `${modifier}Shift+E`, ideMode.value),
+    command('view.showSearch', 'ide.activity.search', `${modifier}Shift+F`, ideMode.value),
+    command('view.showSourceControl', 'ide.activity.sourceControl', `${modifier}Shift+G`, ideMode.value),
+    command('view.showRuns', 'ide.activity.runs', `${modifier}Shift+U`, ideMode.value),
+    command('view.showRemote', 'ide.activity.remote', `${modifier}Shift+M`, ideMode.value),
+    command('view.showContext', 'ide.activity.context', `${modifier}Shift+I`, ideMode.value),
     command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
     command('view.togglePanel', 'palette.panel', `${modifier}J`, ideMode.value),
     command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
@@ -599,6 +623,16 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
+  // VS Code's view shortcuts. They carry Shift, so they are checked before the
+  // plain letters below; Ctrl+Shift+E must not fall through to Ctrl+E.
+  if (event.shiftKey) {
+    const view = VIEW_SHORTCUTS[key];
+    if (view) {
+      event.preventDefault();
+      ide.showActivity(view);
+      return;
+    }
+  }
   if (key === 's') {
     event.preventDefault();
     saveActive();

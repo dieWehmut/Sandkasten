@@ -204,3 +204,44 @@ describe('EdgeSheet', () => {
     expect(document.body.style.overflow).toBe('');
   });
 });
+describe('Sidebar view shortcuts', () => {
+  const active = (wrapper: ReturnType<typeof mount>) =>
+    wrapper.get('[data-testid="ide-activity-bar"] [aria-pressed="true"]').attributes('aria-label');
+
+  test('opens each sidebar view from the keyboard the way the reference does', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(active(wrapper)).toBe('Explorer');
+
+    // The letter after Ctrl+Shift picks the view. Without the binding these keys
+    // did nothing at all, so every view but the explorer was mouse-only.
+    const press = async (key: string) => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey: true, shiftKey: true }));
+      await flushPromises();
+    };
+    await press('F');
+    expect(active(wrapper)).toBe('Search');
+    await press('G');
+    expect(active(wrapper)).toBe('Source Control');
+    await press('U');
+    expect(active(wrapper)).toBe('Recent runs');
+    await press('E');
+    expect(active(wrapper)).toBe('Explorer');
+
+    wrapper.unmount();
+  });
+
+  test('does not let Ctrl+Shift+E fall through to the plain Ctrl+E binding', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // Ctrl+E opens the file palette; Ctrl+Shift+E has to select the explorer
+    // instead of also opening it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(wrapper.find('[data-testid="command-palette"]').exists()).toBe(false);
+    expect(active(wrapper)).toBe('Explorer');
+
+    wrapper.unmount();
+  });
+});
