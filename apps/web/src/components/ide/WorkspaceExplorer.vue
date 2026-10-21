@@ -69,18 +69,52 @@ const languageOptions = computed(() => {
   return languages.length ? languages : FALLBACK_LANGUAGES;
 });
 
+// The reference compacts a chain of single-child folders into one row
+// ("src/components/Button"), which is what keeps a deep path from walking off
+// the side of the sidebar. Each chain is folded into its head node: the head
+// carries the joined label, and the deepest node of the chain supplies the
+// children, so opening the head reveals everything the chain held.
 interface Row {
   node: WorkspaceTreeNode;
   depth: number;
+  /** Joined names for a compacted chain, when this row stands for more than one. */
+  label?: string;
+  /** The deepest folder in a compacted chain, whose children this row shows. */
+  container?: WorkspaceTreeNode;
+  /** Every folder the row stands for, head first, so one click opens them all. */
+  chain?: string[];
+}
+
+interface Chain { tail: WorkspaceTreeNode; paths: string[]; label?: string }
+
+function compactChain(node: WorkspaceTreeNode): Chain {
+  const paths = [node.path];
+  const names = [node.name];
+  let tail = node;
+  // A chain only compacts while every step has exactly one child and that child
+  // is a folder; a folder holding files ends the chain the way the reference
+  // does, so a leaf folder still reads as its own row.
+  while (tail.children?.length === 1 && tail.children[0].type === 'directory') {
+    tail = tail.children[0];
+    paths.push(tail.path);
+    names.push(tail.name);
+  }
+  return { tail, paths, label: names.length > 1 ? names.join('/') : undefined };
 }
 
 const rows = computed<Row[]>(() => {
   const output: Row[] = [];
   const walk = (nodes: readonly WorkspaceTreeNode[], depth: number): void => {
     for (const node of nodes) {
+      if (node.type === 'directory') {
+        // The label is worked out whether or not the row is open, so folding a
+        // chain keeps the joined name instead of snapping back to its head.
+        const { tail, paths, label } = compactChain(node);
+        output.push({ node, depth, label, container: tail, chain: paths });
+        if (!collapsed.value.includes(node.path) && tail.children?.length) walk(tail.children, depth + 1);
+        continue;
+      }
       output.push({ node, depth });
-      if (node.type !== 'directory' || collapsed.value.includes(node.path)) continue;
-      if (node.children?.length) walk(node.children, depth + 1);
     }
   };
   walk(props.tree, 0);
@@ -93,7 +127,10 @@ const rows = computed<Row[]>(() => {
 const inlineInsertAt = computed<number>(() => {
   const parent = createTarget.value?.parent ?? '';
   if (!parent) return 0;
-  const index = rows.value.findIndex((row) => row.node.type === 'directory' && row.node.path === parent);
+  // A compacted chain shows its children under the row that stands for the
+  // whole chain, so a target inside the chain lands after that row.
+  const index = rows.value.findIndex((row) => row.node.type === 'directory'
+    && (row.container?.path ?? row.node.path) === parent);
   return index === -1 ? 0 : index + 1;
 });
 
@@ -119,8 +156,14 @@ function isCollapsed(path: string): boolean {
   return collapsed.value.includes(path);
 }
 
-function toggleDirectory(path: string): void {
-  collapsed.value = isCollapsed(path) ? collapsed.value.filter((entry) => entry !== path) : [...collapsed.value, path];
+function toggleDirectory(path: string, chain?: string[]): void {
+  // Opening a compacted row has to open the folders it stands for as well:
+  // only the head carries the collapsed flag, so leaving the rest folded would
+  // hide the very contents the row promises to reveal.
+  const paths = chain?.length ? chain : [path];
+  collapsed.value = isCollapsed(path)
+    ? collapsed.value.filter((entry) => !paths.includes(entry))
+    : [...new Set([...collapsed.value, ...paths])];
 }
 
 // A directory selection creates inside it; a file selection creates beside it.
@@ -322,15 +365,15 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
         :aria-selected="activePath === row.node.path"
         :data-path="row.node.path"
       >
-        <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :style="{ paddingLeft: `${8 + row.depth * 12}px` }">
+        <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :style="{ paddingLeft: `${8 + row.depth * 12}px` }" :data-chain="row.label ? 'true' : undefined">
           <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
             <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
           </span>
-          <button type="button" class="ide-tree__toggle" :aria-expanded="!isCollapsed(row.node.path)" @click="toggleDirectory(row.node.path)">
+          <button type="button" class="ide-tree__toggle" :aria-expanded="!isCollapsed(row.node.path)" @click="toggleDirectory(row.node.path, row.chain)">
             <ChevronDown v-if="!isCollapsed(row.node.path)" :size="14" aria-hidden="true" />
             <ChevronRight v-else :size="14" aria-hidden="true" />
             <FileIcon kind="folder" :name="row.node.name" :expanded="!isCollapsed(row.node.path)" :theme="iconTheme" :size="15" />
-            <span class="ide-tree__name">{{ row.node.name }}</span>
+            <span class="ide-tree__name" :title="row.label ?? row.node.name">{{ row.label ?? row.node.name }}</span>
           </button>
         </div>
         <!-- The creation row takes its place in the tree so a new file or

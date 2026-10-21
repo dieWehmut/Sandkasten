@@ -344,7 +344,10 @@ describe('workspace explorer', () => {
       'ide-refresh-tree',
       'ide-collapse-folders',
     ]);
-    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(6);
+    // pkg holds only the folder deep, so the reference compacts the pair into
+    // one "pkg/deep" row: two rows for that branch instead of three.
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(5);
+    expect(wrapper.get('[data-path="pkg"] .ide-tree__name').text()).toBe('pkg/deep');
 
     await wrapper.get('[data-action=ide-collapse-folders]').trigger('click');
     // Collapsing folds the nested folder too, so only the top level remains.
@@ -543,6 +546,60 @@ describe('workspace explorer', () => {
     await wrapper.get('[data-action=ide-new-file]').trigger('click');
     await wrapper.get('[data-testid=ide-inline-create] [data-action=ide-cancel-create]').trigger('click');
     expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
+  });
+
+  test('compacts a chain of single-child folders into one row', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{
+          path: 'a',
+          name: 'a',
+          type: 'directory',
+          children: [{
+            path: 'a/b',
+            name: 'b',
+            type: 'directory',
+            children: [{
+              path: 'a/b/c',
+              name: 'c',
+              type: 'directory',
+              // A folder holding more than one child ends the chain, so the row
+              // stands for a/b/c and shows both files beneath it.
+              children: [
+                { path: 'a/b/c/one.py', name: 'one.py', type: 'file' },
+                { path: 'a/b/c/two.py', name: 'two.py', type: 'file' },
+              ],
+            }],
+          }],
+        }],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'a/b/c/one.py',
+      },
+    });
+
+    // One row for the whole chain instead of one per level, which is what keeps
+    // a deep path from walking off the side of the sidebar.
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(3);
+    const head = wrapper.get('[data-path="a"]');
+    expect(head.get('.ide-tree__name').text()).toBe('a/b/c');
+    expect(head.get('.ide-tree__name').attributes('title')).toBe('a/b/c');
+    expect(head.get('.ide-tree__row').attributes('data-chain')).toBe('true');
+    // The chain's children hang under the compacted row at one indent level.
+    expect(wrapper.get('[data-path="a/b/c/one.py"]').attributes('aria-level')).toBe('2');
+    expect(wrapper.findAll('[data-path="a/b/c/one.py"] .ide-tree__guides i')).toHaveLength(1);
+
+    // Folding the head hides the whole chain's contents in one click, and the
+    // row keeps its joined label instead of snapping back to the head's name.
+    await wrapper.get('[data-path="a"] button').trigger('click');
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(1);
+    expect(wrapper.get('[data-path="a"] .ide-tree__name').text()).toBe('a/b/c');
+
+    // Reopening has to open every folder the row stands for, not just the head,
+    // or the contents the row promises to reveal would stay hidden.
+    await wrapper.get('[data-path="a"] button').trigger('click');
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(3);
+    expect(wrapper.get('[data-path="a"] button').attributes('aria-expanded')).toBe('true');
   });
 
   test('renders folders, marks dirty files, and collapses directories', async () => {
