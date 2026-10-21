@@ -77,4 +77,34 @@ describe('appearance overrides', () => {
     expect(ctx.root.style.getPropertyValue('--on-accent')).toBe('#000000');
     ctx.controller.dispose();
   });
+  test('keeps the muted and faint roles readable on the shaded surfaces too', () => {
+    // The sidebar, tab strip, and status bar paint on --chrome, which is darker
+    // than --surface in the light theme. Resolving the muted roles against
+    // --surface alone left them at 4.46:1 on those rows — just under AA.
+    const ctx = setup();
+    ctx.controller.setColor('background', '#ffffff');
+    ctx.controller.setColor('foreground', '#eeeeee');
+    const rgb = (hex: string) => [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+    const luminance = (hex: string) => {
+      const [r, g, b] = rgb(hex).map((channel) => {
+        const value = channel / 255;
+        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a: string, b: string) => {
+      const [first, second] = [luminance(a), luminance(b)].sort((left, right) => right - left);
+      return (first + 0.05) / (second + 0.05);
+    };
+    const surface = ctx.root.style.getPropertyValue('--surface');
+    const chrome = ctx.root.style.getPropertyValue('--chrome');
+    for (const token of ['--text-muted', '--text-faint']) {
+      const value = ctx.root.style.getPropertyValue(token);
+      expect(value).toMatch(/^#[0-9a-f]{6}$/);
+      expect(contrast(value, surface)).toBeGreaterThanOrEqual(4.5);
+      // The shaded rows are the ones that used to fall short.
+      expect(contrast(value, chrome)).toBeGreaterThanOrEqual(4.5);
+    }
+    ctx.controller.dispose();
+  });
 });

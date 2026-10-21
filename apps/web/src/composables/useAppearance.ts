@@ -36,6 +36,29 @@ function readable(color: string, background: string): string {
   }
   return target;
 }
+// Resolve a foreground against every surface it is actually painted on. One is
+// not enough: the muted roles sit on --chrome, and body text sits on
+// --accent-soft in a selected tree row. Checking only --surface let both fall
+// just under AA once a user picked their own colors (measured 4.46 and 4.47).
+function readableOn(color: string, backgrounds: string[]): string {
+  const meets = (candidate: string) => backgrounds.every((surface) => contrast(candidate, surface) >= 4.5);
+  if (meets(color)) return color;
+  // Prefer an endpoint when one clears every surface: a mixed grey is harder to
+  // read as body text than the theme's own white or black, and the endpoints are
+  // what the single-surface resolver would have produced anyway.
+  const endpoint = contrast('#ffffff', backgrounds[0]) >= contrast('#000000', backgrounds[0]) ? '#ffffff' : '#000000';
+  if (meets(endpoint)) return endpoint;
+  const other = endpoint === '#ffffff' ? '#000000' : '#ffffff';
+  if (meets(other)) return other;
+  // Neither endpoint works on every surface, so fall back to the closest mix.
+  for (const target of [endpoint, other]) {
+    for (let step = 1; step <= 20; step++) {
+      const adjusted = mix(color, target, step / 20);
+      if (meets(adjusted)) return adjusted;
+    }
+  }
+  return endpoint;
+}
 
 export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<ColorScheme>>, environment: { root?: HTMLElement; storage?: ThemeStorage } = {}) {
   const root = environment.root ?? document.documentElement;
@@ -65,7 +88,15 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
     const custom = overrides.value[theme.value];
     if (!Object.keys(custom).length) return;
     const { background, foreground, accent } = colors.value;
-    const text = readable(foreground, background);
+    const soft = mix(background, accent, 0.12);
+    // Body text is painted on --accent-soft in a selected tree row and on
+    // --chrome in the shaded rows, so it has to clear AA on those too. The
+    // shaded surface is derived from the text, so settle both together.
+    let text = readable(foreground, background);
+    for (let pass = 0; pass < 3; pass++) {
+      text = readableOn(foreground, [background, mix(background, text, 0.045), soft]);
+    }
+    const shaded = mix(background, text, 0.045);
     const set = (key: string, value: string) => { applied.add(key); root.style.setProperty(key, value); };
     if (custom.background || custom.foreground) {
       set('--surface', background);
@@ -74,14 +105,20 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
       set('--surface-subtle', mix(background, text, 0.035));
       set('--surface-raised', mix(background, text, 0.015));
       set('--text', text);
-      set('--text-muted', readable(mix(text, background, 0.25), background));
-      set('--text-faint', readable(mix(text, background, 0.4), background));
+      // Resolve against whichever surface is harder to read on, so a muted
+      // label clears AA on the shaded rows as well as on the plain surface.
+      const muted = mix(text, background, 0.25);
+      const faint = mix(text, background, 0.4);
+      set('--text-muted', readableOn(muted, [background, shaded, soft]));
+      set('--text-faint', readableOn(faint, [background, shaded, soft]));
       set('--border', mix(background, text, 0.12));
       set('--border-strong', mix(background, text, 0.25));
     }
-    const soft = mix(background, accent, 0.12);
     set('--accent', readable(accent, background));
-    set('--accent-strong', readable(accent, soft));
+    const strong = readable(accent, soft);
+    set('--accent-strong', strong);
+    // The label that sits on --accent-strong, chosen against that same colour.
+    set('--on-accent-strong', contrast('#ffffff', strong) > contrast('#000000', strong) ? '#ffffff' : '#000000');
     set('--accent-soft', soft);
     set('--accent-fill', accent);
     set('--on-accent', contrast('#ffffff', accent) > contrast('#000000', accent) ? '#ffffff' : '#000000');
