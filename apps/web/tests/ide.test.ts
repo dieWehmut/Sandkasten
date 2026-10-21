@@ -267,6 +267,31 @@ describe('workspace explorer', () => {
     expect(ancestorPaths('')).toEqual([]);
   });
 
+  test('scrolls the open file into view when the trail outruns its row', async () => {
+    const wrapper = mount(IdeBreadcrumbs, {
+      props: { filePath: 'a/b/c/d/util.py', rootPath: 'C:\\ws' },
+      attachTo: document.body,
+    });
+    const bar = wrapper.get('[data-testid="ide-breadcrumbs"]').element as HTMLElement;
+
+    // jsdom has no layout: give the row a viewport narrower than its content and
+    // the file crumb an edge past it, then check the scroll that follows.
+    Object.defineProperty(bar, 'scrollWidth', { value: 900, configurable: true });
+    Object.defineProperty(bar, 'clientWidth', { value: 400, configurable: true });
+    const fileCrumb = wrapper.get('.ide-breadcrumbs__step--static').element as HTMLElement;
+    fileCrumb.getBoundingClientRect = () => ({ right: 700, left: 620, top: 0, bottom: 22, width: 80, height: 22, x: 620, y: 0, toJSON() {} }) as DOMRect;
+    bar.getBoundingClientRect = () => ({ right: 400, left: 0, top: 0, bottom: 22, width: 400, height: 22, x: 0, y: 0, toJSON() {} }) as DOMRect;
+
+    await wrapper.setProps({ filePath: 'a/b/c/d/other.py' });
+    await nextTick();
+
+    // The file crumb — the one that says where you are — is what scrolls into
+    // sight, not the last folder button that ":last-of-type" would have matched.
+    expect(bar.scrollLeft).toBeGreaterThan(0);
+
+    wrapper.unmount();
+  });
+
   test('renders the trail with a clickable folder and a static file', async () => {
     const wrapper = mount(IdeBreadcrumbs, {
       props: { filePath: 'pkg/deep/util.py', rootPath: 'C:\\ws' },

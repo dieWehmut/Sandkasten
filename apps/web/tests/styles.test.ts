@@ -180,6 +180,16 @@ describe('workbench style boundaries', () => {
     expect(ide).toMatch(/\.ide-search__toggle\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
   });
 
+  test('keeps the breadcrumb steps whole instead of squeezing their labels', () => {
+    const ide = style('ide.css');
+    // Steps were flex items with min-width:0, so every label overflowed its own
+    // box and printed over its neighbour: "directory" wanted 77 px and got 36.
+    expect(ide).toMatch(/\.ide-breadcrumbs__step \{[^}]*flex: 0 0 auto;/s);
+    expect(ide).toMatch(/\.ide-breadcrumbs \{[^}]*overflow-x: auto;/s);
+    // The label itself must not be the thing that shrinks.
+    expect(ide).not.toMatch(/\.ide-breadcrumbs__step \{[^}]*min-width: 0;/s);
+  });
+
   test('keeps the tab strip scrollable instead of squeezing tabs to nothing', () => {
     const ide = style('ide.css');
     // A flex tab with min-width:0 collapsed to a bare icon once the strip was

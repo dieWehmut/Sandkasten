@@ -1242,7 +1242,10 @@ button.ide-status__item:focus-visible {
 .ide-breadcrumbs__step {
   display: inline-flex;
   height: 100%;
-  min-width: 0;
+  /* Steps keep their intrinsic width and the trail scrolls. Squeezing them
+     instead let each label overflow its own box and print over its neighbour:
+     "directory" wanted 77 px, was given 36 px, and bled into the next crumb. */
+  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   padding: 0 5px;

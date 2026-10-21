@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { ChevronRight } from '@lucide/vue';
 import { breadcrumbSegments, siblingEntries, type BreadcrumbEntry } from '../../editor/breadcrumbs';
 import type { WorkspaceTreeNode } from '../../services/desktopBridge';
@@ -25,6 +25,26 @@ const emit = defineEmits<{
 
 const t = useTranslation();
 const segments = computed(() => breadcrumbSegments(props.filePath, props.rootPath));
+
+// The trail scrolls sideways once a path outruns it, so a deep file would open
+// with its own name — the one crumb that says where you are — out of sight past
+// the right edge. Revealing it keeps the location readable without hiding the
+// start of the trail, which is what the reference does too.
+const trail = ref<HTMLElement | null>(null);
+watch(() => props.filePath, async () => {
+  await nextTick();
+  const bar = trail.value;
+  // The file crumb is the one that has to be in sight, and it is a span while
+  // the folder crumbs are buttons: ":last-of-type" would match the last button
+  // and scroll the parent directory into view instead of the open file.
+  const last = bar?.querySelector<HTMLElement>('.ide-breadcrumbs__step--static');
+  if (!bar || !last) return;
+  // Scroll the trail itself rather than calling scrollIntoView on the crumb:
+  // the nearest scrollable ancestor is the editor column, which would move the
+  // page instead of the trail and leave the crumb still clipped.
+  const overflow = last.getBoundingClientRect().right - bar.getBoundingClientRect().right;
+  if (overflow > 0) bar.scrollLeft += overflow + 8;
+}, { immediate: true });
 const picker = ref<{ open: boolean; entries: BreadcrumbEntry[]; path: string; x: number; y: number; arrowOffset: number }>({
   open: false, entries: [], path: '', x: 0, y: 0, arrowOffset: 16,
 });
@@ -63,6 +83,7 @@ function chooseEntry(entry: BreadcrumbEntry): void {
 <template>
   <nav
     v-if="segments.length"
+    ref="trail"
     class="ide-breadcrumbs"
     data-testid="ide-breadcrumbs"
     :aria-label="t('ide.breadcrumbs.label')"
