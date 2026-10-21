@@ -755,7 +755,9 @@
 
 .ide-tab {
   display: inline-flex;
-  min-width: 0;
+  /* Tabs keep their width and let the strip scroll. Squeezing them instead
+     collapsed every name to zero: forty tabs rendered as forty bare icons. */
+  flex: 0 0 auto;
   align-items: center;
   border-right: 1px solid var(--border);
   border-radius: 0;
@@ -770,7 +772,9 @@
 
 .ide-tab__select {
   display: inline-flex;
-  min-width: 0;
+  /* Wide enough for a readable name before the ellipsis, narrow enough that a
+     few tabs still fit; below this the strip scrolls instead of shrinking. */
+  min-width: 92px;
   max-width: 220px;
   height: var(--vscode-tab-height);
   align-items: center;

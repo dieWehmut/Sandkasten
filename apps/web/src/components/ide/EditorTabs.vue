@@ -1,20 +1,31 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue';
 import { X } from '@lucide/vue';
 import type { IconTheme } from '../../editor/fileIcon';
 import { useTranslation } from '../../i18n/useTranslation';
 import FileIcon from '../FileIcon.vue';
 
-defineProps<{
+const props = defineProps<{
   files: ReadonlyArray<{ path: string; name: string; dirty: boolean }>;
   activePath: string;
   iconTheme?: IconTheme;
 }>();
 const emit = defineEmits<{ select: [path: string]; close: [path: string] }>();
 const t = useTranslation();
+
+// The strip scrolls sideways once the tabs outrun it, so opening a file from
+// anywhere but the strip itself — the explorer, quick open, a breadcrumb — would
+// otherwise leave its tab off-screen behind the ones already there.
+const strip = ref<HTMLElement | null>(null);
+watch(() => props.activePath, async () => {
+  await nextTick();
+  const active = strip.value?.querySelector<HTMLElement>('.ide-tab--active');
+  active?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+}, { immediate: true });
 </script>
 
 <template>
-  <div class="ide-tabs" role="tablist" :aria-label="t('ide.tabs.label')" data-testid="editor-tabs">
+  <div ref="strip" class="ide-tabs" role="tablist" :aria-label="t('ide.tabs.label')" data-testid="editor-tabs">
     <p v-if="!files.length" class="ide-tabs__empty">{{ t('ide.tabs.empty') }}</p>
     <div
       v-for="file in files"

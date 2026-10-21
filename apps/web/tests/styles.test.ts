@@ -180,6 +180,15 @@ describe('workbench style boundaries', () => {
     expect(ide).toMatch(/\.ide-search__toggle\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
   });
 
+  test('keeps the tab strip scrollable instead of squeezing tabs to nothing', () => {
+    const ide = style('ide.css');
+    // A flex tab with min-width:0 collapsed to a bare icon once the strip was
+    // full: forty tabs measured 28 px each and every name measured 0 px.
+    expect(ide).toMatch(/\.ide-tab \{[^}]*flex: 0 0 auto;/s);
+    expect(ide).toMatch(/\.ide-tab__select \{[^}]*min-width: 92px;/s);
+    expect(ide).toMatch(/\.ide-tabs \{[^}]*overflow-x: auto;/s);
+  });
+
   test('keeps the control focus ring off a heading that only takes focus on mount', () => {
     const base = style('base.css');
     // The setup and settings pages move focus to their page heading so assistive

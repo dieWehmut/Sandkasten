@@ -677,6 +677,29 @@ describe('workspace explorer', () => {
     });
     expect(tabs.get('.ide-tab__select .file-icon').attributes('data-icon')).toBe('_f_python');
   });
+
+  test('brings the active tab into view when the strip has scrolled away', async () => {
+    const files = Array.from({ length: 6 }, (_unused, index) => ({
+      path: `mod-${index}.py`, name: `mod-${index}.py`, dirty: false,
+    }));
+    const wrapper = mount(EditorTabs, { props: { files, activePath: 'mod-0.py' }, attachTo: document.body });
+    const strip = wrapper.get('[data-testid="editor-tabs"]').element as HTMLElement;
+    // jsdom has no layout, so the scroll is recorded instead of performed.
+    const scrolled: string[] = [];
+    (Element.prototype as unknown as { scrollIntoView: (options: unknown) => void }).scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this.textContent?.trim() ?? '');
+    };
+
+    await wrapper.setProps({ activePath: 'mod-5.py' });
+    await nextTick();
+
+    // Opening a file from anywhere but the strip — the explorer, quick open, a
+    // breadcrumb — has to reveal its tab rather than leave it off-screen.
+    expect(scrolled.at(-1)).toBe('mod-5.py');
+    expect(strip.querySelector('.ide-tab--active')?.textContent?.trim()).toBe('mod-5.py');
+
+    wrapper.unmount();
+  });
 });
 
 describe('desktop workbench', () => {
