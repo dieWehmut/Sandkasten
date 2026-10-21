@@ -375,6 +375,16 @@ function resumeActive(): void {
   if (backend.value === 'api') void runner.resumePolling();
 }
 
+// Ctrl+Tab walks the open tabs in the order they were opened, wrapping at the
+// ends, which is what the reference does. The tabs were mouse-only before this.
+function cycleTab(direction: 1 | -1): void {
+  const paths = workspace.openPaths();
+  if (paths.length < 2) return;
+  const current = paths.indexOf(workspace.activePath.value ?? '');
+  const next = ((current < 0 ? 0 : current) + direction + paths.length) % paths.length;
+  void workspace.openFile(paths[next]);
+}
+
 function setActiveOutputTab(tab: OutputTab): void {
   runner.setActiveOutputTab(tab);
 }
@@ -632,6 +642,11 @@ function onKeydown(event: KeyboardEvent): void {
       ide.showActivity(view);
       return;
     }
+  }
+  if (key === 'tab') {
+    event.preventDefault();
+    cycleTab(event.shiftKey ? -1 : 1);
+    return;
   }
   if (key === 's') {
     event.preventDefault();

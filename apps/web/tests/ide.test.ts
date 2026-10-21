@@ -1400,4 +1400,32 @@ describe('desktop workbench', () => {
     await nextTick();
     expect(wrapper.find('[data-testid="settings-view"]').exists()).toBe(true);
   });
+
+  test('walks the open tabs with Ctrl+Tab and wraps at the ends', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.get('[data-path="main.py"] .ide-tree__open').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-path="pkg/util.py"] .ide-tree__open').trigger('click');
+    await flushPromises();
+
+    const activeTab = () => wrapper.get('.ide-tab--active').text();
+    const last = activeTab();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true }));
+    await flushPromises();
+    const first = activeTab();
+    expect(first).not.toBe(last);
+
+    // Wrapping: pressing again from the last tab returns to the first.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true }));
+    await flushPromises();
+    expect(activeTab()).toBe(last);
+
+    // Shift walks the other way.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(activeTab()).toBe(first);
+  });
 });

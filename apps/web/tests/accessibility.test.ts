@@ -244,4 +244,5 @@ describe('Sidebar view shortcuts', () => {
 
     wrapper.unmount();
   });
+
 });
