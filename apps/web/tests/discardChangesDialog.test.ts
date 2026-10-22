@@ -44,4 +44,24 @@ describe('discard changes dialog', () => {
     expect(wrapper.get('[data-action="discard-confirm"]').text()).toBe('放弃并关闭');
     expect(wrapper.get('[data-action="discard-cancel"]').text()).toBe('继续编辑');
   });
+
+  test('says it will delete the file, not merely close it', () => {
+    // Deleting is not undoable the way closing a tab is, so the delete intent
+    // gets its own wording and a neutral cancel label.
+    const wrapper = mount(DiscardChangesDialog, {
+      props: { open: true, file: 'main.py', intent: 'delete', t: createTranslator('en') },
+    });
+    expect(wrapper.get('#discard-title').text()).toBe('Delete a file with unsaved changes?');
+    expect(wrapper.get('[data-action="discard-confirm"]').text()).toBe('Discard and delete');
+    expect(wrapper.get('[data-action="discard-cancel"]').text()).toBe('Cancel');
+  });
+
+  test('translates the delete wording into Chinese', () => {
+    const wrapper = mount(DiscardChangesDialog, {
+      props: { open: true, file: 'main.py', intent: 'delete', t: createTranslator('zh-CN') },
+    });
+    expect(wrapper.get('#discard-title').text()).toBe('删除有未保存更改的文件？');
+    expect(wrapper.get('[data-action="discard-confirm"]').text()).toBe('放弃并删除');
+    expect(wrapper.get('[data-action="discard-cancel"]').text()).toBe('取消');
+  });
 });

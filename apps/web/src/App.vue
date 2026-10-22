@@ -298,8 +298,21 @@ function createFile(payload: { name: string; language: string; folder: string })
     .catch(() => undefined);
 }
 
+// Deleting is not undoable, so a dirty file is asked about first, the same way
+// closing one is. Both routes share the dialog and differ only in wording.
+const pendingDelete = ref('');
 function removeFile(path: string): void {
+  const file = workspace.files.value.find((entry) => entry.path === path);
+  if (file?.dirty) {
+    pendingDelete.value = path;
+    return;
+  }
   void workspace.removeFile(path);
+}
+
+function discardAndDelete(): void {
+  if (pendingDelete.value) void workspace.removeFile(pendingDelete.value);
+  pendingDelete.value = '';
 }
 
 function saveActive(): void {
@@ -796,11 +809,12 @@ onBeforeUnmount(() => {
       @close="commandCenter.close"
     />
     <DiscardChangesDialog
-      :open="Boolean(pendingClose)"
-      :file="pendingClose"
+      :open="Boolean(pendingClose) || Boolean(pendingDelete)"
+      :file="pendingDelete || pendingClose"
+      :intent="pendingDelete ? 'delete' : 'close'"
       :t="locale.t"
-      @discard="discardAndClose"
-      @cancel="pendingClose = ''"
+      @discard="pendingDelete ? discardAndDelete() : discardAndClose()"
+      @cancel="pendingDelete = ''; pendingClose = ''"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"
