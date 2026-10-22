@@ -8,6 +8,7 @@ import { EditorView, highlightActiveLine, highlightSpecialChars, keymap, lineNum
 import { showMinimap } from '@replit/codemirror-minimap';
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { languageExtensionForRuntime } from '../editor/language';
+import { sourceCompletion } from '../editor/completion';
 import { sourceHighlighting } from '../editor/highlight';
 import { indentGuides } from '../editor/indentGuides';
 import { FindWidgetPanel } from '../editor/findWidget';
@@ -156,7 +157,7 @@ function minimapExtension(): Extension {
 }
 
 function languageExtension(): Extension {
-  return languageExtensionForRuntime(props.language) ?? [];
+  return [languageExtensionForRuntime(props.language) ?? [], sourceCompletion(props.language)];
 }
 
 function editableExtensions(label: string, disabled: boolean): Extension[] {

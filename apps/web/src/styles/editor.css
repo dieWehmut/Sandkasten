@@ -156,6 +156,75 @@
   background: var(--surface-raised);
 }
 
+/* VS Code's suggest list shares the editor font, a compact 22 px row, a square
+   border and a quiet shadow; the selected item uses the workbench accent. */
+.source-editor .cm-tooltip-autocomplete.source-completion {
+  min-width: min(320px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+  font: inherit;
+}
+
+.source-editor .source-completion > ul {
+  max-height: 264px;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 2px 0;
+  font: inherit;
+}
+
+.source-editor .source-completion > ul > li {
+  min-height: 22px;
+  padding: 0 8px 0 4px;
+  line-height: 22px;
+}
+
+.source-editor .source-completion > ul > li[aria-selected] {
+  color: var(--on-accent);
+  background: var(--accent-fill);
+}
+
+.source-editor .source-completion .cm-completionMatchedText {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.source-editor .source-completion li[aria-selected] .cm-completionMatchedText {
+  color: inherit;
+}
+
+.source-editor .source-completion .cm-completionDetail {
+  margin-left: 1.5em;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.source-editor .source-completion li[aria-selected] .cm-completionDetail {
+  color: inherit;
+  opacity: 0.9;
+}
+
+.source-editor .source-completion .cm-completionIcon-snippet::after {
+  content: '⋯';
+}
+
+.source-editor .source-completion .cm-completionIcon-keyword::after {
+  content: 'K';
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.source-editor .cm-tooltip.cm-completionInfo {
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+  font: 12px/1.5 var(--font-sans);
+}
+
 /* The find widget follows the measured VS Code shape: a 34 px row floating over
    the editor's top-right corner, a replace row that expands on demand, 13 px
    inputs without a resting border, 16 px icon buttons with 5 px corners, the
