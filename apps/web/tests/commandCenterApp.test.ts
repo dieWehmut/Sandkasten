@@ -17,7 +17,13 @@ beforeEach(() => {
   api.submitJob.mockReset().mockResolvedValue({ jobId: 'job-1', status: 'JOB_STATUS_QUEUED' });
   api.pollJob.mockReset().mockImplementation(() => new Promise(() => {}));
 });
-afterEach(() => { window.localStorage.clear(); document.body.innerHTML = ''; });
+afterEach(() => {
+  window.localStorage.clear();
+  document.body.innerHTML = '';
+  // A compact-layout test stubs matchMedia; leaking the stub would re-render
+  // every later test in the wrong shell.
+  vi.unstubAllGlobals();
+});
 
 test('Ctrl+P/E searches and opens workspace files, then shows most recent files first', async () => {
   const app = mount(App, { attachTo: document.body });
@@ -120,5 +126,33 @@ test('browser F5 starts a run and Shift+F5 stops polling without reloading', asy
     expect(stop.defaultPrevented).toBe(true);
     expect(app.find('[data-action="stop-polling"]').exists()).toBe(false);
     expect(app.find('[data-action="resume-polling"]').exists()).toBe(true);
+  } finally { app.unmount(); }
+});
+
+test('offers the output panel command on the compact layouts, where the panel also exists', async () => {
+  // The compact shell renders its own template but keeps the output panel, so the
+  // palette has to list the command there as well; only the sidebar command is
+  // desktop-specific, because the compact layouts have no sidebar at all.
+  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+    matches: query.includes('max-width: 767px'),
+    media: query,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent: () => false,
+  })));
+  const app = mount(App, { attachTo: document.body });
+  try {
+    await flushPromises();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(app.find('[data-command="view.togglePanel"]').exists()).toBe(true);
+    expect(app.find('[data-command="view.toggleSidebar"]').exists()).toBe(false);
+
+    await app.get('[data-command="view.togglePanel"]').trigger('click');
+    await flushPromises();
+    expect(app.find('.output-region').exists()).toBe(false);
   } finally { app.unmount(); }
 });

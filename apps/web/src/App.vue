@@ -577,7 +577,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('view.showRemote', 'ide.activity.remote', `${modifier}Shift+M`, ideMode.value),
     command('view.showContext', 'ide.activity.context', `${modifier}Shift+I`, ideMode.value),
     command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
-    command('view.togglePanel', 'palette.panel', `${modifier}J`, ideMode.value),
+    command('view.togglePanel', 'palette.panel', `${modifier}J`),
     command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
     command('view.inspector', !ideMode.value && inspectorOpen.value ? 'header.inspector.hide' : 'header.inspector.show'),
     command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
