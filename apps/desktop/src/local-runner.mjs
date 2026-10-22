@@ -16,41 +16,8 @@ export const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
 
 // {file} is the absolute path of the active workspace file; {exe} is the build
 // output path for compiled languages.
-export const LOCAL_RUNTIMES = {
-  python: { label: 'Python', command: 'python', args: ['{file}'], probe: ['--version'], extensions: ['.py', '.pyw'] },
-  javascript: { label: 'JavaScript', command: 'node', args: ['{file}'], probe: ['--version'], extensions: ['.js', '.mjs', '.cjs'] },
-  typescript: { label: 'TypeScript', command: 'node', args: ['{file}'], probe: ['--version'], extensions: ['.ts', '.mts', '.cts'] },
-  go: { label: 'Go', command: 'go', args: ['run', '{file}'], probe: ['version'], extensions: ['.go'] },
-  rust: {
-    label: 'Rust',
-    compile: { command: 'rustc', args: ['{file}', '-o', '{exe}'] },
-    run: { command: '{exe}', args: [] },
-    probe: ['--version'],
-    native: true,
-    extensions: ['.rs'],
-  },
-  c: {
-    label: 'C',
-    compile: { command: 'gcc', args: ['{file}', '-o', '{exe}'] },
-    run: { command: '{exe}', args: [] },
-    probe: ['--version'],
-    native: true,
-    extensions: ['.c'],
-  },
-  cpp: {
-    label: 'C++',
-    compile: { command: 'g++', args: ['{file}', '-o', '{exe}'] },
-    run: { command: '{exe}', args: [] },
-    probe: ['--version'],
-    native: true,
-    extensions: ['.cc', '.cpp', '.cxx'] },
-  java: { label: 'Java', command: 'java', args: ['{file}'], probe: ['-version'], extensions: ['.java'] },
-  ruby: { label: 'Ruby', command: 'ruby', args: ['{file}'], probe: ['--version'], extensions: ['.rb'] },
-  php: { label: 'PHP', command: 'php', args: ['{file}'], probe: ['--version'], extensions: ['.php'] },
-  bash: { label: 'Bash', command: 'bash', args: ['{file}'], probe: ['--version'], extensions: ['.sh', '.bash'] },
-  lua: { label: 'Lua', command: 'lua', args: ['{file}'], probe: ['-v'], extensions: ['.lua'] },
-  perl: { label: 'Perl', command: 'perl', args: ['{file}'], probe: ['-v'], extensions: ['.pl'] },
-};
+import { LOCAL_RUNTIMES } from './local-runner-runtimes.mjs';
+export { LOCAL_RUNTIMES };
 
 export function resolveLocalPlan(language, options = {}) {
   const runtime = LOCAL_RUNTIMES[language];
@@ -61,11 +28,14 @@ export function resolveLocalPlan(language, options = {}) {
   const platform = options.platform ?? process.platform;
   const tmpRoot = options.tmpRoot ?? os.tmpdir();
 
+  const pathApi = platform === 'win32' ? path.win32 : path;
   const base = path.basename(filePath).replace(/\.[^.]+$/, '');
-  const executable = path.join(tmpRoot, `sandkasten-local-run-${jobId.replace(/[^\w.-]/g, '_')}`, `${base}${platform === 'win32' ? '.exe' : ''}`);
+  const executable = pathApi.join(tmpRoot, `sandkasten-local-run-${jobId.replace(/[^\w.-]/g, '_')}`, `${base}${platform === 'win32' ? '.exe' : ''}`);
+  const replacements = { '{file}': filePath, '{exe}': executable, '{outdir}': pathApi.dirname(executable), '{base}': base, '{cwd}': options.workDirectory ?? path.dirname(filePath) };
+  const replace = (value) => Object.entries(replacements).reduce((text, [key, replacement]) => text.replaceAll(key, replacement), value);
   const substitute = (step) => ({
-    command: step.command.replaceAll('{file}', filePath).replaceAll('{exe}', executable),
-    args: step.args.map((argument) => argument.replaceAll('{file}', filePath).replaceAll('{exe}', executable)),
+    command: replace(step.command),
+    args: step.args.map((argument) => replace(argument)),
   });
   const run = runtime.run ?? { command: runtime.command, args: runtime.args };
 
@@ -90,7 +60,7 @@ export function runtimeForExtension(extension) {
 // A toolchain probe that never exits (a broken shim, a stalled WSL relay, an
 // interactive binary) must not block runtime detection: the probe is bounded and
 // a timeout simply reports the runtime as unavailable.
-function settleAvailability(spawnImpl, command, probe, timeoutMs) {
+function settleAvailability(spawnImpl, command, probe, timeoutMs, env) {
   return new Promise((resolve) => {
     let settled = false;
     let child;
@@ -107,13 +77,13 @@ function settleAvailability(spawnImpl, command, probe, timeoutMs) {
     };
     const timer = setTimeout(() => finish(false), timeoutMs);
     try {
-      child = spawnImpl(command, probe, { stdio: 'ignore', windowsHide: true });
+      child = spawnImpl(command, probe, { stdio: 'ignore', windowsHide: true, env });
     } catch {
       finish(false);
       return;
     }
     child.on('error', () => finish(false));
-    child.on('close', () => finish(true));
+    child.on('close', (code) => finish(code === 0));
   });
 }
 
@@ -133,13 +103,13 @@ function collect(stream, limit, state) {
   });
 }
 
-function runStep(step, { spawnImpl, cwd, timeoutMs, maxOutputBytes, onSpawn }) {
+function runStep(step, { spawnImpl, cwd, timeoutMs, maxOutputBytes, onSpawn, env }) {
   return new Promise((resolve, reject) => {
     const stdout = { text: '', bytes: 0, truncated: false };
     const stderr = { text: '', bytes: 0, truncated: false };
     let child;
     try {
-      child = spawnImpl(step.command, step.args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      child = spawnImpl(step.command, step.args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env });
     } catch (error) {
       reject(error);
       return;
@@ -182,6 +152,7 @@ function runStep(step, { spawnImpl, cwd, timeoutMs, maxOutputBytes, onSpawn }) {
 
 export function createLocalRunner(options = {}) {
   const spawnImpl = options.spawnImpl ?? nodeSpawn;
+  const env = options.env ? { ...process.env, ...options.env } : process.env;
   const platform = options.platform ?? process.platform;
   const tmpRoot = options.tmpRoot ?? os.tmpdir();
   const maxOutputBytes = options.maxOutputBytes ?? MAX_OUTPUT_BYTES;
@@ -197,7 +168,7 @@ export function createLocalRunner(options = {}) {
       label: runtime.label,
       command: runtime.compile?.command ?? runtime.command,
       extensions: [...runtime.extensions],
-      available: await settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, probeTimeoutMs),
+      available: (await Promise.all([settleAvailability(spawnImpl, runtime.compile?.command ?? runtime.command, runtime.probe, probeTimeoutMs, env), ...(runtime.requirements ?? []).map((command) => settleAvailability(spawnImpl, command, command === 'erl' ? ['-noshell', '-eval', 'halt().'] : ['--version'], probeTimeoutMs, env))])).every(Boolean),
     })));
     detection = entries;
     return detection;
@@ -245,7 +216,7 @@ export function createLocalRunner(options = {}) {
     try {
       if (plan.compile) {
         await mkdir(path.dirname(plan.executable), { recursive: true });
-        const compiled = await runStep(plan.compile, { spawnImpl, cwd: plan.workDirectory, timeoutMs, maxOutputBytes, onSpawn: (child) => { state.child = child; } });
+        const compiled = await runStep(plan.compile, { spawnImpl, cwd: plan.workDirectory, timeoutMs, maxOutputBytes, env, onSpawn: (child) => { state.child = child; } });
         result.compileStdout = compiled.stdout;
         result.compileStderr = compiled.stderr;
         if (compiled.timedOut) {
@@ -261,7 +232,7 @@ export function createLocalRunner(options = {}) {
         }
       }
 
-      const executed = await runStep(plan.run, { spawnImpl, cwd: plan.workDirectory, timeoutMs, maxOutputBytes, onSpawn: (child) => { state.child = child; } });
+      const executed = await runStep(plan.run, { spawnImpl, cwd: plan.workDirectory, timeoutMs, maxOutputBytes, env, onSpawn: (child) => { state.child = child; } });
       result.stdout = executed.stdout;
       result.stderr = executed.stderr;
       result.truncated = executed.truncated;

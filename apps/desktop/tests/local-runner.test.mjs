@@ -64,7 +64,7 @@ test('local plans substitute the file and executable placeholders', () => {
   const go = resolveLocalPlan('go', { filePath: path.resolve('/ws/main.go'), jobId: 'job-3' });
   assert.deepEqual(go.run.args.slice(0, 1), ['run']);
 
-  assert.throws(() => resolveLocalPlan('cobol', { filePath: '/ws/main.cob' }), /does not support/);
+  assert.throws(() => resolveLocalPlan('unknown-language', { filePath: '/ws/main.cob' }), /does not support/);
   assert.throws(() => resolveLocalPlan('python', {}), /workspace file/);
 });
 
@@ -93,7 +93,7 @@ test('detection reports which toolchains exist on this machine', async () => {
   assert.deepEqual(python.extensions, ['.py', '.pyw']);
   assert.equal(detected.find((entry) => entry.language === 'go').available, false);
   assert.equal(detected.find((entry) => entry.language === 'rust').command, 'rustc');
-  assert.equal((await runner.detect())[0].available, python.available);
+  assert.equal((await runner.detect()).find((entry) => entry.language === 'python').available, python.available);
 });
 
 test('a successful local run reports stdout, exit code, and timing', async (t) => {
@@ -181,7 +181,7 @@ test('a hung toolchain probe is bounded and reported as unavailable', async () =
   const spawnImpl = (command, args, options) => {
     const plan = command === 'python' ? { hold: true } : { error: 'ENOENT' };
     const child = fakeSpawn(plan).spawnImpl(command, args, options);
-    spawned.push(child);
+    spawned.push({ command, child });
     return child;
   };
   const runner = createLocalRunner({ spawnImpl, probeTimeoutMs: 150 });
@@ -190,7 +190,7 @@ test('a hung toolchain probe is bounded and reported as unavailable', async () =
   const elapsed = Date.now() - started;
   assert.equal(detected.find((entry) => entry.language === 'python').available, false);
   assert.ok(elapsed < 3_000, `detection must not wait for the hung probe (took ${elapsed} ms)`);
-  assert.equal(spawned[0].killedWith, 'SIGKILL', 'the hung probe must be killed');
+  assert.equal(spawned.find(({ command }) => command === 'python').child.killedWith, 'SIGKILL', 'the hung probe must be killed');
 });
 
 test('a real toolchain runs a real file end to end', async (t) => {
@@ -210,4 +210,20 @@ test('a real toolchain runs a real file end to end', async (t) => {
   assert.equal(result.status, 'JOB_STATUS_SUCCEEDED', result.errorMessage ?? result.stderr);
   assert.match(result.stdout, /sandkasten-local-run-ok/);
   assert.equal(result.exitCode, 0);
+});
+
+test('the catalog covers all 58 canonical languages with executable plans', () => {
+  assert.equal(Object.keys(LOCAL_RUNTIMES).length, 58);
+  for (const [language, runtime] of Object.entries(LOCAL_RUNTIMES)) {
+    const plan = resolveLocalPlan(language, { filePath: `/ws/main${runtime.extensions[0]}`, tmpRoot: '/tmp', jobId: language });
+    assert.ok(plan.run.command);
+    assert.ok(plan.run.args.every((arg) => !/\{(?:file|exe|outdir|base|cwd)\}/.test(arg)));
+  }
+});
+
+test('runtime probes reject a failing version command and inherit the supplied environment', async () => {
+  const { spawnImpl, calls } = fakeSpawn({ code: 2 });
+  const runner = createLocalRunner({ spawnImpl, env: { SANDKASTEN_MATRIX: 'isolated' } });
+  assert.ok((await runner.detect()).every((entry) => !entry.available));
+  assert.equal(calls[0].options.env.SANDKASTEN_MATRIX, 'isolated');
 });
