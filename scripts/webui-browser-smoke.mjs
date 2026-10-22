@@ -270,6 +270,26 @@ async function runAndInspectOutput(page, viewportName) {
   assert.equal(await outputRegion.locator('em').count(), 0, viewportName + ' output injected API text as HTML');
 }
 
+// A terminal job has to end the poll, whatever the terminal status is. Only the
+// success path was covered, and a status the shell did not treat as terminal left
+// "Stop polling" on screen forever while the timeline already read "failed" — the
+// state a user is most likely to sit and stare at.
+async function runAndInspectFailure(page, viewportName) {
+  await enterSource(page);
+  await page.getByRole('button', { name: 'Run source' }).click();
+  const timeline = page.locator('[aria-label="Job timeline"]');
+  await timeline.getByText('Runtime failed', { exact: true }).waitFor({ state: 'visible', timeout: 8000 });
+  // The poll is over, so the control offers a new run instead of a stop.
+  await page.getByRole('button', { name: 'Run source' }).waitFor({ state: 'visible', timeout: 3000 });
+  assert.equal(
+    await page.getByRole('button', { name: 'Stop polling' }).count(),
+    0,
+    viewportName + ' left the stop control up after a terminal failure',
+  );
+  const statusBar = page.locator('[data-testid="ide-status-bar"]');
+  assert.equal(await statusBar.getAttribute('data-phase'), 'completed', viewportName + ' did not leave the polling phase after a failure');
+}
+
 async function inspectCompactSheets(page, viewportName) {
   await openSettingsSection(page, 'workbench');
   await page.locator('[data-action="settings-show-history"]').click();
@@ -359,6 +379,27 @@ async function main() {
     for (const viewport of VIEWPORTS) {
       log('checking ' + viewport.name + ' ' + viewport.width + 'x' + viewport.height);
       results.push(await inspectViewport(browser, app.url, viewport));
+    }
+    // The failure path needs its own server: the sequence above ends in success.
+    const failing = await createMockAppServer({
+      distDir,
+      jobSequence: ['JOB_STATUS_RUNNING', 'JOB_STATUS_RUNTIME_FAILED'],
+      jobPollDelayMs: 50,
+    });
+    try {
+      const context = await browser.newContext({ viewport: { width: VIEWPORTS[0].width, height: VIEWPORTS[0].height } });
+      await context.addInitScript(() => {
+        window.localStorage.setItem('sandkasten-install-guide-seen', 'true');
+        window.localStorage.setItem('sandkasten-locale', 'en');
+      });
+      const page = await context.newPage();
+      await page.goto(failing.url, { waitUntil: 'networkidle' });
+      await waitForConnected(page);
+      await runAndInspectFailure(page, 'failure path');
+      await context.close();
+      log('checked the failed-run path');
+    } finally {
+      await failing.close();
     }
     const screenshots = await readdir(screenshotDirectory);
     assert.ok(screenshots.length >= VIEWPORTS.length * 2, 'expected light and dark screenshots for each viewport');
