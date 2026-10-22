@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } f
 import AppHeader from './components/AppHeader.vue';
 import CommandPalette from './components/CommandPalette.vue';
 import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
+import DiscardChangesDialog from './components/DiscardChangesDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import SettingsView from './components/SettingsView.vue';
@@ -389,8 +390,25 @@ function setActiveOutputTab(tab: OutputTab): void {
   runner.setActiveOutputTab(tab);
 }
 
+// Closing a file with unsaved edits used to drop them silently, and reopening
+// the file showed the stored source again. The dialog now asks first; VS Code
+// offers save/discard/cancel, but this editor has no unsaved-buffer concept
+// beyond the open tab, so discarding is the only destructive choice it needs.
+const pendingClose = ref('');
 function closeActiveFile(): void {
-  if (workspace.activePath.value) workspace.closeFile(workspace.activePath.value);
+  const path = workspace.activePath.value;
+  if (!path) return;
+  const file = workspace.files.value.find((entry) => entry.path === path);
+  if (file?.dirty) {
+    pendingClose.value = path;
+    return;
+  }
+  workspace.closeFile(path);
+}
+
+function discardAndClose(): void {
+  if (pendingClose.value) workspace.closeFile(pendingClose.value);
+  pendingClose.value = '';
 }
 
 // The new-file form lives inside the explorer, and the explorer only exists in
@@ -776,6 +794,13 @@ onBeforeUnmount(() => {
       @update:query="commandCenter.query.value = $event"
       @select="selectPaletteItem"
       @close="commandCenter.close"
+    />
+    <DiscardChangesDialog
+      :open="Boolean(pendingClose)"
+      :file="pendingClose"
+      :t="locale.t"
+      @discard="discardAndClose"
+      @cancel="pendingClose = ''"
     />
     <ApiEndpointDialog
       :open="apiEndpointOpen"

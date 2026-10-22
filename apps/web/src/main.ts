@@ -12,6 +12,7 @@ import './styles/welcome.css';
 import './styles/menu.css';
 import './styles/notifications.css';
 import './styles/apiEndpoint.css';
+import './styles/discardDialog.css';
 import '@xterm/xterm/css/xterm.css';
 import './styles/terminal.css';
 
