@@ -444,6 +444,16 @@
   font-size: 12px;
 }
 
+/* The field itself hides the global ring so the icon and clear button stay
+   flush, which left a keyboard user with no focus indicator at all. The wrapper
+   carries the ring instead. */
+.ide-search__field:focus-within {
+  border-color: var(--accent-strong);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
 .ide-search__field input:focus-visible {
   outline: none;
 }

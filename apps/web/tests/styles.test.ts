@@ -540,4 +540,12 @@ describe('color scheme palettes', () => {
       expect(seen.has(name), `${name} must keep its own top-level block`).toBe(true);
     }
   });
+
+  test('keeps a visible focus ring on the workspace search field', () => {
+    // The field hides the global ring so its icon and clear button stay flush.
+    // Without a ring on the wrapper a keyboard user had no focus indicator.
+    const ide = style('ide.css');
+    expect(ide).toMatch(/\.ide-search__field:focus-within \{[^}]*outline: 2px solid var\(--accent\);/s);
+    expect(ide).toMatch(/\.ide-search__field:focus-within \{[^}]*border-color: var\(--accent-strong\);/s);
+  });
 });
