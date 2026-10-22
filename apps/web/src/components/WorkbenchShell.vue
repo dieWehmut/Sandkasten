@@ -445,7 +445,7 @@ const styles = computed(() => (isIde.value
       <RunHistory v-if="layoutMode === 'desktop' && historyOpen" :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
       <SourceWorkbench
         :terminal="terminal"
-        :panel-visible="terminal ? panelVisible : true"
+        :panel-visible="panelVisible"
         :runtimes="runtimes"
         :language="language"
         :source="source"

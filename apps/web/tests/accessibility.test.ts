@@ -273,4 +273,24 @@ describe('Sidebar view shortcuts', () => {
 
     wrapper.unmount();
   });
+
+  test('hides the output panel with Ctrl+J on the compact layouts too', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact shell renders SourceWorkbench, which used to receive a
+    // hard-coded panel-visible of true whenever no terminal was attached, so the
+    // shortcut toggled a value nothing read: the panel could not be closed.
+    expect(wrapper.find('.output-region').exists()).toBe(true);
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'j', ctrlKey: true });
+    await flushPromises();
+    expect(wrapper.find('.output-region').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'j', ctrlKey: true });
+    await flushPromises();
+    expect(wrapper.find('.output-region').exists()).toBe(true);
+
+    wrapper.unmount();
+  });
 });
