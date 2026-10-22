@@ -393,9 +393,35 @@ function closeActiveFile(): void {
   if (workspace.activePath.value) workspace.closeFile(workspace.activePath.value);
 }
 
-function requestNewFile(): void {
+// The new-file form lives inside the explorer, and the explorer only exists in
+// the desktop shell: on the compact layouts nothing would ever render it, so the
+// shortcut (and the header button) silently did nothing. There the file is
+// created straight away instead, which is the only way to get a second file on a
+// layout that has no tree and no tab strip.
+let creatingCompactFile = false;
+async function requestNewFile(): Promise<void> {
+  if (!ideMode.value) {
+    if (creatingCompactFile) return;
+    creatingCompactFile = true;
+    try {
+      await workspace.createFile(nextUntitledPath());
+    } catch {
+      // createFile already recorded the failure on the workspace error channel.
+    } finally {
+      creatingCompactFile = false;
+    }
+    return;
+  }
   ide.showActivity('explorer');
   creatingFile.value = true;
+}
+
+// Untitled names count up so a second new file does not overwrite the first.
+function nextUntitledPath(): string {
+  const taken = new Set(workspace.openPaths());
+  let index = 1;
+  while (taken.has(`untitled-${index}.py`)) index += 1;
+  return `untitled-${index}.py`;
 }
 
 function setCreatingFile(value: boolean): void {

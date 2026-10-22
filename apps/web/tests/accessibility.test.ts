@@ -245,4 +245,32 @@ describe('Sidebar view shortcuts', () => {
     wrapper.unmount();
   });
 
+
+  test('creates a file from Ctrl+N when the compact layout has no explorer', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    window.localStorage.setItem(
+      'sandkasten-workspace-v1',
+      JSON.stringify({ files: { 'alpha.py': 'print(1)\n' } }),
+    );
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact shell has no tree, no tab strip and no new-file button, so the
+    // explorer-bound form never renders there. The shortcut used to set that form
+    // open and nothing appeared; it has to create the file directly instead.
+    expect(wrapper.find('[data-testid="ide-activity-bar"]').exists()).toBe(false);
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'n', ctrlKey: true });
+    await flushPromises();
+
+    const stored = JSON.parse(window.localStorage.getItem('sandkasten-workspace-v1') ?? '{}');
+    expect(Object.keys(stored.files ?? {})).toContain('untitled-1.py');
+
+    // A second press must not overwrite the first file.
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'n', ctrlKey: true });
+    await flushPromises();
+    const again = JSON.parse(window.localStorage.getItem('sandkasten-workspace-v1') ?? '{}');
+    expect(Object.keys(again.files ?? {})).toContain('untitled-2.py');
+
+    wrapper.unmount();
+  });
 });
