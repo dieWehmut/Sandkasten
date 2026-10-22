@@ -327,7 +327,7 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
 <template>
   <section class="ide-explorer" data-testid="workspace-explorer" :aria-label="t('ide.explorer.label')">
     <header v-if="!hideHeading" class="ide-section__heading">
-      <span class="ide-section__title" :title="root?.path ?? root?.name">{{ root?.name ?? t('ide.explorer.scratch') }}</span>
+      <span class="ide-section__title" :title="root?.path ?? root?.name">{{ root?.name || t('ide.explorer.scratch') }}</span>
       <span class="ide-section__actions ide-explorer__actions" data-testid="ide-explorer-actions">
         <button type="button" data-action="ide-new-file" :aria-label="t('ide.explorer.newFile')" :title="t('ide.explorer.newFile')" :aria-pressed="inlineRowVisible && createKind === 'file'" @click="startCreating">
           <FilePlus :size="15" aria-hidden="true" />

@@ -179,7 +179,7 @@ const sidebarTitle = computed(() => {
   if (props.activity === 'context') return t('inspector.title');
   if (props.activity === 'remote') return t('ide.activity.remote');
   if (props.activity === 'source-control') return t('ide.activity.sourceControl');
-  return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
+  return props.workspaceRoot?.name || t('ide.explorer.scratch');
 });
 const styles = computed(() => (isIde.value
   ? ['layout-ide', {

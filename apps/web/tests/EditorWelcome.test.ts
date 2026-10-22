@@ -126,4 +126,27 @@ describe('empty editor welcome', () => {
     wrapper.unmount();
   });
 
+
+  test('falls back to the translated scratch name when the workspace has none', () => {
+    // The scratch store used to return a literal "Scratch", which beat the
+    // translated fallback and left an English word in an otherwise Chinese shell.
+    const zh = mount(WorkbenchShell, {
+      props: { ...shellProps, workspaceRoot: { path: '', name: '' } },
+      global: { provide: { [TRANSLATOR_KEY as symbol]: createTranslator('zh-CN' as Locale) } },
+    });
+    expect(zh.get('.ide-sidebar__title').text()).toBe('草稿');
+
+    const en = mount(WorkbenchShell, {
+      props: { ...shellProps, workspaceRoot: { path: '', name: '' } },
+      global: { provide: { [TRANSLATOR_KEY as symbol]: createTranslator('en' as Locale) } },
+    });
+    expect(en.get('.ide-sidebar__title').text()).toBe('Scratch');
+
+    // A real folder keeps its own name in both locales.
+    const named = mount(WorkbenchShell, {
+      props: { ...shellProps, workspaceRoot: { path: '/work/app', name: 'app' } },
+      global: { provide: { [TRANSLATOR_KEY as symbol]: createTranslator('zh-CN' as Locale) } },
+    });
+    expect(named.get('.ide-sidebar__title').text()).toBe('app');
+  });
 });

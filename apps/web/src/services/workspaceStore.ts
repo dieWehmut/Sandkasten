@@ -130,7 +130,10 @@ export function createMemoryWorkspaceStore(): WorkspaceStore {
   return {
     kind: 'memory',
     async root() {
-      return { path: '', name: 'Scratch' };
+      // The scratch workspace has no folder name of its own. Returning a literal
+      // here defeated the translated fallback in the shell, so a Chinese window
+      // showed the English word "Scratch" above an otherwise translated sidebar.
+      return { path: '', name: '' };
     },
     async openFolder() {
       return null;
