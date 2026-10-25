@@ -109,4 +109,18 @@ describe('App setup and locale integration', () => {
     wrapper.get('[data-testid="setup-welcome"]');
     expect(window.localStorage.getItem(SETUP_WELCOME_STORAGE_KEY)).toBe('true');
   });
+
+  test('names the scratch workspace in the current locale, not a literal English word', async () => {
+    window.localStorage.setItem(SETUP_WELCOME_STORAGE_KEY, 'true');
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'zh-CN');
+    const wrapper = mount(App, { attachTo: document.body });
+    try {
+      await flushPromises();
+      // The scratch store returned a literal "Scratch", which beat the translated
+      // fallback in the shell, so a Chinese window kept the English word.
+      expect(wrapper.get('.ide-sidebar__title').text()).toBe('草稿');
+    } finally {
+      wrapper.unmount();
+    }
+  });
 });

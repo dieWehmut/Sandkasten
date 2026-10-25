@@ -79,7 +79,7 @@
 
 .api-endpoint__save {
   border-color: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent-strong);
   background: var(--accent-strong);
 }
 

@@ -198,9 +198,32 @@ function staticResponse(response, filePath) {
   }
 }
 
+// The statuses the application actually understands. A scenario built on a
+// status outside this set does not reproduce a real state: the shell treats it
+// as non-terminal, so the poll never ends and the run controls stick on "Stop
+// polling". Failing loudly here keeps a typo from being mistaken for a bug in
+// the application.
+const KNOWN_JOB_STATUSES = new Set([
+  'JOB_STATUS_QUEUED',
+  'JOB_STATUS_RUNNING',
+  'JOB_STATUS_SUCCEEDED',
+  'JOB_STATUS_COMPILE_FAILED',
+  'JOB_STATUS_RUNTIME_FAILED',
+  'JOB_STATUS_TIME_LIMIT_EXCEEDED',
+  'JOB_STATUS_MEMORY_LIMIT_EXCEEDED',
+  'JOB_STATUS_OUTPUT_LIMIT_EXCEEDED',
+  'JOB_STATUS_CANCELED',
+  'JOB_STATUS_SYSTEM_ERROR',
+]);
+
 export async function createMockAppServer({ distDir, jobSequence = ['JOB_STATUS_RUNNING', 'JOB_STATUS_SUCCEEDED'], jobPollDelayMs = 0 } = {}) {
   if (!distDir) throw new Error('distDir is required');
   if (!Number.isFinite(jobPollDelayMs) || jobPollDelayMs < 0) throw new Error('jobPollDelayMs must be a non-negative number');
+  for (const status of jobSequence) {
+    if (!KNOWN_JOB_STATUSES.has(status)) {
+      throw new Error('Unknown job status in jobSequence: ' + status + '. The shell only ends a poll on a status it knows.');
+    }
+  }
   const jobs = new Map();
   let jobNumber = 0;
   const server = createServer(async (request, response) => {

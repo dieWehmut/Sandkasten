@@ -3,11 +3,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } f
 import AppHeader from './components/AppHeader.vue';
 import CommandPalette from './components/CommandPalette.vue';
 import ApiEndpointDialog from './components/ApiEndpointDialog.vue';
+import DiscardChangesDialog from './components/DiscardChangesDialog.vue';
 import SetupWelcome from './components/SetupWelcome.vue';
 import WorkbenchShell from './components/WorkbenchShell.vue';
 import SettingsView from './components/SettingsView.vue';
 import NotificationToasts from './components/NotificationToasts.vue';
-import { Settings } from '@lucide/vue';
+import { Moon, Settings, Sun } from '@lucide/vue';
 import { useLocale } from './composables/useLocale';
 import { useSetupWelcome } from './composables/useSetupWelcome';
 import { useRunner, type OutputTab } from './composables/useRunner';
@@ -20,7 +21,7 @@ import { useRemoteHosts } from './composables/useRemoteHosts';
 import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
-import { useIdeLayout } from './composables/useIdeLayout';
+import { useIdeLayout, type IdeActivity } from './composables/useIdeLayout';
 import { useNotifications } from './composables/useNotifications';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
@@ -309,8 +310,21 @@ function createFile(payload: { name: string; language: string; folder: string })
     .catch(() => undefined);
 }
 
+// Deleting is not undoable, so a dirty file is asked about first, the same way
+// closing one is. Both routes share the dialog and differ only in wording.
+const pendingDelete = ref('');
 function removeFile(path: string): void {
+  const file = workspace.files.value.find((entry) => entry.path === path);
+  if (file?.dirty) {
+    pendingDelete.value = path;
+    return;
+  }
   void workspace.removeFile(path);
+}
+
+function discardAndDelete(): void {
+  if (pendingDelete.value) void workspace.removeFile(pendingDelete.value);
+  pendingDelete.value = '';
 }
 
 function saveActive(): void {
@@ -387,17 +401,70 @@ function resumeActive(): void {
   if (backend.value === 'api') void runner.resumePolling();
 }
 
+// Ctrl+Tab walks the open tabs in the order they were opened, wrapping at the
+// ends, which is what the reference does. The tabs were mouse-only before this.
+function cycleTab(direction: 1 | -1): void {
+  const paths = workspace.openPaths();
+  if (paths.length < 2) return;
+  const current = paths.indexOf(workspace.activePath.value ?? '');
+  const next = ((current < 0 ? 0 : current) + direction + paths.length) % paths.length;
+  void workspace.openFile(paths[next]);
+}
+
 function setActiveOutputTab(tab: OutputTab): void {
   runner.setActiveOutputTab(tab);
 }
 
+// Closing a file with unsaved edits used to drop them silently, and reopening
+// the file showed the stored source again. The dialog now asks first; VS Code
+// offers save/discard/cancel, but this editor has no unsaved-buffer concept
+// beyond the open tab, so discarding is the only destructive choice it needs.
+const pendingClose = ref('');
 function closeActiveFile(): void {
-  if (workspace.activePath.value) workspace.closeFile(workspace.activePath.value);
+  const path = workspace.activePath.value;
+  if (!path) return;
+  const file = workspace.files.value.find((entry) => entry.path === path);
+  if (file?.dirty) {
+    pendingClose.value = path;
+    return;
+  }
+  workspace.closeFile(path);
 }
 
-function requestNewFile(): void {
+function discardAndClose(): void {
+  if (pendingClose.value) workspace.closeFile(pendingClose.value);
+  pendingClose.value = '';
+}
+
+// The new-file form lives inside the explorer, and the explorer only exists in
+// the desktop shell: on the compact layouts nothing would ever render it, so the
+// shortcut (and the header button) silently did nothing. There the file is
+// created straight away instead, which is the only way to get a second file on a
+// layout that has no tree and no tab strip.
+let creatingCompactFile = false;
+async function requestNewFile(): Promise<void> {
+  if (!ideMode.value) {
+    if (creatingCompactFile) return;
+    creatingCompactFile = true;
+    try {
+      await workspace.createFile(nextUntitledPath());
+    } catch {
+      // createFile already recorded the failure on the workspace error channel.
+    } finally {
+      creatingCompactFile = false;
+    }
+    return;
+  }
   ide.showActivity('explorer');
   creatingFile.value = true;
+}
+
+// Untitled names count up so a second new file does not overwrite the first.
+function nextUntitledPath(): string {
+  const taken = new Set(workspace.openPaths());
+  let index = 1;
+  while (taken.has(`untitled-${index}.py`)) index += 1;
+  return `untitled-${index}.py`;
 }
 
 function setCreatingFile(value: boolean): void {
@@ -487,6 +554,14 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'file.closeTab': closeActiveFile,
   'run.start': () => { void runActive(); },
   'run.stop': stopActive,
+  // Each sidebar view is a command, so both the keyboard shortcut and the
+  // palette reach it the way VS Code's View menu does.
+  'view.showExplorer': () => ide.showActivity('explorer'),
+  'view.showSearch': () => ide.showActivity('search'),
+  'view.showSourceControl': () => ide.showActivity('source-control'),
+  'view.showRuns': () => ide.showActivity('runs'),
+  'view.showRemote': () => ide.showActivity('remote'),
+  'view.showContext': () => ide.showActivity('context'),
   'view.toggleSidebar': ide.toggleSidebar,
   'view.togglePanel': ide.togglePanel,
   'view.toggleSetup': setupWelcome.reopen,
@@ -512,6 +587,16 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'view.restorePanel': () => ide.togglePanelMaximize(),
 };
 
+// The letter after Ctrl+Shift that opens each sidebar view. These are the
+// reference's own bindings, so a user who knows them can reach every view.
+const VIEW_SHORTCUTS: Record<string, IdeActivity> = {
+  e: 'explorer',
+  f: 'search',
+  g: 'source-control',
+  u: 'runs',
+  m: 'remote',
+  i: 'context',
+};
 const commandPaletteError = ref('');
 const paletteCommands = computed<PaletteCommand[]>(() => {
   const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
@@ -528,8 +613,14 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('run.stop', 'palette.stop', 'Shift+F5', isExecutionBusy(executionPhase.value)),
     command('navigation.back', 'navigation.back', 'Alt+Left', editorHistory.canBack.value),
     command('navigation.forward', 'navigation.forward', 'Alt+Right', editorHistory.canForward.value),
+    command('view.showExplorer', 'ide.activity.explorer', `${modifier}Shift+E`, ideMode.value),
+    command('view.showSearch', 'ide.activity.search', `${modifier}Shift+F`, ideMode.value),
+    command('view.showSourceControl', 'ide.activity.sourceControl', `${modifier}Shift+G`, ideMode.value),
+    command('view.showRuns', 'ide.activity.runs', `${modifier}Shift+U`, ideMode.value),
+    command('view.showRemote', 'ide.activity.remote', `${modifier}Shift+M`, ideMode.value),
+    command('view.showContext', 'ide.activity.context', `${modifier}Shift+I`, ideMode.value),
     command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
-    command('view.togglePanel', 'palette.panel', `${modifier}J`, ideMode.value),
+    command('view.togglePanel', 'palette.panel', `${modifier}J`),
     command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
     command('view.inspector', !ideMode.value && inspectorOpen.value ? 'header.inspector.hide' : 'header.inspector.show'),
     command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
@@ -611,6 +702,21 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
+  // VS Code's view shortcuts. They carry Shift, so they are checked before the
+  // plain letters below; Ctrl+Shift+E must not fall through to Ctrl+E.
+  if (event.shiftKey) {
+    const view = VIEW_SHORTCUTS[key];
+    if (view) {
+      event.preventDefault();
+      ide.showActivity(view);
+      return;
+    }
+  }
+  if (key === 'tab') {
+    event.preventDefault();
+    cycleTab(event.shiftKey ? -1 : 1);
+    return;
+  }
   if (key === 's') {
     event.preventDefault();
     saveActive();
@@ -714,6 +820,14 @@ onBeforeUnmount(() => {
       @select="selectPaletteItem"
       @close="commandCenter.close"
     />
+    <DiscardChangesDialog
+      :open="Boolean(pendingClose) || Boolean(pendingDelete)"
+      :file="pendingDelete || pendingClose"
+      :intent="pendingDelete ? 'delete' : 'close'"
+      :t="locale.t"
+      @discard="pendingDelete ? discardAndDelete() : discardAndClose()"
+      @cancel="pendingDelete = ''; pendingClose = ''"
+    />
     <ApiEndpointDialog
       :open="apiEndpointOpen"
       :value="configuredApiBaseUrl"
@@ -763,6 +877,7 @@ onBeforeUnmount(() => {
       :status-text="statusText"
       :connection-state="connectionState"
       :icon-theme="theme.theme.value"
+      :theme="theme.theme.value"
       :workspace-label="workspace.root.value?.name"
       :recent-files="editorHistory.recentPaths.value"
       :api-host="apiHost"
@@ -792,6 +907,7 @@ onBeforeUnmount(() => {
       @toggle-terminal="toggleTerminal"
       @open-setup="setupWelcome.reopen"
       @open-settings="openSettings"
+      @toggle-theme="theme.toggleTheme"
       @open-palette="openPalette()"
       @select-file="selectFile"
       @close-file="closeFile"
@@ -829,7 +945,16 @@ onBeforeUnmount(() => {
       @close-inspector="compactInspectorOpen = false"
     />
     <NotificationToasts :toasts="notifications.toasts.value" @dismiss="notifications.dismiss" />
-    <button v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    <div v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" class="compact-entries">
+      <!-- The compact layouts have no activity bar, so the two app-wide leaves
+           the lane carries have to float here as well; without the toggle the
+           narrow layout would have no way to change the theme at all. -->
+      <button type="button" class="compact-settings-entry compact-settings-entry--icon" data-action="toggle-theme" :aria-label="theme.theme.value === 'light' ? locale.t('header.theme.useDark') : locale.t('header.theme.useLight')" :title="theme.theme.value === 'light' ? locale.t('header.theme.useDark') : locale.t('header.theme.useLight')" @click="theme.toggleTheme">
+        <Sun v-if="theme.theme.value === 'dark'" :size="17" aria-hidden="true" />
+        <Moon v-else :size="17" aria-hidden="true" />
+      </button>
+      <button type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
+    </div>
     <SettingsView
       v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
       :preference="theme.preference.value"

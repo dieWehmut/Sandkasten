@@ -9,7 +9,13 @@ import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_EDITOR_SETTINGS, DEFAULT_FILE_SETTINGS, DEFAULT_WORKBENCH_SETTINGS, normalizeUserSettings, type EditorSettings, type FileSettings, type UserSettings, type WorkbenchSettings } from '../state/editorSettings';
 import { colorSchemeOptions, type ColorScheme } from '../theme/colorScheme';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import brandMark from '../assets/brand-88.png?inline';
 
+// Settings is the get-started page's sibling rather than a second design: the
+// same marked header, 13 px page type, 1.5em section titles and bordered action
+// tiles carry every section, and only the anatomy that has to survive stays the
+// settings editor's — the search field, the theme previews, and the marker that
+// names a setting the user changed.
 const props = defineProps<{
   preference: ThemePreference; theme: Theme; colors: AppearanceColors; colorScheme: ColorScheme;
   locale: Locale; t: Translator; connectionState: ConnectionState; apiEndpoint: string;
@@ -141,15 +147,27 @@ onMounted(() => heading.value?.focus());
 
 <template>
   <section class="settings-view" data-testid="settings-view" :aria-label="t('settings.title')">
-    <aside class="settings-sidebar">
-      <button class="settings-back" type="button" data-action="settings-back" @click="emit('back')"><ArrowLeft :size="19" aria-hidden="true" />{{ t('settings.back') }}</button>
-      <nav :aria-label="t('settings.sections')" class="settings-sections">
-        <button v-for="section in visibleSections" :key="section.id" type="button" :data-section="section.id" :data-action="`settings-section-${section.id}`" :aria-current="current?.id === section.id ? 'page' : undefined" @click="selectSection(section.id)">
-          <component :is="section.icon" :size="19" aria-hidden="true" />{{ t(`settings.${section.id}`) }}
-          <span v-if="searching" class="settings-section-count">{{ existingCount(section.id) + visibleRows(section.id).length }}</span>
-        </button>
-      </nav>
-    </aside>
+    <div class="settings-page">
+      <header class="settings-page__header">
+        <img class="settings-page__mark" :src="brandMark" alt="" aria-hidden="true" draggable="false" />
+        <div class="settings-page__heading">
+          <h1 ref="heading" class="settings-page__title" tabindex="-1">{{ t('settings.title') }}</h1>
+          <p class="settings-page__subtitle">{{ t('settings.subtitle') }}</p>
+        </div>
+        <div class="settings-page__actions">
+          <label class="settings-search"><Search :size="16" aria-hidden="true" /><input v-model="search" type="search" :aria-label="t('settings.search')" :placeholder="t('settings.search')" /></label>
+          <button class="settings-back" type="button" data-action="settings-back" @click="emit('back')"><ArrowLeft :size="16" aria-hidden="true" />{{ t('settings.back') }}</button>
+        </div>
+      </header>
+
+      <aside class="settings-sidebar">
+        <nav :aria-label="t('settings.sections')" class="settings-sections">
+          <button v-for="section in visibleSections" :key="section.id" type="button" :data-section="section.id" :data-action="`settings-section-${section.id}`" :aria-current="current?.id === section.id ? 'page' : undefined" @click="selectSection(section.id)">
+            <component :is="section.icon" :size="17" aria-hidden="true" />{{ t(`settings.${section.id}`) }}
+          </button>
+        </nav>
+      </aside>
+
     <main class="settings-content">
       <header class="settings-header">
         <div class="settings-header__row">
@@ -202,6 +220,7 @@ onMounted(() => heading.value?.focus());
         <p v-if="!renderedSections.length" class="settings-empty" role="status">{{ t('settings.noResults') }}</p>
       </div>
     </main>
+    </div>
   </section>
 </template>
 

@@ -150,15 +150,25 @@ carries the palette shortcut hint instead of the reference's startup checkbox.
 
 ### Settings screen
 
+**Reframed on 2026-10-18.** A follow-up request asked for the settings screen to
+share the get-started page's language, so the frame, the header, the section
+titles and the rows are now the welcome page's (1200 px centred page, 13 px
+type, 2.7em/400 page title, 1.5em/400 section titles, one action tile per
+control). The settings-editor roles below survive inside that frame — the
+search field in the header, the two-pixel modified bar (now inset in the tile's
+leading edge), the bold rail selection, the 26 px controls. See
+`2026-10-18-settings-page-parity-design.md`; the frame rows of this table are
+superseded, the anatomy rows still hold.
+
 | Property | VS Code | Sandkasten |
 | --- | --- | --- |
-| Frame | `.settings-editor { max-width: 1400px; margin: auto; height: 100%; overflow: hidden }`, rows centred in `min(100%, 1400px)` with 24 px insets | a 1400 px centred header and body with the same 24 px insets |
-| Header | `.settings-header { margin: 11px auto auto; padding: 3px 24px 0 }`, the search field in the header, `.settings-header-controls { margin-top: 10px; border-bottom: 1px solid }` | the section title and the search field on one row, the rule under them at `margin-top: 10px` |
-| Group title | `.settings-group-title-label { font-weight: 600; padding: 10px 10px 10px 15px }`, level 3 at 18 px | 18 px group titles with the same padding |
-| Row | `.setting-item-contents { position: relative; padding: 12px 14px 18px }`, `border-radius: cornerRadius-medium`, hover `settings-rowHoverBackground`, focused `settings-focusedRowBackground` | rows with the measured padding and radius, separated by a hover highlight instead of rules |
-| Modified marker | `.setting-item-modified-indicator { left: 5px; top: 15px; bottom: 18px; width: 6px; border-left: 2px solid settings-modifiedItemIndicator }` | the same two-pixel bar on a row whose value differs from its default (an overridden color, or a non-default scheme), fed by `useAppearance.customized` |
+| Frame | `.settings-editor { max-width: 1400px; margin: auto; height: 100%; overflow: hidden }`, rows centred in `min(100%, 1400px)` with 24 px insets | superseded by the welcome frame: a 1200 px centred page on the 13 px/16 px base type |
+| Header | `.settings-header { margin: 11px auto auto; padding: 3px 24px 0 }`, the search field in the header, `.settings-header-controls { margin-top: 10px; border-bottom: 1px solid }` | superseded by the welcome header (mark, 2.7em/400 title, 1.35em subtitle) with the search field and the back action on the trailing edge |
+| Group title | `.settings-group-title-label { font-weight: 600; padding: 10px 10px 10px 15px }`, level 3 at 18 px | superseded by the welcome section title at 1.5em/400, 32 px between cards |
+| Row | `.setting-item-contents { position: relative; padding: 12px 14px 18px }`, `border-radius: cornerRadius-medium`, hover `settings-rowHoverBackground`, focused `settings-focusedRowBackground` | superseded by one tile per control (1 px border, 6 px corners, the raised surface, a `--surface-subtle` hover), 8 px apart |
+| Modified marker | `.setting-item-modified-indicator { left: 5px; top: 15px; bottom: 18px; width: 6px; border-left: 2px solid settings-modifiedItemIndicator }` | the two-pixel bar still marks a row whose value differs from its default (an overridden color, or a non-default scheme, fed by `useAppearance.customized`), inset 8 px inside the tile's leading edge |
 | Controls | `.setting-item-contents .monaco-select-box { height: 26px; padding: 2px 6px }` | 26 px controls with the same insets |
-| Table of contents | a floating TOC dropdown attached to the search field, entries at `line-height: 22px` with the selected entry bold | the app's TOC rail keeps that rail: 22 px entries, bold selection |
+| Table of contents | a floating TOC dropdown attached to the search field, entries at `line-height: 22px` with the selected entry bold | the app's rail keeps that rule: the selected entry is bold and now takes the tile accent |
 | Description | `.setting-item-description { margin-top: -1px; opacity: .9 }` | descriptions at the same weight and opacity under their title |
 
 The theme picker (system / light / dark previews) is app content with no
@@ -276,7 +286,7 @@ measured row inside a 1280 px window with every readout visible.
 | 6 | done | Editor | 14 px on a 21 px line box, the line-number column reserving five editor characters plus the decoration width on the editor surface, the active line as a quiet fill with hairline rules, and the active line number stepping up to the primary foreground | `styles.test.ts` editor assertions, computed-metric probe |
 | 7 | done | Find widget | A custom CodeMirror panel that renders VS Code's floating find widget: 34 px find row, 13 px inputs, icon buttons, `Aa`/`ab`/`.*` toggles, a `current of total` counter (CodeMirror has none), an expandable replace row, and the close action in the widget's corner | `tests/findWidget.test.ts`, find-widget screenshots |
 | 8 | done | Welcome page | The empty editor rebuilt as the Get Started tab: 13 px base on the measured 1200 px two-column grid with a 25 % title band and a centred footer, a 2.7em product title, 32 px section gaps, tiles with 20 px accent icons, and 24 px recent rows fed by the editor history | `tests/EditorWelcome.test.ts`, `editorWelcomeApp.test.ts`, `welcome.css` geometry assertions, welcome screenshot |
-| 9 | done | Settings screen | Framed like the settings editor: a 1400 px frame with 24 px insets, a header carrying the section name and the search field over a rule, 18 px group titles, rows with the measured 12/14/18 padding and hover highlight, 26 px controls, a bold TOC selection, and the two-pixel accent bar on settings the user changed | `tests/SettingsView.test.ts`, `appearance.test.ts`, `settings.css` geometry assertions, settings screenshot |
+| 9 | done | Settings screen | Framed like the settings editor: a 1400 px frame with 24 px insets, a header carrying the section name and the search field over a rule, 18 px group titles, rows with the measured 12/14/18 padding and hover highlight, 26 px controls, a bold TOC selection, and the two-pixel accent bar on settings the user changed **(frame superseded on 2026-10-18: the page now speaks the get-started page's language; see `2026-10-18-settings-page-parity-design.md`)** | `tests/SettingsView.test.ts`, `appearance.test.ts`, `settings.css` geometry assertions, settings screenshot |
 | 10 | done | Side bar | The view actions VS Code reveals on hover: a 16 × 20 action box on the pane header's trailing edge, hidden until the row is hovered or focused, wired to "Clear run history" whenever the runs section has items | `tests/ide.test.ts` clear-history coverage, `styles.test.ts` action geometry, hover screenshot |
 | 11 | done | Editor | A VS Code-style right-click menu in place of the browser's: a fixed 13 px context widget with the measured separator, seven editor commands with their accelerators and availability, arrow-key navigation, viewport clamping, and the reference's "keep the selection you right-clicked inside" rule | `tests/contextMenu.test.ts`, `styles.test.ts` menu geometry, menu screenshots |
 | 12 | done | Editor | The reference's matching-bracket box and other-occurrence highlight, drawn with inset shadows because these marks sit inline, plus `highlightSelectionMatches()` so selecting a word lights up its other occurrences | `styles.test.ts` highlight assertions, highlight probe and screenshot |

@@ -1,0 +1,72 @@
+/* Closing a file with unsaved edits used to discard them without a word. The
+   dialog borrows the API endpoint layer's shape so both modals match. */
+.discard-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+
+.discard-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(0 0 0 / 38%);
+  cursor: default;
+}
+
+.discard-dialog {
+  position: relative;
+  width: min(26rem, calc(100vw - 32px));
+  padding: 18px 20px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 30%);
+}
+
+.discard-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.discard-dialog__body {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.discard-dialog__file {
+  margin: 0 0 14px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.discard-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.discard-dialog__actions button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.discard-dialog__confirm {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}

@@ -444,6 +444,16 @@
   font-size: 12px;
 }
 
+/* The field itself hides the global ring so the icon and clear button stay
+   flush, which left a keyboard user with no focus indicator at all. The wrapper
+   carries the ring instead. */
+.ide-search__field:focus-within {
+  border-color: var(--accent-strong);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
 .ide-search__field input:focus-visible {
   outline: none;
 }
@@ -471,16 +481,30 @@
   gap: 8px;
 }
 
+/* The search toggles are icon buttons that stay pressed, matching the editor's
+   find widget: 22 px boxes in the muted role, lit with the input-option accent
+   while on. */
 .ide-search__toggle {
   display: inline-flex;
+  min-width: 22px;
+  height: 22px;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 5px;
   color: var(--text-muted);
-  font-size: 11px;
+  background: transparent;
 }
 
-.ide-search__toggle input {
-  margin: 0;
+.ide-search__toggle:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ide-search__toggle[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--accent-soft);
 }
 
 .ide-search__summary,
@@ -647,8 +671,11 @@
   background: transparent;
 }
 
+/* Every label in the tree reads at the strong text role: a folder differs from
+   a file by its weight, not by a grey it does not share with the rest of the
+   list. */
 .ide-tree__row--directory .ide-tree__toggle {
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -738,7 +765,9 @@
 
 .ide-tab {
   display: inline-flex;
-  min-width: 0;
+  /* Tabs keep their width and let the strip scroll. Squeezing them instead
+     collapsed every name to zero: forty tabs rendered as forty bare icons. */
+  flex: 0 0 auto;
   align-items: center;
   border-right: 1px solid var(--border);
   border-radius: 0;
@@ -753,7 +782,9 @@
 
 .ide-tab__select {
   display: inline-flex;
-  min-width: 0;
+  /* Wide enough for a readable name before the ellipsis, narrow enough that a
+     few tabs still fit; below this the strip scrolls instead of shrinking. */
+  min-width: 92px;
   max-width: 220px;
   height: var(--vscode-tab-height);
   align-items: center;
@@ -1221,7 +1252,10 @@ button.ide-status__item:focus-visible {
 .ide-breadcrumbs__step {
   display: inline-flex;
   height: 100%;
-  min-width: 0;
+  /* Steps keep their intrinsic width and the trail scrolls. Squeezing them
+     instead let each label overflow its own box and print over its neighbour:
+     "directory" wanted 77 px, was given 36 px, and bled into the next crumb. */
+  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   padding: 0 5px;

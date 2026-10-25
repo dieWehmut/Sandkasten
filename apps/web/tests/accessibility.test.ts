@@ -124,6 +124,31 @@ describe('EdgeSheet', () => {
     wrapper.unmount();
   });
 
+  test('keeps the theme toggle reachable when the compact layout hides the activity bar', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact layouts drop the activity bar, so both app-wide leaves the
+    // lane carries have to float instead; without the toggle a narrow window
+    // would have no way to change the theme.
+    expect(wrapper.find('[data-testid="ide-activity-bar"]').exists()).toBe(false);
+    const entries = wrapper.get('.compact-entries');
+    const actions = entries.findAll('button').map((button) => button.attributes('data-action'));
+    expect(actions).toEqual(['toggle-theme', 'open-settings']);
+
+    const toggle = entries.get('[data-action="toggle-theme"]');
+    const before = document.documentElement.dataset.theme;
+    await toggle.trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).not.toBe(before);
+    expect(window.localStorage.getItem('sandkasten-theme')).toBe(document.documentElement.dataset.theme);
+    // The label names the theme the next click moves to.
+    expect(wrapper.get('[data-action="toggle-theme"]').attributes('aria-label')).toMatch(/theme/i);
+
+    wrapper.unmount();
+  });
+
   test('wires the compact history and inspector commands to one active sheet at a time', async () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
     const wrapper = mount(App, { attachTo: document.body });
@@ -177,5 +202,95 @@ describe('EdgeSheet', () => {
 
     wrapper.unmount();
     expect(document.body.style.overflow).toBe('');
+  });
+});
+describe('Sidebar view shortcuts', () => {
+  const active = (wrapper: ReturnType<typeof mount>) =>
+    wrapper.get('[data-testid="ide-activity-bar"] [aria-pressed="true"]').attributes('aria-label');
+
+  test('opens each sidebar view from the keyboard the way the reference does', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(active(wrapper)).toBe('Explorer');
+
+    // The letter after Ctrl+Shift picks the view. Without the binding these keys
+    // did nothing at all, so every view but the explorer was mouse-only.
+    const press = async (key: string) => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey: true, shiftKey: true }));
+      await flushPromises();
+    };
+    await press('F');
+    expect(active(wrapper)).toBe('Search');
+    await press('G');
+    expect(active(wrapper)).toBe('Source Control');
+    await press('U');
+    expect(active(wrapper)).toBe('Recent runs');
+    await press('E');
+    expect(active(wrapper)).toBe('Explorer');
+
+    wrapper.unmount();
+  });
+
+  test('does not let Ctrl+Shift+E fall through to the plain Ctrl+E binding', async () => {
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // Ctrl+E opens the file palette; Ctrl+Shift+E has to select the explorer
+    // instead of also opening it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(wrapper.find('[data-testid="command-palette"]').exists()).toBe(false);
+    expect(active(wrapper)).toBe('Explorer');
+
+    wrapper.unmount();
+  });
+
+
+  test('creates a file from Ctrl+N when the compact layout has no explorer', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    window.localStorage.setItem(
+      'sandkasten-workspace-v1',
+      JSON.stringify({ files: { 'alpha.py': 'print(1)\n' } }),
+    );
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact shell has no tree, no tab strip and no new-file button, so the
+    // explorer-bound form never renders there. The shortcut used to set that form
+    // open and nothing appeared; it has to create the file directly instead.
+    expect(wrapper.find('[data-testid="ide-activity-bar"]').exists()).toBe(false);
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'n', ctrlKey: true });
+    await flushPromises();
+
+    const stored = JSON.parse(window.localStorage.getItem('sandkasten-workspace-v1') ?? '{}');
+    expect(Object.keys(stored.files ?? {})).toContain('untitled-1.py');
+
+    // A second press must not overwrite the first file.
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'n', ctrlKey: true });
+    await flushPromises();
+    const again = JSON.parse(window.localStorage.getItem('sandkasten-workspace-v1') ?? '{}');
+    expect(Object.keys(again.files ?? {})).toContain('untitled-2.py');
+
+    wrapper.unmount();
+  });
+
+  test('hides the output panel with Ctrl+J on the compact layouts too', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => mediaQuery(query.includes('max-width: 767px'))));
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+
+    // The compact shell renders SourceWorkbench, which used to receive a
+    // hard-coded panel-visible of true whenever no terminal was attached, so the
+    // shortcut toggled a value nothing read: the panel could not be closed.
+    expect(wrapper.find('.output-region').exists()).toBe(true);
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'j', ctrlKey: true });
+    await flushPromises();
+    expect(wrapper.find('.output-region').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="app-shell"]').trigger('keydown', { key: 'j', ctrlKey: true });
+    await flushPromises();
+    expect(wrapper.find('.output-region').exists()).toBe(true);
+
+    wrapper.unmount();
   });
 });

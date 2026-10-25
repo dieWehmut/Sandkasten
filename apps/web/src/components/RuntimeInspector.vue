@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Runtime, RuntimeLimits } from '../services/sandkastenApi';
 import { useTranslation } from '../i18n/useTranslation';
+import { statusLabel } from '../state/status';
 
 defineProps<{ runtime?: Runtime }>();
 const t = useTranslation();
@@ -40,7 +41,7 @@ function limitEntries(limits: RuntimeLimits | undefined): Array<[string, unknown
       <div><dt>{{ t('inspector.language') }}</dt><dd>{{ runtime.language }}</dd></div>
       <div v-if="runtime.version"><dt>{{ t('inspector.version') }}</dt><dd>{{ runtime.version }}</dd></div>
       <div v-if="runtime.image"><dt>{{ t('inspector.image') }}</dt><dd>{{ runtime.image }}</dd></div>
-      <div v-if="runtime.status"><dt>{{ t('inspector.status') }}</dt><dd>{{ runtime.status }}</dd></div>
+      <div v-if="runtime.status"><dt>{{ t('inspector.status') }}</dt><dd>{{ statusLabel(runtime.status, t) }}</dd></div>
       <div v-if="runtime.default_entrypoint"><dt>{{ t('inspector.entrypoint') }}</dt><dd>{{ runtime.default_entrypoint }}</dd></div>
       <div><dt>{{ t('inspector.vendorRequired') }}</dt><dd>{{ runtime.requires_vendor ? t('inspector.yes') : t('inspector.no') }}</dd></div>
       <div v-if="runtime.aliases?.length"><dt>{{ t('inspector.aliases') }}</dt><dd>{{ runtime.aliases.join(', ') }}</dd></div>

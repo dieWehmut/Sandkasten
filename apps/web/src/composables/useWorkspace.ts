@@ -30,6 +30,7 @@ export interface WorkspaceController {
   dirtyCount: ComputedRef<number>;
   initialize(): Promise<void>;
   openFolder(): Promise<boolean>;
+  openPaths(): string[];
   refreshTree(): Promise<void>;
   openFile(path: string): Promise<void>;
   createFile(name: string, language?: string, folder?: string): Promise<string>;
@@ -295,6 +296,7 @@ export function useWorkspace(): WorkspaceController {
     initialize,
     openFolder,
     refreshTree,
+    openPaths,
     openFile,
     createFile,
     createFolder,

@@ -267,6 +267,31 @@ describe('workspace explorer', () => {
     expect(ancestorPaths('')).toEqual([]);
   });
 
+  test('scrolls the open file into view when the trail outruns its row', async () => {
+    const wrapper = mount(IdeBreadcrumbs, {
+      props: { filePath: 'a/b/c/d/util.py', rootPath: 'C:\\ws' },
+      attachTo: document.body,
+    });
+    const bar = wrapper.get('[data-testid="ide-breadcrumbs"]').element as HTMLElement;
+
+    // jsdom has no layout: give the row a viewport narrower than its content and
+    // the file crumb an edge past it, then check the scroll that follows.
+    Object.defineProperty(bar, 'scrollWidth', { value: 900, configurable: true });
+    Object.defineProperty(bar, 'clientWidth', { value: 400, configurable: true });
+    const fileCrumb = wrapper.get('.ide-breadcrumbs__step--static').element as HTMLElement;
+    fileCrumb.getBoundingClientRect = () => ({ right: 700, left: 620, top: 0, bottom: 22, width: 80, height: 22, x: 620, y: 0, toJSON() {} }) as DOMRect;
+    bar.getBoundingClientRect = () => ({ right: 400, left: 0, top: 0, bottom: 22, width: 400, height: 22, x: 0, y: 0, toJSON() {} }) as DOMRect;
+
+    await wrapper.setProps({ filePath: 'a/b/c/d/other.py' });
+    await nextTick();
+
+    // The file crumb — the one that says where you are — is what scrolls into
+    // sight, not the last folder button that ":last-of-type" would have matched.
+    expect(bar.scrollLeft).toBeGreaterThan(0);
+
+    wrapper.unmount();
+  });
+
   test('renders the trail with a clickable folder and a static file', async () => {
     const wrapper = mount(IdeBreadcrumbs, {
       props: { filePath: 'pkg/deep/util.py', rootPath: 'C:\\ws' },
@@ -344,7 +369,10 @@ describe('workspace explorer', () => {
       'ide-refresh-tree',
       'ide-collapse-folders',
     ]);
-    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(6);
+    // pkg holds only the folder deep, so the reference compacts the pair into
+    // one "pkg/deep" row: two rows for that branch instead of three.
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(5);
+    expect(wrapper.get('[data-path="pkg"] .ide-tree__name').text()).toBe('pkg/deep');
 
     await wrapper.get('[data-action=ide-collapse-folders]').trigger('click');
     // Collapsing folds the nested folder too, so only the top level remains.
@@ -545,6 +573,60 @@ describe('workspace explorer', () => {
     expect(wrapper.find('[data-testid=ide-inline-create]').exists()).toBe(false);
   });
 
+  test('compacts a chain of single-child folders into one row', async () => {
+    const wrapper = mount(WorkspaceExplorer, {
+      props: {
+        tree: [{
+          path: 'a',
+          name: 'a',
+          type: 'directory',
+          children: [{
+            path: 'a/b',
+            name: 'b',
+            type: 'directory',
+            children: [{
+              path: 'a/b/c',
+              name: 'c',
+              type: 'directory',
+              // A folder holding more than one child ends the chain, so the row
+              // stands for a/b/c and shows both files beneath it.
+              children: [
+                { path: 'a/b/c/one.py', name: 'one.py', type: 'file' },
+                { path: 'a/b/c/two.py', name: 'two.py', type: 'file' },
+              ],
+            }],
+          }],
+        }],
+        root: { path: '/ws', name: 'ws' },
+        kind: 'desktop',
+        activePath: 'a/b/c/one.py',
+      },
+    });
+
+    // One row for the whole chain instead of one per level, which is what keeps
+    // a deep path from walking off the side of the sidebar.
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(3);
+    const head = wrapper.get('[data-path="a"]');
+    expect(head.get('.ide-tree__name').text()).toBe('a/b/c');
+    expect(head.get('.ide-tree__name').attributes('title')).toBe('a/b/c');
+    expect(head.get('.ide-tree__row').attributes('data-chain')).toBe('true');
+    // The chain's children hang under the compacted row at one indent level.
+    expect(wrapper.get('[data-path="a/b/c/one.py"]').attributes('aria-level')).toBe('2');
+    expect(wrapper.findAll('[data-path="a/b/c/one.py"] .ide-tree__guides i')).toHaveLength(1);
+
+    // Folding the head hides the whole chain's contents in one click, and the
+    // row keeps its joined label instead of snapping back to the head's name.
+    await wrapper.get('[data-path="a"] button').trigger('click');
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(1);
+    expect(wrapper.get('[data-path="a"] .ide-tree__name').text()).toBe('a/b/c');
+
+    // Reopening has to open every folder the row stands for, not just the head,
+    // or the contents the row promises to reveal would stay hidden.
+    await wrapper.get('[data-path="a"] button').trigger('click');
+    expect(wrapper.findAll('[role=treeitem]')).toHaveLength(3);
+    expect(wrapper.get('[data-path="a"] button').attributes('aria-expanded')).toBe('true');
+  });
+
   test('renders folders, marks dirty files, and collapses directories', async () => {
     const wrapper = mount(WorkspaceExplorer, {
       props: {
@@ -619,6 +701,29 @@ describe('workspace explorer', () => {
       props: { files: [{ path: 'main.py', name: 'main.py', dirty: false }], activePath: 'main.py' },
     });
     expect(tabs.get('.ide-tab__select .file-icon').attributes('data-icon')).toBe('_f_python');
+  });
+
+  test('brings the active tab into view when the strip has scrolled away', async () => {
+    const files = Array.from({ length: 6 }, (_unused, index) => ({
+      path: `mod-${index}.py`, name: `mod-${index}.py`, dirty: false,
+    }));
+    const wrapper = mount(EditorTabs, { props: { files, activePath: 'mod-0.py' }, attachTo: document.body });
+    const strip = wrapper.get('[data-testid="editor-tabs"]').element as HTMLElement;
+    // jsdom has no layout, so the scroll is recorded instead of performed.
+    const scrolled: string[] = [];
+    (Element.prototype as unknown as { scrollIntoView: (options: unknown) => void }).scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this.textContent?.trim() ?? '');
+    };
+
+    await wrapper.setProps({ activePath: 'mod-5.py' });
+    await nextTick();
+
+    // Opening a file from anywhere but the strip — the explorer, quick open, a
+    // breadcrumb — has to reveal its tab rather than leave it off-screen.
+    expect(scrolled.at(-1)).toBe('mod-5.py');
+    expect(strip.querySelector('.ide-tab--active')?.textContent?.trim()).toBe('mod-5.py');
+
+    wrapper.unmount();
   });
 });
 
@@ -739,6 +844,36 @@ describe('desktop workbench', () => {
     await flushPromises();
     expect(wrapper.get('.ide-sidebar').exists()).toBe(true);
     expect(wrapper.get('[data-activity="explorer"]').attributes('aria-pressed')).toBe('true');
+  });
+
+  test('toggles the theme from the activity bar directly above settings', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    // The two app-wide leaves sit together at the bottom of the lane, the theme
+    // toggle first and settings last.
+    const buttons = wrapper.findAll('.ide-activity__button');
+    expect(buttons.at(-2)?.attributes('data-action')).toBe('toggle-theme');
+    expect(buttons.at(-1)?.attributes('data-action')).toBe('open-settings');
+
+    const toggle = wrapper.get('[data-action="toggle-theme"]');
+    expect(toggle.classes()).toContain('ide-activity__button--footer');
+    // The label names the theme the click moves to, so the control reads as an
+    // action rather than a state.
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(toggle.attributes('aria-label')).toBe('Use dark theme');
+
+    await toggle.trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('sandkasten-theme')).toBe('dark');
+    expect(wrapper.get('[data-action="toggle-theme"]').attributes('aria-label')).toBe('Use light theme');
+
+    await wrapper.get('[data-action="toggle-theme"]').trigger('click');
+    await nextTick();
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   test('keeps the sidebar collapse control at the top-right of the sidebar header', async () => {
@@ -1058,8 +1193,10 @@ describe('desktop workbench', () => {
     await flushPromises();
     expect(bridge.workspace.read).toHaveBeenCalledWith('main.py');
 
-    await wrapper.get('[data-testid="workspace-search-case"]').setValue(true);
-    expect(wrapper.get('[data-testid="workspace-search-case"]').element.checked).toBe(true);
+    // Clicking the case toggle asks for case-sensitive search and shows as pressed.
+    await wrapper.get('[data-testid="workspace-search-case"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="workspace-search-case"]').attributes('aria-pressed')).toBe('true');
   });
 
   test('explains that search needs the desktop app in the browser build', async () => {
@@ -1262,5 +1399,33 @@ describe('desktop workbench', () => {
     await wrapper.get('[data-action="ide-status-settings"]').trigger('click');
     await nextTick();
     expect(wrapper.find('[data-testid="settings-view"]').exists()).toBe(true);
+  });
+
+  test('walks the open tabs with Ctrl+Tab and wraps at the ends', async () => {
+    const bridge = stubBridge();
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.get('[data-path="main.py"] .ide-tree__open').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-path="pkg/util.py"] .ide-tree__open').trigger('click');
+    await flushPromises();
+
+    const activeTab = () => wrapper.get('.ide-tab--active').text();
+    const last = activeTab();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true }));
+    await flushPromises();
+    const first = activeTab();
+    expect(first).not.toBe(last);
+
+    // Wrapping: pressing again from the last tab returns to the first.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true }));
+    await flushPromises();
+    expect(activeTab()).toBe(last);
+
+    // Shift walks the other way.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    expect(activeTab()).toBe(first);
   });
 });

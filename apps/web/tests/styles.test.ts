@@ -169,6 +169,46 @@ describe('workbench style boundaries', () => {
     expect(output).toContain('text-transform: uppercase;');
   });
 
+  test('lights the sidebar search toggles like the find widget options', () => {
+    const ide = style('ide.css');
+    const editor = style('editor.css');
+    // Both search surfaces toggle options the same way: a 22 px icon button in
+    // the muted role, lit with the input-option accent while pressed, instead of
+    // a native checkbox with a printed label.
+    expect(editor).toMatch(/\.find-widget__option\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
+    expect(ide).toMatch(/\.ide-search__toggle \{[^}]*min-width: 22px;[^}]*height: 22px;[^}]*border-radius: 5px;[^}]*color: var\(--text-muted\);/s);
+    expect(ide).toMatch(/\.ide-search__toggle\[aria-pressed="true"\] \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
+  });
+
+  test('keeps the breadcrumb steps whole instead of squeezing their labels', () => {
+    const ide = style('ide.css');
+    // Steps were flex items with min-width:0, so every label overflowed its own
+    // box and printed over its neighbour: "directory" wanted 77 px and got 36.
+    expect(ide).toMatch(/\.ide-breadcrumbs__step \{[^}]*flex: 0 0 auto;/s);
+    expect(ide).toMatch(/\.ide-breadcrumbs \{[^}]*overflow-x: auto;/s);
+    // The label itself must not be the thing that shrinks.
+    expect(ide).not.toMatch(/\.ide-breadcrumbs__step \{[^}]*min-width: 0;/s);
+  });
+
+  test('keeps the tab strip scrollable instead of squeezing tabs to nothing', () => {
+    const ide = style('ide.css');
+    // A flex tab with min-width:0 collapsed to a bare icon once the strip was
+    // full: forty tabs measured 28 px each and every name measured 0 px.
+    expect(ide).toMatch(/\.ide-tab \{[^}]*flex: 0 0 auto;/s);
+    expect(ide).toMatch(/\.ide-tab__select \{[^}]*min-width: 92px;/s);
+    expect(ide).toMatch(/\.ide-tabs \{[^}]*overflow-x: auto;/s);
+  });
+
+  test('keeps the control focus ring off a heading that only takes focus on mount', () => {
+    const base = style('base.css');
+    // The setup and settings pages move focus to their page heading so assistive
+    // technology reads it first. That heading is a reading position, not a
+    // control, so the shared rule drops both layers of the control ring instead
+    // of every page patching its own heading.
+    expect(base).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--accent\);\s*outline-offset: 2px;\s*box-shadow: 0 0 0 4px var\(--focus-ring\);\s*\}/);
+    expect(base).toMatch(/h1\[tabindex="-1"\]:focus-visible,\s*h2\[tabindex="-1"\]:focus-visible,\s*h3\[tabindex="-1"\]:focus-visible \{\s*outline: none;\s*box-shadow: none;\s*\}/);
+  });
+
   test('draws the overlay slider and the tree roles VS Code uses', () => {
     const base = style('base.css');
     const ide = style('ide.css');
@@ -183,6 +223,9 @@ describe('workbench style boundaries', () => {
     expect(ide).toMatch(/\.ide-tree__row--active \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
     expect(ide).toMatch(/\.ide-tree__guides i \{[^}]*background: var\(--border\);[^}]*opacity: 0;/s);
     expect(ide).toMatch(/\.ide-tree__row:hover \.ide-tree__guides i,\s*\.ide-tree__row--active \.ide-tree__guides i \{\s*opacity: 1;/);
+    // Every tree label reads at the strong text role: a folder separates itself
+    // by its weight, not by a grey the rest of the list does not share.
+    expect(ide).toMatch(/\.ide-tree__row--directory \.ide-tree__toggle \{\s*color: var\(--text\);\s*font-weight: 600;\s*\}/);
   });
 
   test('keeps the VS Code editor typography and gutter roles', () => {
@@ -191,7 +234,8 @@ describe('workbench style boundaries', () => {
     // line box, the gutter painted on the editor surface with five characters
     // reserved for the numbers plus the decoration width, and a quiet
     // active-line fill with hairline rules instead of an accent wash.
-    expect(editor).toContain('font: 14px/1.5 var(--font-mono);');
+    // The size is a preference now, so the rule reads the custom property.
+    expect(editor).toContain('font: var(--editor-font-size, 14px)/1.5 var(--font-mono);');
     expect(editor).toMatch(/\.source-editor \.cm-content \{[^}]*line-height: 1\.5;/s);
     expect(editor).toMatch(/\.source-editor \.cm-gutters \{[^}]*border-right: 0;[^}]*background: var\(--surface\);/s);
     expect(editor).toContain('min-width: calc(5ch + 14px);');
@@ -234,17 +278,22 @@ describe('workbench style boundaries', () => {
     expect(welcome).toMatch(/\.editor-welcome__path \{[^}]*text-overflow: ellipsis;/s);
   });
 
-  test('frames the settings screen like the settings editor', () => {
+  test('frames the settings screen like the get-started page', () => {
     const settings = style('settings.css');
-    // Measured from the settings editor: a 1400 px frame, a header with 24 px
-    // insets over a rule, rows with the 12/14/18 padding and a hover highlight,
-    // the two-pixel accent bar that marks a changed setting, and 22 px TOC rows.
-    expect(settings).toMatch(/\.settings-header \{\s*max-width: 1400px;\s*margin: 0 auto;\s*padding: 12px 24px 0;/);
-    expect(settings).toMatch(/\.settings-header__controls \{\s*margin-top: 10px;\s*border-bottom: 1px solid var\(--border\);/);
-    expect(settings).toMatch(/\.settings-content__inner \{\s*max-width: 1400px;\s*margin: 0 auto;\s*padding: 6px 24px 48px;/);
-    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 12px 14px 18px;/s);
-    expect(settings).toMatch(/\.settings-row--modified::before \{[^}]*left: 5px;[^}]*top: 15px;[^}]*bottom: 18px;[^}]*width: 2px;/s);
-    expect(settings).toMatch(/\.settings-sections button\[aria-current="page"\] \{\s*color: var\(--text\);\s*font-weight: 700;/);
+    // Settings is the welcome page's sibling: the same 13 px/16 px page type, a
+    // 1200 px centred frame whose header carries the product mark, a 2.7em page
+    // title at weight 400, 1.5em section titles, and one action tile per row
+    // (1 px border, 6 px corners, the raised surface). The two roles that stay
+    // the settings editor's own are the search field and the two-pixel marker
+    // on a setting the user changed.
+    expect(settings).toMatch(/\.settings-view \{[^}]*font-size: 13px;[^}]*line-height: 16px;/s);
+    expect(settings).toMatch(/\.settings-page \{[^}]*max-width: 1200px;[^}]*grid-template-columns: minmax\(180px, 3fr\) minmax\(0, 8fr\);/s);
+    expect(settings).toMatch(/\.settings-page__title \{[^}]*font-size: 2\.7em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-page__subtitle \{[^}]*font-size: 1\.35em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-card h2 \{[^}]*font-size: 1\.5em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 8px 10px;[^}]*border: 1px solid var\(--border\);[^}]*border-radius: 6px;/s);
+    expect(settings).toMatch(/\.settings-row--modified::before \{[^}]*left: 0;[^}]*top: 8px;[^}]*bottom: 8px;[^}]*width: 2px;/s);
+    expect(settings).toMatch(/\.settings-sections button\[aria-current="page"\] \{[^}]*color: var\(--text\);[^}]*font-weight: 700;/s);
   });
 
   test('shapes the context menu like the reference context view', () => {
@@ -491,5 +540,13 @@ describe('color scheme palettes', () => {
     for (const name of ['ide-remote', 'ide-source-control']) {
       expect(seen.has(name), `${name} must keep its own top-level block`).toBe(true);
     }
+  });
+
+  test('keeps a visible focus ring on the workspace search field', () => {
+    // The field hides the global ring so its icon and clear button stay flush.
+    // Without a ring on the wrapper a keyboard user had no focus indicator.
+    const ide = style('ide.css');
+    expect(ide).toMatch(/\.ide-search__field:focus-within \{[^}]*outline: 2px solid var\(--accent\);/s);
+    expect(ide).toMatch(/\.ide-search__field:focus-within \{[^}]*border-color: var\(--accent-strong\);/s);
   });
 });

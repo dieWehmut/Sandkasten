@@ -1,6 +1,9 @@
-﻿// The reduced title row removed the header theme button, so the desktop E2E
-// scripts choose a theme the way a user now does: open the settings screen from
-// the activity bar and click the appearance preview, then return to the editor.
+// The reduced title row removed the header theme button. A user now either
+// clicks the activity bar's theme toggle (light <-> dark) or, when a specific
+// choice such as the system default is needed, opens the settings screen from
+// the activity bar and clicks the appearance preview. The scripts use the
+// settings route because it covers every preference value, then return to the
+// editor.
 export async function selectTheme(page, theme) {
   if ((await page.getAttribute('html', 'data-theme')) === theme) return;
   await page.click('[data-action="open-settings"]');

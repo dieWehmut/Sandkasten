@@ -17,6 +17,7 @@ import type { RemoteHostsController } from '../composables/useRemoteHosts';
 import type { SourceControlController } from '../composables/useSourceControl';
 import type { IconTheme } from '../editor/fileIcon';
 import type { EditorSettings } from '../state/editorSettings';
+import type { Theme } from '../composables/useTheme';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
 import InspectorPanel from './InspectorPanel.vue';
@@ -90,6 +91,8 @@ const props = withDefaults(defineProps<{
   remote?: RemoteHostsController;
   sourceControl?: SourceControlController;
   iconTheme?: IconTheme;
+  /** The active theme, so the activity bar's footer can offer the toggle. */
+  theme?: Theme;
 }>(), {
   layoutMode: 'desktop',
   activity: 'explorer',
@@ -115,6 +118,7 @@ const props = withDefaults(defineProps<{
   recentFiles: () => [],
   apiHost: '',
   iconTheme: 'dark',
+  theme: 'dark',
 });
 
 const emit = defineEmits<{
@@ -137,6 +141,7 @@ const emit = defineEmits<{
   closePanel: [];
   openSetup: [];
   openSettings: [];
+  toggleTheme: [];
   openPalette: [];
   showPanel: [];
   toggleTerminal: [];
@@ -176,7 +181,7 @@ const sidebarTitle = computed(() => {
   if (props.activity === 'context') return t('inspector.title');
   if (props.activity === 'remote') return t('ide.activity.remote');
   if (props.activity === 'source-control') return t('ide.activity.sourceControl');
-  return props.workspaceRoot?.name ?? t('ide.explorer.scratch');
+  return props.workspaceRoot?.name || t('ide.explorer.scratch');
 });
 const styles = computed(() => (isIde.value
   ? ['layout-ide', {
@@ -197,8 +202,10 @@ const styles = computed(() => (isIde.value
         :active="activity"
         :sidebar-visible="sidebarVisible"
         :badges="{ explorer: dirtyPaths.length }"
+        :theme="theme"
         @select="emit('selectActivity', $event)"
         @open-settings="emit('openSettings')"
+        @toggle-theme="emit('toggleTheme')"
       />
       <aside v-if="sidebarVisible" class="ide-sidebar" :aria-label="t('ide.sidebar.label')">
         <header class="ide-sidebar__header">
@@ -444,7 +451,7 @@ const styles = computed(() => (isIde.value
       <SourceWorkbench
         :editor-settings="editorSettings"
         :terminal="terminal"
-        :panel-visible="terminal ? panelVisible : true"
+        :panel-visible="panelVisible"
         :runtimes="runtimes"
         :language="language"
         :source="source"

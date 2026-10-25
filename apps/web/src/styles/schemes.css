@@ -16,6 +16,12 @@
  *   - dark: `--accent` used as an icon/text color on `--surface`
  *   - both: `--on-accent` text on `--accent-fill` for filled controls
  *
+ * Filled controls take one of two labels. `--on-accent` pairs with
+ * `--accent-fill`; `--on-accent-strong` pairs with `--accent-strong`, which is
+ * the darker fill used by primary buttons. A label hard-coded to white broke on
+ * a custom accent, where `--accent-strong` can resolve light enough that white
+ * falls to 2.64:1.
+ *
  * The filled-control pair is separate from accent text: a soft pink fill can
  * keep its reference hue while small labels still have enough contrast.
  */
@@ -25,6 +31,7 @@
 :root[data-color-scheme="pink"] {
   --accent: #b12a69;
   --accent-strong: #a5215e;
+  --on-accent-strong: #ffffff;
   --accent-soft: #fcedf3;
   --accent-fill: #f077af;
   --on-accent: #1a1c1f;
@@ -34,6 +41,7 @@
 :root[data-theme="dark"][data-color-scheme="pink"] {
   --accent: #f077af;
   --accent-strong: #ffa4cd;
+  --on-accent-strong: #000000;
   --accent-soft: #34232b;
   --accent-fill: #f077af;
   --on-accent: #1a1c1f;
@@ -42,6 +50,7 @@
 :root[data-color-scheme="green"] {
   --accent: #23834a;
   --accent-strong: #176235;
+  --on-accent-strong: #ffffff;
   --accent-soft: #e1f2e6;
   --accent-fill: #176235;
   --on-accent: #ffffff;
@@ -50,6 +59,7 @@
 :root[data-theme="dark"][data-color-scheme="green"] {
   --accent: #63d58a;
   --accent-strong: #8be8a8;
+  --on-accent-strong: #000000;
   --accent-soft: #1f422d;
   --accent-fill: #63d58a;
   --on-accent: #181818;
@@ -58,6 +68,7 @@
 :root[data-color-scheme="purple"] {
   --accent: #7c3aed;
   --accent-strong: #5b21b6;
+  --on-accent-strong: #ffffff;
   --accent-soft: #ede9fe;
   --accent-fill: #5b21b6;
   --on-accent: #ffffff;
@@ -66,6 +77,7 @@
 :root[data-theme="dark"][data-color-scheme="purple"] {
   --accent: #b79bfd;
   --accent-strong: #cdb6ff;
+  --on-accent-strong: #000000;
   --accent-soft: #2c2145;
   --accent-fill: #b79bfd;
   --on-accent: #181818;
@@ -75,6 +87,7 @@
 :root[data-color-scheme="white"] {
   --accent: #767676;
   --accent-strong: #4f4f4f;
+  --on-accent-strong: #ffffff;
   --accent-soft: #ececec;
   --accent-fill: #4f4f4f;
   --on-accent: #ffffff;
@@ -83,6 +96,7 @@
 :root[data-theme="dark"][data-color-scheme="white"] {
   --accent: #ffffff;
   --accent-strong: #d4d4d4;
+  --on-accent-strong: #000000;
   --accent-soft: #2a2a2a;
   --accent-fill: #ffffff;
   --on-accent: #181818;
@@ -91,6 +105,7 @@
 :root[data-color-scheme="black"] {
   --accent: #1a1a1a;
   --accent-strong: #000000;
+  --on-accent-strong: #ffffff;
   --accent-soft: #e6e6e6;
   --accent-fill: #000000;
   --on-accent: #ffffff;
@@ -99,6 +114,7 @@
 :root[data-theme="dark"][data-color-scheme="black"] {
   --accent: #9a9a9a;
   --accent-strong: #cfcfcf;
+  --on-accent-strong: #000000;
   --accent-soft: #262626;
   --accent-fill: #9a9a9a;
   --on-accent: #181818;

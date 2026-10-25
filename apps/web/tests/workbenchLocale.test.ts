@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import InspectorPanel from '../src/components/InspectorPanel.vue';
 import OutputTabs from '../src/components/OutputTabs.vue';
 import RunControls from '../src/components/RunControls.vue';
+import RuntimeInspector from '../src/components/RuntimeInspector.vue';
 import RuntimeSelect from '../src/components/RuntimeSelect.vue';
 import { createTranslator } from '../src/i18n/locale';
 import { TRANSLATOR_KEY } from '../src/i18n/useTranslation';
@@ -49,5 +50,33 @@ describe('Chinese workbench labels', () => {
   test('translates known statuses and leaves unknown backend statuses readable', () => {
     expect(statusLabel('JOB_STATUS_SUCCEEDED', t)).toBe('成功');
     expect(statusLabel('JOB_STATUS_CUSTOM_PENDING', t)).toBe('custom pending');
+  });
+
+  test('localizes the live statuses a runtime or queued job reports', () => {
+    // The API reports "ready" for a runtime and "queued"/"running" while a job is
+    // in flight. Those used to fall through untranslated, so the inspector showed
+    // English words in a Chinese window.
+    expect(statusLabel('ready', t)).toBe('就绪');
+    expect(statusLabel('JOB_STATUS_QUEUED', t)).toBe('排队中');
+    expect(statusLabel('JOB_STATUS_RUNNING', t)).toBe('运行中');
+    expect(statusLabel('polling', t)).toBe('轮询中');
+    // An unknown status still falls back to its readable form rather than a key.
+    expect(statusLabel('SOMETHING_ELSE', t)).toBe('something else');
+  });
+
+  test('renders the runtime status in the active locale', () => {
+    const runtime = { language: 'python', version: '3.13', status: 'ready' };
+    const zh = mount(RuntimeInspector, {
+      props: { runtime },
+      global: { provide: { [TRANSLATOR_KEY as symbol]: t } },
+    });
+    expect(zh.text()).toContain('就绪');
+    expect(zh.text()).not.toContain('ready');
+
+    const en = mount(RuntimeInspector, {
+      props: { runtime },
+      global: { provide: { [TRANSLATOR_KEY as symbol]: createTranslator('en') } },
+    });
+    expect(en.text()).toContain('Ready');
   });
 });

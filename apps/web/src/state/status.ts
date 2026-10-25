@@ -32,9 +32,23 @@ export function isTerminalStatus(status: string | undefined): status is Terminal
   return typeof status === 'string' && TERMINAL_STATUSES.has(status);
 }
 
+// Non-terminal statuses are the words the API reports while work is still in
+// flight. Leaving them untranslated put English text ("ready", "queued") in an
+// otherwise translated inspector.
+const LIVE_STATUS_KEYS: Readonly<Record<string, MessageKey>> = {
+  ready: 'status.ready',
+  queued: 'status.queued',
+  running: 'status.running',
+  polling: 'status.polling',
+  pending: 'status.pending',
+};
+
 export function statusLabel(status: string | undefined, t: Translator = createTranslator('en')): string {
   if (!status) return t('status.unknown');
-  return isTerminalStatus(status) ? t(TERMINAL_STATUS_KEYS[status]) : status.replace(/^JOB_STATUS_/, '').replaceAll('_', ' ').toLowerCase();
+  if (isTerminalStatus(status)) return t(TERMINAL_STATUS_KEYS[status]);
+  const live = status.replace(/^JOB_STATUS_/, '').replaceAll('_', ' ').toLowerCase();
+  const key = LIVE_STATUS_KEYS[live];
+  return key ? t(key) : live;
 }
 
 export function statusCategory(status: string | undefined): StatusCategory | 'info' {
