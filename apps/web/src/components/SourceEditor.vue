@@ -179,7 +179,11 @@ function optionsExtensions(): Extension[] {
   return [
     EditorState.tabSize.of(options.tabSize),
     indentUnit.of(options.insertSpaces ? ' '.repeat(options.tabSize) : '\t'),
-    options.wordWrap ? EditorView.lineWrapping : [],
+    // `EditorView.lineWrapping` is a view-level facet: a compartment can add it
+    // but cannot take it away again, so toggling the preference off left the
+    // editor wrapped. Drive the same behaviour through a content attribute,
+    // which the compartment swaps in both directions.
+    EditorView.contentAttributes.of({ style: `white-space: ${options.wordWrap ? 'pre-wrap' : 'pre'};` }),
     options.lineNumbers ? lineNumbers() : [],
     // Without a shared preference, retain document-detected guide spacing.
     options.indentGuides ? indentGuides(props.options?.tabSize === undefined ? undefined : options.tabSize) : [],

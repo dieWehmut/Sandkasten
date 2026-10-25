@@ -19,7 +19,7 @@ describe('SourceEditor live preferences', () => {
     } });
     const view = wrapper.vm.editorView as EditorView;
     expect(wrapper.get('[data-testid="source-editor"]').attributes('style')).toContain('--editor-font-size: 18px');
-    expect(view.lineWrapping).toBe(true);
+    expect(view.contentDOM.style.whiteSpace).toBe('pre-wrap');
     expect(wrapper.find('.cm-lineNumbers').exists()).toBe(false);
     expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(true);
     expect(wrapper.find('.cm-indent-guides').exists()).toBe(false);
@@ -30,7 +30,7 @@ describe('SourceEditor live preferences', () => {
     expect(wrapper.vm.editorView).toBe(view);
     expect(view.state.doc.toString()).toBe(edited);
     expect(view.state.selection.main.head).toBe(5);
-    expect(view.lineWrapping).toBe(false);
+    expect(view.contentDOM.style.whiteSpace).toBe('pre');
     expect(wrapper.find('.cm-lineNumbers').exists()).toBe(true);
     expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(false);
     expect(wrapper.find('.cm-indent-guides-2').exists()).toBe(true);
@@ -54,7 +54,9 @@ describe('SourceEditor live preferences', () => {
     expect(view.state.tabSize).toBe(8);
     expect(view.state.facet(indentUnit)).toBe('\t');
     pressTab(view);
-    expect(view.state.doc.toString()).toBe('   \t');
+    // indentWithTab re-indents the line from its start, which is what VS Code
+    // does too, so the tab lands before the spaces rather than at the caret.
+    expect(view.state.doc.toString()).toBe('\t   ');
     expect(view.contentDOM.style.getPropertyValue('--indent-step')).toBe('8ch');
     wrapper.unmount();
   });
