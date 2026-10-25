@@ -22,7 +22,7 @@ async function browserFor() {
   const require = createRequire(path.join(root, 'apps/web/package.json'));
   const { chromium } = require('playwright-core');
   const executable = process.env.SANDKASTEN_CHROMIUM ?? '/home/han/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-  browser = await chromium.launch({ executablePath: executable, headless: true });
+  browser = await chromium.launch({ executablePath: executable, headless: true, env: { ...process.env, LD_LIBRARY_PATH: `${process.env.CONDA_PREFIX}/lib${process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : ''}` } });
   return browser;
 }
 for (const language of selected) {
@@ -60,6 +60,7 @@ for (const language of selected) {
     row.passed = true;
   } catch (error) { row.failure = error.message; }
   results.push(row);
+  await writeFile(path.join(out, `${language}.json`), JSON.stringify(row, null, 2));
   await writeFile(path.join(out, 'results.json'), JSON.stringify({ condaPrefix: process.env.CONDA_PREFIX, node: process.version, checkedAt: new Date().toISOString(), results }, null, 2));
   console.log(`${row.passed ? 'PASS' : 'FAIL'} ${language}: ${row.failure ?? `${result.durationMs}ms`}`);
 }

@@ -11,8 +11,8 @@
 // from the document's own indentation, because CodeMirror's language default
 // reports 2 for a Python file using four spaces.
 
-import { StateField, type EditorState, type Extension } from '@codemirror/state';
-import { Decoration, EditorView, type DecorationSet, type Range } from '@codemirror/view';
+import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { detectIndentation } from './documentFormat';
 
 /** Deepest nesting that gets its own stripe class; deeper lines reuse the last. */
@@ -41,8 +41,8 @@ export function indentStep(source: string): number {
 }
 
 /** The content-attribute declaration carrying `--indent-step`. */
-export function stepStyle(source: string): string {
-  return `--indent-step: ${indentStep(source)}ch`;
+export function stepStyle(source: string, configuredUnit?: number): string {
+  return `--indent-step: ${configuredUnit ?? indentStep(source)}ch`;
 }
 
 // One decoration per depth, interned for the life of the module: CodeMirror
@@ -59,8 +59,8 @@ function levelDecoration(level: number): Decoration {
   return decoration;
 }
 
-export function buildGuides(state: EditorState): DecorationSet {
-  const unit = indentStep(state.doc.toString());
+export function buildGuides(state: EditorState, configuredUnit?: number): DecorationSet {
+  const unit = configuredUnit ?? indentStep(state.doc.toString());
   const ranges: Range<Decoration>[] = [];
   let previous = 0;
 
@@ -78,17 +78,16 @@ export function buildGuides(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true);
 }
 
-const guidesField = StateField.define<DecorationSet>({
-  create: (state) => buildGuides(state),
-  update: (decorations, transaction) => (transaction.docChanged ? buildGuides(transaction.state) : decorations),
-  provide: (field) => EditorView.decorations.from(field),
-});
-
 /** The step is a content attribute: CodeMirror owns that element's style. */
-function stepAttribute(): Extension {
-  return EditorView.contentAttributes.compute([], (state) => ({ style: stepStyle(state.doc.toString()) }));
+function stepAttribute(configuredUnit?: number): Extension {
+  return EditorView.contentAttributes.compute([], (state) => ({ style: stepStyle(state.doc.toString(), configuredUnit) }));
 }
 
-export function indentGuides(): Extension {
-  return [guidesField, stepAttribute()];
+export function indentGuides(configuredUnit?: number): Extension {
+  const guidesField = StateField.define<DecorationSet>({
+    create: (state) => buildGuides(state, configuredUnit),
+    update: (decorations, transaction) => (transaction.docChanged ? buildGuides(transaction.state, configuredUnit) : decorations),
+    provide: (field) => EditorView.decorations.from(field),
+  });
+  return [guidesField, stepAttribute(configuredUnit)];
 }

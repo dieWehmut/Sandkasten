@@ -7,19 +7,23 @@ import { useTranslation } from '../i18n/useTranslation';
 import type { TerminalController } from '../composables/useTerminal';
 import { runProblemCounts } from '../state/diagnostics';
 import TerminalPanel from './ide/TerminalPanel.vue';
+import WebPreview from './WebPreview.vue';
+import { webPreviewDocument } from '../editor/preview';
 
-const props = withDefaults(defineProps<{ result?: JobResponse; error?: string; modelValue?: OutputTab; terminal?: TerminalController }>(), { modelValue: 'output' });
+const props = withDefaults(defineProps<{ result?: JobResponse; error?: string; modelValue?: OutputTab; terminal?: TerminalController; language?: string; source?: string }>(), { modelValue: 'output' });
 const emit = defineEmits<{ 'update:modelValue': [value: OutputTab] }>();
 const t = useTranslation();
-type PanelTab = OutputTab | 'terminal';
+type PanelTab = OutputTab | 'terminal' | 'preview';
+const preview = computed(() => webPreviewDocument(props.language ?? '', props.source, props.result));
 const tabs = computed<Array<{ id: PanelTab; labelKey: Parameters<typeof t>[0] }>>(() => [
   { id: 'output', labelKey: 'output.output' },
   { id: 'errors', labelKey: 'output.errors' },
   { id: 'compile', labelKey: 'output.compile' },
   { id: 'diagnostics', labelKey: 'output.diagnostics' },
+  ...(preview.value ? [{ id: 'preview' as const, labelKey: 'output.preview' as const }] : []),
   ...(props.terminal ? [{ id: 'terminal' as const, labelKey: 'terminal.title' as const }] : []),
 ]);
-const selected = ref<OutputTab>(props.modelValue);
+const selected = ref<OutputTab | 'preview'>(props.modelValue);
 const active = computed<PanelTab>(() => props.terminal?.shown.value ? 'terminal' : selected.value);
 const tabElements = ref<HTMLButtonElement[]>([]);
 const instanceId = `output-tabs-${Math.random().toString(36).slice(2)}`;
@@ -31,7 +35,7 @@ const badgeKind = computed(() => (problems.value.errors > 0 ? 'error' : 'warning
 const badgeLabel = (count: number): string => t('output.problemCount').replace('{count}', String(count));
 
 function hasChannelContent(tab: PanelTab): boolean {
-  if (tab === 'terminal') return false;
+  if (tab === 'terminal' || tab === 'preview') return false;
   const job = props.result;
   if (tab === 'output') {
     const decoded = decodeOutput(job?.stdout, job?.stdoutEncoding);
@@ -50,6 +54,7 @@ function hasChannelContent(tab: PanelTab): boolean {
 }
 
 watch(() => props.modelValue, (value) => { selected.value = value; });
+watch(preview, (value) => { if (!value && selected.value === 'preview') selected.value = props.modelValue; });
 
 function choose(tab: PanelTab) {
   if (tab === 'terminal') {
@@ -60,7 +65,7 @@ function choose(tab: PanelTab) {
   }
   props.terminal?.showOutput();
   selected.value = tab;
-  emit('update:modelValue', tab);
+  if (tab !== 'preview') emit('update:modelValue', tab);
 }
 
 async function move(event: KeyboardEvent, index: number) {
@@ -119,7 +124,8 @@ async function move(event: KeyboardEvent, index: number) {
       :tabindex="active === 'terminal' ? -1 : 0"
     >
       <TerminalPanel v-if="terminal && active === 'terminal'" :controller="terminal" />
-      <OutputViewer v-else :result="result" :error="error" :tab="selected" />
+      <WebPreview v-else-if="active === 'preview' && preview" :document="preview" />
+      <OutputViewer v-else :result="result" :error="error" :tab="selected === 'preview' ? modelValue : selected" />
     </div>
   </section>
 </template>

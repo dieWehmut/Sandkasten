@@ -39,6 +39,7 @@ export interface WorkspaceController {
   setActive(path: string): void;
   updateSource(source: string): void;
   setLanguage(language: string): void;
+  saveFile(path: string): Promise<boolean>;
   saveActive(): Promise<boolean>;
 }
 
@@ -112,6 +113,7 @@ export function useWorkspace(): WorkspaceController {
   const tree = ref<WorkspaceTreeNode[]>([]);
   const files = ref<WorkspaceFile[]>([]);
   const activePath = ref('');
+  const pendingWrites = new Map<string, Promise<boolean>>();
   const isDesktop = computed(() => store.kind === 'desktop');
 
   const activeFile = computed(() => files.value.find((file) => file.path === activePath.value));
@@ -251,20 +253,32 @@ export function useWorkspace(): WorkspaceController {
     patchActive((file) => (file.language === language ? file : { ...file, language, dirty: file.dirty }));
   }
 
-  async function saveActive(): Promise<boolean> {
-    const file = activeFile.value;
+  async function saveFile(path: string): Promise<boolean> {
+    const file = files.value.find((candidate) => candidate.path === path);
     if (!file) return false;
-    error.value = undefined;
-    try {
-      await store.write(file.path, file.source);
-      files.value = files.value.map((candidate) => (
-        candidate.path === file.path ? { ...candidate, dirty: false } : candidate
-      ));
-      return true;
-    } catch (cause) {
-      error.value = messageFrom(cause);
-      return false;
-    }
+    // Writes to the same path run in edit order. A completed older snapshot
+    // must not mark a newer edit saved or overwrite a later automatic save.
+    const previous = pendingWrites.get(path);
+    const write = (async () => {
+      if (previous) await previous;
+      error.value = undefined;
+      try {
+        await store.write(file.path, file.source);
+        files.value = files.value.map((candidate) => (
+          candidate.path === file.path && candidate.source === file.source ? { ...candidate, dirty: false } : candidate
+        ));
+        return true;
+      } catch (cause) {
+        error.value = messageFrom(cause);
+        return false;
+      }
+    })();
+    pendingWrites.set(path, write);
+    try { return await write; } finally { if (pendingWrites.get(path) === write) pendingWrites.delete(path); }
+  }
+
+  function saveActive(): Promise<boolean> {
+    return saveFile(activePath.value);
   }
 
   return {
@@ -289,6 +303,7 @@ export function useWorkspace(): WorkspaceController {
     setActive,
     updateSource,
     setLanguage,
+    saveFile,
     saveActive,
   };
 }

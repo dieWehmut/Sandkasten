@@ -49,3 +49,49 @@ test.each([1440, 390])('settings preserves the editor instance and applies persi
     document.documentElement.removeAttribute('style');
   }
 });
+
+test.each([1440, 390])('persistent editor settings reach the mounted source editor at width %i', async (width) => {
+  const previousWidth = window.innerWidth;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  const wrapper = mount(App, { attachTo: document.body });
+  try {
+    await flushPromises();
+    const instance = wrapper.getComponent(SourceEditor).vm.$;
+    await wrapper.get('[data-action="open-settings"]').trigger('click');
+    await wrapper.get('[data-section="editor"]').trigger('click');
+    await wrapper.get('[data-setting="editor.fontSize"]').setValue('20');
+    await wrapper.get('[data-setting="editor.wordWrap"]').setValue(true);
+    await wrapper.get('[data-setting="editor.minimap.enabled"]').setValue(false);
+    expect(wrapper.getComponent(SourceEditor).props('options')).toMatchObject({ fontSize: 20, wordWrap: true, minimap: false });
+    expect(wrapper.getComponent(SourceEditor).vm.$).toBe(instance);
+    expect(JSON.parse(localStorage.getItem('sandkasten-user-settings-v1') ?? '{}')).toMatchObject({ editor: { fontSize: 20, wordWrap: true, minimap: false } });
+    await wrapper.get('[data-action="settings-back"]').trigger('click');
+  } finally {
+    wrapper.unmount();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+  }
+});
+
+test('workbench visibility preferences change the actual layout and survive reopening', async () => {
+  const previousWidth = window.innerWidth;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+  let wrapper = mount(App, { attachTo: document.body });
+  try {
+    await flushPromises();
+    await wrapper.get('[data-action="open-settings"]').trigger('click');
+    await wrapper.get('[data-section="workbench"]').trigger('click');
+    await wrapper.get('[data-setting="workbench.sideBar.visible"]').setValue(false);
+    await wrapper.get('[data-setting="workbench.panel.visible"]').setValue(false);
+    await wrapper.get('[data-action="settings-back"]').trigger('click');
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(false);
+    expect(wrapper.find('.ide-panel').exists()).toBe(false);
+    wrapper.unmount();
+    wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.find('.ide-sidebar').exists()).toBe(false);
+    expect(wrapper.find('.ide-panel').exists()).toBe(false);
+  } finally {
+    wrapper.unmount();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+  }
+});

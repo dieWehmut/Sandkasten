@@ -21,19 +21,19 @@ const artifact = `${executable}.output`;
 
 async function execute(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: options.cwd ?? process.cwd(), env: { ...process.env, ...options.env }, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { cwd: options.cwd ?? process.cwd(), env: { ...process.env, ...options.env }, stdio: [options.stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
     child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', reject);
     child.on('close', (code) => code === 0 ? resolve({ stdout, stderr }) : reject(new Error(`${command} exited ${code}\n${stderr}\n${stdout}`)));
-    child.stdin.end(options.stdin ?? '');
+    if (child.stdin) { child.stdin.on('error', (error) => { if (error.code !== 'EPIPE') reject(error); }); child.stdin.end(options.stdin); }
   });
 }
 
 function esbuildOptions() {
-  return { bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', nodePaths: (process.env.NODE_PATH ?? '').split(path.delimiter).filter(Boolean), logLevel: 'silent' };
+  return { bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', external: ['react', 'react/*', 'react-dom', 'react-dom/*', 'vue', '@vue/*'], nodePaths: (process.env.NODE_PATH ?? '').split(path.delimiter).filter(Boolean), logLevel: 'silent' };
 }
 async function renderReact(entry, kind) {
   const esbuild = require('esbuild');
@@ -114,7 +114,7 @@ async function build() {
     if (errors.length) throw new Error(errors.map(String).join('\n'));
     let script;
     if (descriptor.script || descriptor.scriptSetup) {
-      script = rewriteDefault(compileScript(descriptor, { id: 'sandkasten-local', inlineTemplate: true, templateOptions: { ssr: true } }).content, '__sfc__');
+      script = rewriteDefault(compileScript(descriptor, { id: 'sandkasten-local', inlineTemplate: true, templateOptions: { ssr: true } }).content, '__sfc__', descriptor.script?.lang === 'ts' || descriptor.scriptSetup?.lang === 'ts' ? ['typescript'] : []);
     } else {
       const template = compileTemplate({ source: descriptor.template?.content ?? '', filename: file, id: 'sandkasten-local', ssr: true, cssVars: [] });
       if (template.errors.length) throw new Error(template.errors.map(String).join('\n'));

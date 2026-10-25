@@ -62,3 +62,35 @@ describe('settings view', () => {
     expect(unavailable.get('.settings-connection').text()).toBe(props.t('connection.unavailable'));
   });
 });
+
+test('search renders only the matching setting rows across groups and supports modified filtering', async () => {
+  const { normalizeUserSettings } = await import('../src/state/editorSettings');
+  const settings = normalizeUserSettings({ editor: { fontSize: 20, wordWrap: true }, files: { autoSave: 'afterDelay' } });
+  const wrapper = mount(SettingsView, { props: { ...props, userSettings: settings } });
+  await wrapper.get('input[type="search"]').setValue('save');
+  expect(wrapper.find('[data-setting="files.autoSave"]').exists()).toBe(true);
+  expect(wrapper.find('[data-setting="files.autoSaveDelay"]').exists()).toBe(true);
+  expect(wrapper.find('[data-setting="editor.fontSize"]').exists()).toBe(false);
+  await wrapper.get('input[type="search"]').setValue('@modified');
+  expect(wrapper.findAll('[data-setting-row]').map((row) => row.attributes('data-setting-row'))).toEqual(['editor.fontSize', 'editor.wordWrap', 'files.autoSave']);
+  await wrapper.get('input[type="search"]').setValue('editor.fontSize');
+  expect(wrapper.findAll('[data-setting-row]')).toHaveLength(1);
+  expect(wrapper.get('[data-setting-row]').text()).toContain('Font Size');
+  wrapper.unmount();
+});
+
+test('numeric settings reject unusable input and changed settings can be reset individually', async () => {
+  const { normalizeUserSettings } = await import('../src/state/editorSettings');
+  const wrapper = mount(SettingsView, { props: { ...props, userSettings: normalizeUserSettings({ editor: { fontSize: 20 } }) } });
+  await wrapper.get('[data-section="editor"]').trigger('click');
+  await wrapper.get('[data-setting="editor.fontSize"]').setValue('0');
+  expect(wrapper.emitted('changeEditorSetting')).toBeUndefined();
+  expect(wrapper.get('[data-setting="editor.fontSize"]').attributes('aria-invalid')).toBe('true');
+  await wrapper.get('[data-setting="editor.fontSize"]').setValue('18');
+  expect(wrapper.emitted('changeEditorSetting')).toEqual([['fontSize', 18]]);
+  await wrapper.get('[data-reset-setting="editor.fontSize"]').trigger('click');
+  expect(wrapper.emitted('changeEditorSetting')).toEqual([['fontSize', 18], ['fontSize', 14]]);
+  await wrapper.get('[data-setting="editor.quickSuggestions"]').setValue(false);
+  expect(wrapper.emitted('changeEditorSetting')?.at(-1)).toEqual(['quickSuggestions', false]);
+  wrapper.unmount();
+});

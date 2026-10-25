@@ -20,7 +20,7 @@
 .source-editor .cm-editor {
   color: var(--text);
   background: var(--surface);
-  font: 14px/1.5 var(--font-mono);
+  font: var(--editor-font-size, 14px)/1.5 var(--font-mono);
 }
 
 .source-editor .cm-editor.cm-focused {
@@ -40,6 +40,10 @@
   /* CodeMirror's base theme pins the line box at 1.4; the VS Code line box is
      1.5, and the measured default is that ratio at a 14 px font size. */
   line-height: 1.5;
+}
+
+.source-editor .cm-lineWrapping .cm-content {
+  min-width: 0;
 }
 
 .source-editor .cm-line {

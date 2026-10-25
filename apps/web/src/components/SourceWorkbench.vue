@@ -3,6 +3,7 @@ import type { OutputTab } from '../composables/useRunner';
 import type { TerminalController } from '../composables/useTerminal';
 import type { ExecutionPhase } from '../composables/execution';
 import type { JobResponse, Runtime } from '../services/sandkastenApi';
+import type { EditorSettings } from '../state/editorSettings';
 import JobTimeline from './JobTimeline.vue';
 import OutputTabs from './OutputTabs.vue';
 import SourceEditor from './SourceEditor.vue';
@@ -13,6 +14,7 @@ defineProps<{
   runtimes: Runtime[];
   language: string;
   source: string;
+  editorSettings?: Partial<EditorSettings>;
   phase: ExecutionPhase;
   currentJob?: JobResponse;
   result?: JobResponse;
@@ -50,11 +52,11 @@ const t = useTranslation();
       @resume="emit('resume')"
     />
     <section class="editor-region" :aria-label="t('workbench.editor')">
-      <SourceEditor :model-value="source" :language="language" :disabled="disabled" :label="t('workbench.programSource')" @update:model-value="emit('update:source', $event)" />
+      <SourceEditor :model-value="source" :language="language" :options="editorSettings" :disabled="disabled" :label="t('workbench.programSource')" @update:model-value="emit('update:source', $event)" />
     </section>
     <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
     <section v-if="panelVisible !== false" class="output-region" :aria-label="t('workbench.resultOutput')">
-      <OutputTabs :terminal="terminal" :result="result" :error="error" :model-value="activeOutputTab" @update:model-value="emit('update:activeOutputTab', $event)" />
+      <OutputTabs :source="source" :language="language" :terminal="terminal" :result="result" :error="error" :model-value="activeOutputTab" @update:model-value="emit('update:activeOutputTab', $event)" />
     </section>
   </main>
 </template>

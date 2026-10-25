@@ -26,6 +26,8 @@ import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './c
 import { useTheme } from './composables/useTheme';
 import { useColorScheme } from './composables/useColorScheme';
 import { useAppearance } from './composables/useAppearance';
+import { useUserSettings } from './composables/useUserSettings';
+import { useAutoSave } from './composables/useAutoSave';
 import { useMediaLayout } from './composables/useMediaLayout';
 import { isTerminalShortcut, useTerminal } from './composables/useTerminal';
 import { desktopBridge } from './services/desktopBridge';
@@ -44,7 +46,17 @@ const workspace = useWorkspace();
 const search = useWorkspaceSearch();
 const remote = useRemoteHosts(bridge?.remote);
 const sourceControl = useSourceControl();
-const ide = useIdeLayout();
+const userSettings = useUserSettings();
+const ide = useIdeLayout(userSettings.settings.value.workbench);
+useAutoSave({ files: workspace.files, settings: computed(() => userSettings.settings.value.files), saveFile: workspace.saveFile });
+watch(() => userSettings.settings.value.workbench, (value) => {
+  if (ide.sidebarVisible.value !== value.sidebarVisible) ide.toggleSidebar();
+  if (ide.panelVisible.value !== value.panelVisible) ide.togglePanel();
+}, { deep: true });
+watch([ide.sidebarVisible, ide.panelVisible], ([sidebarVisible, panelVisible]) => {
+  if (userSettings.settings.value.workbench.sidebarVisible !== sidebarVisible) userSettings.setWorkbench('sidebarVisible', sidebarVisible);
+  if (userSettings.settings.value.workbench.panelVisible !== panelVisible) userSettings.setWorkbench('panelVisible', panelVisible);
+});
 // Bumped by the title action or the palette command; the explorer owns the
 // collapsed state and folds everything when the token changes.
 const collapseToken = ref(0);
@@ -759,6 +771,7 @@ onBeforeUnmount(() => {
       :runtime="selectedRuntime"
       :language="language"
       :source="source"
+      :editor-settings="userSettings.settings.value.editor"
       :phase="executionPhase"
       :current-job="currentJob"
       :result="result"
@@ -828,12 +841,16 @@ onBeforeUnmount(() => {
       :t="locale.t"
       :connection-state="runner.connectionState.value"
       :api-endpoint="configuredApiBaseUrl"
+      :user-settings="userSettings.settings.value"
       @back="closeSettings"
       @change-theme="theme.setTheme"
       @change-color="appearance.setColor"
       @reset-colors="appearance.resetColors"
       @change-color-scheme="colorScheme.setColorScheme"
       @change-locale="locale.setLocale"
+      @change-editor-setting="userSettings.setEditor"
+      @change-file-setting="userSettings.setFiles"
+      @change-workbench-setting="userSettings.setWorkbench"
       @open-api-endpoint="openApiEndpoint"
       @open-setup="openSetupFromSettings"
       @show-history="showSettingsHistory"

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, selectAll, undo, undoDepth } from '@codemirror/commands';
-import { bracketMatching } from '@codemirror/language';
+import { bracketMatching, indentUnit } from '@codemirror/language';
 import { openSearchPanel, highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, type Extension, type Transaction } from '@codemirror/state';
 import { EditorView, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view';
 import { showMinimap } from '@replit/codemirror-minimap';
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { languageExtensionForRuntime } from '../editor/language';
 import { sourceCompletion } from '../editor/completion';
 import { sourceHighlighting } from '../editor/highlight';
@@ -16,6 +16,7 @@ import { editorMenuEntries, type EditorMenuAction } from '../editor/editorMenu';
 import type { ContextMenuEntry } from './contextMenu';
 import ContextMenu from './ContextMenu.vue';
 import { useTranslation } from '../i18n/useTranslation';
+import { normalizeUserSettings, type EditorSettings } from '../state/editorSettings';
 
 const props = withDefaults(defineProps<{
   modelValue: string;
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean;
   label?: string;
   minimap?: boolean;
+  options?: Partial<EditorSettings>;
 }>(), {
   language: '',
   disabled: false,
@@ -32,12 +34,20 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ 'update:modelValue': [value: string]; 'update:cursor': [position: { line: number; column: number }] }>();
 const t = useTranslation();
+const editorOptions = computed(() => ({
+  ...normalizeUserSettings({ editor: props.options }).editor,
+  // Keep the standalone/mobile component's legacy minimap default. The shared
+  // settings object, when supplied by the workbench, takes precedence.
+  minimap: props.options?.minimap ?? props.minimap,
+}));
 const editorHost = ref<HTMLElement>();
 // A CodeMirror view must stay raw: a reactive proxy would make the state the// commands read differ from the state the view dispatches against.
 const editorView = shallowRef<EditorView>();
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const minimapCompartment = new Compartment();
+const optionsCompartment = new Compartment();
+const completionCompartment = new Compartment();
 let applyingExternalValue = false;
 
 // Right-click opens the editor's own menu instead of the browser's.
@@ -144,7 +154,7 @@ function closeEditorMenu(): void {
 // rides in a compartment: toggling it never rebuilds the document or the
 // cursors the user is working with.
 function minimapExtension(): Extension {
-  if (!props.minimap) return [];
+  if (!editorOptions.value.minimap) return [];
   return showMinimap.compute([], () => ({
     create: () => {
       const dom = document.createElement('div');
@@ -157,7 +167,23 @@ function minimapExtension(): Extension {
 }
 
 function languageExtension(): Extension {
-  return [languageExtensionForRuntime(props.language) ?? [], sourceCompletion(props.language)];
+  return languageExtensionForRuntime(props.language) ?? [];
+}
+
+function completionExtension(): Extension {
+  return sourceCompletion(props.language, editorOptions.value.quickSuggestions);
+}
+
+function optionsExtensions(): Extension[] {
+  const options = editorOptions.value;
+  return [
+    EditorState.tabSize.of(options.tabSize),
+    indentUnit.of(options.insertSpaces ? ' '.repeat(options.tabSize) : '\t'),
+    options.wordWrap ? EditorView.lineWrapping : [],
+    options.lineNumbers ? lineNumbers() : [],
+    // Without a shared preference, retain document-detected guide spacing.
+    options.indentGuides ? indentGuides(props.options?.tabSize === undefined ? undefined : options.tabSize) : [],
+  ];
 }
 
 function editableExtensions(label: string, disabled: boolean): Extension[] {
@@ -182,10 +208,7 @@ function cursorOf(state: EditorState): { line: number; column: number } {
 
 function editorExtensions(): Extension[] {
   return [
-    // The reference draws one guide per indent level; the depth travels in the
-    // line's class and the step in a content attribute.
-    indentGuides(),
-    lineNumbers(),
+    optionsCompartment.of(optionsExtensions()),
     highlightSpecialChars(),
     history(),
     bracketMatching(),
@@ -208,6 +231,7 @@ function editorExtensions(): Extension[] {
       { key: 'ContextMenu', run: () => openEditorMenuAtCaret() },
     ]),
     languageCompartment.of(languageExtension()),
+    completionCompartment.of(completionExtension()),
     minimapCompartment.of(minimapExtension()),
     editableCompartment.of(editableExtensions(props.label, props.disabled)),
     EditorView.updateListener.of((update) => {
@@ -235,12 +259,18 @@ watch(() => props.modelValue, (value) => {
 });
 
 watch(() => props.language, () => {
-  editorView.value?.dispatch({ effects: languageCompartment.reconfigure(languageExtension()) });
+  editorView.value?.dispatch({ effects: [
+    languageCompartment.reconfigure(languageExtension()),
+    completionCompartment.reconfigure(completionExtension()),
+  ] });
 });
 
-watch(() => props.minimap, () => {
-  editorView.value?.dispatch({ effects: minimapCompartment.reconfigure(minimapExtension()) });
-});
+watch(editorOptions, (options, previous) => {
+  const effects = [optionsCompartment.reconfigure(optionsExtensions())];
+  if (options.minimap !== previous.minimap) effects.push(minimapCompartment.reconfigure(minimapExtension()));
+  if (options.quickSuggestions !== previous.quickSuggestions) effects.push(completionCompartment.reconfigure(completionExtension()));
+  editorView.value?.dispatch({ effects });
+}, { deep: true });
 
 watch(() => [props.disabled, props.label] as const, ([disabled, label]) => {
   editorView.value?.dispatch({
@@ -257,7 +287,7 @@ defineExpose({ editorView });
 </script>
 
 <template>
-  <div class="source-editor" data-testid="source-editor" @mousedown.capture="onMouseDown" @contextmenu.prevent="openEditorMenu">
+  <div class="source-editor" data-testid="source-editor" :style="{ '--editor-font-size': `${editorOptions.fontSize}px` }" @mousedown.capture="onMouseDown" @contextmenu.prevent="openEditorMenu">
     <div ref="editorHost" class="source-editor__surface" />
     <p v-if="clipboardMessage" class="source-editor__status" role="alert">{{ clipboardMessage }}</p>
     <ContextMenu

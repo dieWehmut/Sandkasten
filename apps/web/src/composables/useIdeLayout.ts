@@ -22,10 +22,10 @@ export interface IdeLayoutController {
   toggleRunsSection(): void;
 }
 
-export function useIdeLayout(): IdeLayoutController {
+export function useIdeLayout(initial?: { sidebarVisible: boolean; panelVisible: boolean }): IdeLayoutController {
   const activity = ref<IdeActivity>('explorer');
-  const sidebarVisible = ref(true);
-  const panelVisible = ref(true);
+  const sidebarVisible = ref(initial?.sidebarVisible ?? true);
+  const panelVisible = ref(initial?.panelVisible ?? true);
   const panelMaximized = ref(false);
   const runsSectionExpanded = ref(true);
 

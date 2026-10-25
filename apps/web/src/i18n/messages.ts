@@ -1,4 +1,14 @@
+import { settingsChinese, settingsEnglish } from './settingsMessages';
+
 const en = {
+  ...settingsEnglish,
+  'output.preview': "Preview",
+  'preview.refresh': "Reload preview",
+  'preview.width': "Preview width",
+  'preview.responsive': "Responsive",
+  'preview.compiled': "Last successful build",
+  'preview.live': "Live preview",
+  'preview.frame': "Web preview",
   'palette.title': 'Quick Open',
   'palette.placeholder': 'Search files by name, or type > to run a command',
   'palette.commands': 'Show and Run Commands',
@@ -399,6 +409,14 @@ const en = {
 type EnglishMessages = typeof en;
 
 const zhCN: { [Key in keyof EnglishMessages]: string } = {
+  ...settingsChinese,
+  'output.preview': "预览",
+  'preview.refresh': "重新加载预览",
+  'preview.width': "预览宽度",
+  'preview.responsive': "自适应",
+  'preview.compiled': "最近成功构建",
+  'preview.live': "实时预览",
+  'preview.frame': "网页预览",
   'palette.title': '快速打开',
   'palette.placeholder': '按名称搜索文件，输入 > 运行命令',
   'palette.commands': '显示并运行命令',

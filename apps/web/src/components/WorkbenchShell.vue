@@ -16,6 +16,7 @@ import type { WorkspaceSearchController } from '../composables/useWorkspaceSearc
 import type { RemoteHostsController } from '../composables/useRemoteHosts';
 import type { SourceControlController } from '../composables/useSourceControl';
 import type { IconTheme } from '../editor/fileIcon';
+import type { EditorSettings } from '../state/editorSettings';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
 import InspectorPanel from './InspectorPanel.vue';
@@ -46,6 +47,7 @@ const props = withDefaults(defineProps<{
   runtime?: Runtime;
   language: string;
   source: string;
+  editorSettings?: Partial<EditorSettings>;
   phase: ExecutionPhase;
   currentJob?: JobResponse;
   result?: JobResponse;
@@ -367,6 +369,7 @@ const styles = computed(() => (isIde.value
               :model-value="source"
               :language="language"
               :label="t('workbench.programSource')"
+              :options="editorSettings"
               minimap
               @update:model-value="emit('update:source', $event)"
               @update:cursor="emit('update:cursor', $event)"
@@ -387,6 +390,8 @@ const styles = computed(() => (isIde.value
           <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
           <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
             <OutputTabs
+              :source="source"
+              :language="language"
               :terminal="terminal"
               :result="result"
               :error="error"
@@ -437,6 +442,7 @@ const styles = computed(() => (isIde.value
     <template v-else>
       <RunHistory v-if="layoutMode === 'desktop' && historyOpen" :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
       <SourceWorkbench
+        :editor-settings="editorSettings"
         :terminal="terminal"
         :panel-visible="terminal ? panelVisible : true"
         :runtimes="runtimes"
