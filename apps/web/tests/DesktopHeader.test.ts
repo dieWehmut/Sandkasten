@@ -54,8 +54,8 @@ describe('integrated desktop header', () => {
   test('keeps browser and older desktop bundles usable without a native menu bridge', () => {
     const wrapper = mount(AppHeader, { props: { connectionState: 'connected' } });
     expect(wrapper.find('[data-testid="desktop-menu"]').exists()).toBe(false);
-    expect(wrapper.get('.brand').attributes('aria-label')).toBe('Sandkasten home');
-    expect(wrapper.find('.brand strong').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="window-title"]').text().length).toBeGreaterThan(0);
+    expect(wrapper.find('.brand').exists()).toBe(false);
     expect(wrapper.find('.header-actions').exists()).toBe(false);
     expect(wrapper.find('.connection-status').exists()).toBe(false);
     wrapper.unmount();

@@ -11,6 +11,15 @@
   --text: #1a1c1f;
   --text-muted: #606561;
   --text-faint: #6f7570;
+  /* `gitDecoration.ignoredResourceForeground` from the reference's light default
+     theme, used for entries matched by a .gitignore. */
+  --git-ignored: #8e8e90;
+  /* The rest of the reference's `gitDecoration.*ResourceForeground` family, used
+     for a source-control row's status letter in the light default theme. */
+  --git-added: #587c0c;
+  --git-modified: #667309;
+  --git-deleted: #ad0707;
+  --git-renamed: #667309;
   --border: #e4e4e4;
   --border-strong: #c9c9c9;
   --success: #1c7550;
@@ -26,6 +35,23 @@
   --selection: rgb(240 119 175 / 22%);
   --grid-line: rgb(26 28 31 / 3%);
   --shadow-sheet: 0 16px 44px rgb(26 28 31 / 12%);
+  /* The reference's elevation ladder, measured from its UI data block:
+     `--shadow-sm: 0 1px 2px 0`, `--shadow-md: 0 4px 6px -1px`,
+     `--shadow-lg: 0 10px 15px -3px`, all tinted from one colour source. The
+     geometry is copied; the colour stays ours, because the reference tints from
+     `widget-shadow` (a soft grey in light mode) which would be invisible on our
+     dark chrome. Floating surfaces use these instead of one-off values, so every
+     popover lifts by the same step. */
+  --shadow-float: 0 10px 15px -3px rgb(26 28 31 / 18%);
+  --shadow-float-sm: 0 4px 6px -1px rgb(26 28 31 / 16%);
+  /* The pinned sticky-scroll header's own step. Its geometry is copied from
+     `editorStickyScroll-shadow 0 4px 2px -2px` — a short, tight drop rather than
+     the float step above, because the header sits flush against the first visible
+     line and a wide blur would smear over the text below it. The reference tints
+     it with `scrollbar.shadow` (`#000000` dark, `#DDDDDD` light, no alpha), which
+     on our chrome would either vanish or turn grey, so only the geometry is
+     shared and the tint stays ours. */
+  --shadow-sticky: 0 4px 2px -2px rgb(26 28 31 / 22%);
   /* File-type hues. Each one clears 4.5:1 on --surface so a file mark is
      readable at 15 px without borrowing the accent from the active row. */
   --file-blue: #1a5fb4;
@@ -48,6 +74,16 @@
   --syntax-property: #0451a5;
   --syntax-operator: #000000;
   --syntax-punctuation: #000000;
+  /* Bracket pair colorization. The reference cycles six slots of
+     `editorBracketHighlight.foreground1…6`; these are the default light-theme
+     values (gold, purple, blue, green, orange, pink) with each one darkened to
+     stay at WCAG AA on the editor surface. */
+  --syntax-bracket-1: #a06b00;
+  --syntax-bracket-2: #8f2fa8;
+  --syntax-bracket-3: #1a5fb4;
+  --syntax-bracket-4: #1b7f3b;
+  --syntax-bracket-5: #b5480f;
+  --syntax-bracket-6: #b02a6d;
   --syntax-meta: #800000;
   --syntax-regexp: #811f3f;
   --syntax-escape: #ee0000;
@@ -56,11 +92,59 @@
   --syntax-deleted: #cd3131;
   --syntax-changed: #795e26;
   --syntax-link: #0000ff;
-  --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  /* The reference's terminal palette, taken from its own defaults table where
+     each slot carries a separate light and dark value — eight of the sixteen
+     differ between the two themes, so a single shared set would be wrong in one
+     of them. Values are the reference's, unmodified: terminal colour is data a
+     program chose, not chrome, so re-tinting them would misreport what a tool
+     printed. */
+  --terminal-ansi-black: #000000;
+  --terminal-ansi-red: #cd3131;
+  --terminal-ansi-green: #107c10;
+  --terminal-ansi-yellow: #949800;
+  --terminal-ansi-blue: #0451a5;
+  --terminal-ansi-magenta: #bc05bc;
+  --terminal-ansi-cyan: #0598bc;
+  --terminal-ansi-white: #555555;
+  --terminal-ansi-bright-black: #666666;
+  --terminal-ansi-bright-red: #f14c4c;
+  --terminal-ansi-bright-green: #14ce14;
+  --terminal-ansi-bright-yellow: #b5ba00;
+  --terminal-ansi-bright-blue: #3b8eea;
+  --terminal-ansi-bright-magenta: #d670d6;
+  --terminal-ansi-bright-cyan: #29b8db;
+  --terminal-ansi-bright-white: #a5a5a5;
+  /* The typefaces come from the sibling project at
+     `C:\Users\han\project\dieWehmut.github.io`, whose `src/styles/fonts/index.scss`
+     declares `--font-family-base: 'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei',
+     'Noto Sans SC', system-ui, sans-serif` around an `@font-face` for a 25 MB
+     `LXGWWenKai-Regular.ttf`. Only the stack is copied, not the file: the font is
+     named first so an installed copy is used, and the rest of the chain keeps the
+     interface legible when it is not, which is the normal case on a fresh machine.
+     Bundling 25 MB of binary to satisfy a typeface would cost more than it buys.
+     `ui-sans-serif` and the platform entries stay between the two so Windows and
+     macOS each land on their own UI face rather than a generic fallback. */
+  --font-ui: "LXGW WenKai", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
+  /* The reference's own radius scale, used wherever a surface mirrors one of its
+     widgets: `cornerRadius.small` is 4 px (inputs, selects, icon buttons,
+     breadcrumb pickers), `cornerRadius.large` is 8 px (menus, toasts) and
+     `cornerRadius.xLarge` is 12 px (dialogs). The three app-owned radii above stay
+     for our own layout, which has no counterpart to copy. */
+  --radius-control: 4px;
+  --radius-widget: 8px;
+  --radius-dialog: 12px;
+  /* The reference's type ladder, from its UI data block: `fontSize.label1` 12 px
+     (56 uses — the control-label size), `label2` 11 px, `body1` 13 px, plus the
+     `heading` rungs 16/18/20/24/32/40/48. Dialog headings are `14px/600`, which
+     lands on `--font-text-lg-size` rather than between steps. Values that fall
+     between rungs (12.5 px, 15 px, 17 px) were ad-hoc and are gone. */
+  --font-control: 12px;
+  --font-body: 13px;
+  --font-dialog-heading: 14px;
   --header-height: 52px;
   --history-width: 244px;
   --inspector-width: 304px;
@@ -98,6 +182,13 @@
   --text: #f1f2f1;
   --text-muted: #a8aca9;
   --text-faint: #8a908b;
+  /* `gitDecoration.ignoredResourceForeground` from the reference's dark default theme. */
+  --git-ignored: #8c8c8c;
+  /* The reference's dark `gitDecoration.*ResourceForeground` family. */
+  --git-added: #73c991;
+  --git-modified: #e5ba7d;
+  --git-deleted: #f48771;
+  --git-renamed: #e5ba7d;
   --border: #2f2f2f;
   --border-strong: #4a4a4a;
   --success: #62c897;
@@ -113,6 +204,13 @@
   --selection: rgb(240 119 175 / 25%);
   --grid-line: rgb(241 242 241 / 3%);
   --shadow-sheet: 0 18px 54px rgb(0 0 0 / 38%);
+  /* Same reference geometry as the light theme; only the tint deepens, because a
+     1 px shadow on black chrome would read as nothing at all. */
+  --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 44%);
+  --shadow-float-sm: 0 4px 6px -1px rgb(0 0 0 / 40%);
+  /* A black shadow is invisible on black chrome, so the dark step deepens rather
+     than darkens: the same tight geometry, carried by density instead of hue. */
+  --shadow-sticky: 0 4px 2px -2px rgb(0 0 0 / 55%);
   /* Brighter file-type hues for the dark surface, still >= 4.5:1 on it. */
   --file-blue: #6cb6ff;
   --file-yellow: #d8b25a;
@@ -134,6 +232,14 @@
   --syntax-property: #9cdcfe;
   --syntax-operator: #d4d4d4;
   --syntax-punctuation: #d4d4d4;
+  /* The same six-slot cycle for the dark editor surface; the default dark-theme
+     bracket palette, each slot raised to clear WCAG AA on #17231b. */
+  --syntax-bracket-1: #e2c08d;
+  --syntax-bracket-2: #d197d9;
+  --syntax-bracket-3: #82aaff;
+  --syntax-bracket-4: #7ec699;
+  --syntax-bracket-5: #e08f6a;
+  --syntax-bracket-6: #f28cb1;
   --syntax-meta: #9b9b9b;
   --syntax-regexp: #d16969;
   --syntax-escape: #d7ba7d;
@@ -142,4 +248,22 @@
   --syntax-deleted: #f14c4c;
   --syntax-changed: #e2c08d;
   --syntax-link: #4fc1ff;
+  /* The dark arm of the same table; see the light block for why these are not
+     shared. */
+  --terminal-ansi-black: #000000;
+  --terminal-ansi-red: #cd3131;
+  --terminal-ansi-green: #0dbc79;
+  --terminal-ansi-yellow: #e5e510;
+  --terminal-ansi-blue: #2472c8;
+  --terminal-ansi-magenta: #bc3fbc;
+  --terminal-ansi-cyan: #11a8cd;
+  --terminal-ansi-white: #e5e5e5;
+  --terminal-ansi-bright-black: #666666;
+  --terminal-ansi-bright-red: #f14c4c;
+  --terminal-ansi-bright-green: #23d18b;
+  --terminal-ansi-bright-yellow: #f5f543;
+  --terminal-ansi-bright-blue: #3b8eea;
+  --terminal-ansi-bright-magenta: #d670d6;
+  --terminal-ansi-bright-cyan: #29b8db;
+  --terminal-ansi-bright-white: #e5e5e5;
 }

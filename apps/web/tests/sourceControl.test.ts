@@ -126,9 +126,11 @@ describe('source control view', () => {
     });
 
     expect(wrapper.get('[data-testid="source-control-branch"]').text()).toContain('feat/source-control');
+    // The reference groups the working tree into "Staged Changes" and "Changes",
+    // so the view renders exactly those two sections.
     expect(wrapper.get('[data-group="staged"]').text()).toContain('src/app.py');
-    expect(wrapper.get('[data-group="modified"]').text()).toContain('src/lib.py');
-    expect(wrapper.get('[data-group="untracked"]').text()).toContain('new.py');
+    expect(wrapper.get('[data-group="changes"]').text()).toContain('src/lib.py');
+    expect(wrapper.get('[data-group="changes"]').text()).toContain('new.py');
     expect(wrapper.find('[data-change="new.py"] [data-stage="new.py"]').exists()).toBe(true);
     expect(wrapper.get('[data-testid="source-control-history"]').text()).toContain('first commit');
 
@@ -158,19 +160,20 @@ describe('source control view', () => {
       props: { state: 'ready', branch: 'main', changes: [], history, stagedCount: 0 },
     });
 
-    const rows = wrapper.findAll('.ide-source-control__commit-entry');
+    const rows = wrapper.findAll('.scm__commit-entry');
     expect(rows).toHaveLength(2);
     // Every row carries the rail, so the graph is a column of its own.
     expect(wrapper.findAll('[data-testid="source-control-graph"]')).toHaveLength(2);
     // Only the checked-out commit gets the outline, and only it carries a badge.
-    expect(rows[0].get('.ide-source-control__graph-dot').classes()).toContain('ide-source-control__graph-dot--head');
-    expect(rows[1].get('.ide-source-control__graph-dot').classes()).not.toContain('ide-source-control__graph-dot--head');
+    expect(rows[0].get('.scm__graph-dot').classes()).toContain('scm__graph-dot--head');
+    expect(rows[1].get('.scm__graph-dot').classes()).not.toContain('scm__graph-dot--head');
     expect(rows[0].get('[data-ref="main"]').text()).toBe('main');
     expect(rows[1].find('[data-ref]').exists()).toBe(false);
     // The age is rendered from the commit time, not from the raw date string.
-    expect(rows[0].get('.ide-source-control__commit-meta').text()).toBe('3d');
-    // The reference prints the author beside the rail, so the row names it.
-    expect(rows[0].get('.ide-source-control__commit-author').text()).toBe('Sandkasten');
+    expect(rows[0].get('.scm__commit-age').text()).toBe('3d');
+    // The reference's side bar row is the rail, the subject, and the ref; the
+    // author belongs to the hover card rather than the row.
+    expect(rows[0].get('.scm__commit-subject').text()).toBe('second commit');
   });
 
   test('explains that source control needs the desktop app in the browser build', () => {

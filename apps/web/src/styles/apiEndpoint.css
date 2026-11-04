@@ -32,7 +32,10 @@
 
 .api-endpoint h2 {
   margin: 0 0 6px;
-  font-size: 15px;
+  /* Same dialog heading step as the discard dialog: the reference's `.dialog-message`
+     is `font-size:14px;font-weight:600`, the `text-lg` rung. */
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .api-endpoint__hint {
@@ -53,7 +56,7 @@
   min-height: 32px;
   padding: 5px 9px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text);
   font-size: 13px;

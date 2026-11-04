@@ -16,6 +16,7 @@ import { SCRATCH_FILE_NAME, SCRATCH_FILE_SOURCE, WORKSPACE_STORAGE_KEY } from '.
 import type { DesktopBridge } from '../src/services/desktopBridge';
 import type { Runtime } from '../src/services/sandkastenApi';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
+import { chooseDropdown, dropdownRow, dropdownValue, openDropdown } from './dropdownHelpers';
 
 const api = vi.hoisted(() => ({
   loadRuntimes: vi.fn(),
@@ -1096,7 +1097,7 @@ describe('desktop workbench', () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    expect(wrapper.get<HTMLSelectElement>('[data-testid="ide-backend-select"]').element.value).toBe('local');
+    expect(dropdownValue(wrapper, '[data-testid="ide-backend-select"]')).toBe('Local');
     await wrapper.get('button[aria-label="Run source"]').trigger('click');
     await flushPromises();
 
@@ -1111,24 +1112,33 @@ describe('desktop workbench', () => {
     expect(api.submitJob).not.toHaveBeenCalled();
   });
 
-  test('refuses an unsupported local runtime and can switch back to the API backend', async () => {
+  test('offers only the runtimes the desktop actually has, and can switch back to the API backend', async () => {
     const bridge = stubBridge();
     installBridge(bridge);
     const wrapper = mount(App);
     await flushPromises();
 
-    await wrapper.get('[aria-label="Runtime"]').setValue('javascript');
-    await nextTick();
-    expect(wrapper.get('button[aria-label="Run source"]').attributes('disabled')).toBeDefined();
+    // The desktop build runs the machine's own toolchains, so the picker is built
+    // from `bridge.runner.detect()` — python is available, go is not, and the API
+    // list (javascript) does not apply at all. Binding `runner.runtimes` here was a
+    // real defect: the picker read "no runtimes available" while the status bar
+    // said ready, because the shell's `localRuntimes` prop was declared but never
+    // used.
+    await wrapper.get('.runtime-select .dropdown__trigger').trigger('click');
+    const rows = wrapper.findAll('.runtime-select [role="option"]').map((row) => row.text());
+    expect(rows.some((row) => row.includes('python'))).toBe(true);
+    expect(rows.some((row) => row.includes('go'))).toBe(false);
+    expect(rows.some((row) => row.includes('javascript'))).toBe(false);
+    await wrapper.get('.runtime-select .dropdown__trigger').trigger('click');
 
-    await wrapper.get('[data-testid="ide-backend-select"]').setValue('api');
+    await chooseDropdown(wrapper, '[data-testid="ide-backend-select"]', 'api');
     await flushPromises();
     expect(wrapper.get('button[aria-label="Run source"]').attributes('disabled')).toBeUndefined();
 
     api.submitJob.mockResolvedValue({ jobId: 'job-1', status: 'JOB_STATUS_SUCCEEDED', stdout: 'api hello\n', stdoutEncoding: 'utf8' });
     await wrapper.get('button[aria-label="Run source"]').trigger('click');
     await flushPromises();
-    expect(api.submitJob).toHaveBeenCalledWith('javascript', 'print("disk")\n');
+    expect(api.submitJob).toHaveBeenCalledWith('python', 'print("disk")\n');
     expect(wrapper.text()).toContain('api hello');
   });
 
@@ -1284,9 +1294,10 @@ describe('desktop workbench', () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    const select = wrapper.get<HTMLSelectElement>('[data-testid="ide-backend-select"]');
-    expect(select.find('option[value="isolated"]').exists()).toBe(true);
-    await select.setValue('isolated');
+    // Opening the list shows all three backends in their declared order.
+    const options = await openDropdown(wrapper, '[data-testid="ide-backend-select"]');
+    expect(options.map((row) => row.attributes('data-value'))).toEqual(['local', 'isolated', 'api']);
+    await dropdownRow(options, 'isolated').trigger('click');
     await flushPromises();
 
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('isolated');
@@ -1331,7 +1342,7 @@ describe('desktop workbench', () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    await wrapper.get('[data-testid="ide-backend-select"]').setValue('isolated');
+    await chooseDropdown(wrapper, '[data-testid="ide-backend-select"]', 'isolated');
     await flushPromises();
     await wrapper.get('button[aria-label="Run source"]').trigger('click');
     await flushPromises();
@@ -1356,23 +1367,27 @@ describe('desktop workbench', () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="isolated"]').element.disabled).toBe(true);
-    expect(wrapper.get('[data-testid="ide-backend-select"] option[value="isolated"]').attributes('title')).toContain('WSL2');
+    const rows = await openDropdown(wrapper, '[data-testid="ide-backend-select"]');
+    const isolated = dropdownRow(rows, 'isolated');
+    expect(isolated.attributes('aria-disabled')).toBe('true');
+    expect(isolated.attributes('title')).toContain('WSL2');
   });
 
   test('keeps the browser build from offering either desktop backend', async () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="local"]').element.disabled).toBe(true);
-    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="isolated"]').element.disabled).toBe(true);
+    const rows = await openDropdown(wrapper, '[data-testid="ide-backend-select"]');
+    expect(dropdownRow(rows, 'local').attributes('aria-disabled')).toBe('true');
+    expect(dropdownRow(rows, 'isolated').attributes('aria-disabled')).toBe('true');
   });  test('keeps the browser build on the in-memory workspace and the API backend', async () => {
     const wrapper = mount(App);
     await flushPromises();
 
     wrapper.get('[data-testid="ide-status-bar"]');
     expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('api');
-    expect(wrapper.get<HTMLOptionElement>('[data-testid="ide-backend-select"] option[value="local"]').element.disabled).toBe(true);
+    const rows = await openDropdown(wrapper, '[data-testid="ide-backend-select"]');
+    expect(dropdownRow(rows, 'local').attributes('aria-disabled')).toBe('true');
     expect(wrapper.find('[data-action="ide-open-folder"]').exists()).toBe(false);
     expect(wrapper.get('[data-path="main.py"]').text()).toContain('main.py');
   });

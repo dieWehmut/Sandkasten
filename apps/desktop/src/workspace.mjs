@@ -3,6 +3,7 @@
 // an absolute path, and the main process rejects anything that escapes the root.
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { createIgnoreMatcher, parseGitignore } from './gitignore.mjs';
 
 export const IGNORED_DIRECTORIES = new Set([
   '.git',
@@ -64,11 +65,19 @@ export async function listWorkspaceTree(root, options = {}) {
   const maxEntries = Number.isInteger(options.maxEntries) ? options.maxEntries : MAX_TREE_ENTRIES;
   const maxDepth = Number.isInteger(options.maxDepth) ? options.maxDepth : MAX_TREE_DEPTH;
   const ignored = options.ignored ?? IGNORED_DIRECTORIES;
+  // The reference keeps git-ignored entries visible by default and marks them;
+  // `explorer.excludeGitIgnore` (default false) is what actually hides them.
+  const excludeGitIgnore = options.excludeGitIgnore === true;
   const rootStats = await stat(path.resolve(root)).catch(() => null);
   if (!rootStats?.isDirectory()) throw new Error(`workspace folder not found: ${root}`);
 
   let entries = 0;
   let truncated = false;
+
+  // Every .gitignore the walk meets is read on the way down, so the rules for a
+  // directory are known before its children are visited. Nested files layer over
+  // their parents, as git layers them.
+  const ignoreFiles = [];
 
   async function walk(directory, depth) {
     if (depth > maxDepth || entries >= maxEntries) {
@@ -83,6 +92,16 @@ export async function listWorkspaceTree(root, options = {}) {
         return left.name.localeCompare(right.name);
       });
 
+    // A .gitignore in this directory governs this directory and everything below.
+    const ignoreEntry = dirents.find((entry) => entry.isFile() && entry.name === '.gitignore');
+    if (ignoreEntry) {
+      const relative = path.relative(path.resolve(root), path.join(directory, '.gitignore')).replaceAll('\\', '/');
+      const text = await readFile(path.join(directory, '.gitignore'), 'utf8').catch(() => '');
+      const rules = parseGitignore(text);
+      if (rules.length) ignoreFiles.push({ directory: path.posix.dirname(relative) === '.' ? '' : path.posix.dirname(relative), rules });
+    }
+    const isIgnored = createIgnoreMatcher(ignoreFiles);
+
     const nodes = [];
     for (const dirent of dirents) {
       if (entries >= maxEntries) {
@@ -91,11 +110,25 @@ export async function listWorkspaceTree(root, options = {}) {
       }
       const absolute = path.join(directory, dirent.name);
       const relative = path.relative(path.resolve(root), absolute).replaceAll('\\', '/');
+      const isDirectory = dirent.isDirectory();
+      const ignoredByGit = isIgnored(relative, isDirectory);
+      if (ignoredByGit && excludeGitIgnore) continue;
       entries += 1;
-      if (dirent.isDirectory()) {
-        nodes.push({ path: relative, name: dirent.name, type: 'directory', children: await walk(absolute, depth + 1) });
+      if (isDirectory) {
+        nodes.push({
+          path: relative,
+          name: dirent.name,
+          type: 'directory',
+          ...(ignoredByGit ? { ignored: true } : {}),
+          children: await walk(absolute, depth + 1),
+        });
       } else if (dirent.isFile()) {
-        nodes.push({ path: relative, name: dirent.name, type: 'file' });
+        nodes.push({
+          path: relative,
+          name: dirent.name,
+          type: 'file',
+          ...(ignoredByGit ? { ignored: true } : {}),
+        });
       }
     }
     return nodes;

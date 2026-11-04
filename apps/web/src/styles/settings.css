@@ -146,23 +146,31 @@
 
 .settings-sections {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 
+/* The reference's settings table of contents is a tree of list rows, not a stack of
+   cards. `.monaco-list-row` carries `width:100%; cursor:pointer` and nothing else —
+   no border, no radius, no fill — and the entry inside it is `line-height:22px`. Two
+   rules decide the rest: unselected rows take `opacity:.9`, and the selected row's
+   entry takes `font-weight:700`. That is the whole visual difference between one
+   section and another, so a bordered tile with an accent fill reads as a different
+   navigation pattern entirely. */
 .settings-sections button {
   display: flex;
   width: 100%;
-  min-height: 30px;
+  height: 22px;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-raised);
-  color: var(--text-muted);
+  gap: 6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-control, 4px);
+  background: transparent;
+  color: var(--text);
   font-size: 13px;
-  line-height: normal;
+  line-height: 22px;
   text-align: left;
+  opacity: 0.9;
 }
 
 .settings-sections button > svg {
@@ -171,15 +179,13 @@
 }
 
 .settings-sections button:hover {
-  color: var(--text);
   background: var(--surface-subtle);
+  opacity: 1;
 }
 
 .settings-sections button[aria-current="page"] {
-  color: var(--text);
   font-weight: 700;
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
+  opacity: 1;
 }
 
 .settings-content {
@@ -630,9 +636,14 @@
   }
 }
 
-/* Editor and file preferences, carried over from the WSL feature branch. */
-.settings-back, .settings-sections button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 26px; padding: 4px 8px; border: 0; border-radius: 4px; background: transparent; text-align: left; }
-.settings-back:hover, .settings-sections button:hover { color: var(--text); background: var(--surface-subtle); }
+/* Editor and file preferences, carried over from the WSL feature branch.
+   The table-of-contents rules that used to sit here are gone: they were a second,
+   later definition of `.settings-sections button` with `min-height:26px` and `gap:8px`,
+   which silently overrode the earlier block and kept the rows taller than the
+   reference's 22 px even after that block was rewritten. A duplicated selector in the
+   same stylesheet is decided by source order, so the late copy won. */
+.settings-back { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 26px; padding: 4px 8px; border: 0; border-radius: 4px; background: transparent; text-align: left; }
+.settings-back:hover { color: var(--text); background: var(--surface-subtle); }
 .settings-header { max-width: 1400px; margin: 0 auto; padding: 12px 24px 0; }
 .settings-header__row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16px; }
 .settings-header h1 { margin: 0; font-size: 20px; font-weight: 600; outline: none; }

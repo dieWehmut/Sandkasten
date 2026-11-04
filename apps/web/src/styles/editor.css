@@ -42,7 +42,11 @@
   line-height: 1.5;
 }
 
-.source-editor .cm-lineWrapping .cm-content {
+/* The content layer is as wide as the longest line, which is what gives the
+   scroller its horizontal range. `contentAttributes` puts `cm-lineWrapping` on
+   this same element — not on an ancestor, which is what the old descendant
+   selector assumed — so the wrapped case has to relax the width on itself. */
+.source-editor .cm-content.cm-lineWrapping {
   min-width: 0;
 }
 
@@ -68,9 +72,197 @@
   min-width: calc(5ch + 14px);
   padding: 0 10px 0 4px;
   text-align: right;
+  /* The reference measures its margin numbers with
+     `font-variant-numeric: tabular-nums`, so every digit takes the same advance
+     and the numbers stay aligned in a column whatever the file's face is. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* The folding control, measured from the reference:
+   `.monaco-editor .margin-view-overlays .codicon-folding-expanded/-collapsed {
+   cursor: pointer; opacity: 0; transition: opacity .5s; display: flex;
+   align-items: center; justify-content: center; font-size: 140%; margin-left: 2px }`,
+   revealed by `.margin-view-overlays:hover .codicon { opacity: 1 }` and kept
+   visible while the region is folded. */
+.source-editor .cm-foldGutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.source-editor .cm-foldMarker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .5s;
+}
+
+/* A folded region keeps its chevron on screen; everything else appears on hover.
+   The hover is scoped to the margin itself — the minimap also carries a
+   `cm-gutters` class, and hovering it must not reveal the chevrons. */
+.source-editor .cm-foldMarker--closed,
+.source-editor .cm-gutters-before:hover .cm-foldMarker {
+  opacity: 1;
+}
+
+/* CodeMirror appends a spacer gutter element to size the column, and it receives
+   a marker of its own. It never stands for a line — a fold's chevron sits on the
+   first line of the range — so it must not paint one. */
+.source-editor .cm-foldGutter .cm-gutterElement:last-child .cm-foldMarker {
+  display: none;
+}
+
+/* The folded placeholder, measured from the reference:
+   `.monaco-editor .inline-folded:after { color: editor-foldPlaceholderForeground;
+   margin: .1em .2em 0; content: "\22ef"; display: inline; line-height: 1em;
+   cursor: pointer }` — a bare midline ellipsis after the first line of the range,
+   not the bordered, filled box CodeMirror draws by default. */
+.source-editor .cm-foldPlaceholder {
+  margin: .1em .2em 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  line-height: 1em;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-editor .cm-foldMarker {
+    transition: none;
+  }
+}
+
+/* Bracket pair colorization. The reference enables it by default
+   (`editor.bracketPairColorization.enabled`) and cycles six
+   `editorBracketHighlight.foreground1…6` slots by nesting depth. The slot classes
+   come from the depth walk in rainbowBrackets.ts; the colours are the app's own
+   tokens so both themes and every colour scheme keep their contrast. */
+.source-editor .cm-rainbowBracket-1 { color: var(--syntax-bracket-1); }
+.source-editor .cm-rainbowBracket-2 { color: var(--syntax-bracket-2); }
+.source-editor .cm-rainbowBracket-3 { color: var(--syntax-bracket-3); }
+.source-editor .cm-rainbowBracket-4 { color: var(--syntax-bracket-4); }
+.source-editor .cm-rainbowBracket-5 { color: var(--syntax-bracket-5); }
+.source-editor .cm-rainbowBracket-6 { color: var(--syntax-bracket-6); }
+
+/* Sticky scroll, measured from the reference:
+   `.monaco-editor .sticky-widget { overflow: hidden; width: 100%;
+    border-bottom: 1px solid editorStickyScroll-border;
+    box-shadow: editorStickyScroll-shadow 0 4px 2px -2px; z-index: 4 }`,
+   `.sticky-widget-line-numbers { float: left; background-color:
+    editorStickyScrollGutter-background }`, and
+   `.sticky-line-content { color: editorLineNumber-foreground; white-space: nowrap;
+    display: inline-block }` with
+   `.sticky-line-content:hover { background-color: editorStickyScrollHover-background;
+    cursor: pointer }`.
+   The overlay sits on the editor's top edge without taking part in the content's
+   layout, which is why it is absolutely positioned rather than a panel. */
+.source-editor .cm-editor {
+  position: relative;
+}
+
+.source-editor .cm-sticky {
+  position: absolute;
+  /* Pinned to the editor box's own top-left; CodeMirror's base theme sets `top`
+     on some of its own absolutely positioned children, so both insets are stated. */
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  z-index: 4;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sticky);
+  font: 12px/1.6 var(--font-mono);
+}
+
+.source-editor .cm-sticky[hidden] {
+  display: none;
+}
+
+/* The trailing range that `editor.scrollBeyondLastLine` reserves. Absolutely
+   positioned so it contributes height to the scroller's `scrollHeight` without
+   taking part in the content's flow: CodeMirror reads the scroller's own
+   `padding-bottom` as document padding and re-lays-out the view around it, which
+   moves the last line instead of extending the range below it. Width 1 px and
+   pointer-events none keep it invisible and inert; it is a scroll-range device,
+   not a painted surface. */
+.source-editor .cm-scrollBeyondSpacer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 1px;
+  pointer-events: none;
+}
+
+.source-editor .cm-stickyLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  /* The reference's pinned line numbers share the gutter's background so the
+     stack reads as part of the margin. */
+  padding-right: 8px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.source-editor .cm-stickyLine:hover {
+  background: var(--surface-subtle);
+  color: var(--text);
+}
+
+.source-editor .cm-stickyLine__number {
+  flex: 0 0 auto;
+  min-width: calc(5ch + 14px);
+  padding: 0 10px 0 4px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.source-editor .cm-stickyLine__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 
+
+/* Whitespace markers. The reference draws a centred dot for a space (4 px) and an
+   arrow for a tab, tinted by `editorWhitespace-foreground`; these use the app's own
+   faint text token so both themes stay readable without claiming a `None` contrast
+   on the surface. */
+.source-editor .cm-renderSpace {
+  position: relative;
+}
+
+.source-editor .cm-renderSpace::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  pointer-events: none;
+}
+
+.source-editor .cm-renderTab::before {
+  content: '\2192';
+  display: inline-block;
+  width: 100%;
+  color: var(--text-faint);
+  text-align: center;
+  pointer-events: none;
+}
 
 /* Indentation guides. The reference positions absolute `.core-guide` elements
    inside each line (`.lines-content .core-guide { position: absolute;
@@ -98,14 +290,28 @@
 .source-editor .cm-indent-guides-11 { background-size: calc(11 * var(--indent-step, 4ch)) 100%; }
 .source-editor .cm-indent-guides-12 { background-size: calc(12 * var(--indent-step, 4ch)) 100%; }
 
-/* The line the cursor sits on is a quiet fill with hairline rules, the way VS
-   Code paints `editor.lineHighlightBackground` and `editor-lineHighlightBorder`,
-   and its line number steps up to the active foreground. The colour is set as a
-   longhand: the shorthand would reset the indent guides' background layers on the
-   very line the cursor is on. */
+/* The line the cursor sits on. The reference does not fill it: `editor.lineHighlightBackground`
+   defaults to **null**, and what is actually visible is `editor.lineHighlightBorder`
+   (`{dark:"#282828", light:"#eeeeee"}`) drawn as a hairline above and below. So the
+   highlight is a pair of rules, not a wash — this had been painting a 3% `--grid-line`
+   fill as well, which is a tint the reference never shows.
+   The gutter is coloured, not filled: `.line-numbers.active-line-number{color:
+   var(--vscode-editorLineNumber-activeForeground)}` only changes the text, whose
+   default is `editorActiveLineNumber.foreground` (`{dark:"#c6c6c6", light:"#0B216F"}`).
+   Giving the gutter a background too — which this stylesheet did — puts a block of
+   colour in the margin that the reference keeps flat.
+   The rule is applied as inset shadows rather than borders because these marks sit
+   inline: a real border would reflow the line.
+   `editor.renderLineHighlightOnlyWhenFocus` defaults to **false**, so the highlight
+   stays visible when the editor loses focus; nothing here is scoped to `:focus`.
+   The background is explicitly cleared rather than simply left unset. CodeMirror's
+   built-in base theme paints `.cm-activeLine` with a pale blue
+   (`rgba(204,238,255,.267)`) and `.cm-activeLineGutter` with a solid one
+   (`rgb(226,242,255)`), and dropping this stylesheet's own fill let those through —
+   a light-theme tint showing up on a dark editor. The reference fills neither. */
 .source-editor .cm-activeLine,
 .source-editor .cm-activeLineGutter {
-  background-color: var(--grid-line);
+  background-color: transparent;
 }
 
 .source-editor .cm-activeLine {
@@ -167,7 +373,7 @@
   max-width: calc(100vw - 24px);
   border: 1px solid var(--border-strong);
   border-radius: 3px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-float-sm);
   font: inherit;
 }
 
@@ -225,7 +431,7 @@
   max-width: min(320px, calc(100vw - 24px));
   padding: 8px 10px;
   border: 1px solid var(--border-strong);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-float-sm);
   font: 12px/1.5 var(--font-sans);
 }
 
@@ -251,12 +457,21 @@
   background: transparent;
 }
 
+/* The find widget's geometry is copied from the reference's measured rules:
+   `.find-widget{height:34px;line-height:19px;padding:0 4px 0 9px;margin-top:4px;
+   box-shadow:var(--vscode-shadow-lg)}`, and both of its rows share
+   `>.find-part,.replace-part{margin:3px 25px 0 17px;font-size:12px;display:flex}`.
+   The 25 px and 17 px side margins are what reserve room for the replace toggle
+   on the left and the close button on the right, so the widget does not add its
+   own padding for them. */
 .find-widget {
   position: relative;
   display: flex;
   width: min(400px, 100%);
   flex-direction: column;
-  padding: 0 26px 0 20px;
+  margin-top: 4px;
+  padding: 0 4px 0 9px;
+  box-shadow: var(--shadow-sheet);
   font: 13px var(--font-ui);
 }
 
@@ -266,6 +481,10 @@
   height: 34px;
   align-items: center;
   gap: 3px;
+  /* The reference's shared row margin; the vertical 3 px is what separates the
+     two rows, and the side margins clear the toggles. */
+  margin: 3px 25px 0 17px;
+  font-size: 12px;
 }
 
 .find-widget__row--replace {
@@ -326,15 +545,18 @@
   color: var(--danger);
 }
 
+/* `.find-widget .button{width:16px;height:16px;padding:3px;border-radius:5px;
+   flex:initial;margin-left:3px}` — the 3 px padding is inside the 16 px box, so
+   the glyph is 10 px and the hit area stays square. */
 .find-widget__button,
 .find-widget__option {
   display: inline-flex;
-  min-width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  flex: initial;
   align-items: center;
   justify-content: center;
-  padding: 0 3px;
+  padding: 3px;
   border: 0;
   border-radius: 5px;
   color: var(--text-muted);
@@ -343,8 +565,21 @@
 }
 
 .find-widget__button svg {
-  width: 16px;
-  height: 16px;
+  width: 100%;
+  height: 100%;
+}
+
+/* The reference's wide variant for text buttons:
+   `.find-widget .button.wide{width:auto;padding:1px 6px;top:-1px}`. Without it a
+   word label inherits the 16 px icon box and wraps to one glyph per line. */
+.find-widget__button--text {
+  width: auto;
+  min-width: 16px;
+  height: auto;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 .find-widget__button:hover,
@@ -360,9 +595,10 @@
   background: var(--accent-soft);
 }
 
+/* `.find-widget>.button.codicon-widget-close{position:absolute;top:5px;right:4px}` */
 .find-widget__button--close {
   position: absolute;
-  top: 6px;
+  top: 5px;
   right: 4px;
 }
 
@@ -381,8 +617,28 @@
 
 /* Minimap: the reference's code-overview strip. It sits in the editor's right
    gutter and is styled from the same tokens as the editor so both themes keep
-   it readable; the overlay marks the viewport the way the reference does. */
+   it readable; the overlay marks the viewport the way the reference does.
+ *
+ * The plugin already computes the geometry, and the two lines that matter are
+ * `this.dom.style.height = clientHeight / 4` and
+ * `canvas.style.height = clientHeight`, where `clientHeight` is the editor's
+ * visible height and 4 is its `SizeRatio`. Everything below is styling only:
+ * an earlier attempt set the height from CSS and squashed the drawing into the
+ * top two thirds of the strip, because the canvas is sized in device pixels for
+ * the whole document while the box around it is the visible editor.
+ *
+ * The plugin computes the canvas in device pixels for the whole document, then
+ * sets the *box* to `clientHeight / SizeRatio` (90 px for a 360 px editor). That
+ * quarter-height box is what left the strip short and the drawing squashed, so
+ * the box is restated as the editor's visible height and the canvas is left at
+ * the size the plugin gave it.
+ *
+ * The reference draws the strip flush against the scrollbar with a shadow rather
+ * than a rule, so the divider is a border on the inner edge and the width stays
+ * the plugin's 120 px (`minimap.size: proportional`, `maxColumn: 120`). */
 .source-editor .cm-minimap-gutter {
+  /* Overrides the inline `clientHeight / 4`; the canvas keeps its own height. */
+  height: var(--editor-visible-height, 100%) !important;
   border-left: 1px solid var(--border);
   background: var(--surface-subtle);
 }
@@ -391,12 +647,59 @@
   background: transparent;
 }
 
+/* The reference dims the rendered minimap against the page:
+   `.monaco-editor .minimap canvas{opacity:.9}`. It is the only opacity rule on the
+   minimap canvas, so the strip is never fully opaque. */
+.source-editor .cm-minimap-gutter canvas {
+  opacity: 0.9;
+}
+
 .source-editor .cm-minimap-gutter .cm-minimap-overlay {
   background: var(--selection);
 }
 
 .source-editor .cm-minimap-box-shadow {
   box-shadow: none;
+}
+
+/* The shadow along a scrolled edge, measured from the reference:
+   `.shadow.top{top:0;left:3px;height:3px;width:100%;
+    box-shadow:var(--vscode-scrollbar-shadow) 0 6px 6px -6px inset}` and the same
+   rotated for `.left`. Each band appears only once its content has scrolled
+   away from that edge, so the two classes are toggled by the plugin. The colour
+   is the token rather than the reference's `#000000`, which would be invisible
+   on the light theme. */
+.source-editor .cm-scroll-shadows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.source-editor .cm-scroll-shadow {
+  position: absolute;
+  display: none;
+  box-shadow: var(--border-strong) 0 6px 6px -6px inset;
+}
+
+.source-editor .cm-scroll-shadow--top {
+  top: 0;
+  left: 3px;
+  height: 3px;
+  width: 100%;
+}
+
+.source-editor .cm-scroll-shadow--left {
+  top: 3px;
+  left: 0;
+  height: 100%;
+  width: 3px;
+  box-shadow: var(--border-strong) 6px 0 6px -6px inset;
+}
+
+.source-editor .cm-scroll-shadows.is-scrolled-top .cm-scroll-shadow--top,
+.source-editor .cm-scroll-shadows.is-scrolled-left .cm-scroll-shadow--left {
+  display: block;
 }
 
 @media (max-width: 767px) {

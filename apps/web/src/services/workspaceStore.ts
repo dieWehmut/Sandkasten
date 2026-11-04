@@ -24,7 +24,7 @@ export interface WorkspaceStore {
   readonly kind: 'memory' | 'desktop';
   root(): Promise<WorkspaceRoot | null>;
   openFolder(): Promise<WorkspaceRoot | null>;
-  list(): Promise<WorkspaceTreeNode[]>;
+  list(options?: { excludeGitIgnore?: boolean }): Promise<WorkspaceTreeNode[]>;
   read(path: string): Promise<string>;
   write(path: string, content: string): Promise<void>;
   create(path: string, content: string): Promise<void>;
@@ -179,7 +179,7 @@ export function createDesktopWorkspaceStore(bridge: DesktopBridge): WorkspaceSto
     kind: 'desktop',
     root: () => bridge.workspace.root(),
     openFolder: () => bridge.workspace.openFolder(),
-    list: () => bridge.workspace.list(),
+    list: (options) => bridge.workspace.list(options),
     read: (path) => bridge.workspace.read(path),
     write: (path, content) => bridge.workspace.write(path, content),
     create: (path, content) => bridge.workspace.create(path, content),

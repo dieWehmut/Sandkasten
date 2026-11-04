@@ -1,9 +1,21 @@
 import { readonly, ref, type DeepReadonly, type Ref } from 'vue';
+import {
+  DEFAULT_WORKBENCH_SETTINGS,
+  PANEL_MAX_HEIGHT,
+  PANEL_MIN_HEIGHT,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+} from '../state/editorSettings';
 
 // The IDE chrome is intentionally thin: one activity at a time, one sidebar,
 // one bottom panel. Clicking the active activity collapses the sidebar, which
 // matches the editor-first behaviour of the desktop shell.
 export type IdeActivity = 'explorer' | 'search' | 'source-control' | 'remote' | 'runs' | 'context';
+
+export interface IdePaneSizes {
+  sidebarWidth: number;
+  panelHeight: number;
+}
 
 export interface IdeLayoutController {
   activity: DeepReadonly<Ref<IdeActivity>>;
@@ -13,6 +25,10 @@ export interface IdeLayoutController {
   // The explorer stacks the workspace tree and the recent runs list; the second
   // list is a collapsible section with a VS Code pane header.
   runsSectionExpanded: DeepReadonly<Ref<boolean>>;
+  // Pane sizes are pixels, owned here so both sashes and the reset command read
+  // the same clamped value.
+  sidebarWidth: DeepReadonly<Ref<number>>;
+  panelHeight: DeepReadonly<Ref<number>>;
   selectActivity(activity: IdeActivity): void;
   showActivity(activity: IdeActivity): void;
   toggleSidebar(): void;
@@ -20,14 +36,23 @@ export interface IdeLayoutController {
   showPanel(): void;
   togglePanelMaximize(): void;
   toggleRunsSection(): void;
+  resizeSidebar(width: number): void;
+  resizePanel(height: number): void;
+  resetPaneSizes(): void;
 }
 
-export function useIdeLayout(initial?: { sidebarVisible: boolean; panelVisible: boolean }): IdeLayoutController {
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+export function useIdeLayout(initial?: Partial<IdePaneSizes> & { sidebarVisible?: boolean; panelVisible?: boolean }): IdeLayoutController {
   const activity = ref<IdeActivity>('explorer');
   const sidebarVisible = ref(initial?.sidebarVisible ?? true);
   const panelVisible = ref(initial?.panelVisible ?? true);
   const panelMaximized = ref(false);
   const runsSectionExpanded = ref(true);
+  const sidebarWidth = ref(clamp(initial?.sidebarWidth ?? DEFAULT_WORKBENCH_SETTINGS.sidebarWidth, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH));
+  const panelHeight = ref(clamp(initial?.panelHeight ?? DEFAULT_WORKBENCH_SETTINGS.panelHeight, PANEL_MIN_HEIGHT, PANEL_MAX_HEIGHT));
 
   function selectActivity(next: IdeActivity): void {
     if (activity.value === next && sidebarVisible.value) {
@@ -49,6 +74,8 @@ export function useIdeLayout(initial?: { sidebarVisible: boolean; panelVisible: 
     panelVisible: readonly(panelVisible),
     panelMaximized: readonly(panelMaximized),
     runsSectionExpanded: readonly(runsSectionExpanded),
+    sidebarWidth: readonly(sidebarWidth),
+    panelHeight: readonly(panelHeight),
     selectActivity,
     showActivity,
     toggleSidebar: () => { sidebarVisible.value = !sidebarVisible.value; },
@@ -63,6 +90,15 @@ export function useIdeLayout(initial?: { sidebarVisible: boolean; panelVisible: 
     togglePanelMaximize: () => {
       panelVisible.value = true;
       panelMaximized.value = !panelMaximized.value;
+    },
+    resizeSidebar: (width: number) => { sidebarWidth.value = clamp(width, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH); },
+    resizePanel: (height: number) => { panelHeight.value = clamp(height, PANEL_MIN_HEIGHT, PANEL_MAX_HEIGHT); },
+    // Double-clicking a sash, and the palette's reset command, both return the
+    // panes to the reference's defaults rather than to whatever they were when
+    // the window opened.
+    resetPaneSizes: () => {
+      sidebarWidth.value = DEFAULT_WORKBENCH_SETTINGS.sidebarWidth;
+      panelHeight.value = DEFAULT_WORKBENCH_SETTINGS.panelHeight;
     },
   };
 }

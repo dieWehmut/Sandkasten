@@ -56,6 +56,35 @@ describe('context menu', () => {
     wrapper.unmount();
   });
 
+  test('marks the highlighted row for painting, not just for assistive tech', async () => {
+    // Arrow keys moved an `active` index that drove `tabindex` and
+    // `aria-activedescendant` but painted nothing, so a sighted keyboard user saw
+    // no highlight while a screen reader was told where the cursor was. The index
+    // now also sets `data-active`, which the stylesheet paints, and focus follows
+    // it so both agree.
+    const wrapper = menu();
+    const root = () => wrapper.get('[data-testid="context-menu"]');
+    const marked = () => wrapper.findAll('.context-menu__item[data-active="true"]');
+
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0].attributes('data-action')).toBe('context-menu-cut');
+
+    await root().trigger('keydown', { key: 'ArrowDown' });
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0].attributes('data-action')).toBe('context-menu-selectAll');
+    // The highlight must not drift from the announced position.
+    expect(marked()[0].attributes('id')).toBe(root().attributes('aria-activedescendant'));
+
+    await root().trigger('keydown', { key: 'End' });
+    await nextTick();
+    expect(marked()[0].attributes('data-action')).toBe('context-menu-selectAll');
+    // Disabled rows are never highlighted.
+    await root().trigger('keydown', { key: 'Home' });
+    await nextTick();
+    expect(marked()[0].attributes('data-action')).toBe('context-menu-cut');
+    wrapper.unmount();
+  });
+
   test('closes on Escape and on a click outside, but not on a click inside', async () => {
     const wrapper = menu();
     await wrapper.get('[data-testid="context-menu"]').trigger('keydown', { key: 'Escape' });
@@ -132,8 +161,12 @@ describe('editor menu entries', () => {
 
   test('mirrors the editor commands and their availability', () => {
     const entries = editorMenuEntries(t, { hasSelection: false, canPaste: true, canUndo: false, canRedo: false, modifier: 'Ctrl' });
+    // The order is the reference's, not a preference: its editor context menu is
+    // registered in named groups whose names carry the sort key, so `1_do` (Undo,
+    // Redo) sorts ahead of `9_cutcopypaste` and `9_select`. This test previously
+    // expected history last, which is the order a hand-written menu drifts into.
     expect(entries.filter((entry) => entry.kind === 'item').map((entry) => entry.id))
-      .toEqual(['cut', 'copy', 'paste', 'selectAll', 'undo', 'redo', 'find']);
+      .toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll', 'find']);
     const byId = (id: string) => entries.find((entry) => entry.kind === 'item' && entry.id === id);
     expect(byId('cut')).toMatchObject({ label: 'Cut', keybinding: 'Ctrl+X', disabled: true });
     expect(byId('copy')).toMatchObject({ disabled: true });
@@ -162,7 +195,7 @@ describe('source editor menu wiring', () => {
     await wrapper.get('[data-testid="source-editor"]').trigger('contextmenu', { clientX: 30, clientY: 30 });
     const menu = wrapper.get('[data-testid="context-menu"]');
     expect(menu.findAll('.context-menu__item').map((item) => item.find('.context-menu__label').text()))
-      .toEqual(['Cut', 'Copy', 'Paste', 'Select All', 'Undo', 'Redo', 'Find']);
+      .toEqual(['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Select All', 'Find']);
 
     // Select All through the menu selects the whole document.
     await wrapper.get('[data-action="context-menu-selectAll"]').trigger('click');

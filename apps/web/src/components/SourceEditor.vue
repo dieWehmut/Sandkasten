@@ -4,13 +4,19 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, 
 import { bracketMatching, indentUnit } from '@codemirror/language';
 import { openSearchPanel, highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, type Extension, type Transaction } from '@codemirror/state';
-import { EditorView, highlightActiveLine, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view';
+import { EditorView, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, keymap, lineNumbers } from '@codemirror/view';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { languageExtensionForRuntime } from '../editor/language';
 import { sourceCompletion } from '../editor/completion';
 import { sourceHighlighting } from '../editor/highlight';
 import { indentGuides } from '../editor/indentGuides';
+import { foldingExtensions } from '../editor/folding';
+import { stickyScroll } from '../editor/stickyScroll';
+import { scrollShadows } from '../editor/scrollShadows';
+import { bracketColorization } from '../editor/rainbowBrackets';
+import { scrollBeyondLastLine } from '../editor/scrollBeyond';
+import { renderWhitespace } from '../editor/renderWhitespace';
 import { FindWidgetPanel } from '../editor/findWidget';
 import { editorMenuEntries, type EditorMenuAction } from '../editor/editorMenu';
 import type { ContextMenuEntry } from './contextMenu';
@@ -43,6 +49,7 @@ const editorOptions = computed(() => ({
 const editorHost = ref<HTMLElement>();
 // A CodeMirror view must stay raw: a reactive proxy would make the state the// commands read differ from the state the view dispatches against.
 const editorView = shallowRef<EditorView>();
+let editorResizeObserver: ResizeObserver | undefined;
 const languageCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const minimapCompartment = new Compartment();
@@ -152,7 +159,14 @@ function closeEditorMenu(): void {
 
 // The minimap mounts its own column inside the editor, so the configuration
 // rides in a compartment: toggling it never rebuilds the document or the
-// cursors the user is working with.
+// cursors the user is working with. The plugin computes its own geometry from
+// the editor's client height (`height = clientHeight / SizeRatio` for the box,
+// `clientHeight` for the canvas), so nothing here sizes it.
+//
+// `showOverlay: 'mouse-over'` mirrors the reference's `minimap.showSlider`
+// default of `"mouseover"`: the viewport slider stays hidden until the pointer
+// enters the strip. The plugin's other value paints it permanently, which was
+// the visible discrepancy.
 function minimapExtension(): Extension {
   if (!editorOptions.value.minimap) return [];
   return showMinimap.compute([], () => ({
@@ -162,7 +176,7 @@ function minimapExtension(): Extension {
       return { dom };
     },
     displayText: 'characters',
-    showOverlay: 'always',
+    showOverlay: 'mouse-over',
   }));
 }
 
@@ -181,10 +195,29 @@ function optionsExtensions(): Extension[] {
     indentUnit.of(options.insertSpaces ? ' '.repeat(options.tabSize) : '\t'),
     // `EditorView.lineWrapping` is a view-level facet: a compartment can add it
     // but cannot take it away again, so toggling the preference off left the
-    // editor wrapped. Drive the same behaviour through a content attribute,
-    // which the compartment swaps in both directions.
-    EditorView.contentAttributes.of({ style: `white-space: ${options.wordWrap ? 'pre-wrap' : 'pre'};` }),
+    // editor wrapped. Swap the same class the facet would add instead — it carries
+    // `white-space`, `word-break` and `overflow-wrap` from CodeMirror's own theme,
+    // and `.cm-lineWrapping .cm-content { min-width: 0 }` lets the content shrink
+    // to the viewport so lines can actually wrap. A bare `white-space: pre-wrap`
+    // left the content at `min-width: max-content` and nothing wrapped.
+    options.wordWrap
+      ? EditorView.contentAttributes.of({ class: 'cm-lineWrapping' })
+      : EditorView.contentAttributes.of({ style: 'white-space: pre;' }),
     options.lineNumbers ? lineNumbers() : [],
+    // Folding, with the reference's chevron column beside the line numbers.
+    foldingExtensions({ gutter: options.lineNumbers }),
+    // The enclosing scope pinned to the editor's top edge, as
+    // `editor.stickyScroll.enabled` does by default in the reference.
+    options.stickyScroll ? stickyScroll() : [],
+    // The fade along a scrolled edge, which the reference draws unconditionally.
+    scrollShadows(),
+    // Nesting-depth bracket colours, on by default in the reference.
+    bracketColorization(options.bracketPairColorization),
+    // `editor.scrollBeyondLastLine` is on by default, so the last line can be
+    // brought to the top of the viewport.
+    scrollBeyondLastLine(options.scrollBeyondLastLine),
+    // `editor.renderWhitespace` defaults to `selection`.
+    renderWhitespace(options.renderWhitespace),
     // Without a shared preference, retain document-detected guide spacing.
     options.indentGuides ? indentGuides(props.options?.tabSize === undefined ? undefined : options.tabSize) : [],
   ];
@@ -218,6 +251,11 @@ function editorExtensions(): Extension[] {
     bracketMatching(),
     closeBrackets(),
     highlightActiveLine(),
+    // `editor.css` styles `.cm-activeLineGutter` (the reference's
+    // `editorLineNumber-activeForeground`), but CodeMirror only puts that class on
+    // the gutter element when this extension is present — without it the rule and
+    // its comment described a highlight that never appeared.
+    highlightActiveLineGutter(),
     sourceHighlighting(),
     // VS Code highlights the other occurrences of the selected word.
     highlightSelectionMatches(),
@@ -252,6 +290,20 @@ onMounted(() => {
   const state = EditorState.create({ doc: props.modelValue, extensions: editorExtensions() });
   editorView.value = new EditorView({ state, parent: editorHost.value });
   emit('update:cursor', cursorOf(state));
+
+  // The minimap plugin sizes its box to `clientHeight / SizeRatio`, a quarter of
+  // the editor, and its canvas to the full client height. Publishing the visible
+  // height lets the stylesheet restate the box without touching the canvas.
+  const host = editorHost.value;
+  const syncHeight = (): void => {
+    host.style.setProperty('--editor-visible-height', `${editorView.value?.dom.clientHeight ?? 0}px`);
+  };
+  syncHeight();
+  // jsdom, which the unit tests run in, has no ResizeObserver.
+  if (typeof ResizeObserver !== 'undefined') {
+    editorResizeObserver = new ResizeObserver(syncHeight);
+    editorResizeObserver.observe(host);
+  }
 });
 
 watch(() => props.modelValue, (value) => {
@@ -283,6 +335,8 @@ watch(() => [props.disabled, props.label] as const, ([disabled, label]) => {
 });
 
 onBeforeUnmount(() => {
+  editorResizeObserver?.disconnect();
+  editorResizeObserver = undefined;
   editorView.value?.destroy();
   editorView.value = undefined;
 });

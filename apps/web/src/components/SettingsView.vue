@@ -9,6 +9,8 @@ import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_EDITOR_SETTINGS, DEFAULT_FILE_SETTINGS, DEFAULT_WORKBENCH_SETTINGS, normalizeUserSettings, type EditorSettings, type FileSettings, type UserSettings, type WorkbenchSettings } from '../state/editorSettings';
 import { colorSchemeOptions, type ColorScheme } from '../theme/colorScheme';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import DropdownSelect from './DropdownSelect.vue';
+import type { DropdownOption } from './dropdownOptions';
 import brandMark from '../assets/brand-88.png?inline';
 
 // Settings is the get-started page's sibling rather than a second design: the
@@ -41,6 +43,8 @@ interface PreferenceRow {
   kind: 'number' | 'boolean' | 'select';
   min?: number;
   max?: number;
+  /** Choice rows carry their own ordered options; each value names its label. */
+  options?: { value: string; label: MessageKey }[];
 }
 const row = (group: PreferenceGroup, key: PreferenceRow['key'], id: string, kind: PreferenceRow['kind'], min?: number, max?: number): PreferenceRow => ({
   group, key, id, kind, min, max, label: `settings.${key}` as MessageKey, description: `settings.${key}Description` as MessageKey,
@@ -53,11 +57,28 @@ const preferenceRows: PreferenceRow[] = [
   row('editor', 'lineNumbers', 'editor.lineNumbers', 'boolean'),
   row('editor', 'minimap', 'editor.minimap.enabled', 'boolean'),
   row('editor', 'indentGuides', 'editor.guides.indentation', 'boolean'),
+  row('editor', 'stickyScroll', 'editor.stickyScroll.enabled', 'boolean'),
+  row('editor', 'bracketPairColorization', 'editor.bracketPairColorization.enabled', 'boolean'),
+  row('editor', 'scrollBeyondLastLine', 'editor.scrollBeyondLastLine', 'boolean'),
   row('editor', 'quickSuggestions', 'editor.quickSuggestions', 'boolean'),
-  row('files', 'autoSave', 'files.autoSave', 'select'),
+  { ...row('editor', 'renderWhitespace', 'editor.renderWhitespace', 'select'), options: [
+    { value: 'none', label: 'settings.renderWhitespaceNone' },
+    { value: 'boundary', label: 'settings.renderWhitespaceBoundary' },
+    { value: 'selection', label: 'settings.renderWhitespaceSelection' },
+    { value: 'trailing', label: 'settings.renderWhitespaceTrailing' },
+    { value: 'all', label: 'settings.renderWhitespaceAll' },
+  ] },
+  { ...row('files', 'autoSave', 'files.autoSave', 'select'), options: [
+    { value: 'off', label: 'settings.autoSaveOff' },
+    { value: 'afterDelay', label: 'settings.autoSaveAfterDelay' },
+    { value: 'onFocusChange', label: 'settings.autoSaveOnFocusChange' },
+  ] },
   row('files', 'autoSaveDelay', 'files.autoSaveDelay', 'number', 100, 10000),
   row('workbench', 'sidebarVisible', 'workbench.sideBar.visible', 'boolean'),
   row('workbench', 'panelVisible', 'workbench.panel.visible', 'boolean'),
+  // Mirrors `explorer.excludeGitIgnore`, whose default is false: ignored entries
+  // stay in the Explorer and are tinted, and this hides them instead.
+  row('workbench', 'excludeGitIgnore', 'settings.excludeGitIgnore', 'boolean'),
 ];
 const search = ref('');
 const selected = ref<Section>('appearance');
@@ -78,6 +99,14 @@ function valueOf(item: PreferenceRow): number | boolean | string {
 function defaultOf(item: PreferenceRow): number | boolean | string {
   return (defaults[item.group] as unknown as Record<string, number | boolean | string>)[item.key];
 }
+// The two list-shaped preferences render in the same themed control as the
+// workbench, so their option lists are translated here rather than in the template.
+function preferenceOptions(item: PreferenceRow): DropdownOption[] {
+  return (item.options ?? []).map((choice) => ({ value: choice.value, label: props.t(choice.label) }));
+}
+const colorSchemeDropdown = computed<DropdownOption[]>(
+  () => colorSchemeOptions.map((option) => ({ value: option.id, label: props.t(`colorScheme.${option.id}`) })),
+);
 const onlyModified = computed(() => /(?:^|\s)@modified(?:\s|$)/i.test(search.value));
 const queryTerms = computed(() => search.value.replace(/(?:^|\s)@modified(?=\s|$)/gi, ' ').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean));
 function matches(keys: MessageKey[], modified = false, id = '', section?: Section): boolean {
@@ -189,7 +218,7 @@ onMounted(() => heading.value?.focus());
             </fieldset>
             <section v-if="existingCount('appearance') > Number(matches(['settings.theme', 'settings.system', 'settings.light', 'settings.dark'], preference !== 'system', 'workbench.colorTheme', 'appearance'))" class="settings-card" :aria-label="t('settings.colors')">
               <header class="settings-card__header"><div><h2>{{ t(theme === 'light' ? 'settings.lightColors' : 'settings.darkColors') }}</h2><p>{{ t('settings.perTheme') }}</p></div><button type="button" class="settings-text-button" data-action="reset-colors" @click="emit('resetColors')">{{ t('settings.reset') }}</button></header>
-              <label v-if="matches(['header.colorScheme'], colorScheme !== 'pink', 'workbench.colorScheme', 'appearance')" class="settings-row" :class="{ 'settings-row--modified': colorScheme !== 'pink' }"><span>{{ t('header.colorScheme') }}</span><select :value="colorScheme" data-testid="settings-color-scheme" @change="emit('changeColorScheme', ($event.target as HTMLSelectElement).value as ColorScheme)"><option v-for="option in colorSchemeOptions" :key="option.id" :value="option.id">{{ t(`colorScheme.${option.id}`) }}</option></select></label>
+              <div v-if="matches(['header.colorScheme'], colorScheme !== 'pink', 'workbench.colorScheme', 'appearance')" class="settings-row" :class="{ 'settings-row--modified': colorScheme !== 'pink' }"><span :id="'settings-color-scheme-label'">{{ t('header.colorScheme') }}</span><DropdownSelect :model-value="colorScheme" :options="colorSchemeDropdown" :label="t('header.colorScheme')" data-testid="settings-color-scheme" @update:model-value="emit('changeColorScheme', $event as ColorScheme)" /></div>
               <template v-for="key in colorKeys" :key="key"><div v-if="matches([`settings.${key}`], Boolean(customized?.[key]), `workbench.colorCustomizations.${key}`, 'appearance')" class="settings-row" :class="{ 'settings-row--modified': customized?.[key] }"><label :for="`settings-${key}`">{{ t(`settings.${key}`) }}</label><div class="settings-color-control"><input type="color" :value="colors[key]" :aria-label="t(`settings.${key}`)" @input="changeColor(key, ($event.target as HTMLInputElement).value)" /><input :id="`settings-${key}`" :data-color="key" :value="drafts[key]" :aria-invalid="!validColor(drafts[key])" :aria-describedby="!validColor(drafts[key]) ? 'settings-color-error' : undefined" spellcheck="false" maxlength="7" @input="changeColor(key, ($event.target as HTMLInputElement).value)" /></div></div></template>
               <p v-if="colorKeys.some((key) => !validColor(drafts[key]))" id="settings-color-error" class="settings-error" role="alert">{{ t('settings.invalidColor') }}</p><p class="settings-card__note">{{ t('settings.contrast') }}</p>
             </section>
@@ -208,7 +237,7 @@ onMounted(() => heading.value?.focus());
             <div class="settings-preference__control">
               <input v-if="item.kind === 'boolean'" :id="`settings-${item.id}`" type="checkbox" :data-setting="item.id" :checked="Boolean(valueOf(item))" :aria-describedby="`settings-description-${item.id}`" @change="changePreference(item, ($event.target as HTMLInputElement).checked)" />
               <template v-else-if="item.kind === 'number'"><input :id="`settings-${item.id}`" type="number" :data-setting="item.id" :value="numberDrafts[item.id]" :min="item.min" :max="item.max" step="1" :aria-invalid="!validNumber(item)" :aria-describedby="`settings-description-${item.id}${!validNumber(item) ? ` settings-error-${item.id}` : ''}`" @input="changeNumber(item, ($event.target as HTMLInputElement).value)" /><p v-if="!validNumber(item)" :id="`settings-error-${item.id}`" class="settings-error" role="alert">{{ formatMessage('settings.invalidNumber', { min: item.min ?? 0, max: item.max ?? 0 }) }}</p></template>
-              <select v-else :id="`settings-${item.id}`" :data-setting="item.id" :value="valueOf(item)" :aria-describedby="`settings-description-${item.id}`" @change="changePreference(item, ($event.target as HTMLSelectElement).value)"><option value="off">{{ t('settings.autoSaveOff') }}</option><option value="afterDelay">{{ t('settings.autoSaveAfterDelay') }}</option><option value="onFocusChange">{{ t('settings.autoSaveOnFocusChange') }}</option></select>
+              <DropdownSelect v-else :model-value="String(valueOf(item))" :options="preferenceOptions(item)" :label="t(item.label)" :data-setting="item.id" @update:model-value="changePreference(item, $event)" />
               <button v-if="valueOf(item) !== defaultOf(item)" type="button" class="settings-reset-setting" :data-reset-setting="item.id" :title="t('settings.resetSetting')" :aria-label="`${t('settings.resetSetting')}: ${t(item.label)}`" @click="resetPreference(item)"><RotateCcw :size="14" aria-hidden="true" /></button>
             </div>
           </div>

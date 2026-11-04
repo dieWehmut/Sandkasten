@@ -36,10 +36,17 @@
   margin: 4px;
   padding: 10px 5px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-widget);
   color: var(--text);
   background: var(--surface-raised);
   box-shadow: 0 8px 22px rgb(0 0 0 / 24%);
+  /* The reference inherits the notification's type from `.monaco-workbench`,
+     which sets `font-size: var(--vscode-fontSize-body1)` — 13 px. Nothing in its
+     notification rules overrides it, so the message renders at 13 px despite the
+     `font-size: 11px` on `body`. Ours was inheriting the app's 14 px body size,
+     one pixel larger than the reference. The 22 px message line is fixed below,
+     so this changes only the glyph size. */
+  font-size: var(--font-body);
   pointer-events: auto;
   animation: ide-toast-in 300ms ease-out both;
 }

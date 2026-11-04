@@ -88,6 +88,44 @@ describe('SourceEditor', () => {
     expect(wrapper.vm.editorView).toBe(view);
   });
 
+  test('hides the minimap slider until the pointer enters the strip', async () => {
+    // The reference's `minimap.showSlider` default is `"mouseover"`, and the
+    // plugin expresses that as this class: it starts the overlay container at
+    // `opacity: 0` and reveals it on hover. A permanently painted slider is the
+    // regression this guards.
+    const wrapper = mount(SourceEditor, {
+      props: { modelValue: 'x = 1', language: 'python', minimap: true },
+    });
+    const container = wrapper.get('.cm-minimap-overlay-container');
+    expect(container.classes()).toContain('cm-minimap-overlay-mouse-over');
+    expect(container.classes()).not.toContain('cm-minimap-overlay-active');
+    wrapper.unmount();
+  });
+
+  test('publishes the editor height the minimap needs, and survives no ResizeObserver', () => {
+    // The minimap plugin sizes its box to `clientHeight / SizeRatio`, so the
+    // stylesheet needs the real visible height. jsdom reports no layout, which
+    // makes this the case where the observer is missing entirely.
+    const original = globalThis.ResizeObserver;
+    // @ts-expect-error -- the point of the test is the missing implementation.
+    delete globalThis.ResizeObserver;
+    try {
+      const wrapper = mount(SourceEditor, {
+        props: { modelValue: 'x = 1', language: 'python', minimap: true },
+      });
+      // Mounting at all is the assertion: a hard dependency on ResizeObserver
+      // would throw here.
+      expect(wrapper.find('.source-editor__surface').exists()).toBe(true);
+      const surface = wrapper.get('.source-editor__surface').element as HTMLElement;
+      // jsdom reports clientHeight 0, so the published value is "0px" — the
+      // variable exists and is a length, which is what the stylesheet consumes.
+      expect(surface.style.getPropertyValue('--editor-visible-height')).toMatch(/^\d+px$/);
+      wrapper.unmount();
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+
   test('updates language and disabled state without recreating the editor, then destroys it on unmount', async () => {
     const destroy = vi.spyOn(EditorView.prototype, 'destroy');
     const wrapper = mount(SourceEditor, {

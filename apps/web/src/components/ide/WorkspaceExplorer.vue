@@ -365,7 +365,7 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
         :aria-selected="activePath === row.node.path"
         :data-path="row.node.path"
       >
-        <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :style="{ paddingLeft: `${8 + row.depth * 12}px` }" :data-chain="row.label ? 'true' : undefined">
+        <div v-if="row.node.type === 'directory'" class="ide-tree__row ide-tree__row--directory" :class="{ 'ide-tree__row--ignored': row.node.ignored }" :style="{ paddingLeft: `${8 + row.depth * 12}px` }" :data-chain="row.label ? 'true' : undefined" :data-ignored="row.node.ignored || undefined" :title="row.node.ignored ? t('ide.explorer.gitIgnored') : undefined">
           <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
             <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />
           </span>
@@ -430,8 +430,10 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
         <div
           v-else-if="row.node.type === 'file'"
           class="ide-tree__row"
-          :class="{ 'ide-tree__row--active': activePath === row.node.path }"
+          :class="{ 'ide-tree__row--active': activePath === row.node.path, 'ide-tree__row--ignored': row.node.ignored }"
           :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
+          :data-ignored="row.node.ignored || undefined"
+          :title="row.node.ignored ? t('ide.explorer.gitIgnored') : undefined"
         >
           <span v-if="row.depth" class="ide-tree__guides" aria-hidden="true">
             <i v-for="level in row.depth" :key="level" :style="{ left: `${8 + (level - 1) * 12}px` }" />

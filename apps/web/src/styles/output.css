@@ -64,6 +64,33 @@
   background: var(--accent-fill);
 }
 
+/* The reference draws this indicator as a 1 px solid top border, and thickens it
+   to 2 px in the focus border colour while the item has focus:
+   `.action-item:focus .active-item-indicator:before{border-top-color:
+   var(--vscode-focusBorder)!important;border-top-width:2px}`. We had keyboard
+   navigation on these tabs but no focus shape at all, so an arrow-key user could
+   not see which tab their focus sat on. The height matches the border width and
+   the colour matches the focus ring, keeping the same geometry the reference
+   uses rather than inventing an outline. */
+/* The reference thickens the indicator rather than adding a glow: the global
+   `:focus-visible` ring here drew a 4 px box around a 35 px-tall tab that sits
+   flush against the panel edge, which read as a stray border in the strip. The
+   indicator below replaces it, matching the reference's own focus shape. */
+.output-tabs [role="tab"]:focus-visible::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.output-tabs [role="tab"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .output-tabs__actions {
   display: flex;
   min-width: 0;

@@ -52,7 +52,10 @@
 
 .edge-sheet__header h2 {
   margin: 0;
-  font-size: 15px;
+  /* The compact-width sheet is the same dialog surface, so its heading takes the
+     same `text-lg` step and weight as `.dialog-message`. */
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .edge-sheet__body {

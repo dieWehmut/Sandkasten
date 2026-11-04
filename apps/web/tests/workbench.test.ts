@@ -9,6 +9,7 @@ import RuntimeSelect from '../src/components/RuntimeSelect.vue';
 import SourceEditor from '../src/components/SourceEditor.vue';
 import type { JobResponse, Runtime } from '../src/services/sandkastenApi';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
+import { chooseDropdown } from './dropdownHelpers';
 
 const api = vi.hoisted(() => ({
   loadRuntimes: vi.fn(),
@@ -71,7 +72,11 @@ describe('workbench controls', () => {
 
   test('selects an exact backend runtime value', async () => {
     const select = mount(RuntimeSelect, { props: { modelValue: 'python', runtimes } });
-    await select.get('select').setValue('go');
+    // The control is a themed listbox rather than a native select, so the value is
+    // chosen by opening the list and clicking the row — the same route a user takes.
+    await select.get('[data-dropdown-trigger]').trigger('click');
+    const rows = select.findAll('[role="option"]');
+    await rows.find((row) => row.attributes('data-value') === 'go')!.trigger('click');
     expect(select.emitted('update:modelValue')).toEqual([['go']]);
     expect(select.text()).toContain('python 3.13');
   });
@@ -137,7 +142,7 @@ describe('workbench controls', () => {
     expect(wrapper.get('.ide-status__badge').attributes('data-connection')).toBe('connected');
     wrapper.get('[data-testid="workbench-shell"]');
 
-    await wrapper.get('[aria-label="Runtime"]').setValue('python');
+    await chooseDropdown(wrapper, '.runtime-select', 'python');
     const editor = wrapper.getComponent(SourceEditor);
     const editorView = () => (editor.vm as unknown as { editorView: EditorView }).editorView;
     editorView().dispatch({
@@ -164,5 +169,57 @@ describe('workbench controls', () => {
     await nextTick();
     expect(editorView().state.doc.toString()).toBe('print("first")');
     expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>');
+  }, 10000);
+
+  test('puts the shell into zen mode and takes it out again', async () => {
+    // The controller's own arithmetic is covered in `zenMode.test.ts`; this checks the
+    // wiring, which is where the feature can silently do nothing. It did exactly that
+    // once: the centred column reported the right width but nothing ever measured the
+    // editor group, so `zenGeometry` only ever saw zero and the column never narrowed.
+    api.loadRuntimes.mockResolvedValue(runtimes);
+    // jsdom has no layout, so `scrollIntoView` is missing and the palette's selection
+    // watcher throws when the list re-renders. Without this stub the palette cannot be
+    // driven at all, and the failure looks like an empty result list.
+    const proto = window.HTMLElement.prototype as HTMLElement & { scrollIntoView?: () => void };
+    if (!proto.scrollIntoView) proto.scrollIntoView = () => {};
+    const wrapper = mount(App);
+    await flushPromises();
+    await nextTick();
+
+    const shell = () => wrapper.get('[data-testid="workbench-shell"]');
+    expect(shell().classes()).not.toContain('zen-active');
+
+    // The command is reachable from the palette, which is the only entry point the web
+    // shell offers for a chord binding like the reference's Ctrl+K Z.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true }));
+    await flushPromises();
+    await nextTick();
+    const input = wrapper.get('.command-palette__input');
+    // Command mode is selected by the leading `>`, which `openPalette('commands')`
+    // writes when the palette opens. Overwriting the whole value drops the prefix and
+    // silently falls back to file mode, where no command is ever listed.
+    await input.setValue('>zen');
+    await flushPromises();
+    await nextTick();
+    const items = wrapper.findAll('.command-palette__item');
+    expect(items.length).toBeGreaterThan(0);
+
+    await items[0].trigger('click');
+    await flushPromises();
+    await nextTick();
+
+    // Zen mode removes the activity bar and the status bar track, and asks for a
+    // centred column. The tab strip stays, because `showTabs` defaults to `multiple`.
+    expect(shell().classes()).toContain('zen-active');
+    expect(shell().classes()).toContain('zen-without-activity-bar');
+    expect(shell().classes()).toContain('zen-without-status-bar');
+    expect(wrapper.find('.ide-activity__button').exists()).toBe(false);
+
+    // Escape is the only way back once the chrome is gone, so it has to work.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flushPromises();
+    await nextTick();
+    expect(shell().classes()).not.toContain('zen-active');
+    expect(wrapper.find('.ide-activity__button').exists()).toBe(true);
   }, 10000);
 });

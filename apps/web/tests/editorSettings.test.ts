@@ -19,7 +19,10 @@ describe('SourceEditor live preferences', () => {
     } });
     const view = wrapper.vm.editorView as EditorView;
     expect(wrapper.get('[data-testid="source-editor"]').attributes('style')).toContain('--editor-font-size: 18px');
-    expect(view.contentDOM.style.whiteSpace).toBe('pre-wrap');
+    // Wrapping is carried by CodeMirror's own `cm-lineWrapping` class, which also
+    // brings the whitespace rules and the width relaxation; a bare `white-space`
+    // style left the content at `min-width: max-content` and never wrapped.
+    expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(true);
     expect(wrapper.find('.cm-lineNumbers').exists()).toBe(false);
     expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(true);
     expect(wrapper.find('.cm-indent-guides').exists()).toBe(false);
@@ -31,6 +34,7 @@ describe('SourceEditor live preferences', () => {
     expect(view.state.doc.toString()).toBe(edited);
     expect(view.state.selection.main.head).toBe(5);
     expect(view.contentDOM.style.whiteSpace).toBe('pre');
+    expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(false);
     expect(wrapper.find('.cm-lineNumbers').exists()).toBe(true);
     expect(wrapper.find('.cm-minimap-gutter').exists()).toBe(false);
     expect(wrapper.find('.cm-indent-guides-2').exists()).toBe(true);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { DeepReadonly } from 'vue';
 import { FilePlus, FolderPlus, ListCollapse, PanelLeftClose, RefreshCw, Trash2 } from '@lucide/vue';
 import type { OutputTab } from '../composables/useRunner';
@@ -17,6 +17,14 @@ import type { RemoteHostsController } from '../composables/useRemoteHosts';
 import type { SourceControlController } from '../composables/useSourceControl';
 import type { IconTheme } from '../editor/fileIcon';
 import type { EditorSettings } from '../state/editorSettings';
+import {
+  PANEL_DEFAULT_HEIGHT,
+  PANEL_MAX_HEIGHT,
+  PANEL_MIN_HEIGHT,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+} from '../state/editorSettings';
 import type { Theme } from '../composables/useTheme';
 import EdgeSheet from './EdgeSheet.vue';
 import EditorWelcome from './EditorWelcome.vue';
@@ -32,6 +40,7 @@ import IdeBreadcrumbs from './ide/IdeBreadcrumbs.vue';
 import IdeEditorToolbar from './ide/IdeEditorToolbar.vue';
 import IdePanelActions from './ide/IdePanelActions.vue';
 import IdePaneHeader from './ide/IdePaneHeader.vue';
+import IdeSash from './ide/IdeSash.vue';
 import IdeStatusBar from './ide/IdeStatusBar.vue';
 import WorkspaceExplorer from './ide/WorkspaceExplorer.vue';
 import WorkspaceSearch from './ide/WorkspaceSearch.vue';
@@ -42,6 +51,8 @@ import { useTranslation } from '../i18n/useTranslation';
 const props = withDefaults(defineProps<{
   historyOpen: boolean;
   inspectorOpen: boolean;
+  /** The settings page occupies the editor group, as it does in the reference. */
+  settingsOpen?: boolean;
   layoutMode?: LayoutMode;
   history: readonly DeepReadonly<RunHistoryItem>[];
   runtimes: Runtime[];
@@ -62,6 +73,27 @@ const props = withDefaults(defineProps<{
   runsExpanded?: boolean;
   panelVisible?: boolean;
   panelMaximized?: boolean;
+  /**
+   * Zen mode. The shell paints the chrome it is told to paint rather than reading the
+   * preference itself, so the same controller drives the palette command, the Escape
+   * handler and the layout without any of them owning the state.
+   */
+  zenActive?: boolean;
+  zenShowActivityBar?: boolean;
+  zenShowStatusBar?: boolean;
+  zenShowTabs?: boolean;
+  zenSingleTab?: boolean;
+  zenHideLineNumbers?: boolean;
+  /** The centred column's width in pixels, or null when Zen mode is not centring. */
+  zenCenteredWidth?: number | null;
+  zenCenteredMargin?: number;
+  /** Pane sizes in pixels, owned by `useIdeLayout` so both sashes agree. */
+  sidebarWidth?: number;
+  panelHeight?: number;
+  sidebarMinWidth?: number;
+  sidebarMaxWidth?: number;
+  panelMinHeight?: number;
+  panelMaxHeight?: number;
   files?: readonly WorkspaceFile[];
   activePath?: string;
   tree?: WorkspaceTreeNode[];
@@ -74,8 +106,6 @@ const props = withDefaults(defineProps<{
   creatingFolder?: boolean;
   collapseRequest?: { token: number };
   revealRequest?: { path: string; token: number };
-  /** Bumped upstream (title action or palette) to fold every folder. */
-  collapseRequest?: { token: number };
   backend?: ExecutionBackend;
   localAvailable?: boolean;
   isolatedAvailable?: boolean;
@@ -100,6 +130,12 @@ const props = withDefaults(defineProps<{
   runsExpanded: true,
   panelVisible: true,
   panelMaximized: false,
+  sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
+  panelHeight: PANEL_DEFAULT_HEIGHT,
+  sidebarMinWidth: SIDEBAR_MIN_WIDTH,
+  sidebarMaxWidth: SIDEBAR_MAX_WIDTH,
+  panelMinHeight: PANEL_MIN_HEIGHT,
+  panelMaxHeight: PANEL_MAX_HEIGHT,
   files: () => [],
   activePath: '',
   tree: () => [],
@@ -119,6 +155,17 @@ const props = withDefaults(defineProps<{
   apiHost: '',
   iconTheme: 'dark',
   theme: 'dark',
+  zenActive: false,
+  // Default to the ordinary shell: every part painted, nothing centred. Zen mode
+  // turns parts off, so an off-by-default here means a shell that never hides
+  // anything unless the controller says so.
+  zenShowActivityBar: true,
+  zenShowStatusBar: true,
+  zenShowTabs: true,
+  zenSingleTab: false,
+  zenHideLineNumbers: false,
+  zenCenteredWidth: null,
+  zenCenteredMargin: 0,
 });
 
 const emit = defineEmits<{
@@ -139,6 +186,13 @@ const emit = defineEmits<{
   clearHistory: [];
   togglePanelMaximize: [];
   closePanel: [];
+  resizeSidebar: [width: number];
+  resizePanel: [height: number];
+  resetPaneSizes: [];
+  // The editor group's measured width. The centred column is a fraction of it, so the
+  // owner of the Zen controller needs the real number rather than a guess; the shell
+  // is the only place that can measure it, and it reports on every resize.
+  measureEditorWidth: [width: number];
   openSetup: [];
   openSettings: [];
   toggleTheme: [];
@@ -159,6 +213,10 @@ const emit = defineEmits<{
   stageSourceControl: [paths: string[]];
   commitSourceControl: [];
   closeFile: [path: string];
+  closeFiles: [paths: string[]];
+  copyFilePath: [path: string];
+  revealFile: [path: string];
+  moveFile: [payload: { from: string; toIndex: number }];
   createFile: [payload: { name: string; language: string; folder: string }];
   createFolder: [path: string];
   searchFiles: [query: string];
@@ -183,22 +241,89 @@ const sidebarTitle = computed(() => {
   if (props.activity === 'source-control') return t('ide.activity.sourceControl');
   return props.workspaceRoot?.name || t('ide.explorer.scratch');
 });
+// `zenMode.hideLineNumbers` is a Zen-mode switch, not a change to the user's own
+// setting, so it is folded in for as long as the mode is on and the stored preference
+// stays untouched underneath. The reference behaves the same way: leaving Zen mode
+// restores whatever `editor.lineNumbers` was, because the switch never wrote to it.
+const effectiveEditorSettings = computed<Partial<EditorSettings>>(() => (
+  props.zenHideLineNumbers
+    ? { ...props.editorSettings, lineNumbers: false }
+    : props.editorSettings ?? {}
+));
+// `zenMode.showTabs: "single"` narrows the strip to the one file on screen instead
+// of hiding it, so the reader keeps a title and a close button without the lane.
+const singleVisibleFile = computed(() => {
+  if (!props.zenSingleTab) return props.files;
+  const current = props.files.find((file) => file.path === props.activePath);
+  return current ? [current] : props.files;
+});
 const styles = computed(() => (isIde.value
   ? ['layout-ide', {
     'without-sidebar': !props.sidebarVisible,
     'without-panel': !props.panelVisible,
     'panel-maximized': props.panelMaximized,
+    // Zen mode is expressed as grid changes rather than by unmounting the panes:
+    // the activity bar leaves its column and the status bar leaves its row, so the
+    // remaining panes take the space without a remount of the editor.
+    'zen-active': props.zenActive,
+    'zen-without-activity-bar': props.zenActive && !props.zenShowActivityBar,
+    'zen-without-status-bar': props.zenActive && !props.zenShowStatusBar,
+    'zen-centered': props.zenCenteredWidth !== null,
   }]
   : [`layout-${props.layoutMode}`, {
     'without-history': !props.historyOpen,
     'without-inspector': !props.inspectorOpen,
   }]));
+// The grid column and the panel's flex basis both read these, so one resize
+// moves the pane and the sash together.
+const paneStyle = computed(() => {
+  const base: Record<string, string> = isIde.value
+    ? {
+      '--ide-sidebar-width': `${props.sidebarWidth}px`,
+      '--ide-panel-height': `${props.panelHeight}px`,
+    }
+    : {};
+  // The centred column is a real width, so it is handed to CSS as a length the grid
+  // can consume directly. Zero margin means no centring, and the properties are then
+  // omitted rather than set to 0 so the ordinary shell keeps its single-column grid.
+  if (props.zenCenteredWidth !== null && props.zenCenteredMargin > 0) {
+    base['--zen-column-width'] = `${props.zenCenteredWidth}px`;
+    base['--zen-column-margin'] = `${props.zenCenteredMargin}px`;
+  }
+  return base;
+});
+
+// The editor group's width, reported upward so the Zen controller can size the
+// centred column. A ResizeObserver rather than a window listener, because the group
+// also shrinks when a sidebar or the panel is toggled, and a window-only measurement
+// would keep the column sized for a window that is not what the pane actually has.
+const editorPane = ref<HTMLElement | null>(null);
+let observer: ResizeObserver | null = null;
+
+const reportWidth = (): void => {
+  const width = editorPane.value?.clientWidth ?? 0;
+  if (width > 0) emit('measureEditorWidth', width);
+};
+
+onMounted(() => {
+  reportWidth();
+  if (editorPane.value && typeof ResizeObserver !== 'undefined') {
+    observer = new ResizeObserver(reportWidth);
+    observer.observe(editorPane.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  observer?.disconnect();
+  observer = null;
+});
 </script>
 
 <template>
-  <div class="workbench-shell" :class="styles" data-testid="workbench-shell">
+  <div class="workbench-shell" :class="styles" :style="paneStyle" data-testid="workbench-shell">
     <template v-if="isIde">
       <IdeActivityBar
+        v-if="zenShowActivityBar"
         :active="activity"
         :sidebar-visible="sidebarVisible"
         :badges="{ explorer: dirtyPaths.length }"
@@ -340,10 +465,38 @@ const styles = computed(() => (isIde.value
         <RunHistory v-else-if="activity === 'runs'" :items="history" :selected-job-id="result?.jobId" hide-heading @select="emit('selectHistory', $event)" />
         <InspectorPanel v-else :runtime="runtime" :job="result" :error="error" hide-heading />
       </aside>
+      <!-- The sash overlays the sidebar's trailing edge instead of taking a grid
+           column, which is how the reference's split view draws it: the panes
+           keep their measured widths and the boundary carries the splitter. -->
+      <IdeSash
+        v-if="sidebarVisible"
+        class="ide-sash--sidebar"
+        orientation="vertical"
+        :value="sidebarWidth"
+        :min="sidebarMinWidth"
+        :max="sidebarMaxWidth"
+        :label="t('ide.sidebar.resize')"
+        @resize="emit('resizeSidebar', $event)"
+        @reset="emit('resetPaneSizes')"
+      />
       <section class="ide-main" :aria-label="t('workbench.source')">
-        <EditorTabs v-if="files.length" :files="files" :active-path="activePath" :icon-theme="iconTheme" @select="emit('selectFile', $event)" @close="emit('closeFile', $event)" />
+        <!-- The tab strip, breadcrumbs and run toolbar all describe the file in the
+             editor. While the settings page occupies the editor group they would
+             name a file that is not on screen, so they step aside. -->
+        <EditorTabs
+          v-if="files.length && !settingsOpen && zenShowTabs"
+          :files="singleVisibleFile"
+          :active-path="activePath"
+          :icon-theme="iconTheme"
+          @select="emit('selectFile', $event)"
+          @close="emit('closeFile', $event)"
+          @close-many="emit('closeFiles', $event)"
+          @copy-path="emit('copyFilePath', $event)"
+          @reveal="emit('revealFile', $event)"
+          @move="emit('moveFile', $event)"
+        />
         <IdeBreadcrumbs
-          v-if="files.length"
+          v-if="files.length && !settingsOpen"
           :file-path="activePath"
           :root-path="workspaceRoot?.path"
           :tree="tree"
@@ -352,7 +505,7 @@ const styles = computed(() => (isIde.value
           @select="emit('selectFile', $event)"
         />
         <IdeEditorToolbar
-          v-if="files.length"
+          v-if="files.length && !settingsOpen"
           :runtimes="runtimes"
           :language="language"
           :backend="backend"
@@ -370,13 +523,20 @@ const styles = computed(() => (isIde.value
           @resume="emit('resume')"
         />
         <div class="ide-body">
-          <section class="ide-editor" :class="{ 'ide-editor--welcome': !files.length }" :aria-label="t('workbench.editor')">
+          <section ref="editorPane" class="ide-editor" :class="{ 'ide-editor--welcome': !files.length, 'ide-editor--settings': settingsOpen }" :aria-label="t('workbench.editor')">
+            <!-- The Settings page opens *in* the editor group, exactly as the
+                 reference's does, so the activity bar and side bar stay in place
+                 beside it. The editor itself stays mounted underneath (hidden, not
+                 unmounted) so its CodeMirror view, undo history and scroll position
+                 survive the trip through settings — the reference's editor tab keeps
+                 its state too. -->
+            <div v-show="!settingsOpen" class="ide-editor__content">
             <SourceEditor
               v-if="files.length"
               :model-value="source"
               :language="language"
               :label="t('workbench.programSource')"
-              :options="editorSettings"
+              :options="effectiveEditorSettings"
               minimap
               @update:model-value="emit('update:source', $event)"
               @update:cursor="emit('update:cursor', $event)"
@@ -393,32 +553,53 @@ const styles = computed(() => (isIde.value
               @open-palette="emit('openPalette')"
               @select-file="emit('selectFile', $event)"
             />
+            </div>
+            <slot v-if="settingsOpen" name="editor" />
           </section>
           <JobTimeline :phase="phase" :current-job="currentJob" :error="error" :polling-stopped="pollingStopped" />
-          <section v-if="panelVisible" class="ide-panel" :aria-label="t('workbench.resultOutput')">
-            <OutputTabs
-              :source="source"
-              :language="language"
-              :terminal="terminal"
-              :result="result"
-              :error="error"
-              :model-value="activeOutputTab"
-              @update:model-value="emit('update:activeOutputTab', $event)"
-            >
-              <template #actions>
-                <IdePanelActions
-                  :maximized="panelMaximized"
-                  @toggle-maximize="emit('togglePanelMaximize')"
-                  @close="emit('closePanel')"
-                />
-              </template>
-            </OutputTabs>
-          </section>
+          <!-- The panel's splitter is a sibling of the panel rather than a child,
+               because the panel is its own scrollport and an absolutely
+               positioned handle inside it would scroll away with the output.
+               The dock owns the panel's height so the sash can ride its top
+               edge without changing the measured panel geometry. -->
+          <div v-if="panelVisible" class="ide-panel-dock" :class="{ 'ide-panel-dock--maximized': panelMaximized }">
+            <IdeSash
+              v-if="!panelMaximized"
+              class="ide-sash--panel"
+              orientation="horizontal"
+              :value="panelHeight"
+              :min="panelMinHeight"
+              :max="panelMaxHeight"
+              :label="t('ide.panel.resize')"
+              @resize="emit('resizePanel', $event)"
+              @reset="emit('resetPaneSizes')"
+            />
+            <section class="ide-panel" :aria-label="t('workbench.resultOutput')">
+              <OutputTabs
+                :source="source"
+                :language="language"
+                :terminal="terminal"
+                :result="result"
+                :error="error"
+                :model-value="activeOutputTab"
+                @update:model-value="emit('update:activeOutputTab', $event)"
+              >
+                <template #actions>
+                  <IdePanelActions
+                    :maximized="panelMaximized"
+                    @toggle-maximize="emit('togglePanelMaximize')"
+                    @close="emit('closePanel')"
+                  />
+                </template>
+              </OutputTabs>
+            </section>
+          </div>
         </div>
       </section>
       <!-- The strip is a sibling of the panes, not part of the editor card, so it
            spans the whole shell the way the VS Code status bar does. -->
       <IdeStatusBar
+        v-if="zenShowStatusBar"
         :backend="backend"
         :language="language"
         :file-path="activePath"
@@ -478,6 +659,9 @@ const styles = computed(() => (isIde.value
       <EdgeSheet v-if="layoutMode !== 'desktop'" :open="inspectorOpen" side="right" :title="t('inspector.title')" @close="emit('closeInspector')">
         <InspectorPanel :runtime="runtime" :job="result" :error="error" />
       </EdgeSheet>
+      <!-- The compact layouts have no editor group to open the page inside, so the
+           settings page covers the whole shell there, as it always has. -->
+      <slot v-if="settingsOpen" name="editor" />
     </template>
   </div>
 </template>

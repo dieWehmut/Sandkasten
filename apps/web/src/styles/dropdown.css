@@ -1,0 +1,143 @@
+/* Themed drop-downs.
+   The closed control follows `.monaco-select-box { cursor: pointer;
+   min-width: 100px; min-height: 24px; padding: 2px 23px 2px 8px;
+   border-radius: var(--vscode-cornerRadius-small) }`, and the open list is a
+   `.monaco-list` whose rows take `border-radius: 3px`, tinted with the editor
+   widget's surface and border rather than the operating system's own popup. */
+
+.dropdown {
+  position: relative;
+  min-width: 100px;
+}
+
+.dropdown__trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 23px 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-subtle);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  /* The chevron sits in the right padding, as the reference's does. */
+  position: relative;
+}
+
+.dropdown__trigger:hover:not(:disabled) {
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+}
+
+.dropdown__trigger:focus-visible {
+  /* The reference has 116 `:focus-visible` rules and every one of them either
+     takes the global ring or re-states it at `strokeThickness` (1 px) *with* an
+     offset — none shrinks a control's ring below the global one. This rule used
+     to override the app's two-layer ring with a single 1 px outline, so the
+     keyboard ring on a select was half the width and lost its halo. Only the
+     offset is set here; the outline and halo come from the global rule. */
+  outline-offset: 2px;
+}
+
+.dropdown--open .dropdown__trigger {
+  border-color: var(--accent);
+}
+
+.dropdown--disabled .dropdown__trigger {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.dropdown__label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dropdown__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown__chevron {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  margin-top: -7px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* The list floats over whatever follows the control, so it must not be clipped by
+   a scrolling toolbar. */
+.dropdown__list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 40;
+  min-width: 100%;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  list-style: none;
+  /* A long runtime list scrolls inside the popup rather than off the window. */
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  /* `.quick-input-list .monaco-list-row { border-radius: 3px }` */
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dropdown__option--active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.dropdown__option--selected {
+  font-weight: 600;
+}
+
+.dropdown__option--disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* The check occupies its slot in every row so labels stay aligned whether or not
+   they carry the mark; only the selected row shows it. */
+.dropdown__check {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.dropdown__option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown__trigger {
+    transition: none;
+  }
+}

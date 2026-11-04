@@ -5,6 +5,8 @@ import type { Runtime } from '../../services/sandkastenApi';
 import type { ExecutionBackend, ExecutionPhase } from '../../composables/execution';
 import RunControls from '../RunControls.vue';
 import RuntimeSelect from '../RuntimeSelect.vue';
+import DropdownSelect from '../DropdownSelect.vue';
+import type { DropdownOption } from '../dropdownOptions';
 import { useTranslation } from '../../i18n/useTranslation';
 
 const props = withDefaults(defineProps<{
@@ -41,6 +43,24 @@ const backendHint = computed(() => {
   }
   return props.localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable');
 });
+
+// One row per backend, each carrying the hint for *itself*: the trigger's title
+// already explains the selected one, so the rows explain what choosing them does.
+const backendOptions = computed<DropdownOption[]>(() => [
+  {
+    value: 'local',
+    label: t('ide.backend.local'),
+    hint: props.localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable'),
+    disabled: !props.localAvailable,
+  },
+  {
+    value: 'isolated',
+    label: t('ide.backend.isolated'),
+    hint: props.isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedUnavailable'),
+    disabled: !props.isolatedAvailable,
+  },
+  { value: 'api', label: t('ide.backend.api'), hint: t('ide.backend.apiHint') },
+]);
 </script>
 
 <template>
@@ -52,23 +72,16 @@ const backendHint = computed(() => {
       @update:model-value="emit('update:language', $event)"
     />
     <div class="ide-toolbar__actions">
-      <label class="ide-backend" :title="backendHint">
+      <div class="ide-backend" :title="backendHint">
         <span class="ide-backend__label">{{ t('ide.backend.label') }}</span>
-        <select
-          :value="backend"
-          :aria-label="t('ide.backend.label')"
+        <DropdownSelect
+          :model-value="backend"
+          :options="backendOptions"
+          :label="t('ide.backend.label')"
           data-testid="ide-backend-select"
-          @change="emit('update:backend', ($event.target as HTMLSelectElement).value as ExecutionBackend)"
-        >
-          <option value="local" :disabled="!localAvailable" :title="localAvailable ? t('ide.backend.hint') : t('ide.backend.localUnavailable')">
-            {{ t('ide.backend.local') }}
-          </option>
-          <option value="isolated" :disabled="!isolatedAvailable" :title="isolatedAvailable ? t('ide.backend.isolatedHint') : t('ide.backend.isolatedUnavailable')">
-            {{ t('ide.backend.isolated') }}
-          </option>
-          <option value="api">{{ t('ide.backend.api') }}</option>
-        </select>
-      </label>
+          @update:model-value="emit('update:backend', $event as ExecutionBackend)"
+        />
+      </div>
       <button
         v-if="dirty"
         type="button"

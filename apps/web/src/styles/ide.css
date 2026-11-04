@@ -4,8 +4,9 @@
 
 .workbench-shell {
   --ide-activity-width: 48px;
-  --ide-sidebar-width: 248px;
-  --ide-status-height: 26px;
+  /* The reference's measured defaults: `sideBar.size` 300 px with a 170 px
+     floor, `panel.size` 300 px. Both are overwritten inline by the sashes. */
+  --ide-sidebar-width: 300px;
 }
 
 /* The IDE shell owns the viewport: panes scroll inside it instead of stretching
@@ -23,7 +24,11 @@
 }
 
 .workbench-shell.layout-ide {
-  grid-template-columns: var(--ide-activity-width) var(--ide-sidebar-width) minmax(0, 1fr);
+  position: relative;
+  /* The reference clamps the side bar against the window at runtime; the grid
+     track does the same job here, so a 720 px pane on a narrow window can never
+     squeeze the editor out of existence. */
+  grid-template-columns: var(--ide-activity-width) minmax(0, var(--ide-sidebar-width)) minmax(0, 1fr);
   /* The status bar owns the last row, so it runs under the activity bar, the
      sidebar, and the editor the way the VS Code strip does. */
   grid-template-rows: minmax(0, 1fr) var(--vscode-status-height);
@@ -31,6 +36,53 @@
 
 .workbench-shell.layout-ide.without-sidebar {
   grid-template-columns: var(--ide-activity-width) minmax(0, 1fr);
+}
+
+/* Zen mode, measured from `workbench.action.toggleZenMode`.
+   The mode removes tracks rather than overlaying anything: the activity bar and the
+   status bar own a column and a row respectively, and when they step aside the panes
+   take that space back. That is why this is a grid change and not a set of `display:
+   none` rules — a hidden element that still owns its track would leave the editor
+   inset by a gap nobody can see. */
+.workbench-shell.layout-ide.zen-without-activity-bar {
+  grid-template-columns: minmax(0, var(--ide-sidebar-width)) minmax(0, 1fr);
+}
+
+.workbench-shell.layout-ide.zen-without-activity-bar.without-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workbench-shell.layout-ide.zen-without-status-bar {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workbench-shell.layout-ide.zen-without-activity-bar.zen-without-status-bar.without-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* The centred column. `zenMode.centerLayout` defaults to on and uses a measured
+   `targetWidth: 900` with equal `.1909` margins; the numbers arrive as custom
+   properties from the controller so the geometry stays testable in one place.
+
+   The width is applied to the editor's *content* rather than to the grid item: the
+   item owns a grid track, and giving it a width would leave the track half empty and
+   the pane's own scrollport mis-measured. Centring inside the track keeps the pane
+   full-width and only narrows what is painted in it, which is what the reference's
+   `centered-layout-margin` element does — it inserts margin siblings on both sides
+   and leaves the editor's own element alone. */
+.workbench-shell.layout-ide.zen-centered .ide-editor__content {
+  width: var(--zen-column-width);
+  margin-inline: auto;
+}
+
+/* Below the target width the controller reports no margin, and the pane keeps the
+   full track instead of being boxed narrower than the window allows. */
+@media (max-width: 1180px) {
+  .workbench-shell.layout-ide.zen-centered .ide-editor__content {
+    width: auto;
+    margin-inline: 0;
+  }
 }
 
 .workbench-shell.layout-ide > * {
@@ -61,7 +113,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -128,21 +180,129 @@
   background: var(--chrome);
 }
 
+/* The splitter, measured from the reference's split view:
+   `.monaco-sash { position: absolute; z-index: 35; touch-action: none }` with
+   a `--vscode-sash-hover-size: 4px` inner bar that fades in over
+   `background-color .1s ease-out` in `sash-hoverBorder`, and `cursor: ew-resize`
+   / `ns-resize` per orientation.
+ *
+ * The two sizes are distinct in the reference: `--vscode-sash-size: 8px` is the
+ * element box, which is what the pointer has to land in, and
+ * `--vscode-sash-hover-size: 4px` is only the painted `::before` layer
+ * (`width: var(--vscode-sash-hover-size); left: calc(50% - (…/2))`). The element
+ * box carried the 4 px before, so the grab zone was half the reference's and a
+ * pointer 3 px off the boundary missed it entirely. The box is 8 px now and the
+ * bar keeps its 4 px, centred, so the visual weight is unchanged and only the
+ * invisible hit area grew. */
+.ide-sash {
+  position: absolute;
+  z-index: 35;
+  touch-action: none;
+  background: transparent;
+}
+
+.ide-sash::before {
+  content: "";
+  position: absolute;
+  background: transparent;
+  transition: background-color .1s ease-out;
+}
+
+.ide-sash--vertical {
+  top: 0;
+  /* The reference's grab zone is `--vscode-sash-size`, and it is 4 px in the
+     classic chrome: `:root` declares `--vscode-sash-size: 4px` and
+     `--vscode-sash-hover-size: 4px` *together*, so the element box and the painted
+     bar are the same width. The 8 px box belongs to a single scoped rule,
+     `.browser-container>.monaco-sash`, which sizes the splitter inside the browser
+     preview and nothing else. An earlier round read that 8 px as the general box
+     and widened this rule to match, which doubled the splitter's grab zone and,
+     because the sidebar offset is derived from half the box, moved the bar off the
+     pane boundary. Box and bar are both 4 px, as the `:root` pair states. */
+  width: 4px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.ide-sash--vertical::before {
+  top: 0;
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 100%;
+}
+
+.ide-sash--horizontal {
+  left: 0;
+  width: 100%;
+  /* 4 px for the same reason as the vertical splitter: `.monaco-sash.horizontal`
+     takes `height: var(--vscode-sash-size)`, and `:root` sets that to 4 px, equal
+     to the painted bar. */
+  height: 4px;
+  cursor: ns-resize;
+}
+
+.ide-sash--horizontal::before {
+  top: calc(50% - 2px);
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+
+.ide-sash:hover::before,
+.ide-sash:focus-visible::before,
+.ide-sash--active::before {
+  background: var(--border-strong);
+}
+
+.ide-sash:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The sidebar sash rides the sidebar's trailing edge. It is positioned from the
+   lane the sidebar occupies, so it follows the pane as the pane resizes. The
+   offset is half the 8 px box so the 4 px bar stays centred on the boundary. */
+.ide-sash--sidebar {
+  top: 0;
+  /* Centred on the pane boundary: half the 4 px box, which is the same 2 px the
+     reference's own `left: calc(50% - (var(--vscode-sash-hover-size) / 2))` uses. */
+  left: calc(var(--ide-activity-width) + var(--ide-sidebar-width) - 2px);
+  height: calc(100% - var(--vscode-status-height));
+}
+
+.workbench-shell.layout-ide.without-sidebar .ide-sash--sidebar {
+  display: none;
+}
+
+/* The panel sash sits on the panel's top border, inside the scroll body so it
+   travels with the panel as the panel resizes. */
+.ide-sash--panel {
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
 .ide-sidebar > * {
   min-width: 0;
 }
 
-/* The sidebar header is the measured VS Code part title: 35 px high with an
-   8 px inline inset, an 11 px uppercase label, and the view actions on the
-   right. */
+/* The sidebar header is the measured VS Code part title:
+ *   `.monaco-workbench .part>.title{height:35px;display:flex;box-sizing:border-box;
+ *    overflow:hidden}`
+ *   `.monaco-workbench .part>.title>.title-label{line-height:35px;padding-left:12px}`
+ *   `.monaco-workbench .part>.title>.title-label h2{font-size:11px;font-weight:400;
+ *    text-transform:uppercase}`
+ * so the bar is 35 px, the label's line box fills it rather than centring by
+ * `align-items`, and the type is a regular-weight 11 px uppercase caption. */
 .ide-sidebar__header {
   display: flex;
-  min-height: var(--vscode-title-height);
+  height: var(--vscode-title-height);
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 0 8px;
+  padding: 0 8px 0 12px;
+  overflow: hidden;
   background: transparent;
 }
 
@@ -151,8 +311,9 @@
   overflow: hidden;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0;
+  line-height: var(--vscode-title-height);
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -172,7 +333,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -251,6 +412,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* The reference marks the pane title's case separately from the header row, on
+     `.pane-header>.title` as `text-transform: uppercase`. The 11 px size and the
+     700 weight already sat on `.ide-pane-header` and its toggle; only the case was
+     missing, so an English pane title rendered in its written case rather than in
+     capitals. */
+  text-transform: uppercase;
 }
 
 /* View actions live on the pane header's trailing edge and stay invisible until
@@ -340,7 +507,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -381,7 +548,7 @@
   border: 1px solid var(--focus);
   border-radius: 4px;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 12px;
   background: var(--canvas);
 }
 
@@ -393,7 +560,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -428,7 +595,7 @@
   gap: 6px;
   padding: 0 6px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text-muted);
 }
@@ -465,7 +632,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
 }
@@ -555,7 +722,7 @@
   gap: 6px;
   padding: 2px 4px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
   text-align: left;
@@ -619,6 +786,11 @@
   margin-inline: 4px;
   padding-right: 4px;
   border-radius: 6px;
+  /* Neither `.monaco-list-row` nor `.monaco-tl-contents` nor the row's
+     `.monaco-icon-label` sets a font-size in the reference, so a file row inherits
+     the workbench's `fontSize-body1` — 13 px. Ours inherited the app's 14 px body
+     size. The 22 px row height already matched. */
+  font-size: var(--font-body);
 }
 
 .ide-tree__row:hover {
@@ -666,7 +838,7 @@
   border: 0;
   border-radius: 6px;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 12px;
   text-align: left;
   background: transparent;
 }
@@ -700,6 +872,22 @@
   font-weight: 700;
 }
 
+/* Git-ignored entries stay in the tree — the reference's
+   `"explorer.excludeGitIgnore"` defaults to false — and are tinted with
+   `gitDecoration.ignoredResourceForeground` instead: #8C8C8C in the dark default
+   theme, #8E8E90 in the light one. The tint replaces the normal text colour
+   rather than dimming the whole row, so the icon keeps its own file hue and the
+   row stays selectable and hoverable like any other. */
+.ide-tree__row--ignored .ide-tree__name,
+.ide-tree__row--ignored .ide-tree__toggle {
+  color: var(--git-ignored);
+}
+
+.ide-tree__row--ignored .file-icon,
+.ide-tree__row--ignored svg {
+  opacity: 0.55;
+}
+
 /* The row action stays inside the row's 22 px line, the way the reference keeps a
    list row's actions; a taller button would stretch the whole row. */
 .ide-tree__remove {
@@ -708,8 +896,15 @@
   opacity: 0;
 }
 
+/* The row action is hidden until it is wanted, which is how the reference keeps
+   list rows clean. `:focus-visible` belongs in this list for keyboard parity: a
+   `tabindex="0"` button that paints nothing is a trap, because `opacity: 0` hides
+   the focus ring too, so Tab landed on an invisible destructive control that
+   Enter would fire. Revealing it on focus gives the keyboard the same preview the
+   pointer gets from hover. */
 .ide-tree__row:hover .ide-tree__remove,
-.ide-tree__row--active .ide-tree__remove {
+.ide-tree__row--active .ide-tree__remove,
+.ide-tree__remove:focus-visible {
   opacity: 1;
 }
 
@@ -765,13 +960,51 @@
 
 .ide-tab {
   display: inline-flex;
-  /* Tabs keep their width and let the strip scroll. Squeezing them instead
-     collapsed every name to zero: forty tabs rendered as forty bare icons. */
-  flex: 0 0 auto;
+  /* The drop indicator is an absolutely positioned line on the tab edge. */
+  position: relative;
+  /* `workbench.editor.tabSizing` defaults to `fit`, which the reference spells out
+     as a 120 px width, a `fit-content` minimum and no shrinking: every tab is
+     120 px wide, a longer name pushes its own tab wider, and no tab is ever
+     squeezed — the strip scrolls instead of collapsing names to nothing. */
+  width: 120px;
+  min-width: fit-content;
+  flex-shrink: 0;
   align-items: center;
   border-right: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
+}
+
+/* Reordering by drag: the source tab fades while the pointer carries it. */
+.ide-tab--dragging {
+  opacity: .5;
+}
+
+/* The reference's drop marker: `.tab.drop-target-left:after` / `.drop-target-right:before`
+   are a 2 px full-height line in `tab-dragAndDropBorder`, sitting in the gap
+   between two tabs (`right: -2px`), pulled back inside on the last tab. */
+.ide-tab--drop-before::before,
+.ide-tab--drop-after::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background: var(--accent-fill);
+  pointer-events: none;
+  z-index: 11;
+}
+
+.ide-tab--drop-before::before {
+  left: 0;
+}
+
+.ide-tab--drop-after::after {
+  right: -2px;
+}
+
+.ide-tab:last-child.ide-tab--drop-after::after {
+  right: 0;
 }
 
 .ide-tab--active {
@@ -782,10 +1015,11 @@
 
 .ide-tab__select {
   display: inline-flex;
-  /* Wide enough for a readable name before the ellipsis, narrow enough that a
-     few tabs still fit; below this the strip scrolls instead of shrinking. */
-  min-width: 92px;
-  max-width: 220px;
+  /* The select fills whatever width the tab took — 120 px by default, more when
+     the name is longer — and the name is what gives the tab its `fit-content`
+     floor. */
+  flex: 1 1 auto;
+  min-width: 0;
   height: var(--vscode-tab-height);
   align-items: center;
   gap: 6px;
@@ -793,13 +1027,20 @@
   border: 0;
   border-radius: 0;
   color: var(--text-muted);
-  font-size: 12.5px;
+  /* The reference sets the tab label to `fontSize-body1` (13 px) in two places —
+     `.tabs-container>.tab .tab-label` and `.tab` itself. This rule is what
+     actually paints the name, so it has to carry the value; setting it on
+     `.ide-tab` changed nothing, because this one overrides the inherited size. */
+  font-size: var(--font-body);
   background: transparent;
 }
 
+/* The active tab is marked by its background, its foreground and the accent
+   marker along the top edge — the same three cues the reference uses. It is not
+   bold: the reference never sets a weight on a tab, and under `fit` sizing a
+   heavier label widened its own tab, so switching tabs shifted the whole strip. */
 .ide-tab--active .ide-tab__select {
   color: var(--text);
-  font-weight: 600;
 }
 
 .ide-tab__name {
@@ -885,10 +1126,17 @@
   text-transform: uppercase;
 }
 
-.ide-backend select {
+/* The toolbar's controls are one height, so the backend picker and the run button
+   line up on their baselines. */
+.ide-backend .dropdown__trigger {
   min-height: 32px;
   padding: 4px 26px 4px 8px;
-  font-size: 12.5px;
+  font-size: 12px;
+}
+
+.ide-backend .dropdown__chevron {
+  right: 8px;
+  margin-top: -7px;
 }
 
 .ide-save {
@@ -897,7 +1145,7 @@
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -906,6 +1154,24 @@
   min-height: 10rem;
   flex: 1 1 auto;
   overflow: hidden;
+}
+
+/* The editor group's content column. The settings page replaces it in view while
+   the editor stays mounted underneath, so the CodeMirror view is not discarded. */
+.ide-editor__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ide-editor--settings {
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-editor__content > * {
+  min-height: 0;
 }
 
 .ide-editor .source-editor,
@@ -926,11 +1192,28 @@
 /* The panel scrolls as one region so a wheel gesture over it never chains into
    the shell; its title row sticks to the top of that scrollport, which is what
    keeps the VS Code panel tabs reachable while the output grows. */
-.ide-panel {
+/* The dock carries the panel's height and the splitter on its top edge, so the
+   panel keeps its own measured geometry (border, scrollport, sticky title row)
+   and the sash stays pinned while the output scrolls. */
+.ide-panel-dock {
+  position: relative;
+  display: flex;
   min-width: 0;
-  min-height: 8rem;
+  flex: 0 0 var(--ide-panel-height, 300px);
+  flex-direction: column;
   max-height: 55%;
-  flex: 0 0 34%;
+}
+
+.ide-panel-dock--maximized {
+  max-height: none;
+  flex: 1 1 auto;
+}
+
+.ide-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0;
@@ -957,7 +1240,10 @@
   border-top: 1px solid var(--border);
   background: var(--accent-soft);
   color: var(--text);
-  font-size: 11.5px;
+  /* The reference's status bar sets height 22 px and font size 12 px, so the bar
+     is one 22 px line of 12 px type rather than a fractional size that rounds to
+     a blurry half pixel at 100% zoom. */
+  font-size: 12px;
 }
 
 .ide-status__group {
@@ -985,12 +1271,20 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 4px;
-  padding: 0 6px;
+  /* Measured from `.statusbar-item>.statusbar-item-label`: 5 px of padding
+     inside the hoverable area and 3 px of margin outside it, so neighbouring
+     items sit 6 px apart and the highlighted run stops short of the text. */
+  margin: 0 3px;
+  padding: 0 5px;
   border: 0;
   border-radius: 0;
   overflow: hidden;
   color: inherit;
   font: inherit;
+  /* The reference's `.statusbar-item` sets its line height to 22 px and its
+     height to 100%, so an item is filled by its line box rather than centred by
+     a computed content height. */
+  line-height: var(--vscode-status-height);
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1043,16 +1337,21 @@ button.ide-status__item:focus-visible {
   padding: 0 8px;
 }
 
+/* The reference status bar contains no `border-radius` rule at all: a coloured
+   item is a flat full-height block, not a chip. This badge keeps the filled
+   background because it carries connection state, but drops the pill shape so the
+   row reads as one strip; the inset matches `.statusbar-item`'s own 5 px so the
+   colour starts where the text would. */
 .ide-status__badge {
   display: inline-flex;
-  min-height: 16px;
-  align-self: center;
+  min-height: var(--vscode-status-height);
+  align-self: stretch;
   align-items: center;
   gap: 5px;
   margin: 0;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 0;
   color: var(--on-accent);
   background: var(--accent-fill);
   font-weight: 650;
@@ -1117,10 +1416,10 @@ button.ide-status__item:focus-visible {
   flex-direction: column;
   padding: 4px 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text);
   background: var(--surface-raised);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 26%);
+  box-shadow: var(--shadow-float);
   font-size: 13px;
   visibility: hidden;
 }
@@ -1262,7 +1561,9 @@ button.ide-status__item:focus-visible {
   border: 0;
   border-radius: 6px;
   color: var(--text-muted);
-  font-size: 12px;
+  /* `.monaco-breadcrumbs` sets no font-size in the reference, so the trail
+     inherits `fontSize-body1` — 13 px. Ours was a rung below at 12 px. */
+  font-size: var(--font-body);
   background: transparent;
   white-space: nowrap;
 }
@@ -1303,8 +1604,9 @@ button.ide-status__item:focus-visible {
 }
 
 /* A maximized panel takes the body's remaining space and pushes the editor to
-   its minimum, which matches the reference's panel-maximize behaviour. */
-.workbench-shell.layout-ide.panel-maximized .ide-panel {
+   its minimum, which matches the reference's panel-maximize behaviour. The dock
+   owns the height, so the rule moves with it. */
+.workbench-shell.layout-ide.panel-maximized .ide-panel-dock {
   max-height: none;
   flex: 1 1 auto;
 }
@@ -1361,7 +1663,7 @@ button.ide-status__item:focus-visible {
   gap: 6px;
   padding: 4px 6px 4px 10px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text);
   background: transparent;
   font: inherit;
@@ -1413,7 +1715,7 @@ button.ide-status__item:focus-visible {
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
   opacity: 0;
@@ -1443,7 +1745,7 @@ button.ide-status__item:focus-visible {
   flex: 1 1 auto;
   padding: 3px 6px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text);
   background: var(--surface);
   font: inherit;
@@ -1453,7 +1755,7 @@ button.ide-status__item:focus-visible {
 .ide-remote__form button {
   padding: 3px 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--text);
   background: var(--surface-subtle);
   font: inherit;
@@ -1468,134 +1770,227 @@ button.ide-status__item:focus-visible {
 }
 /* Source control: the reference's branch row, commit box, grouped changes, and
    recent history. Action letters carry the file hue so staged work reads first. */
+/* Source Control view.
+ *
+ * Geometry is copied from the reference's own stylesheet and graph renderer:
+ *   - every list row is 22 px tall (`.scm-view .monaco-list-row{line-height:22px}`,
+ *     `.monaco-icon-label-container{height:22px}`)
+ *   - the commit box is a 4 px-radius frame over the input background
+ *     (`.scm-editor{border-radius:4px}`)
+ *   - the graph rail is 22 px tall with an 11 px lane pitch, and a commit dot is
+ *     a 4 px circle with a 2 px stroke
+ *   - status letters are tinted through `gitDecoration.*ResourceForeground`
+ * Colour comes from the app's own tokens; only the geometry is borrowed.
+ *
+ * The reference's prefix for this view is `scm`, but the side bar family here
+ * names its panels `ide-<view>`, so the root keeps `ide-source-control` and the
+ * rows below it use the reference's `scm` names.
+ */
 .ide-source-control {
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 6px;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 0 0 10px;
 }
 
-.ide-source-control__hint {
-  margin: 6px 10px 0;
-}
-
-.ide-source-control__head {
+.scm {
   display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.scm__hint {
+  margin: 6px 12px;
+}
+
+/* Repository row: the reference keeps it at one 22 px line with the actions
+   pushed to the right edge. */
+.scm__repository {
+  display: flex;
+  height: 22px;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px 2px;
+  padding: 0 8px 0 10px;
 }
 
-.ide-source-control__branch {
-  display: inline-flex;
+.scm__repository-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.scm__repository-name {
   min-width: 0;
-  align-items: center;
-  gap: 5px;
+  flex: 1 1 auto;
   overflow: hidden;
   color: var(--text);
   font-size: 12px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ide-source-control__count {
-  margin-left: auto;
-  color: var(--text-muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.ide-source-control__refresh {
+/* A 22 px icon button, matching the reference's 22 px action height so the row
+   height never changes when one appears on hover. */
+.scm__icon-button {
   display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 0;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
 }
 
-.ide-source-control__refresh:hover:not(:disabled) {
+.scm__icon-button:hover:not(:disabled) {
   color: var(--text);
   background: var(--surface-subtle);
 }
 
-.ide-source-control__commit {
+/* Commit box: the reference frames the input and puts the button flush below it
+   inside the same 4 px radius. */
+.scm__commit {
   display: flex;
-  margin: 0 10px;
+  margin: 4px 10px 8px;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
-.ide-source-control__message {
-  padding: 6px 8px;
+.scm__message {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   color: var(--text);
   background: var(--surface);
   font: inherit;
   font-size: 12px;
-  resize: vertical;
+  line-height: 16px;
+  resize: none;
 }
 
-.ide-source-control__message:focus-visible {
-  border-color: var(--border-strong);
-  outline: 2px solid var(--action-contrast, var(--border-strong));
-  outline-offset: 1px;
+.scm__message::placeholder {
+  color: var(--text-faint);
 }
 
-.ide-source-control__action {
-  display: inline-flex;
+.scm__message:focus-visible {
+  /* The reference gives a text field its focus in the border colour, from
+     `.action-list-filter-input:focus`, and when it does draw an outline it is
+     `strokeThickness` wide with a negative offset. This kept the border cue but
+     shrank the app's ring to 1 px; the width now matches the global ring and only
+     the inset differs, so the ring sits inside the field rather than bleeding
+     into the row above it. */
+  border-color: var(--accent);
+  outline-offset: -1px;
+}
+
+/* The reference's primary button is full width inside the view, 26 px tall. */
+.scm__commit-button {
+  display: flex;
+  width: 100%;
+  height: 26px;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  background: var(--surface-raised);
+  padding: 0 8px;
+  border: none;
+  border-radius: 4px;
+  color: var(--on-accent, #ffffff);
+  background: var(--accent-fill);
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
 }
 
-.ide-source-control__action:hover:not(:disabled) {
-  background: var(--surface-subtle);
+/* The reference's commit control is a primary button with a narrow split cell on
+   its right edge, the cell divided from the label by a hairline. */
+.scm__commit-split {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid color-mix(in srgb, var(--on-accent, #fff) 35%, transparent);
+  opacity: 0.9;
 }
 
-.ide-source-control__action:disabled,
-.ide-source-control__refresh:disabled,
-.ide-source-control__file-name:disabled,
-.ide-source-control__stage-all:disabled {
+.scm__commit-button:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.scm__commit-button:disabled,
+.scm__icon-button:disabled,
+.scm__file-row:disabled {
   cursor: default;
   opacity: 0.5;
 }
 
-.ide-source-control__group {
+/* A section header is one 22 px row: chevron, title, count, then its action. */
+.scm__section {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
 }
 
-.ide-source-control__group-title,
-.ide-source-control__history-title {
-  margin: 6px 10px 2px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
+.scm__section-head {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 0 6px;
 }
 
-.ide-source-control__files,
-.ide-source-control__history {
+.scm__section-chevron {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.scm__section-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* The reference's count badge: a rounded pill on the badge colours. */
+.scm__count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 9px;
+  color: var(--on-accent, #ffffff);
+  background: var(--accent-fill);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.scm__section-action {
+  margin-left: auto;
+}
+
+/* Section action stays visible on the header rather than appearing on hover: the
+   reference shows the stage-all action on the group row. */
+.scm__files,
+.scm__history {
   display: flex;
   margin: 0;
   padding: 0;
@@ -1603,13 +1998,17 @@ button.ide-status__item:focus-visible {
   list-style: none;
 }
 
-.ide-source-control__file-name {
+/* One changed file, 22 px tall like every reference list row. */
+.scm__file-row {
   display: flex;
   width: 100%;
+  height: 22px;
+  box-sizing: border-box;
   align-items: center;
-  gap: 7px;
-  padding: 3px 10px;
+  gap: 4px;
+  padding: 0 12px 0 6px;
   border: none;
+  border-radius: 3px;
   color: var(--text);
   background: transparent;
   font: inherit;
@@ -1618,118 +2017,109 @@ button.ide-status__item:focus-visible {
   cursor: pointer;
 }
 
-.ide-source-control__file-name--static {
-  cursor: default;
-}
-
-.ide-source-control__file-name:hover:not(.ide-source-control__file-name--static):not(:disabled) {
+.scm__file-row:hover:not(:disabled):not(.scm__file-row--static) {
   background: var(--surface-subtle);
 }
 
-.ide-source-control__letter {
-  flex: 0 0 auto;
-  width: 12px;
-  color: var(--text-faint);
-  font-weight: 700;
-  text-align: center;
+/* A staged row has no action behind it, so it does not react to the pointer. */
+.scm__file-row--static {
+  cursor: default;
 }
 
-.ide-source-control__path {
+.scm__file-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.scm__file-label {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ide-source-control__stage-all {
-  align-self: flex-start;
-  margin: 4px 10px 0;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  background: transparent;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
+/* The directory tail is muted and the file name keeps the row's own colour, the
+   way the reference decorates a path. */
+.scm__file-tail {
+  color: var(--text-faint);
 }
 
-.ide-source-control__stage-all:hover:not(:disabled) {
+.scm__file-name {
   color: var(--text);
-  background: var(--surface-subtle);
 }
 
-.ide-source-control__history {
-  /* The rows themselves define the rhythm; a gap would cut the rail. */
-  gap: 0;
+/* The status letter carries the change's colour, right-aligned like the
+   reference's decoration letter. */
+.scm__file-letter {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-.ide-source-control__commit-entry {
+.scm__file-letter--added {
+  color: var(--git-added);
+}
+
+.scm__file-letter--modified {
+  color: var(--git-modified);
+}
+
+.scm__file-letter--deleted {
+  color: var(--git-deleted);
+}
+
+.scm__file-letter--renamed {
+  color: var(--git-renamed);
+}
+
+/* History row: no vertical padding, so consecutive 22 px rails join into one
+   continuous line down the panel. */
+.scm__commit-entry {
   display: flex;
+  height: 22px;
   align-items: center;
   gap: 6px;
-  /* No vertical padding: consecutive rows must meet so the 22px rail reads
-     as one line down the panel rather than a dashed one. */
-  padding: 0 10px 0 4px;
-  min-height: 22px;
+  padding: 0 12px 0 0;
   font-size: 12px;
 }
 
-/* The rail keeps its own column so every row's dots line up vertically, and it
-   must not shrink when the subject is long. */
-.ide-source-control__graph {
+.scm__graph {
   flex: 0 0 auto;
   overflow: visible;
 }
 
-.ide-source-control__graph-line {
-  stroke: var(--border-strong, #c8c8c8);
-  stroke-width: 1.4;
-}
-
-.ide-source-control__graph-dot {
-  fill: var(--accent);
-}
-
-/* HEAD is an outlined ring rather than a filled dot, matching the reference. */
-.ide-source-control__graph-dot--head {
-  fill: var(--canvas);
-  stroke: var(--accent);
-  stroke-width: 1.6;
-}
-
-/* The author rides beside the rail the way the reference prints it, muted so
-   the subject stays the loudest text in the row. */
-.ide-source-control__commit-author {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-faint);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ide-source-control__commit-subject {
-  min-width: 0;
+/* The subject takes the space the rail and the chip leave behind. It is allowed
+   to shrink below its content width (`min-width: 0`) but the chip beside it must
+   not, so a long branch name never squeezes the subject to a single character. */
+.scm__commit-subject {
+  min-width: 48px;
+  flex: 1 1 auto;
   overflow: hidden;
   color: var(--text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A branch or tag badge sits right after the subject, like the reference's
-   "main" chip beside the tip. */
-.ide-source-control__commit-ref {
-  flex: 0 0 auto;
-  padding: 1px 6px;
+/* A ref chip sits right after the subject, like the reference's branch label. It
+   is capped so a long branch name cannot crowd the subject out of the row. */
+.scm__commit-ref {
+  max-width: 45%;
+  flex: 0 1 auto;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
-  background: var(--accent-fill);
-  color: var(--on-accent);
+  color: var(--text-muted);
   font-size: 10px;
   line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ide-source-control__commit-meta {
+.scm__commit-age {
   margin-left: auto;
   flex: 0 0 auto;
   color: var(--text-faint);

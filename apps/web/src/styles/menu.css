@@ -6,10 +6,13 @@
    - `.action-item .action-label.separator { display: block; height: 0;
      border-bottom: 1px solid var(--vscode-menu-separatorBackground);
      padding-top: 1px; margin: 4px .8em; width: 100% }`
-   The row rhythm itself lives in the editor bundle, which this installation does
-   not ship as a stylesheet, so the 22 px row, the 26 px icon/label insets, and
-   the keybinding column follow the workbench's own list rhythm instead. That
-   split is recorded in docs/superpowers/specs/2026-09-23-vscode-ui-fidelity-design.md. */
+   The row rhythm ships as a CSS string inside the workbench bundle rather than
+   in its .css file, so an earlier revision of this file assumed it was
+   unavailable and borrowed the workbench's 22 px list row instead. The real
+   rules are `.monaco-menu .monaco-action-bar.vertical .action-menu-item {
+   height: 24px; margin: 0 4px; border-radius: cornerRadius-medium }` and
+   `.action-label { padding: 0 1em; font-size: 12px; line-height: 1 }`; the row
+   now matches them. */
 
 .context-menu {
   position: fixed;
@@ -20,10 +23,10 @@
   flex-direction: column;
   padding: 4px 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-widget);
   color: var(--text);
   background: var(--surface-raised);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+  box-shadow: var(--shadow-float);
   font-size: 13px;
   outline: none;
   /* Hidden until the first measurement lands, so it never flashes offscreen. */
@@ -34,23 +37,39 @@
   visibility: visible;
 }
 
+/* Measured from the reference's own menu stylesheet, which ships as a CSS string
+   inside the workbench bundle rather than in the .css file:
+   `.monaco-menu .monaco-action-bar.vertical .action-menu-item { height: 24px;
+   margin: 0 4px; border-radius: cornerRadius-medium }` and `.action-label {
+   padding: 0 1em; font-size: 12px; line-height: 1 }`. The row is a 24 px box
+   inset 4 px from the menu edge, so the highlight stops short of the border on a
+   rounded 6 px corner. */
 .context-menu__item {
   display: flex;
-  min-height: 22px;
+  min-height: 24px;
+  margin: 0 4px;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 0 26px;
+  padding: 0 1em;
   border: 0;
-  border-radius: 0;
+  border-radius: 6px;
   color: inherit;
   background: transparent;
   font: inherit;
+  font-size: 12px;
   text-align: left;
 }
 
-/* VS Code highlights the row the pointer or the keyboard is on. */
+/* The reference highlights the row the pointer *or* the keyboard is on, from one
+   shared "focused" state rather than two separate mechanisms. Our arrow-key
+   handler moved an `active` index (which also drives `tabindex` and the roving
+   focus) but nothing painted it, so keyboard users saw no highlight at all. The
+   index now drives `[data-active]`, which the pointer sets too, so both input
+   paths light the same row. `:focus-visible` stays as the fallback for a tab-stop
+   that is active without being the highlighted row. */
 .context-menu__item:hover,
+.context-menu__item[data-active="true"],
 .context-menu__item:focus-visible {
   color: var(--text);
   background: var(--accent-soft);
@@ -72,6 +91,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The tick on a toggled entry sits in the row's own gap, between the label and
+   the accelerator, rather than in a reserved leading column: the reference draws
+   its check as an icon on the action bar and this menu's rows have no icon lane. */
+.context-menu__check {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--accent);
 }
 
 /* The accelerator stays a step dimmer than the label, but has to clear WCAG AA on

@@ -44,10 +44,9 @@ describe('localized header controls', () => {
       props: { locale: 'zh-CN', t, windowTitle: 'main.py', canBack: true, canForward: false },
     });
 
-    // The reduced title row keeps the brand mark, the history arrows, and the
-    // centered search control; the removed status and setup controls are gone.
-    expect(wrapper.get('.brand').attributes('aria-label')).toBe(t('brand.home'));
-    expect(wrapper.find('.brand strong').exists()).toBe(false);
+    // The reduced title row keeps the history arrows and the centered search
+    // control; the product mark, the status and the setup controls are gone.
+    expect(wrapper.find('.brand').exists()).toBe(false);
     expect(wrapper.find('.connection-status').exists()).toBe(false);
     expect(wrapper.find('[data-testid="locale-switcher"]').exists()).toBe(false);
 

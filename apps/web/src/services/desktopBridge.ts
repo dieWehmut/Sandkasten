@@ -11,6 +11,8 @@ export interface WorkspaceTreeNode {
   path: string;
   name: string;
   type: 'file' | 'directory';
+  /** Matched a `.gitignore` rule; the reference tints these rather than hiding them. */
+  ignored?: boolean;
   children?: WorkspaceTreeNode[];
 }
 
@@ -180,7 +182,8 @@ export interface DesktopBridge {
   workspace: {
     openFolder(): Promise<WorkspaceRoot | null>;
     root(): Promise<WorkspaceRoot | null>;
-    list(): Promise<WorkspaceTreeNode[]>;
+    /** `excludeGitIgnore` omits git-ignored entries; otherwise they are marked. */
+    list(options?: { excludeGitIgnore?: boolean }): Promise<WorkspaceTreeNode[]>;
     read(path: string): Promise<string>;
     write(path: string, content: string): Promise<void>;
     create(path: string, content: string): Promise<void>;

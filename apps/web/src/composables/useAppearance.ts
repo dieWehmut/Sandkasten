@@ -114,7 +114,12 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
       set('--border', mix(background, text, 0.12));
       set('--border-strong', mix(background, text, 0.25));
     }
-    set('--accent', readable(accent, background));
+    // `--accent` is painted as an icon and as text on the plain surface, on the
+    // shaded rows, and on `--accent-soft` in a selected tree row, so it is resolved
+    // against all three the way the muted roles are. Resolving it against
+    // `background` alone left it at 4.16:1 on the derived `--chrome` for a mid-grey
+    // pair, which the sweep in `appearance.test.ts` caught.
+    set('--accent', readableOn(accent, [background, shaded, soft]));
     const strong = readable(accent, soft);
     set('--accent-strong', strong);
     // The label that sits on --accent-strong, chosen against that same colour.

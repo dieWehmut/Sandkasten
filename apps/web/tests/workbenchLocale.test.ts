@@ -18,7 +18,7 @@ describe('Chinese workbench labels', () => {
       props: { modelValue: 'python', runtimes: [{ language: 'python', version: '3.13' }] },
       global,
     });
-    expect(select.get('select').attributes('aria-label')).toBe('运行时');
+    expect(select.get('[role="combobox"]').attributes('aria-label')).toBe('运行时');
     expect(select.text()).toContain('python 3.13');
 
     const controls = mount(RunControls, { props: { phase: 'ready' }, global });

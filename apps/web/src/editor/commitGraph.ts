@@ -1,39 +1,82 @@
 // Lane layout for the source control history graph.
 //
-// The view draws the reference's rail: one dot per commit on its own lane, a
-// vertical line through the lanes that are still open, and an elbow where a
-// commit joins a parent that sits in another lane. Working out where every
-// dot, line, and elbow goes is pure arithmetic over the commit list, so it
-// lives here instead of in the component and can be tested without a browser.
+// The geometry is copied from the reference (measured, not guessed): in
+// `workbench.desktop.main.js` the graph constants are
+//
+//   var ZW = 22,   // row height
+//       dv = 11,   // half a row: every vertical position and the lane pitch
+//       l_e = 5,   // curve radius used by the tight S-bend
+//       _ee = 4,   // dot radius
+//       que = 2;   // dot stroke width
+//
+// and every element sits at `dv * (column + 1)`, so column 0's centre is 11 px
+// from the left edge and each further lane adds another 11 px. A row's SVG is
+// `dv * (lanes + 1)` wide and 22 px tall, which is also the reference's
+// `history-item` height. The lane palette cycles through five colours:
+// `scmGraph.foreground1..5` = #FFB000, #DC267F, #994F00, #40B0A6, #B66DFF.
+//
+// Working this out is pure arithmetic over the commit list, so it lives here
+// instead of in the component and can be tested without a browser.
 import type { WorkspaceCommit } from '../services/desktopBridge';
 
-/** One lane occupied at a given row. */
-export interface CommitGraphLane {
-  /** Column index, left to right from 0. */
+/** Row height of the reference's graph, in pixels. */
+export const GRAPH_ROW_HEIGHT = 22;
+/** Half the row height, which is also the lane pitch. */
+export const GRAPH_LANE_PITCH = 11;
+/** Dot radius. */
+export const GRAPH_DOT_RADIUS = 4;
+/** Dot stroke width. */
+export const GRAPH_DOT_STROKE = 2;
+/** Radius of the curve where a line changes lane. */
+export const GRAPH_CURVE_RADIUS = 5;
+
+/**
+ * The reference's lane palette, in cycle order: `scmGraph.foreground1..5`.
+ * A lane keeps the colour it was opened with, so a branch stays one hue all the
+ * way down the rail.
+ */
+export const GRAPH_PALETTE = ['#FFB000', '#DC267F', '#994F00', '#40B0A6', '#B66DFF'] as const;
+
+/** A vertical run of one lane's line through a row. */
+export interface CommitGraphStroke {
   column: number;
-  /** True when this lane's dot belongs to the row's own commit. */
-  node: boolean;
-  /** True when this lane carries a line entering from the row above. */
-  above: boolean;
-  /** True when this lane carries a line leaving into the row below. */
-  below: boolean;
+  /** Palette colour of the lane this line belongs to. */
+  color: string;
+  /** Pixel the line starts at on the row's 0–22 vertical scale. */
+  from: number;
+  /** Pixel the line ends at. */
+  to: number;
+  /** True for the lane the row's own commit sits on. */
+  active: boolean;
 }
 
-/** A curve from a row's dot into the lane one of its parents lives in. */
-export interface CommitGraphElbow {
-  /** The lane the curve reaches. */
+/** A curve where a line moves sideways between two lanes. */
+export interface CommitGraphCurve {
+  /** SVG path data, already in the row's pixel space. */
+  path: string;
+  color: string;
+}
+
+export interface CommitGraphDot {
   column: number;
+  color: string;
+  radius: number;
+  /** Outline width; the filled outer ring of a merge is stroke-only. */
+  strokeWidth: number;
+  kind: 'normal' | 'head' | 'merge';
 }
 
 export interface CommitGraphRow {
   commit: WorkspaceCommit;
   /** Index of the commit's own dot. */
   column: number;
-  lanes: CommitGraphLane[];
-  /** Curves from this commit's dot into the lanes its parents live in. */
-  elbows: CommitGraphElbow[];
-  /** Relative age in milliseconds, for the row's meta text. */
-  age: number;
+  strokes: CommitGraphStroke[];
+  curves: CommitGraphCurve[];
+  dot: CommitGraphDot;
+  /** Width the row's rail needs, in pixels. */
+  width: number;
+  /** True when HEAD points at this commit, which draws the highlighted ring. */
+  head: boolean;
 }
 
 export interface CommitGraphLayout {
@@ -42,92 +85,167 @@ export interface CommitGraphLayout {
   columns: number;
 }
 
-// Commits arrive newest first in topo order, so a lane is opened by the first
-// commit that needs it and closed once every child has been drawn.
-export function buildCommitGraph(commits: readonly WorkspaceCommit[], now = Date.now()): CommitGraphLayout {
+interface Lane {
+  /** Commit hash the lane is waiting to draw. */
+  id: string;
+  color: string;
+  /** Palette index it was opened with, so a reopened lane keeps its hue. */
+  slot: number;
+}
+
+/** Shared edge between two rows, derived from the lanes each one holds. */
+function nextColor(slot: number): string {
+  return GRAPH_PALETTE[slot % GRAPH_PALETTE.length];
+}
+
+/**
+ * Builds the rail for a commit list in the order the reference draws it.
+ *
+ * The model mirrors the reference's `inputSwimlanes`/`outputSwimlanes` pair: the
+ * lanes entering a row from above and the lanes leaving it below. A commit takes
+ * the leftmost lane already waiting for it; its first parent inherits that lane,
+ * extra parents open or reuse lanes to the right, and a lane closes once nothing
+ * is waiting for it.
+ */
+export function buildCommitGraph(commits: readonly WorkspaceCommit[]): CommitGraphLayout {
   const rows: CommitGraphRow[] = [];
-  // Each lane holds the commit hash it is currently waiting to draw.
-  const lanes: (string | null)[] = [];
+  // Lanes carried into the next row; a `null` marks a column that has closed but
+  // is still needed so the lanes to its right keep their columns.
+  let incoming: (Lane | null)[] = [];
   let columns = 0;
+  // Palette slot handed to the next lane that has to be opened. It only moves
+  // forward, so lanes opened later keep their own hue.
+  let slot = -1;
 
   for (const commit of commits) {
-    // Every lane waiting for this commit belongs to this row. The leftmost one
-    // is the commit's own lane -- which keeps a merge's first-parent line on
-    // the left -- and any other lane closes into it, because that is a branch
-    // that was drawn in its own column and forks back here.
-    const waiting: number[] = [];
-    for (let lane = 0; lane < lanes.length; lane += 1) {
-      if (lanes[lane] === commit.full) waiting.push(lane);
-    }
-    // The leftmost lane expecting the commit is its own; the others are lines
-    // that were drawn beside it and converge here, so they close at this row.
-    const column = waiting.length > 0 ? waiting[0] : firstFreeLane(lanes);
-    const openBefore = lanes.map((value) => value !== null);
-    for (const lane of waiting) lanes[lane] = null;
-
-    const elbows: CommitGraphElbow[] = [];
-
-    // A caller that predates the graph fields still renders: an absent parent
-    // list reads as a root commit instead of crashing the rail.
     const parents = (commit.parents ?? []).filter(Boolean);
-    // The first parent keeps the commit's own lane, so a normal commit draws
-    // one straight line through it. When the parent is already waited for in
-    // another lane the own lane closes and the line elbows across instead of
-    // opening a second lane for the same commit.
-    if (parents[0] && lanes.indexOf(parents[0]) !== column) {
-      const existing = lanes.indexOf(parents[0]);
-      if (existing === -1) lanes[column] = parents[0];
-      // The parent is already expected in another lane, so the line curves
-      // across to it instead of opening a second lane for the same commit.
-      else elbows.push({ column: existing });
+    // A commit's own lane is the leftmost one already waiting for it; otherwise
+    // it opens a new lane at the first free column. Lanes are positional arrays
+    // so a column keeps its index for as long as the lane lives.
+    let own = incoming.findIndex((lane) => lane?.id === commit.full);
+    const opened = own === -1;
+    if (opened) {
+      // A new line takes a lane nothing else occupies. Reusing a closed column
+      // keeps a linear history on a single lane instead of walking rightwards.
+      slot += 1;
+      own = incoming.findIndex((lane) => lane === null);
+      if (own === -1) own = incoming.length;
+      incoming = [...incoming];
+      incoming[own] = { id: commit.full, color: nextColor(slot), slot };
     }
-    // A merge opens a lane per extra parent, to the right of every open lane,
-    // and reuses a lane that is already waiting for that parent.
-    for (let extra = 1; extra < parents.length; extra += 1) {
-      const parent = parents[extra];
-      const existing = lanes.indexOf(parent);
-      if (existing !== -1) {
-        elbows.push({ column: existing });
-        continue;
-      }
-      const target = firstFreeLane(lanes);
-      lanes[target] = parent;
-      elbows.push({ column: target });
-    }
-    // A commit that no longer has a parent closes its lane, and trailing empty
-    // lanes are trimmed so the rail never draws a line to nowhere.
-    while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
+    const ownLane = incoming[own] as Lane;
 
-    const width = Math.max(openBefore.length, lanes.length, column + 1);
-    const rowLanes: CommitGraphLane[] = [];
-    for (let lane = 0; lane < width; lane += 1) {
-      rowLanes.push({
-        column: lane,
-        node: lane === column,
-        above: lane < openBefore.length && openBefore[lane],
-        below: lane < lanes.length && lanes[lane] !== null,
+    // Lanes leaving the row: the commit's own lane continues into its first
+    // parent, extra parents open their own lanes, and every other lane passes
+    // straight through untouched.
+    const outgoing: (Lane | null)[] = incoming.map((lane) => (lane ? { ...lane } : null));
+    // Every other lane that was also waiting for this commit closes here: the
+    // branches have joined, so leaving one open would draw a line into rows that
+    // have nothing on it.
+    for (let column = 0; column < outgoing.length; column += 1) {
+      if (column !== own && outgoing[column]?.id === commit.full) outgoing[column] = null;
+    }
+    outgoing[own] = parents[0] ? { id: parents[0], color: ownLane.color, slot: ownLane.slot } : null;
+
+    const curves: CommitGraphCurve[] = [];
+    for (let index = 1; index < parents.length; index += 1) {
+      const parent = parents[index];
+      let target = outgoing.findIndex((lane) => lane?.id === parent);
+      if (target === -1) {
+        target = outgoing.findIndex((lane) => lane === null);
+        if (target === -1) target = outgoing.length;
+        slot += 1;
+        outgoing[target] = { id: parent, color: nextColor(slot), slot };
+      }
+      // The extra parent's lane is joined by a curve that leaves the row's dot,
+      // drops to the mid line, runs across, and continues down.
+      const from = GRAPH_LANE_PITCH * (own + 1);
+      const to = GRAPH_LANE_PITCH * (target + 1);
+      const radius = GRAPH_CURVE_RADIUS;
+      const mid = GRAPH_ROW_HEIGHT / 2;
+      curves.push({
+        path: from === to
+          ? `M ${from} 0 V ${GRAPH_ROW_HEIGHT}`
+          : `M ${from} 0 V ${mid - radius} A ${radius} ${radius} 0 0 0 ${from - radius} ${mid} `
+            + `H ${to + radius} A ${radius} ${radius} 0 0 1 ${to} ${mid + radius} V ${GRAPH_ROW_HEIGHT}`,
+        color: (outgoing[target] as Lane).color,
       });
     }
-    const row: CommitGraphRow = {
+
+    // Trailing closed lanes are trimmed so the rail never reserves space for a
+    // line that no longer exists; the empty positions inside are kept so a
+    // surviving lane does not slide sideways.
+    while (outgoing.length && !outgoing[outgoing.length - 1]) outgoing.pop();
+    // The row is as wide as its widest live lane, not as wide as the tree once
+    // was: a row that has closed a branch stops drawing room for it.
+    const width = Math.max(
+      own + 1,
+      incoming.reduce((last, lane, column) => (lane ? column + 1 : last), 0),
+      outgoing.reduce((last, lane, column) => (lane ? column + 1 : last), 0),
+    );
+    columns = Math.max(columns, width);
+
+    const strokes: CommitGraphStroke[] = [];
+    for (let column = 0; column < width; column += 1) {
+      const above = incoming[column];
+      const below = outgoing[column];
+      if (column !== own) {
+        if (below) {
+          // A lane that stays open runs straight through the row: one line, edge
+          // to edge, drawn once even though both halves of the row know about it.
+          strokes.push({ column, color: below.color, from: 0, to: GRAPH_ROW_HEIGHT, active: false });
+        } else if (above) {
+          // A lane that closes into this commit stops at the mid line and runs
+          // across to the dot, which is how a joined branch reads: it arrives
+          // rather than continuing past.
+          strokes.push({ column, color: above.color, from: 0, to: GRAPH_ROW_HEIGHT / 2, active: false });
+          const mid = GRAPH_ROW_HEIGHT / 2;
+          if (column !== own) {
+            curves.push({
+              path: `M ${GRAPH_LANE_PITCH * (column + 1)} ${mid} H ${GRAPH_LANE_PITCH * (own + 1)}`,
+              color: above.color,
+            });
+          }
+        }
+        continue;
+      }
+      // The row's own lane: a lane that was already open draws down to the dot,
+      // and the lane continues below it into the first parent.
+      if (above && !opened) {
+        strokes.push({ column, color: above.color, from: 0, to: GRAPH_ROW_HEIGHT / 2, active: true });
+      }
+      if (below) {
+        strokes.push({ column, color: below.color, from: GRAPH_ROW_HEIGHT / 2, to: GRAPH_ROW_HEIGHT, active: true });
+      }
+    }
+
+    const isHead = commit.isHead === true;
+    const isMerge = parents.length > 1;
+    rows.push({
       commit,
-      column,
-      age: commit.committedAt ? Math.max(0, now - commit.committedAt) : 0,
-      lanes: rowLanes,
-      elbows,
-    };
-    columns = Math.max(columns, row.lanes.length);
-    rows.push(row);
+      column: own,
+      strokes,
+      curves,
+      dot: {
+        column: own,
+        color: ownLane.color,
+        // A merge draws the same dot inside a ring one pixel wider; HEAD draws
+        // the ring as well and stays hollow, the way the reference marks it.
+        radius: isMerge || isHead ? GRAPH_DOT_RADIUS + 1 : GRAPH_DOT_RADIUS,
+        strokeWidth: isMerge ? GRAPH_DOT_STROKE + 1 : GRAPH_DOT_STROKE,
+        kind: isHead ? 'head' : isMerge ? 'merge' : 'normal',
+      },
+      width: GRAPH_LANE_PITCH * (width + 1),
+      head: isHead,
+    });
+
+    incoming = outgoing;
   }
 
   return { rows, columns };
 }
 
-function firstFreeLane(lanes: (string | null)[]): number {
-  const free = lanes.indexOf(null);
-  return free === -1 ? lanes.length : free;
-}
-
-/** Compact age text for the row: "3d", "2h", "just now". */
+/** Compact age text for the row: "3d", "2h", "now". */
 export function formatCommitAge(milliseconds: number): string {
   if (!Number.isFinite(milliseconds) || milliseconds <= 0) return 'now';
   const minutes = Math.floor(milliseconds / 60_000);

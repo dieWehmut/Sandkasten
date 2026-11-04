@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Check } from '@lucide/vue';
 import type { ContextMenuItem, ContextMenuEntry } from './contextMenu';
 
 // A VS Code-shaped context menu: a fixed 13 px widget with rows, a right-aligned
@@ -42,9 +43,23 @@ function firstEnabled(from: number, step: 1 | -1): number {
   return -1;
 }
 
+/**
+ * The roving highlight. `active` drives the tabindex, the `[data-active]` paint
+ * and — once Vue has flushed the tabindex change — the real DOM focus, so a
+ * screen reader announces the row a sighted user sees highlighted. Moving only
+ * the index left the two out of step: ArrowDown changed state with no visible or
+ * announced effect.
+ */
+async function focusActive(): Promise<void> {
+  await nextTick();
+  if (active.value < 0) return;
+  const element = menu.value?.querySelector<HTMLElement>(`#${itemId(active.value)}`);
+  element?.focus({ preventScroll: true });
+}
+
 function move(step: 1 | -1): void {
   const next = firstEnabled(active.value + step, step);
-  if (next >= 0) active.value = next;
+  if (next >= 0) { active.value = next; void focusActive(); }
 }
 
 function choose(index: number): void {
@@ -52,7 +67,6 @@ function choose(index: number): void {
   if (!entry || entry.kind !== 'item' || entry.disabled) return;
   emit('select', entry.id);
 }
-
 function onKeydown(event: KeyboardEvent): void {
   const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ', 'Escape', 'Tab'];
   if (!keys.includes(event.key)) return;
@@ -62,8 +76,8 @@ function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter' || event.key === ' ') { choose(active.value); return; }
   if (event.key === 'ArrowDown') move(1);
   else if (event.key === 'ArrowUp') move(-1);
-  else if (event.key === 'Home') active.value = firstEnabled(0, 1);
-  else active.value = firstEnabled(props.entries.length - 1, -1);
+  else if (event.key === 'Home') { active.value = firstEnabled(0, 1); void focusActive(); }
+  else { active.value = firstEnabled(props.entries.length - 1, -1); void focusActive(); }
 }
 
 function onPointerdown(event: PointerEvent): void {
@@ -123,10 +137,14 @@ watch(() => [props.open, props.x, props.y, props.entries] as const, async ([open
         :disabled="entry.disabled"
         :aria-disabled="entry.disabled ? 'true' : undefined"
         :tabindex="index === active ? 0 : -1"
+        :data-active="index === active ? 'true' : undefined"
         @pointermove="active = index"
         @click="choose(index)"
       >
         <span class="context-menu__label">{{ entry.label }}</span>
+        <!-- A ticked entry is how the reference shows a toggle whose state is
+             currently on (the tab menu's Pin row). -->
+        <Check v-if="entry.checked" class="context-menu__check" :size="14" aria-hidden="true" />
         <kbd v-if="entry.keybinding" class="context-menu__keybinding" aria-hidden="true">{{ entry.keybinding }}</kbd>
       </button>
     </template>

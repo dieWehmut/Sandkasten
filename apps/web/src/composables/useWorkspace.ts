@@ -106,7 +106,14 @@ function assertFolderPath(path: string): string {
   return normalized;
 }
 
-export function useWorkspace(): WorkspaceController {
+// The Explorer's `explorer.excludeGitIgnore` equivalent. It is read at tree-load
+// time only, so a setting change is applied by the caller refreshing the tree.
+export interface WorkspaceOptions {
+  excludeGitIgnore?: Ref<boolean>;
+}
+
+export function useWorkspace(options: WorkspaceOptions = {}): WorkspaceController {
+  const excludeGitIgnore = options.excludeGitIgnore ?? ref(false);
   const store = resolveWorkspaceStore();
   const status = ref<WorkspaceStatus>('idle');
   const error = ref<string>();
@@ -125,7 +132,10 @@ export function useWorkspace(): WorkspaceController {
   }
 
   async function refreshTree(): Promise<void> {
-    tree.value = await store.list();
+    // The reference keeps git-ignored entries visible by default and only hides
+    // them when `explorer.excludeGitIgnore` is on, so the tree is asked for
+    // whichever of the two the user chose.
+    tree.value = await store.list({ excludeGitIgnore: excludeGitIgnore.value });
   }
 
   async function openFile(path: string): Promise<void> {
@@ -242,6 +252,19 @@ export function useWorkspace(): WorkspaceController {
     if (files.value.some((file) => file.path === path)) activePath.value = path;
   }
 
+  // Dragging a tab moves it in the strip. `toIndex` is the tab's final position,
+  // so the caller works in strip order rather than in "insert before" terms.
+  function moveFile(from: string, toIndex: number): void {
+    const index = files.value.findIndex((file) => file.path === from);
+    if (index === -1) return;
+    const target = Math.min(files.value.length - 1, Math.max(0, Math.round(toIndex)));
+    if (target === index) return;
+    const next = [...files.value];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    files.value = next;
+  }
+
   function patchActive(patch: (file: WorkspaceFile) => WorkspaceFile): void {
     files.value = files.value.map((file) => (file.path === activePath.value ? patch(file) : file));
   }
@@ -282,6 +305,16 @@ export function useWorkspace(): WorkspaceController {
     return saveFile(activePath.value);
   }
 
+  // The reference binds this to Ctrl+K S (`Do(2089, 49)`, remapped on Windows to
+  // Ctrl+K Ctrl+S) and calls it Save All. It writes only the buffers that actually
+  // differ from what is on disk, so it is safe to invoke on a clean workspace, and it
+  // reports whether everything succeeded rather than stopping at the first failure.
+  async function saveAll(): Promise<boolean> {
+    const targets = files.value.filter((file) => file.dirty).map((file) => file.path);
+    const results = await Promise.all(targets.map((path) => saveFile(path)));
+    return results.every(Boolean);
+  }
+
   return {
     store,
     isDesktop,
@@ -301,11 +334,13 @@ export function useWorkspace(): WorkspaceController {
     createFile,
     createFolder,
     closeFile,
+    moveFile,
     removeFile,
     setActive,
     updateSource,
     setLanguage,
     saveFile,
     saveActive,
+    saveAll,
   };
 }

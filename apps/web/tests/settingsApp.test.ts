@@ -27,7 +27,9 @@ test.each([1440, 390])('settings preserves the editor instance and applies persi
     const editorInstance = editor.vm.$;
     await wrapper.get('[data-action="open-settings"]').trigger('click');
     expect(wrapper.get('[data-testid="settings-view"]').isVisible()).toBe(true);
-    expect(wrapper.get('[data-testid="workbench-shell"]').isVisible()).toBe(false);
+    // The settings page opens inside the editor group, so the workbench — and with
+    // it the activity bar and side bar — stays on screen beside it.
+    expect(wrapper.get('[data-testid="workbench-shell"]').isVisible()).toBe(true);
     await wrapper.get('[data-theme-choice="dark"]').trigger('click');
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(localStorage.getItem('sandkasten-theme')).toBe('dark');

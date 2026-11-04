@@ -10,6 +10,7 @@ import './styles/sheets.css';
 import './styles/ide.css';
 import './styles/welcome.css';
 import './styles/menu.css';
+import './styles/dropdown.css';
 import './styles/notifications.css';
 import './styles/apiEndpoint.css';
 import './styles/discardDialog.css';

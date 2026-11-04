@@ -1,4 +1,4 @@
-﻿// IPC surface between the sandboxed renderer and the main process. Every
+// IPC surface between the sandboxed renderer and the main process. Every
 // handler validates its arguments and every filesystem call is confined to the
 // folder the user opened through the native dialog.
 import { pathToFileURL } from 'node:url';
@@ -149,10 +149,12 @@ export function registerDesktopIpc({ ipcMain, dialog, runner, isolated, session,
 
   ipcMain.handle(IPC_CHANNELS.workspaceRoot, async () => session.current());
 
-  ipcMain.handle(IPC_CHANNELS.workspaceList, async () => {
+  ipcMain.handle(IPC_CHANNELS.workspaceList, async (_event, options) => {
     const root = session.root;
     if (!root) return [];
-    const { tree } = await listWorkspaceTree(root);
+    // Only the one switch crosses the bridge: the renderer asks the main process to
+    // hide git-ignored entries, and gets them marked instead when it does not.
+    const { tree } = await listWorkspaceTree(root, { excludeGitIgnore: options?.excludeGitIgnore === true });
     return tree;
   });
 

@@ -21,7 +21,10 @@ import { useRemoteHosts } from './composables/useRemoteHosts';
 import { useSourceControl } from './composables/useSourceControl';
 import { useCommandCenter, type PaletteCommand } from './composables/useCommandCenter';
 import type { WorkspaceTreeNode } from './services/desktopBridge';
+import type { Runtime } from './services/sandkastenApi';
 import { useIdeLayout, type IdeActivity } from './composables/useIdeLayout';
+import { useZenMode } from './composables/useZenMode';
+import { createChords } from './composables/useChords';
 import { useNotifications } from './composables/useNotifications';
 import { isExecutionBusy, type ExecutionBackend, type ExecutionPhase } from './composables/execution';
 import { useTheme } from './composables/useTheme';
@@ -43,20 +46,38 @@ const terminal = bridge?.terminal ? useTerminal(bridge.terminal) : undefined;
 const runHistory = useRunHistory(20);
 const runner = useRunner({ history: runHistory });
 const local = useLocalRunner({ bridge, history: runHistory });
-const workspace = useWorkspace();
 const search = useWorkspaceSearch();
 const remote = useRemoteHosts(bridge?.remote);
 const sourceControl = useSourceControl();
 const userSettings = useUserSettings();
+// The Explorer needs the gitignore preference while it loads the tree, so the
+// setting is read here and handed to the workspace controller.
+const excludeGitIgnore = computed(() => userSettings.settings.value.workbench.excludeGitIgnore);
+const workspace = useWorkspace({ excludeGitIgnore });
 const ide = useIdeLayout(userSettings.settings.value.workbench);
+// Zen mode hides chrome rather than rearranging panes, so it sits beside the IDE
+// layout rather than inside it: the shell asks this controller which parts to paint.
+const zen = useZenMode();
 useAutoSave({ files: workspace.files, settings: computed(() => userSettings.settings.value.files), saveFile: workspace.saveFile });
 watch(() => userSettings.settings.value.workbench, (value) => {
   if (ide.sidebarVisible.value !== value.sidebarVisible) ide.toggleSidebar();
   if (ide.panelVisible.value !== value.panelVisible) ide.togglePanel();
+  if (ide.sidebarWidth.value !== value.sidebarWidth) ide.resizeSidebar(value.sidebarWidth);
+  if (ide.panelHeight.value !== value.panelHeight) ide.resizePanel(value.panelHeight);
 }, { deep: true });
+// Turning the gitignore exclusion on or off changes what the Explorer lists, so the
+// tree is reloaded rather than waiting for the next open.
+watch(excludeGitIgnore, () => { void workspace.refreshTree(); });
 watch([ide.sidebarVisible, ide.panelVisible], ([sidebarVisible, panelVisible]) => {
   if (userSettings.settings.value.workbench.sidebarVisible !== sidebarVisible) userSettings.setWorkbench('sidebarVisible', sidebarVisible);
   if (userSettings.settings.value.workbench.panelVisible !== panelVisible) userSettings.setWorkbench('panelVisible', panelVisible);
+});
+// A drag emits continuously, so the pane size is written on the same path the
+// visibility flags use: the persisted preference is the source of truth and the
+// controller clamps whatever arrives.
+watch([ide.sidebarWidth, ide.panelHeight], ([sidebarWidth, panelHeight]) => {
+  if (userSettings.settings.value.workbench.sidebarWidth !== sidebarWidth) userSettings.setWorkbench('sidebarWidth', sidebarWidth);
+  if (userSettings.settings.value.workbench.panelHeight !== panelHeight) userSettings.setWorkbench('panelHeight', panelHeight);
 });
 // Bumped by the title action or the palette command; the explorer owns the
 // collapsed state and folds everything when the token changes.
@@ -134,7 +155,20 @@ const currentJob = computed(() => (usesDesktop.value ? local.result.value : runn
 const requestError = computed(() => (usesDesktop.value ? local.error.value : runner.requestError.value));
 const pollingStopped = computed(() => !usesDesktop.value && runner.pollingStopped.value);
 const connectionState = computed(() => (usesDesktop.value ? 'connected' as const : runner.connectionState.value));
-const selectedRuntime = computed(() => runner.runtimes.value.find((runtime) => runtime.language === language.value));
+// The desktop build runs against the toolchains installed on this machine, so its
+// runtime list comes from `local`; the web build talks to the sandbox API and uses
+// `runner`. Only `runner.runtimes` was ever bound, which left the desktop runtime
+// picker permanently on "no runtimes available" while the status bar said ready —
+// the shell had a `localRuntimes` prop declared but never read. The local entries
+// carry `label`/`command` rather than `version`, so `label` is what the picker
+// shows; `available: false` ones are dropped because they cannot be run.
+const localRuntimeList = computed<Runtime[]>(() => local.runtimes.value
+  .filter((runtime) => runtime.available)
+  .map((runtime) => ({ language: runtime.language, version: runtime.label })));
+const availableRuntimes = computed<Runtime[]>(() => (usesDesktop.value
+  ? localRuntimeList.value
+  : runner.runtimes.value));
+const selectedRuntime = computed(() => availableRuntimes.value.find((runtime) => runtime.language === language.value));
 // The status bar names the origin the sandbox backend talks to, or the page's own
 // host when requests are same-origin. Reading the stored override through the
 // computed keeps the label in step with an endpoint change.
@@ -347,6 +381,25 @@ function closeFile(path: string): void {
   workspace.closeFile(path);
 }
 
+// The tab menu's bulk closes arrive as one list. A clean buffer closes straight
+// away; the first dirty one goes through the discard prompt, and the rest wait in
+// the queue so a "Close All" on three unsaved files still asks about each rather
+// than dropping two of them silently.
+const closeQueue = ref<string[]>([]);
+function closeFiles(paths: string[]): void {
+  const dirty = new Set(workspace.files.value.filter((file) => file.dirty).map((file) => file.path));
+  const clean = paths.filter((path) => !dirty.has(path));
+  const ask = paths.filter((path) => dirty.has(path));
+  for (const path of clean) workspace.closeFile(path);
+  if (!ask.length) return;
+  closeQueue.value = ask.slice(1);
+  pendingClose.value = ask[0];
+}
+
+function copyFilePath(path: string): void {
+  void navigator.clipboard?.writeText(path).catch(() => undefined);
+}
+
 function updateSource(value: string): void {
   workspace.updateSource(value);
 }
@@ -434,6 +487,10 @@ function closeActiveFile(): void {
 function discardAndClose(): void {
   if (pendingClose.value) workspace.closeFile(pendingClose.value);
   pendingClose.value = '';
+  // A bulk close asks about each unsaved buffer in turn.
+  const [next, ...rest] = closeQueue.value;
+  closeQueue.value = rest;
+  if (next) pendingClose.value = next;
 }
 
 // The new-file form lives inside the explorer, and the explorer only exists in
@@ -551,6 +608,7 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'workspace.open': openFolder,
   'file.new': requestNewFile,
   'file.save': saveActive,
+  'file.saveAll': () => { void workspace.saveAll(); },
   'file.closeTab': closeActiveFile,
   'run.start': () => { void runActive(); },
   'run.stop': stopActive,
@@ -585,6 +643,13 @@ const MENU_COMMANDS: Readonly<Record<string, () => void>> = {
   'file.delete': () => { const path = activeFile.value?.path; if (path) removeFile(path); },
   'view.togglePanelMaximize': () => ide.togglePanelMaximize(),
   'view.restorePanel': () => ide.togglePanelMaximize(),
+  'view.resetPaneSizes': () => ide.resetPaneSizes(),
+  // `workbench.action.toggleZenMode`, bound to Ctrl+K Z in the reference. The chord
+  // is a two-step keybinding the web shell has no chord support for, so the palette
+  // is the entry point here and the accelerator is left off rather than advertised
+  // as a shortcut that would not work.
+  'view.toggleZenMode': zen.toggle,
+  'view.exitZenMode': zen.exit,
 };
 
 // The letter after Ctrl+Shift that opens each sidebar view. These are the
@@ -597,6 +662,21 @@ const VIEW_SHORTCUTS: Record<string, IdeActivity> = {
   m: 'remote',
   i: 'context',
 };
+// Two-key bindings, in the reference's own terms. It packs both keys into one number
+// — `Do(2089, 56)` is Ctrl+K then Z — and has 76 chords starting with Ctrl+K. Only the
+// two whose subject matter the workbench actually has are bound here; the rest of that
+// family is editor navigation (peek, go to definition, join lines, unfold), which needs
+// a language server the shell does not have.
+const chords = createChords({
+  k: [
+    // `workbench.action.toggleZenMode`, weight 200.
+    { key: 'z', run: () => zen.toggle() },
+    // `workbench.action.files.saveAll`, which the reference remaps on Windows to
+    // Ctrl+K Ctrl+S. A chord's second key takes no modifier here, so both spellings
+    // are not expressible; the plain one is bound and the remap is noted instead.
+    { key: 's', run: () => { void workspace.saveAll(); } },
+  ],
+});
 const commandPaletteError = ref('');
 const paletteCommands = computed<PaletteCommand[]>(() => {
   const modifier = bridge?.platform === 'darwin' ? '⌘' : 'Ctrl+';
@@ -621,6 +701,8 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('view.showContext', 'ide.activity.context', `${modifier}Shift+I`, ideMode.value),
     command('view.toggleSidebar', 'palette.sidebar', `${modifier}B`, ideMode.value),
     command('view.togglePanel', 'palette.panel', `${modifier}J`),
+    command('view.toggleZenMode', 'palette.zenMode', `${modifier}K Z`, ideMode.value),
+    command('file.saveAll', 'palette.saveAll', `${modifier}K S`),
     command('view.history', !ideMode.value && historyOpen.value ? 'header.history.hide' : 'header.history.show'),
     command('view.inspector', !ideMode.value && inspectorOpen.value ? 'header.inspector.hide' : 'header.inspector.show'),
     command('terminal.toggle', 'palette.terminal', 'Ctrl+`', Boolean(terminal)),
@@ -637,6 +719,9 @@ const paletteCommands = computed<PaletteCommand[]>(() => {
     command('explorer.collapseAll', 'ide.explorer.collapseFolders', undefined, hasDirectories.value),
     command('file.delete', 'ide.explorer.deleteFile', undefined, Boolean(activeFile.value)),
     command(ide.panelMaximized.value ? 'view.restorePanel' : 'view.togglePanelMaximize', ide.panelMaximized.value ? 'ide.panel.restore' : 'ide.panel.maximize', undefined, ideMode.value && ide.panelVisible.value),
+    // The reference's splitters reset on double-click; the palette carries the
+    // same action so a keyboard user can reach it too.
+    command('view.resetPaneSizes', 'ide.pane.reset', undefined, ideMode.value),
   ];
 });
 const commandCenter = useCommandCenter({
@@ -675,6 +760,24 @@ function onKeydown(event: KeyboardEvent): void {
     return;
   }
   if (event.defaultPrevented) return;
+  // Chord shortcuts are checked before everything else that reads a bare key,
+  // because an armed prefix has to swallow the next keypress. Zen mode's binding is a
+  // chord in the reference — Ctrl+K then Z, packed as one number, `Do(2089, 56)` —
+  // and the web shell had no way to express a two-key binding, so the command existed
+  // in the palette and nowhere else.
+  if (chords.handle(event)) {
+    event.preventDefault();
+    return;
+  }
+  // Zen mode's only escape hatch. Without it the hidden activity bar and status bar
+  // would leave a user with no visible way back, and the reference binds Escape in
+  // zen mode for the same reason. It runs before the palette and shortcut handling
+  // because those are the very surfaces zen mode hides.
+  if (zen.active.value && event.key === 'Escape') {
+    event.preventDefault();
+    zen.exit();
+    return;
+  }
   const key = event.key.toLowerCase();
   if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'p' || (key === 'e' && !event.shiftKey))) {
     if (setupWelcome.isGuideOpen.value) return;
@@ -702,6 +805,16 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (event.target instanceof Element && event.target.closest('.terminal-panel')) return;
   if (!(event.ctrlKey || event.metaKey)) return;
+  // Ctrl+K is a prefix, not a command: on its own it only arms the next key. It is
+  // checked here rather than earlier so the prefix cannot be swallowed by a view
+  // shortcut, and it returns so nothing below treats it as a plain letter — the shell
+  // has no Ctrl+K command of its own, and falling through would leave the prefix
+  // armed while also doing something.
+  if (key === 'k' && !event.shiftKey && !event.altKey) {
+    event.preventDefault();
+    chords.arm('k');
+    return;
+  }
   // VS Code's view shortcuts. They carry Shift, so they are checked before the
   // plain letters below; Ctrl+Shift+E must not fall through to Ctrl+E.
   if (event.shiftKey) {
@@ -846,15 +959,26 @@ onBeforeUnmount(() => {
     <WorkbenchShell
       :terminal="terminal"
       v-if="!setupWelcome.isGuideOpen.value"
-      v-show="!settingsOpen"
+      :settings-open="settingsOpen"
       :history-open="compactHistoryOpen"
       :inspector-open="compactInspectorOpen"
       :layout-mode="layout.mode.value"
       :activity="ide.activity.value"
       :sidebar-visible="ide.sidebarVisible.value"
+      :zen-active="zen.active.value"
+      :zen-show-activity-bar="zen.showActivityBar.value"
+      :zen-show-status-bar="zen.showStatusBar.value"
+      :zen-show-tabs="zen.showTabs.value"
+      :zen-single-tab="zen.singleTab.value"
+      :zen-hide-line-numbers="zen.hideLineNumbers.value"
+      :zen-centered-width="zen.centeredWidth.value"
+      :zen-centered-margin="zen.centeredMargin.value"
+      @measure-editor-width="zen.setContainerWidth"
       :runs-expanded="ide.runsSectionExpanded.value"
       :panel-visible="ide.panelVisible.value"
       :panel-maximized="ide.panelMaximized.value"
+      :sidebar-width="ide.sidebarWidth.value"
+      :panel-height="ide.panelHeight.value"
       :files="workspace.files.value"
       :active-path="workspace.activePath.value"
       :tree="workspace.tree.value"
@@ -882,7 +1006,7 @@ onBeforeUnmount(() => {
       :recent-files="editorHistory.recentPaths.value"
       :api-host="apiHost"
       :history="runHistory.history.value"
-      :runtimes="runner.runtimes.value"
+      :runtimes="availableRuntimes"
       :runtime="selectedRuntime"
       :language="language"
       :source="source"
@@ -898,6 +1022,9 @@ onBeforeUnmount(() => {
       @select-activity="selectActivity"
       @toggle-sidebar="ide.toggleSidebar"
       @toggle-runs-section="ide.toggleRunsSection"
+      @resize-sidebar="ide.resizeSidebar"
+      @resize-panel="ide.resizePanel"
+      @reset-pane-sizes="ide.resetPaneSizes"
       :collapse-request="{ token: collapseToken }"
       @collapse-folders="collapseToken += 1"
       @clear-history="runHistory.clear()"
@@ -911,7 +1038,10 @@ onBeforeUnmount(() => {
       @open-palette="openPalette()"
       @select-file="selectFile"
       @close-file="closeFile"
+      @close-files="closeFiles"
+      @copy-file-path="copyFilePath"
       @reveal-file="revealInExplorer"
+      @move-file="workspace.moveFile($event.from, $event.toIndex)"
       @create-file="createFile"
       @update:creating-file="setCreatingFile"
       @update:creating-folder="setCreatingFolder"
@@ -943,7 +1073,37 @@ onBeforeUnmount(() => {
       @resume="resumeActive"
       @close-history="compactHistoryOpen = false"
       @close-inspector="compactInspectorOpen = false"
-    />
+    >
+      <template #editor>
+        <SettingsView
+          v-if="settingsOpen"
+          :preference="theme.preference.value"
+          :theme="theme.theme.value"
+          :colors="appearance.colors.value"
+          :customized="appearance.customized.value"
+          :color-scheme="colorScheme.colorScheme.value"
+          :locale="locale.locale.value"
+          :t="locale.t"
+          :connection-state="runner.connectionState.value"
+          :api-endpoint="configuredApiBaseUrl"
+          :user-settings="userSettings.settings.value"
+          @back="closeSettings"
+          @change-theme="theme.setTheme"
+          @change-color="appearance.setColor"
+          @reset-colors="appearance.resetColors"
+          @change-color-scheme="colorScheme.setColorScheme"
+          @change-locale="locale.setLocale"
+          @change-editor-setting="userSettings.setEditor"
+          @change-file-setting="userSettings.setFiles"
+          @change-workbench-setting="userSettings.setWorkbench"
+          @open-api-endpoint="openApiEndpoint"
+          @open-setup="openSetupFromSettings"
+          @show-history="showSettingsHistory"
+          @show-inspector="showSettingsInspector"
+          @open-github="openGithub"
+        />
+      </template>
+    </WorkbenchShell>
     <NotificationToasts :toasts="notifications.toasts.value" @dismiss="notifications.dismiss" />
     <div v-if="!layout.isDesktop.value && !setupWelcome.isGuideOpen.value && !settingsOpen" class="compact-entries">
       <!-- The compact layouts have no activity bar, so the two app-wide leaves
@@ -955,32 +1115,5 @@ onBeforeUnmount(() => {
       </button>
       <button type="button" class="compact-settings-entry" data-action="open-settings" @click="openSettings"><Settings :size="17" aria-hidden="true" />{{ locale.t('settings.title') }}</button>
     </div>
-    <SettingsView
-      v-if="settingsOpen && !setupWelcome.isGuideOpen.value"
-      :preference="theme.preference.value"
-      :theme="theme.theme.value"
-      :colors="appearance.colors.value"
-      :customized="appearance.customized.value"
-      :color-scheme="colorScheme.colorScheme.value"
-      :locale="locale.locale.value"
-      :t="locale.t"
-      :connection-state="runner.connectionState.value"
-      :api-endpoint="configuredApiBaseUrl"
-      :user-settings="userSettings.settings.value"
-      @back="closeSettings"
-      @change-theme="theme.setTheme"
-      @change-color="appearance.setColor"
-      @reset-colors="appearance.resetColors"
-      @change-color-scheme="colorScheme.setColorScheme"
-      @change-locale="locale.setLocale"
-      @change-editor-setting="userSettings.setEditor"
-      @change-file-setting="userSettings.setFiles"
-      @change-workbench-setting="userSettings.setWorkbench"
-      @open-api-endpoint="openApiEndpoint"
-      @open-setup="openSetupFromSettings"
-      @show-history="showSettingsHistory"
-      @show-inspector="showSettingsInspector"
-      @open-github="openGithub"
-    />
   </div>
 </template>

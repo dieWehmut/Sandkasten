@@ -107,4 +107,61 @@ describe('appearance overrides', () => {
     }
     ctx.controller.dispose();
   });
+
+  test('keeps every resolved role readable for arbitrary user colours', () => {
+    // The two tests above pin hand-picked colours. The resolver is the interesting
+    // risk: `readableOn` has to satisfy several surfaces at once, and a user can
+    // pick any colour. Sweep a deterministic grid plus the awkward cases —
+    // foreground equal to the background, pure black, pure white, and mid greys
+    // that leave the least contrast headroom — and require AA on every surface the
+    // role is actually painted on.
+    const rgb = (hex: string) => [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+    const luminance = (hex: string) => {
+      const [r, g, b] = rgb(hex).map((channel) => {
+        const value = channel / 255;
+        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a: string, b: string) => {
+      const [first, second] = [luminance(a), luminance(b)].sort((left, right) => right - left);
+      return (first + 0.05) / (second + 0.05);
+    };
+
+    const palette = ['#000000', '#ffffff', '#808080', '#eeeeee', '#0a0a0a', '#f077af', '#7f7f7f'];
+    const grid: string[] = [...palette];
+    for (let step = 0; step <= 5; step++) {
+      const channel = Math.round((step / 5) * 255).toString(16).padStart(2, '0');
+      grid.push(`#${channel}${channel}${channel}`);
+    }
+
+    // Every role the workbench paints text with, and the surfaces it lands on.
+    const roles = ['--text', '--text-muted', '--text-faint', '--accent'] as const;
+    let checked = 0;
+    for (const background of grid) {
+      for (const foreground of grid) {
+        const ctx = setup();
+        ctx.controller.setColor('background', background);
+        ctx.controller.setColor('foreground', foreground);
+        const surface = ctx.root.style.getPropertyValue('--surface');
+        const chrome = ctx.root.style.getPropertyValue('--chrome');
+        for (const role of roles) {
+          const value = ctx.root.style.getPropertyValue(role);
+          expect(value, `${role} is unset for ${foreground}/${background}`).toMatch(/^#[0-9a-f]{6}$/);
+          // `--accent` is used as an icon/text colour on both surfaces.
+          for (const painted of [surface, chrome]) {
+            const ratio = contrast(value, painted);
+            expect(
+              ratio,
+              `${role} ${value} on ${painted} for foreground ${foreground} / background ${background}`,
+            ).toBeGreaterThanOrEqual(4.5);
+          }
+          checked += 1;
+        }
+        ctx.controller.dispose();
+      }
+    }
+    // Guard against the sweep silently shrinking to nothing.
+    expect(checked).toBeGreaterThan(300);
+  });
 });

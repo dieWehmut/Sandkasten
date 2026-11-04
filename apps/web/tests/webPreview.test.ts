@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { mount } from '@vue/test-utils';
 import { describe, expect, test } from 'vitest';
 import { isolatedPreviewHtml, webPreviewDocument } from '../src/editor/preview';
@@ -34,5 +36,21 @@ describe('web development preview', () => {
     expect(isolatedPreviewHtml('<script>test()</script>')).toContain("connect-src 'none'");
     expect(isolatedPreviewHtml('<h1>Test</h1>')).toMatch(/^<meta http-equiv="Content-Security-Policy"/);
     expect(webPreviewDocument('css', '</style><script>test()</script>')?.html).toContain('<\\/style><script>');
+  });
+
+  test('lays out its toolbar like the reference browser pane', () => {
+    // The toolbar styles live in the component's own scoped block rather than in
+    // `styles/*.css`, so the usual stylesheet assertions cannot see them. Measured
+    // from `.browser-root` in the reference: the navbar is
+    // `padding: 6px 8px 3px`, its type is the URL display's 13 px, and its action
+    // clusters space children by `gap: 4px` (`.actions-container`). All three were
+    // previously 8 px apart at 12 px in a symmetric 4/8 box.
+    // `import.meta.url` is not a `file:` URL under this environment's transform, so
+    // the component is read relative to the test runner's working directory, which is
+    // the `apps/web` package root.
+    const source = readFileSync(resolve(process.cwd(), 'src/components/WebPreview.vue'), 'utf8');
+    expect(source).toMatch(/\.web-preview__toolbar \{[^}]*gap: 4px;[^}]*padding: 6px 8px 3px;[^}]*font-size: 13px;/s);
+    // The width selector stands in for `.browser-url-container`, a 6 px corner.
+    expect(source).toMatch(/\.web-preview__toolbar select \{[^}]*border-radius: 6px;/s);
   });
 });

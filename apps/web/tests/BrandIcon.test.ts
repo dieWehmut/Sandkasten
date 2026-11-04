@@ -4,12 +4,13 @@ import AppHeader from '../src/components/AppHeader.vue';
 import { createTranslator } from '../src/i18n/locale';
 
 describe('brand identity', () => {
-  test('the header shows the app icon next to the product name', () => {
+  test('the header carries no logo mark beside the navigation arrows', () => {
+    // The product mark moved out of the title row by request; the row now starts
+    // with the history arrows, so nothing image-like may lead it.
     const wrapper = mount(AppHeader, { props: { connectionState: 'connected', t: createTranslator('en') } });
-    const brand = wrapper.get('.brand');
-    const mark = brand.get('img');
-    expect(mark.attributes('src')).toMatch(/^data:image\/png;base64,/);
-    expect(mark.attributes('alt')).toBe('');
-    expect(mark.attributes('aria-hidden')).toBe('true');
+    expect(wrapper.find('.brand').exists()).toBe(false);
+    expect(wrapper.find('img').exists()).toBe(false);
+    // The product name still identifies the window through the title control.
+    expect(wrapper.get('[data-testid="window-title"]').text().length).toBeGreaterThan(0);
   });
 });

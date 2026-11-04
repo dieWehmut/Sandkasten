@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { ArrowLeft, ArrowRight, Search } from '@lucide/vue';
-// Inlined as a data URI so the four-file distribution contract keeps holding.
-import brandMark from '../assets/brand-88.png?inline';
 import type { Theme } from '../composables/useTheme';
 import { createTranslator, type Locale, type Translator } from '../i18n/locale';
 import type { WindowChromeBridge } from '../services/desktopBridge';
@@ -45,9 +43,6 @@ const isMac = computed(() => props.platform === 'darwin');
     :class="{ 'app-header--integrated': integrated, 'app-header--mac': integrated && isMac }"
     data-testid="app-header"
   >
-    <a class="brand" href="./" :aria-label="translate('brand.home')">
-      <img class="brand__mark" :src="brandMark" alt="" aria-hidden="true" />
-    </a>
     <nav class="editor-navigation" :aria-label="translate('navigation.label')">
       <button type="button" data-action="navigate-back" :disabled="!canBack"
         :aria-label="translate('navigation.back')" :title="`${translate('navigation.back')} (Alt+Left)`"

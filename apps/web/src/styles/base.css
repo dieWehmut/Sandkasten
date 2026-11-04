@@ -34,7 +34,7 @@ textarea {
 button,
 select {
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background: var(--surface);
   transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -49,9 +49,16 @@ select:hover:not(:disabled) {
   background: var(--surface-subtle);
 }
 
+/* A disabled control takes the default arrow, as the reference's do: across the
+   whole workbench stylesheet it uses `cursor: default` 114 times and
+   `not-allowed` zero times, in the packed JavaScript as well as the CSS. The
+   opacity stays above the reference's usual .4 because every disabled control
+   here is also a label a user needs to read — a greyed run button still says
+   which runtime it would have used — so it dims to the point of reading as
+   unavailable without dropping the text below AA against the surface behind it. */
 button:disabled,
 select:disabled {
-  cursor: not-allowed;
+  cursor: default;
   opacity: .52;
 }
 
@@ -82,10 +89,17 @@ h3[tabindex="-1"]:focus-visible {
    Native scrollbars are styled through the WebKit pseudo-elements rather than
    the standard `scrollbar-width`/`scrollbar-color` properties: the standard
    properties take precedence in Chromium and would replace this geometry, so
-   only the containers that hide their rail on purpose set `scrollbar-width`. */
+   only the containers that hide their rail on purpose set `scrollbar-width`.
+
+   The measurements come from the reference's editor defaults
+   (`verticalScrollbarSize:14`, `horizontalScrollbarSize:12`), which is why the
+   two axes differ, and from `cornerRadius.small` = `4px` for the slider. The
+   fill colours are sampled from `scrollbarSlider.*` (`#797979`/40%,
+   `#646464`/70%, `#646464`/100%) but expressed in Sandkasten text roles so all
+   five schemes keep the same contrast relationship. */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
@@ -94,7 +108,7 @@ h3[tabindex="-1"]:focus-visible {
 
 ::-webkit-scrollbar-thumb {
   border: 0;
-  border-radius: 5px;
+  border-radius: 4px;
   background: color-mix(in srgb, var(--text-faint) 40%, transparent);
 }
 

@@ -5,6 +5,13 @@ import type { TerminalBridge, TerminalProfile, TerminalSession } from '../servic
 
 export interface TerminalEntry extends TerminalSession { exitCode?: number }
 
+// The reference registers `terminal.integrated.fontSize` with a platform-dependent
+// default: `hLo = gt ? 12 : 14` where `gt` is `platform === 'darwin'`. The desktop
+// build here targets Windows, so the default is 14, not the 13 this used to be.
+// Nothing in the workbench stylesheet sets the terminal's type — xterm applies the
+// option inline — so the option is the only place this value lives.
+export const TERMINAL_FONT_SIZE = 14;
+
 interface SessionView {
   terminal: Terminal;
   fit: FitAddon;
@@ -46,10 +53,31 @@ export function useTerminal(bridge: TerminalBridge) {
   function terminalTheme(): ITheme {
     const css = getComputedStyle(document.documentElement);
     const color = (token: string, fallback: string) => css.getPropertyValue(token).trim() || fallback;
+    // The full sixteen-slot palette, not just background and foreground. A
+    // program colours its output through these slots, so leaving them unset let
+    // xterm fall back to its own defaults and every ANSI-coloured line — a test
+    // runner's red failures, a linter's yellow warnings — printed in colours the
+    // theme never chose.
     return {
       background: color('--surface', '#1e1e1e'), foreground: color('--text', '#d4d4d4'),
       cursor: color('--text', '#d4d4d4'), cursorAccent: color('--surface', '#1e1e1e'),
       selectionBackground: color('--border-strong', '#535353'),
+      black: color('--terminal-ansi-black', '#000000'),
+      red: color('--terminal-ansi-red', '#cd3131'),
+      green: color('--terminal-ansi-green', '#0dbc79'),
+      yellow: color('--terminal-ansi-yellow', '#e5e510'),
+      blue: color('--terminal-ansi-blue', '#2472c8'),
+      magenta: color('--terminal-ansi-magenta', '#bc3fbc'),
+      cyan: color('--terminal-ansi-cyan', '#11a8cd'),
+      white: color('--terminal-ansi-white', '#e5e5e5'),
+      brightBlack: color('--terminal-ansi-bright-black', '#666666'),
+      brightRed: color('--terminal-ansi-bright-red', '#f14c4c'),
+      brightGreen: color('--terminal-ansi-bright-green', '#23d18b'),
+      brightYellow: color('--terminal-ansi-bright-yellow', '#f5f543'),
+      brightBlue: color('--terminal-ansi-bright-blue', '#3b8eea'),
+      brightMagenta: color('--terminal-ansi-bright-magenta', '#d670d6'),
+      brightCyan: color('--terminal-ansi-bright-cyan', '#29b8db'),
+      brightWhite: color('--terminal-ansi-bright-white', '#e5e5e5'),
     };
   }
 
@@ -88,7 +116,7 @@ export function useTerminal(bridge: TerminalBridge) {
       if (disposed) { await bridge.close(session.id); return; }
       const id = session.id;
       const terminal = new Terminal({
-        cols: 80, rows: 24, cursorBlink: true, fontSize: 13,
+        cols: 80, rows: 24, cursorBlink: true, fontSize: TERMINAL_FONT_SIZE,
         fontFamily: 'Cascadia Code, Consolas, monospace', scrollback: 5000,
         theme: terminalTheme(), allowProposedApi: false, screenReaderMode: true,
       });

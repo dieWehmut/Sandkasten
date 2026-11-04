@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { useTerminal } from '../src/composables/useTerminal';
+import { TERMINAL_FONT_SIZE, useTerminal } from '../src/composables/useTerminal';
 import type { TerminalBridge } from '../src/services/desktopBridge';
 
 const mocks = vi.hoisted(() => ({ terminals: [] as any[], fits: [] as any[] }));
@@ -44,6 +44,17 @@ describe('app-owned terminal sessions', () => {
     expect(mocks.terminals[0].write).toHaveBeenCalledWith('initial prompt> ');
     expect(terminal.sessions.value[0]).toMatchObject({ id: 's1', cwd: 'C:\\workspace' });
     expect(host.bridge.attach).toHaveBeenCalledWith('s1');
+    await terminal.dispose();
+  });
+
+  test('uses the reference terminal type size', async () => {
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    // The reference registers `terminal.integrated.fontSize` with a platform
+    // default of `gt ? 12 : 14`, where `gt` is `platform === 'darwin'`. On Windows
+    // that is 14. No stylesheet rule sets the terminal's type — xterm applies the
+    // option inline — so this option is the only place the value lives.
+    expect(mocks.terminals[0].options.fontSize).toBe(14);
+    expect(TERMINAL_FONT_SIZE).toBe(14);
     await terminal.dispose();
   });
 
@@ -148,6 +159,27 @@ describe('app-owned terminal sessions', () => {
     const terminal = useTerminal(host.bridge); await terminal.create();
     expect(terminal.error.value).toContain('attach failed');
     expect(terminal.sessions.value).toEqual([]); expect(host.bridge.close).toHaveBeenCalledWith('s1');
+    await terminal.dispose();
+  });
+
+  test('hands xterm the full sixteen-slot palette, so ANSI output uses the theme', async () => {
+    // Without these, xterm silently falls back to its own defaults and a program's
+    // coloured output — red failures, yellow warnings — prints in colours the
+    // theme never chose.
+    const host = fakeBridge(); const terminal = useTerminal(host.bridge); await terminal.create();
+    document.documentElement.style.setProperty('--terminal-ansi-green', '#0dbc79');
+    document.documentElement.style.setProperty('--terminal-ansi-bright-red', '#f14c4c');
+    terminal.syncTheme();
+    const theme = mocks.terminals[0].options.theme as Record<string, string>;
+    expect(theme.green).toBe('#0dbc79');
+    expect(theme.brightRed).toBe('#f14c4c');
+    // Every slot xterm understands is present, not just the two sampled above.
+    for (const slot of ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+      'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite']) {
+      expect(theme[slot]).toBeTruthy();
+    }
+    document.documentElement.style.removeProperty('--terminal-ansi-green');
+    document.documentElement.style.removeProperty('--terminal-ansi-bright-red');
     await terminal.dispose();
   });
 

@@ -162,8 +162,48 @@ async function assertNoHorizontalOverflow(page, viewportName) {
   );
 }
 
+async function assertNoClippedText(page, viewportName) {
+  // A label forced into a box narrower than the word is clipped rather than
+  // growing, so its bounding rect looks healthy while the text is unreadable.
+  // Overflow is the reliable signal: `scrollHeight`/`scrollWidth` exceed the
+  // client box once the content no longer fits. Single characters are skipped
+  // because CodeMirror emits one span per syntax token, which is legitimately
+  // narrow, and elements that opt into `nowrap` are allowed to ellipsise.
+  const clipped = await page.evaluate(() => {
+    const found = [];
+    for (const element of document.querySelectorAll('*')) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width < 4 || rect.height < 4) continue;
+      const text = [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent.trim())
+        .join(' ')
+        .trim();
+      if (text.length < 2) continue;
+      const style = getComputedStyle(element);
+      if (style.whiteSpace.includes('nowrap')) continue;
+      if (style.overflow === 'auto' || style.overflow === 'scroll' || style.overflowY === 'auto' || style.overflowY === 'scroll') continue;
+      const clippedVertically = element.scrollHeight > element.clientHeight + 1;
+      const clippedHorizontally = element.scrollWidth > element.clientWidth + 1 && rect.width < 40;
+      if (clippedVertically || clippedHorizontally) {
+        found.push({
+          tag: element.tagName.toLowerCase(),
+          className: typeof element.className === 'string' ? element.className : '',
+          text: text.slice(0, 30),
+          box: Math.round(rect.width) + 'x' + Math.round(rect.height),
+          scroll: element.scrollWidth + 'x' + element.scrollHeight,
+        });
+      }
+    }
+    return found;
+  });
+  assert.deepEqual(clipped, [], viewportName + ' clips label text: ' + JSON.stringify(clipped));
+}
+
 async function assertMainRegions(page, viewportName) {
-  const selector = '[aria-label="Source workbench"], [aria-label="Editor"], [aria-label="Result output"], select[aria-label="Runtime"]';
+  // The runtime picker is a themed listbox rather than a native select, so it is
+  // matched by its combobox role.
+  const selector = '[aria-label="Source workbench"], [aria-label="Editor"], [aria-label="Result output"], [role="combobox"][aria-label="Runtime"]';
   const regions = await page.locator(selector).evaluateAll((elements) => elements.map((element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
@@ -309,10 +349,20 @@ async function inspectCompactSheets(page, viewportName) {
 
 async function inspectColorScheme(page, viewportName) {
   await openSettingsSection(page, 'appearance');
-  const select = page.locator('[data-testid="settings-color-scheme"]');
-  await select.waitFor({ state: 'visible', timeout: 3000 });
-  assert.equal(await select.locator('option').count(), 5, viewportName + ' settings must expose five schemes');
-  await select.selectOption('purple');
+  const picker = page.locator('[data-testid="settings-color-scheme"]');
+  await picker.waitFor({ state: 'visible', timeout: 3000 });
+
+  // The scheme picker is a themed listbox, so the rows only exist while it is open.
+  const choose = async (scheme) => {
+    await picker.locator('[data-dropdown-trigger]').click();
+    await picker.locator(`[role="option"][data-value="${scheme}"]`).click();
+  };
+
+  await picker.locator('[data-dropdown-trigger]').click();
+  assert.equal(await picker.locator('[role="option"]').count(), 5, viewportName + ' settings must expose five schemes');
+  await page.keyboard.press('Escape');
+
+  await choose('purple');
   await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'purple');
   assert.equal(
     await page.evaluate(() => window.localStorage.getItem('sandkasten-color-scheme')),
@@ -324,7 +374,7 @@ async function inspectColorScheme(page, viewportName) {
     '#7c3aed',
     viewportName + ' scheme did not change the accent token',
   );
-  await select.selectOption('green');
+  await choose('green');
   await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'green');
   await page.locator('[data-action="settings-back"]').click();
   await page.locator('[data-testid="settings-view"]').waitFor({ state: 'hidden', timeout: 3000 });
@@ -347,6 +397,7 @@ async function inspectViewport(browser, appUrl, viewport) {
   await inspectSetupFlow(page, viewport.name);
   await assertMainRegions(page, viewport.name);
   await assertNoHorizontalOverflow(page, viewport.name);
+  await assertNoClippedText(page, viewport.name);
   await assertNoIntersectingControls(page, viewport.name);
   await inspectColorScheme(page, viewport.name);
   await runAndInspectOutput(page, viewport.name);

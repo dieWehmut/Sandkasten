@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { GitBranch, GitCommitHorizontal, RefreshCw } from '@lucide/vue';
+import { Check, ChevronDown, GitBranch, Plus, RefreshCw } from '@lucide/vue';
 import type { WorkspaceChange, WorkspaceCommit } from '../../services/desktopBridge';
 import type { SourceControlState } from '../../composables/useSourceControl';
 import { buildCommitGraph, formatCommitAge } from '../../editor/commitGraph';
 import { useTranslation } from '../../i18n/useTranslation';
 
-// The view renders the repository the controller loaded and raises the two
-// actions it offers. It never runs git itself and never invents a change list.
+// The view renders the repository the controller loaded and raises the actions it
+// offers. It never runs git itself and never invents a change list.
+//
+// The layout follows the reference's Source Control view: a repository row with
+// its refresh action, the commit-message box above a full-width commit button,
+// then the "Changes" and "Graph" groups. A changed file shows its directory tail
+// in muted text followed by its own name, with the status letter on the right;
+// the history is one 22 px rail row per commit.
 const props = withDefaults(defineProps<{
   state: SourceControlState;
   branch?: string;
@@ -36,91 +42,94 @@ const emit = defineEmits<{
 
 const t = useTranslation();
 
-// The reference groups the changed files by their state, so the view does too;
-// every group is labelled and each entry names its status letter.
-const GROUPS: ReadonlyArray<{ key: string; statuses: ReadonlyArray<WorkspaceChange['status']> }> = [
-  { key: 'staged', statuses: ['staged', 'added'] },
-  { key: 'modified', statuses: ['modified'] },
-  { key: 'untracked', statuses: ['untracked'] },
-  { key: 'deleted', statuses: ['deleted', 'renamed', 'conflicted'] },
-];
-
-function groupLabel(key: string): string {
-  return t(`ide.sourceControl.group.${key}` as 'ide.sourceControl.group.staged');
-}
+// The reference splits the working tree into "Staged Changes" and "Changes" and
+// hides a section that has no entries, so the view filters rather than printing
+// an empty heading.
+const sections = computed(() => [
+  { key: 'staged', label: t('ide.sourceControl.stagedChanges'), entries: props.stagedChanges, staged: true },
+  { key: 'changes', label: t('ide.sourceControl.changes'), entries: props.unstagedChanges, staged: false },
+].filter((section) => section.entries.length > 0));
 
 // The history is laid out once per change to the commit list. The rows carry
-// their own lane geometry so the template only has to draw what it is handed.
+// their own rail geometry so the template only has to draw what it is handed.
 const graph = computed(() => buildCommitGraph(props.history));
 
 function ageText(commit: WorkspaceCommit): string {
   return formatCommitAge(commit.committedAt ? Date.now() - commit.committedAt : 0);
 }
 
-// The rail is 10px per lane, so a lane's centre is its column times ten plus
-// five. An elbow leaves the dot for another lane (`out`, a merge) or arrives
-// at the dot from it (`in`, a branch that forks back), which is what curves
-// the line between two columns instead of leaving it cut.
-function elbowPath(from: number, elbow: { column: number; direction: 'in' | 'out' }): string {
-  const x1 = from * 10 + 5;
-  const x2 = elbow.column * 10 + 5;
-  if (elbow.direction === 'out') return 'M ' + x1 + ' 11 C ' + x1 + ' 16, ' + x2 + ' 17, ' + x2 + ' 22';
-  return 'M ' + x2 + ' 0 C ' + x2 + ' 5, ' + x1 + ' 6, ' + x1 + ' 11';
-}
-
+// The reference's status letter: the index letter wins for a staged file and the
+// work-tree letter for an unstaged one. `?` would read as a blank, so a file git
+// does not track yet is labelled `U`.
 function statusLetter(change: WorkspaceChange): string {
-  // A staged change reports its index letter; an unstaged one its work tree
-  // letter. '?' and ' ' would read as blanks, so they become the reference's
-  // own letters.
   const index = change.index?.trim();
   const worktree = change.worktree?.trim();
   if (index === '?' || worktree === '?') return 'U';
-  return index || worktree || 'M';
+  if (change.staged) return index || 'M';
+  return worktree || index || 'M';
+}
+
+// The reference tints the letter by the change's kind, using the
+// `gitDecoration.*ResourceForeground` tokens.
+function statusTone(change: WorkspaceChange): string {
+  const letter = statusLetter(change);
+  if (letter === 'U' || letter === 'A') return 'added';
+  if (letter === 'D') return 'deleted';
+  if (letter === 'R' || letter === 'C') return 'renamed';
+  return 'modified';
+}
+
+// A changed file is shown as its directory tail plus its own name, so a long path
+// in a deep tree still says which file changed.
+function pathParts(path: string): { name: string; directory: string } {
+  const cut = path.lastIndexOf('/');
+  if (cut === -1) return { name: path, directory: '' };
+  return { name: path.slice(cut + 1), directory: path.slice(0, cut + 1) };
+}
+
+// Lane centres sit at `pitch * (column + 1)`, so column 0 starts one pitch in.
+function laneCentre(column: number): number {
+  return column * 11 + 11;
 }
 </script>
 
 <template>
-  <section class="ide-source-control" data-testid="source-control" :aria-label="t('ide.sourceControl.label')">
-    <p v-if="!desktop" class="empty-state ide-source-control__hint" data-testid="source-control-desktop-only">
+  <section class="scm ide-source-control" data-testid="source-control" :aria-label="t('ide.sourceControl.label')">
+    <p v-if="!desktop" class="empty-state scm__hint" data-testid="source-control-desktop-only">
       {{ t('ide.sourceControl.desktopOnly') }}
     </p>
     <p v-else-if="error" class="ide-explorer__error" role="alert" data-testid="source-control-error">{{ error }}</p>
-    <p v-else-if="state === 'loading'" class="empty-state ide-source-control__hint" data-testid="source-control-loading">
+    <p v-else-if="state === 'loading'" class="empty-state scm__hint" data-testid="source-control-loading">
       {{ t('ide.sourceControl.loading') }}
     </p>
     <template v-else-if="state === 'empty'">
-      <p class="empty-state ide-source-control__hint" data-testid="source-control-no-repository">
+      <p class="empty-state scm__hint" data-testid="source-control-no-repository">
         {{ t('ide.sourceControl.noRepository') }}
       </p>
     </template>
     <template v-else>
-      <div class="ide-source-control__head">
-        <span class="ide-source-control__branch" data-testid="source-control-branch">
-          <GitBranch :size="13" aria-hidden="true" />
-          {{ branch }}
-        </span>
-        <span class="ide-source-control__count" data-testid="source-control-count">
-          {{ stagedCount }} {{ t('ide.sourceControl.stagedSuffix') }}
-        </span>
+      <div class="scm__repository" data-testid="source-control-branch">
+        <GitBranch class="scm__repository-icon" :size="14" aria-hidden="true" />
+        <span class="scm__repository-name" :title="branch">{{ branch }}</span>
         <button
           type="button"
-          class="ide-source-control__refresh"
+          class="scm__icon-button"
           data-action="source-control-refresh"
           :aria-label="t('ide.sourceControl.refresh')"
           :title="t('ide.sourceControl.refresh')"
           :disabled="busy"
           @click="emit('refresh')"
         >
-          <RefreshCw :size="13" aria-hidden="true" />
+          <RefreshCw :size="14" aria-hidden="true" />
         </button>
       </div>
 
-      <form class="ide-source-control__commit" data-testid="source-control-commit-form" @submit.prevent="emit('commit')">
+      <form class="scm__commit" data-testid="source-control-commit-form" @submit.prevent="emit('commit')">
         <textarea
           :value="message"
           data-testid="source-control-message"
-          class="ide-source-control__message"
-          rows="3"
+          class="scm__message"
+          rows="2"
           name="commitMessage"
           autocomplete="off"
           spellcheck="false"
@@ -131,132 +140,146 @@ function statusLetter(change: WorkspaceChange): string {
         />
         <button
           type="submit"
-          class="ide-source-control__action"
+          class="scm__commit-button"
           data-action="source-control-commit"
           :disabled="!canCommit"
         >
-          <GitCommitHorizontal :size="14" aria-hidden="true" />
+          <Check :size="14" aria-hidden="true" />
           {{ t('ide.sourceControl.commit') }}
+          <span class="scm__commit-split" aria-hidden="true">
+            <ChevronDown :size="12" />
+          </span>
         </button>
       </form>
 
-      <p v-if="!changes.length" class="empty-state ide-source-control__hint" data-testid="source-control-clean">
+      <p v-if="!sections.length" class="empty-state scm__hint" data-testid="source-control-clean">
         {{ t('ide.sourceControl.clean') }}
       </p>
-      <template v-else>
-        <div v-for="group in GROUPS" :key="group.key" class="ide-source-control__group" :data-group="group.key">
-          <template v-if="changes.filter((change) => group.statuses.includes(change.status)).length">
-            <p class="ide-source-control__group-title">{{ groupLabel(group.key) }}</p>
-            <ul class="ide-source-control__files" :aria-label="groupLabel(group.key)">
-              <li
-                v-for="change in changes.filter((entry) => group.statuses.includes(entry.status))"
-                :key="change.path"
-                class="ide-source-control__file"
-                :data-change="change.path"
-              >
-                <button
-                  v-if="!change.staged"
-                  type="button"
-                  class="ide-source-control__file-name"
-                  :data-stage="change.path"
-                  :title="t('ide.sourceControl.stageFile')"
-                  :disabled="busy"
-                  @click="emit('stage', [change.path])"
-                >
-                  <span class="ide-source-control__letter">{{ statusLetter(change) }}</span>
-                  <span class="ide-source-control__path">{{ change.path }}</span>
-                </button>
-                <span v-else class="ide-source-control__file-name ide-source-control__file-name--static">
-                  <span class="ide-source-control__letter">{{ statusLetter(change) }}</span>
-                  <span class="ide-source-control__path">{{ change.path }}</span>
-                </span>
-              </li>
-            </ul>
-          </template>
-        </div>
-        <button
-          v-if="unstagedChanges.length"
-          type="button"
-          class="ide-source-control__stage-all"
-          data-action="source-control-stage-all"
-          :disabled="busy"
-          @click="emit('stage', unstagedChanges.map((change) => change.path))"
-        >
-          {{ t('ide.sourceControl.stageAll') }}
-        </button>
-      </template>
-
-      <p class="ide-source-control__history-title">{{ t('ide.sourceControl.history') }}</p>
-      <p v-if="!history.length" class="empty-state ide-source-control__hint" data-testid="source-control-no-history">
-        {{ t('ide.sourceControl.noHistory') }}
-      </p>
-      <ul v-else class="ide-source-control__history" data-testid="source-control-history" :aria-label="t('ide.sourceControl.history')">
-        <li
-          v-for="row in graph.rows"
-          :key="row.commit.full"
-          class="ide-source-control__commit-entry"
-          :data-commit="row.commit.short"
-          :data-column="row.column"
-          :data-head="row.commit.isHead ? 'true' : 'false'"
-        >
-          <!-- The graph rail: a line for every lane that enters or leaves the
-               row, an elbow where the commit joins a lane other than its own,
-               and the commit's own dot -- outlined when HEAD points at it, the
-               way the reference marks the checked-out commit. -->
-          <svg
-            class="ide-source-control__graph"
-            data-testid="source-control-graph"
-            :width="(graph.columns + 1) * 10"
-            height="22"
-            :viewBox="'0 0 ' + (graph.columns + 1) * 10 + ' 22'"
-            aria-hidden="true"
+      <div v-for="section in sections" :key="section.key" class="scm__section" :data-group="section.key">
+        <div class="scm__section-head">
+          <ChevronDown class="scm__section-chevron" :size="14" aria-hidden="true" />
+          <span class="scm__section-title">{{ section.label }}</span>
+          <span class="scm__count">{{ section.entries.length }}</span>
+          <button
+            v-if="!section.staged"
+            type="button"
+            class="scm__icon-button scm__section-action"
+            data-action="source-control-stage-all"
+            :aria-label="t('ide.sourceControl.stageAll')"
+            :title="t('ide.sourceControl.stageAll')"
+            :disabled="busy"
+            @click="emit('stage', section.entries.map((change) => change.path))"
           >
-            <g v-for="lane in row.lanes" :key="lane.column">
+            <Plus :size="14" aria-hidden="true" />
+          </button>
+        </div>
+        <ul class="scm__files" :aria-label="section.label">
+          <li v-for="change in section.entries" :key="change.path" class="scm__file" :data-change="change.path">
+            <!-- An unstaged row stages its file on click. A staged row has no
+                 bridge call to unstage, so it is presented as a plain row rather
+                 than a button that would do nothing. -->
+            <button
+              v-if="!section.staged"
+              type="button"
+              class="scm__file-row"
+              :data-stage="change.path"
+              :title="t('ide.sourceControl.stageFile')"
+              :disabled="busy"
+              @click="emit('stage', [change.path])"
+            >
+              <span class="scm__file-label" :title="change.path">
+                <span class="scm__file-tail">{{ pathParts(change.path).directory }}</span><span class="scm__file-name">{{ pathParts(change.path).name }}</span>
+              </span>
+              <span class="scm__file-letter" :class="'scm__file-letter--' + statusTone(change)">{{ statusLetter(change) }}</span>
+            </button>
+            <div v-else class="scm__file-row scm__file-row--static">
+              <span class="scm__file-label" :title="change.path">
+                <span class="scm__file-tail">{{ pathParts(change.path).directory }}</span><span class="scm__file-name">{{ pathParts(change.path).name }}</span>
+              </span>
+              <span class="scm__file-letter" :class="'scm__file-letter--' + statusTone(change)">{{ statusLetter(change) }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="scm__section">
+        <div class="scm__section-head">
+          <ChevronDown class="scm__section-chevron" :size="14" aria-hidden="true" />
+          <span class="scm__section-title">{{ t('ide.sourceControl.history') }}</span>
+          <span v-if="history.length" class="scm__count">{{ history.length }}</span>
+        </div>
+        <p v-if="!history.length" class="empty-state scm__hint" data-testid="source-control-no-history">
+          {{ t('ide.sourceControl.noHistory') }}
+        </p>
+        <ul v-else class="scm__history" data-testid="source-control-history" :aria-label="t('ide.sourceControl.history')">
+          <li
+            v-for="row in graph.rows"
+            :key="row.commit.full"
+            class="scm__commit-entry"
+            :data-commit="row.commit.short"
+            :data-column="row.column"
+            :data-head="row.head ? 'true' : 'false'"
+          >
+            <svg
+              class="scm__graph"
+              data-testid="source-control-graph"
+              :width="row.width"
+              height="22"
+              :viewBox="'0 0 ' + row.width + ' 22'"
+              aria-hidden="true"
+            >
               <line
-                v-if="lane.above"
-                :x1="lane.column * 10 + 5"
-                y1="0"
-                :x2="lane.column * 10 + 5"
-                y2="11"
-                class="ide-source-control__graph-line"
+                v-for="(stroke, index) in row.strokes"
+                :key="'s' + index"
+                :x1="laneCentre(stroke.column)"
+                :y1="stroke.from"
+                :x2="laneCentre(stroke.column)"
+                :y2="stroke.to"
+                :stroke="stroke.color"
+                :stroke-width="stroke.active ? 2 : 1.5"
+                stroke-linecap="round"
               />
-              <line
-                v-if="lane.below"
-                :x1="lane.column * 10 + 5"
-                y1="11"
-                :x2="lane.column * 10 + 5"
-                y2="22"
-                class="ide-source-control__graph-line"
+              <path
+                v-for="(curve, index) in row.curves"
+                :key="'c' + index"
+                :d="curve.path"
+                fill="none"
+                :stroke="curve.color"
+                stroke-width="1.5"
+                stroke-linecap="round"
               />
-            </g>
-            <path
-              v-for="elbow in row.elbows"
-              :key="'e' + elbow.column + elbow.direction"
-              :d="elbowPath(row.column, elbow)"
-              fill="none"
-              class="ide-source-control__graph-line"
-            />
-            <circle
-              :cx="row.column * 10 + 5"
-              cy="11"
-              :r="row.commit.isHead ? 4 : 3.5"
-              class="ide-source-control__graph-dot"
-              :class="{ 'ide-source-control__graph-dot--head': row.commit.isHead }"
-            />
-          </svg>
-          <span class="ide-source-control__commit-subject" :title="row.commit.subject">{{ row.commit.subject }}</span>
-          <!-- The reference names the commit's author beside the rail, so the
-               row carries it too; it truncates before the subject does. -->
-          <span class="ide-source-control__commit-author" :title="row.commit.author">{{ row.commit.author }}</span>
-          <span
-            v-for="ref in row.commit.refs ?? []"
-            :key="ref"
-            class="ide-source-control__commit-ref"
-            :data-ref="ref"
-          >{{ ref }}</span>
-          <span class="ide-source-control__commit-meta">{{ ageText(row.commit) }}</span>
-        </li>
-      </ul>
+              <circle
+                v-if="row.dot.kind !== 'normal'"
+                :cx="laneCentre(row.dot.column)"
+                cy="11"
+                :r="row.dot.radius"
+                :stroke="row.dot.color"
+                :stroke-width="row.dot.strokeWidth"
+                fill="none"
+                class="scm__graph-ring"
+              />
+              <circle
+                :cx="laneCentre(row.dot.column)"
+                cy="11"
+                r="4"
+                :fill="row.head ? 'var(--chrome)' : row.dot.color"
+                :stroke="row.dot.color"
+                stroke-width="2"
+                class="scm__graph-dot"
+                :class="{ 'scm__graph-dot--head': row.head }"
+              />
+            </svg>
+            <span class="scm__commit-subject" :title="row.commit.subject">{{ row.commit.subject }}</span>
+            <span
+              v-for="ref in row.commit.refs ?? []"
+              :key="ref"
+              class="scm__commit-ref"
+              :data-ref="ref"
+            >{{ ref }}</span>
+            <span class="scm__commit-age">{{ ageText(row.commit) }}</span>
+          </li>
+        </ul>
+      </div>
     </template>
   </section>
 </template>

@@ -1,4 +1,4 @@
-﻿// Sandboxed preload scripts are loaded as CommonJS, so this file must stay .cjs
+// Sandboxed preload scripts are loaded as CommonJS, so this file must stay .cjs
 // even though the rest of the desktop app is ESM.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -74,7 +74,9 @@ contextBridge.exposeInMainWorld('sandkastenDesktop', {
   workspace: {
     openFolder: () => ipcRenderer.invoke(CHANNELS.workspaceOpenFolder),
     root: () => ipcRenderer.invoke(CHANNELS.workspaceRoot),
-    list: () => ipcRenderer.invoke(CHANNELS.workspaceList),
+    // `options.excludeGitIgnore` hides entries matched by a .gitignore; by default
+    // they are listed and marked, which is what the reference's setting does.
+    list: (options) => ipcRenderer.invoke(CHANNELS.workspaceList, options),
     read: (path) => ipcRenderer.invoke(CHANNELS.workspaceRead, path),
     write: (path, content) => ipcRenderer.invoke(CHANNELS.workspaceWrite, path, content),
     create: (path, content) => ipcRenderer.invoke(CHANNELS.workspaceCreate, path, content),
