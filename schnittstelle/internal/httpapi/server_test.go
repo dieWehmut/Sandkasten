@@ -19,8 +19,10 @@ import (
 
 type fakeService struct {
 	submitted *pb.SubmitGoProjectRequest
+	canceled  *pb.CancelJobRequest
 	job       *pb.Job
 	submitErr error
+	cancelErr error
 }
 
 func (f *fakeService) SubmitGoProject(ctx context.Context, req *pb.SubmitGoProjectRequest) (*pb.SubmitGoProjectResponse, error) {
@@ -36,6 +38,14 @@ func (f *fakeService) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.Jo
 		return f.job, nil
 	}
 	return &pb.Job{JobId: req.JobId, Status: pb.JobStatus_JOB_STATUS_QUEUED}, nil
+}
+
+func (f *fakeService) CancelJob(ctx context.Context, req *pb.CancelJobRequest) (*pb.CancelJobResponse, error) {
+	if f.cancelErr != nil {
+		return nil, f.cancelErr
+	}
+	f.canceled = req
+	return &pb.CancelJobResponse{JobId: req.JobId, Status: pb.JobStatus_JOB_STATUS_CANCELED}, nil
 }
 
 func (f *fakeService) ListRuntimes(ctx context.Context, req *pb.ListRuntimesRequest) (*pb.ListRuntimesResponse, error) {
@@ -648,6 +658,42 @@ func TestGetJobRejectsInvalidOutputEncoding(t *testing.T) {
 	server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1?outputEncoding=hex", nil))
 
 	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCancelJobCancelsRequestedJob(t *testing.T) {
+	service := &fakeService{}
+	server := New(service, "dev-token", nil).Handler()
+	req := httptest.NewRequest(http.MethodPost, "/v1/jobs/job-1/cancel", nil)
+	req.Header.Set("Authorization", "Bearer dev-token")
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if service.canceled == nil || service.canceled.JobId != "job-1" {
+		t.Fatalf("cancel request = %+v", service.canceled)
+	}
+	var response submitResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.JobID != "job-1" || response.Status != "JOB_STATUS_CANCELED" {
+		t.Fatalf("response = %+v", response)
+	}
+}
+
+func TestCancelJobMapsServiceErrors(t *testing.T) {
+	service := &fakeService{cancelErr: jobs.ErrNotFound}
+	server := New(service, "", nil).Handler()
+	rec := httptest.NewRecorder()
+
+	server.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/jobs/missing/cancel", nil))
+
+	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }

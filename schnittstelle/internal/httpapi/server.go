@@ -53,6 +53,7 @@ var (
 type jobService interface {
 	SubmitGoProject(context.Context, *pb.SubmitGoProjectRequest) (*pb.SubmitGoProjectResponse, error)
 	GetJob(context.Context, *pb.GetJobRequest) (*pb.Job, error)
+	CancelJob(context.Context, *pb.CancelJobRequest) (*pb.CancelJobResponse, error)
 	ListRuntimes(context.Context, *pb.ListRuntimesRequest) (*pb.ListRuntimesResponse, error)
 }
 
@@ -95,6 +96,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/{language}/run", s.handleRunLanguage)
 	mux.HandleFunc("POST /v1/run", s.handleRun)
 	mux.HandleFunc("GET /v1/jobs/{job_id}", s.handleGetJob)
+	mux.HandleFunc("POST /v1/jobs/{job_id}/cancel", s.handleCancelJob)
 	return s.withCORS(mux)
 }
 
@@ -214,6 +216,23 @@ func (s *Server) handleGetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) handleCancelJob(w http.ResponseWriter, r *http.Request) {
+	if !s.authorize(w, r) {
+		return
+	}
+	jobID := r.PathValue("job_id")
+	if jobID == "" {
+		writeHTTPError(w, http.StatusBadRequest, "invalid_request", "job id is required")
+		return
+	}
+	resp, err := s.service.CancelJob(r.Context(), &pb.CancelJobRequest{JobId: jobID})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, submitResponse{JobID: resp.JobId, Status: resp.Status.String()})
 }
 
 func (s *Server) waitForJob(ctx context.Context, jobID string, timeout time.Duration) (*pb.Job, error) {
