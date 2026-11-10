@@ -1,0 +1,8 @@
+?   	github.com/dieWehmut/sandkasten/schnittstelle/cmd/sandkasten-api	[no test files]
+?   	github.com/dieWehmut/sandkasten/schnittstelle/gen/sandkasten/v1	[no test files]
+?   	github.com/dieWehmut/sandkasten/schnittstelle/internal/auth	[no test files]
+ok  	github.com/dieWehmut/sandkasten/schnittstelle/internal/config	0.005s
+ok  	github.com/dieWehmut/sandkasten/schnittstelle/internal/grpc	0.005s
+ok  	github.com/dieWehmut/sandkasten/schnittstelle/internal/httpapi	0.030s
+ok  	github.com/dieWehmut/sandkasten/schnittstelle/internal/jobs	0.005s
+ok  	github.com/dieWehmut/sandkasten/schnittstelle/internal/postgres	0.037s

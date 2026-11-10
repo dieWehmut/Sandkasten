@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "restarts": 3,
+  "testedApkSha256": "db07d75c82e647e5f280a392f1ace11a70ad69aae3b86d64c71d7a6d6b160865",
+  "androidApiLevel": 36,
+  "serial": "emulator-5554",
+  "jobId": "ef0e5e0d-cdce-4bee-909d-69b36c92b37f",
+  "checksPerCycle": [
+    [
+      "real API automatic reconnect from Keystore",
+      "panel selection, coral theme and single-column setting persisted",
+      "native authenticated GET runtime/job responses with saved credential",
+      "four navigation tabs, restored four panels and real output"
+    ],
+    [
+      "real API automatic reconnect from Keystore",
+      "panel selection, coral theme and single-column setting persisted",
+      "native authenticated GET runtime/job responses with saved credential",
+      "four navigation tabs, restored four panels and real output"
+    ],
+    [
+      "real API automatic reconnect from Keystore",
+      "panel selection, coral theme and single-column setting persisted",
+      "native authenticated GET runtime/job responses with saved credential",
+      "four navigation tabs, restored four panels and real output"
+    ]
+  ],
+  "attachments": [
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 7,
+      "pid": "5712",
+      "socket": "webview_devtools_remote_5712",
+      "targets": [
+        {
+          "id": "F7D04F317A40A27F3AD37C3042E54B2B",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_5712"
+      ],
+      "elapsedMs": 2215
+    },
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 8,
+      "pid": "5861",
+      "socket": "webview_devtools_remote_5861",
+      "targets": [
+        {
+          "id": "D4B4D977194429831723C6E44DC51F9F",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_5861"
+      ],
+      "elapsedMs": 1827
+    },
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 12,
+      "pid": "6021",
+      "socket": "webview_devtools_remote_6021",
+      "targets": [
+        {
+          "id": "1729D4FE332C128E45E16EDD467FD0C9",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_6021"
+      ],
+      "elapsedMs": 4649
+    }
+  ],
+  "pageErrors": [],
+  "manualScreenshotsReviewed": [
+    "cycle-1.png",
+    "cycle-2.png",
+    "cycle-3.png"
+  ],
+  "driverHashes": {
+    "apps/mobile/scripts/android-webview.mjs": "bb8b6918f03a2bc700b84f894fd9469a6a02c11da26b1c9bd95cb21040dcb271",
+    "apps/mobile/scripts/native-e2e.mjs": "e256c6fc8be267c6a402f69b90ea5fc36691822a0bc4fb82c246860b07374e21"
+  }
+}

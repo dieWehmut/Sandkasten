@@ -1,0 +1,109 @@
+{
+  "sourceCommit": "d6a5e13c0a11a4d4e89b6987b612c49af1233cfe",
+  "runUrl": "https://github.com/dieWehmut/Sandkasten/actions/runs/42760327925",
+  "counts": {
+    "Warning": 25
+  },
+  "issues": [
+    {
+      "id": "ManifestOrder",
+      "severity": "Warning"
+    },
+    {
+      "id": "AndroidGradlePluginVersion",
+      "severity": "Warning"
+    },
+    {
+      "id": "GradleDependency",
+      "severity": "Warning"
+    },
+    {
+      "id": "DataExtractionRules",
+      "severity": "Warning"
+    },
+    {
+      "id": "UnusedResources",
+      "severity": "Warning"
+    },
+    {
+      "id": "UnusedResources",
+      "severity": "Warning"
+    },
+    {
+      "id": "UnusedResources",
+      "severity": "Warning"
+    },
+    {
+      "id": "UnusedResources",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconLauncherShape",
+      "severity": "Warning"
+    },
+    {
+      "id": "MonochromeLauncherIcon",
+      "severity": "Warning"
+    },
+    {
+      "id": "MonochromeLauncherIcon",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconDuplicates",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconDuplicates",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconDuplicates",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconDuplicates",
+      "severity": "Warning"
+    },
+    {
+      "id": "IconDuplicates",
+      "severity": "Warning"
+    }
+  ]
+}

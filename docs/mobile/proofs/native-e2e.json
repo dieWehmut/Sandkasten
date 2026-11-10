@@ -1,0 +1,118 @@
+{
+  "serial": "emulator-5554",
+  "address": "http://10.0.2.2:18080",
+  "checks": [
+    {
+      "name": "stdin, args and uploaded text file",
+      "jobId": "4815485b-4352-4581-93da-d1b113f24166",
+      "status": "已完成"
+    },
+    {
+      "name": "real compiler error",
+      "jobId": "36679e5d-b9e5-4370-a754-3495cce7e01e",
+      "status": "编译失败"
+    },
+    {
+      "name": "stop a real running process",
+      "jobId": "64298eab-1104-4f42-8672-5d002e8e6510",
+      "status": "已停止"
+    },
+    {
+      "name": "Keystore, panel, theme, column and output restoration",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "dashboard.png",
+    "python-output.png",
+    "compiler-error.png",
+    "before-stop.png",
+    "stopped-output.png",
+    "theme-珊瑚.png",
+    "settings-珊瑚.png",
+    "projects-珊瑚.png",
+    "tasks-珊瑚.png",
+    "dashboard-珊瑚.png",
+    "theme-玫瑰.png",
+    "settings-玫瑰.png",
+    "projects-玫瑰.png",
+    "tasks-玫瑰.png",
+    "dashboard-玫瑰.png",
+    "theme-海盐.png",
+    "settings-海盐.png",
+    "projects-海盐.png",
+    "tasks-海盐.png",
+    "dashboard-海盐.png",
+    "theme-森林.png",
+    "settings-森林.png",
+    "projects-森林.png",
+    "tasks-森林.png",
+    "dashboard-森林.png",
+    "theme-靛蓝.png",
+    "settings-靛蓝.png",
+    "projects-靛蓝.png",
+    "tasks-靛蓝.png",
+    "dashboard-靛蓝.png",
+    "theme-琥珀.png",
+    "settings-琥珀.png",
+    "projects-琥珀.png",
+    "tasks-琥珀.png",
+    "dashboard-琥珀.png",
+    "single-column.png",
+    "restored-after-force-stop.png"
+  ],
+  "attachments": [
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 8,
+      "pid": "3905",
+      "socket": "webview_devtools_remote_3905",
+      "targets": [
+        {
+          "id": "EBA9C74311371EEE9D37D7310BA16360",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_3905"
+      ],
+      "elapsedMs": 2462
+    },
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 7,
+      "pid": "5151",
+      "socket": "webview_devtools_remote_5151",
+      "targets": [
+        {
+          "id": "8BC25158AB2E9437643D5E7E516BA37C",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_5151",
+        "webview_devtools_remote_4548"
+      ],
+      "elapsedMs": 1423
+    }
+  ],
+  "beforeRestart": {
+    "theme": "coral",
+    "savedTheme": "coral",
+    "columns": "1"
+  },
+  "passed": true,
+  "errors": []
+}

@@ -1,0 +1,7834 @@
+{
+  "startedAt": "2026-11-10T02:41:19.607Z",
+  "url": "http://127.0.0.1:4175/",
+  "browserPath": "Browser plugin not available; existing Playwright Chromium",
+  "evidenceScope": "Current mobile Vue UI with live authenticated runtime catalog (58 runtimes); no job submission or execution during this audit",
+  "checks": [
+    {
+      "name": "320x568 identity",
+      "pass": true,
+      "detail": "Sandkasten Remote"
+    },
+    {
+      "name": "320x568 meaningful first screen",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568 live 58-runtime catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568 source input accepts edits",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/coral selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/coral/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/coral runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/coral device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/coral/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/coral/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/coral/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "320x568/coral/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/rose selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/rose/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/rose runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/rose device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/rose/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/rose/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/rose/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "320x568/rose/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/sea selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/sea/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/sea runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/sea device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/sea/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/sea/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/sea/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "320x568/sea/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/forest selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/forest/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/forest runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/forest device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/forest/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/forest/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/forest/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "320x568/forest/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/indigo selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/indigo/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/indigo runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/indigo device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/indigo/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/indigo/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/indigo/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "320x568/indigo/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "主题",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "控制台",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/amber selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 142,
+          "sourceWidth": 122,
+          "sourceWidthRatio": 0.8591549295774648,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 80,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "320x568/amber/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 122,
+          "parentWidth": 122,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "320x568/amber runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "项目",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "设置",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568 double-column run button reachable without submission",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568 double-column run button reachable without submission",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/reachable-run-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/reachable-run-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/reachable-run-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/reachable-run-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/reachable-run-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-single no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 320,
+          "height": 568
+        },
+        "scrollWidth": 320,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 320,
+          "top": 484,
+          "bottom": 568
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-single controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "320x568/amber/tasks-single no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "320x568/amber/tasks-single theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "320x568/amber/tasks-single navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 320,
+        "top": 484,
+        "bottom": 568
+      }
+    },
+    {
+      "name": "320x568 restores double-column layout",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844 identity",
+      "pass": true,
+      "detail": "Sandkasten Remote"
+    },
+    {
+      "name": "390x844 meaningful first screen",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844 live 58-runtime catalog",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844 source input accepts edits",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/coral selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/coral/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/coral runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/coral device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "coral",
+        "primary": "#ffb79a",
+        "bg": "#1b110e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/coral/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/coral/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/coral/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#ffb79a",
+        "bg": "#1b110e"
+      }
+    },
+    {
+      "name": "390x844/coral/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/rose selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/rose/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/rose runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/rose device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "rose",
+        "primary": "#f2a9c3",
+        "bg": "#1a1117",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/rose/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/rose/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/rose/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#f2a9c3",
+        "bg": "#1a1117"
+      }
+    },
+    {
+      "name": "390x844/rose/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/sea selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/sea/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/sea runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/sea device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "sea",
+        "primary": "#8edbd8",
+        "bg": "#0e181a",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/sea/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/sea/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/sea/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#8edbd8",
+        "bg": "#0e181a"
+      }
+    },
+    {
+      "name": "390x844/sea/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/forest selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/forest/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/forest runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/forest device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "forest",
+        "primary": "#aad59b",
+        "bg": "#111811",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/forest/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/forest/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/forest/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#aad59b",
+        "bg": "#111811"
+      }
+    },
+    {
+      "name": "390x844/forest/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/indigo selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/indigo/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/indigo runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/indigo device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "indigo",
+        "primary": "#b5beff",
+        "bg": "#12131e",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/indigo/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/indigo/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/indigo/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#b5beff",
+        "bg": "#12131e"
+      }
+    },
+    {
+      "name": "390x844/indigo/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber theme selected state",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/theme no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "主题",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/theme controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/theme no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/theme theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/theme navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/dashboard no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/dashboard controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/dashboard no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/dashboard theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/dashboard navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/catalog no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "控制台",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/catalog controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/catalog no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/catalog theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/catalog navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/tasks-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/tasks-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber full-width source editors in double columns",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/amber selected languages readable on one line",
+      "pass": true,
+      "detail": [
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "go",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        },
+        {
+          "paneWidth": 171,
+          "sourceWidth": 151,
+          "sourceWidthRatio": 0.8830409356725146,
+          "selectedLanguage": "python",
+          "languageHeight": 20.140625,
+          "languageWidth": 109,
+          "languageWhiteSpace": "nowrap",
+          "sourceFontSize": "16px",
+          "nestedPadding": [
+            "0px",
+            "0px"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "390x844/amber/source-double no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/source-double controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/source-double no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/source-double theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/source-double navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/action-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/action-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/action-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/action-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/action-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber full-width single-line action labels",
+      "pass": true,
+      "detail": [
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "保存项目",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "运行",
+          "width": 151,
+          "parentWidth": 151,
+          "whiteSpace": "nowrap"
+        }
+      ]
+    },
+    {
+      "name": "390x844/amber runtime sheet contains all languages",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/runtime-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/runtime-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/runtime-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/runtime-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/runtime-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber runtime sheet close preserves task page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/projects no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/projects controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/projects no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/projects theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/projects navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/device-picker no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "项目",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/device-picker controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/device-picker no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/device-picker theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/device-picker navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber device choice preserves project page",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/settings no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "设置",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/settings controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/settings no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/settings theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/settings navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844 double-column run button reachable without submission",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844 double-column run button reachable without submission",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/reachable-run-buttons no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/reachable-run-buttons controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/reachable-run-buttons no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/reachable-run-buttons theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/reachable-run-buttons navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-single no horizontal page overflow",
+      "pass": true,
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390,
+        "heading": "任务",
+        "theme": "amber",
+        "primary": "#efc577",
+        "bg": "#1b160c",
+        "overlay": false,
+        "nav": {
+          "left": 0,
+          "right": 390,
+          "top": 760,
+          "bottom": 844
+        },
+        "outside": []
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-single controls within horizontal viewport",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "390x844/amber/tasks-single no framework overlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "390x844/amber/tasks-single theme tokens",
+      "pass": true,
+      "detail": {
+        "primary": "#efc577",
+        "bg": "#1b160c"
+      }
+    },
+    {
+      "name": "390x844/amber/tasks-single navigation in viewport",
+      "pass": true,
+      "detail": {
+        "left": 0,
+        "right": 390,
+        "top": 760,
+        "bottom": 844
+      }
+    },
+    {
+      "name": "390x844 restores double-column layout",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "console": [],
+  "errors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/v1/runtimes"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/runtimes"
+    }
+  ],
+  "blockedSubmissions": 0,
+  "finishedAt": "2026-11-10T02:41:41.605Z",
+  "passed": 718,
+  "failed": 0
+}

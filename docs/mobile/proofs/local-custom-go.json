@@ -1,0 +1,72 @@
+{
+  "sourceCommit": "537087b",
+  "scope": "Final HTTP API with the existing local privileged runner; custom Go source entrypoints, not cancellation behavior",
+  "jobs": [
+    {
+      "entrypoint": "tool.go",
+      "expectedStdout": "custom entry tool.go",
+      "result": {
+        "jobId": "dba73694-e505-45e1-a213-2d6e04e1c7c0",
+        "status": "JOB_STATUS_SUCCEEDED",
+        "outputReady": true,
+        "language": "go",
+        "runtime": "1.26",
+        "stdout": "custom entry tool.go\n",
+        "stderr": "",
+        "compileStdout": "",
+        "compileStderr": "",
+        "stdoutEncoding": "utf8",
+        "stderrEncoding": "utf8",
+        "compileStdoutEncoding": "utf8",
+        "compileStderrEncoding": "utf8",
+        "durationMs": 2632,
+        "errorMessage": "",
+        "truncated": {
+          "stdout": false,
+          "stderr": false
+        },
+        "diagnostics": {
+          "memoryPeakBytes": 274665472,
+          "memoryOomKillCount": 0,
+          "cpuUsageUsec": 2543624,
+          "cpuThrottledUsec": 4291595,
+          "pidsPeak": 15
+        }
+      }
+    },
+    {
+      "entrypoint": "cmd/echo.go",
+      "expectedStdout": "custom entry cmd/echo.go",
+      "result": {
+        "jobId": "dff487b0-feab-4955-83d0-2f051e206fcf",
+        "status": "JOB_STATUS_SUCCEEDED",
+        "outputReady": true,
+        "language": "go",
+        "runtime": "1.26",
+        "stdout": "custom entry cmd/echo.go\n",
+        "stderr": "",
+        "compileStdout": "",
+        "compileStderr": "",
+        "stdoutEncoding": "utf8",
+        "stderrEncoding": "utf8",
+        "compileStdoutEncoding": "utf8",
+        "compileStderrEncoding": "utf8",
+        "durationMs": 141,
+        "errorMessage": "",
+        "truncated": {
+          "stdout": false,
+          "stderr": false
+        },
+        "diagnostics": {
+          "memoryPeakBytes": 44158976,
+          "memoryOomKillCount": 0,
+          "cpuUsageUsec": 128647,
+          "cpuThrottledUsec": 0,
+          "pidsPeak": 9
+        }
+      }
+    }
+  ],
+  "reservedPathRejected": true,
+  "passed": true
+}

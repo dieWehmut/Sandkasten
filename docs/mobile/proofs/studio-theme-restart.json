@@ -1,0 +1,68 @@
+{
+  "appId": "dev.sandkasten.mobile",
+  "startedAt": "2026-11-10T05:26:20.098Z",
+  "attachments": [
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 1,
+      "pid": "9663",
+      "socket": "webview_devtools_remote_9663",
+      "targets": [
+        {
+          "id": "603699CE5CA871A029D290294B17F95E",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_9663",
+        "webview_devtools_remote_7652"
+      ],
+      "elapsedMs": 185
+    },
+    {
+      "appId": "dev.sandkasten.mobile",
+      "port": 19222,
+      "attempts": 12,
+      "pid": "10045",
+      "socket": "webview_devtools_remote_10045",
+      "targets": [
+        {
+          "id": "2679F8080E89E50365100F97E1C7B98A",
+          "type": "page",
+          "url": "https://localhost/"
+        }
+      ],
+      "pages": [
+        "https://localhost/"
+      ],
+      "stage": "attached",
+      "sockets": [
+        "webview_devtools_remote_7652",
+        "webview_devtools_remote_10045"
+      ],
+      "elapsedMs": 3770
+    }
+  ],
+  "errors": [],
+  "beforeRestart": {
+    "theme": "coral",
+    "savedTheme": "coral",
+    "panels": "[{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"fc10deb4-b6cc-4ed3-89f9-2bd9cbdd5978\",\"selectedJobId\":\"5d59c845-f05d-4d67-a8da-04a719069cae\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"99025317-5eb4-408d-8bdf-1bac1a0d520c\",\"selectedJobId\":\"9ca269ae-61ed-4b20-a2ca-95a54f246b47\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"b32387ae-4268-4158-9a16-ee946f9e42b2\",\"selectedJobId\":\"ef0e5e0d-cdce-4bee-909d-69b36c92b37f\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"d5ef6c83-3a77-4bd5-9879-c20aa0842243\",\"selectedJobId\":\"c8079820-df0a-4367-91f7-1d1dc586b8f6\"}]",
+    "columns": "1"
+  },
+  "afterRestart": {
+    "theme": "coral",
+    "savedTheme": "coral",
+    "panels": "[{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"fc10deb4-b6cc-4ed3-89f9-2bd9cbdd5978\",\"selectedJobId\":\"5d59c845-f05d-4d67-a8da-04a719069cae\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"99025317-5eb4-408d-8bdf-1bac1a0d520c\",\"selectedJobId\":\"9ca269ae-61ed-4b20-a2ca-95a54f246b47\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"b32387ae-4268-4158-9a16-ee946f9e42b2\",\"selectedJobId\":\"ef0e5e0d-cdce-4bee-909d-69b36c92b37f\"},{\"hostAddress\":\"http://10.0.2.2:18080\",\"projectId\":\"d5ef6c83-3a77-4bd5-9879-c20aa0842243\",\"selectedJobId\":\"c8079820-df0a-4367-91f7-1d1dc586b8f6\"}]",
+    "columns": "1"
+  },
+  "passed": true,
+  "finishedAt": "2026-11-10T05:26:31.307Z",
+  "testedApkSha256": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89"
+}

@@ -1,0 +1,72 @@
+{
+  "activeElementClass": "source-editor",
+  "innerWidth": 412,
+  "innerHeight": 530,
+  "pixelRatio": 2.625,
+  "visualViewportHeight": 530.2857055664062,
+  "navigationTop": 446.2857360839844,
+  "panels": [
+    {
+      "heading": "Android Python mwa2bkmn",
+      "buttons": [
+        {
+          "label": "保存项目",
+          "disabled": false,
+          "rect": {
+            "x": 30,
+            "y": 216.63690185546875,
+            "width": 162.09524536132812,
+            "height": 48
+          },
+          "centerHits": true,
+          "aboveNavigation": true,
+          "insideViewport": true
+        },
+        {
+          "label": "运行",
+          "disabled": false,
+          "rect": {
+            "x": 30,
+            "y": 270.63690185546875,
+            "width": 162.09524536132812,
+            "height": 48
+          },
+          "centerHits": true,
+          "aboveNavigation": true,
+          "insideViewport": true
+        }
+      ]
+    },
+    {
+      "heading": "Android Go mwa2bkmn",
+      "buttons": [
+        {
+          "label": "保存项目",
+          "disabled": false,
+          "rect": {
+            "x": 220.09524536132812,
+            "y": 216.63690185546875,
+            "width": 162.09524536132812,
+            "height": 48
+          },
+          "centerHits": true,
+          "aboveNavigation": true,
+          "insideViewport": true
+        },
+        {
+          "label": "运行",
+          "disabled": false,
+          "rect": {
+            "x": 220.09524536132812,
+            "y": 270.63690185546875,
+            "width": 162.09524536132812,
+            "height": 48
+          },
+          "centerHits": true,
+          "aboveNavigation": true,
+          "insideViewport": true
+        }
+      ]
+    }
+  ]
+}

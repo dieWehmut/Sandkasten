@@ -85,7 +85,7 @@ origin，不包含 `/Sandkasten/` 路径）。
 | `pruefung/` | 集成测试与安全测试 |
 | `beispiele/` | 示例客户端与项目 |
 | `werkzeug/` | 开发与部署脚本 |
-| `apps/` | 客户端应用:`apps/web` Vue 工作台(IDE 布局)、`apps/cli` 命令行、`apps/desktop` 桌面端 |
+| `apps/` | 客户端应用:`apps/web` Vue 工作台(IDE 布局)、`apps/cli` 命令行、`apps/desktop` 桌面端、[`apps/mobile`](apps/mobile/README.md) Android 远程运行端 |
 | `handbuch/` | 架构与运维文档(含本 README 的多语言译文) |
 
 ## 快速开始
@@ -215,9 +215,12 @@ API 同时提供 HTTP 与 gRPC。主要 HTTP 路由:
 | `POST /v1/run` | 提交任务(通用) |
 | `POST /v1/{language}/run` | 提交指定语言的任务 |
 | `GET /v1/jobs/{job_id}` | 查询任务状态与结果 |
+| `POST /v1/jobs/{job_id}/cancel` | 请求停止任务，随后查询最终输出 |
 | `GET /healthz` | 健康检查 |
 
 **v1 契约**:客户端上传 `tar.gz` 归档或提交单文件源码。Go 归档必须包含 `go.mod` 与 `vendor/` 目录;非 Go 运行时使用各自的入口文件,如 `main.sh`、`main.f90`、`main.md`、`main.dot`、`index.html`、`app/page.tsx`、`main.py`、`main.tex`、`main.vue`、`main.zig` 等。前端与文档类运行时会向 stdout 输出源码、编译后的 CSS、静态 HTML 或 SVG;客户端应将 HTML/SVG 输出视为**不可信**预览内容。
+
+HTTP 任务响应包含 `outputReady`。运行中任务取消后，状态可能先变为 `JOB_STATUS_CANCELED`，运行器稍后才写入最后的输出；此时 `outputReady=false`，客户端继续查询，直到为 `true`。未领取的队列任务取消后没有待收集的输出，直接返回 `true`。
 
 更多细节见 `handbuch/api.md`、`handbuch/architecture.md`、`handbuch/deployment.md` 与 `handbuch/runner-security.md`。
 
@@ -228,7 +231,7 @@ Go、Assembly、Bash/Shell、C、Cangjie(仓颉)、Clojure、CSS、C++、C#、Co
 ## 本地测试
 
 ```bash
-./werkzeug/quality/test.sh         # Go、Rust、WebUI 单元/构建/工件检查
+./werkzeug/quality/test.sh         # Go、Rust、WebUI、手机端单元/构建/工件检查
 ./werkzeug/smoke/smoke-go.sh       # 本地 API + 运行器 Go 执行冒烟
 ./werkzeug/smoke/smoke-languages.sh # 所有语言的 HTTP 冒烟
 ```

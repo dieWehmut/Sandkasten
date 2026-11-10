@@ -232,6 +232,20 @@ curl -fsS \
 
 The HTTP API accepts `POST /v1/{language}/run` and `POST /v1/run` with a JSON `language` field.
 
+For Go `source` requests, an empty entrypoint or `.` uses `main.go`; a custom
+`.go` path stores the source at that path. Source requests reject directory
+entrypoints and paths inside generated `go.mod` or `vendor` with HTTP 400.
+Directory entrypoints remain supported for uploaded Go archives.
+
+`POST /v1/jobs/{job_id}/cancel` uses the same authentication and returns the job
+ID and current status. Poll `GET /v1/jobs/{job_id}` afterward. Its `outputReady`
+boolean distinguishes completed output from a cancellation acknowledged before
+the runner has written its final artifacts: a started canceled job can already
+have `JOB_STATUS_CANCELED` while `outputReady` is false. Keep polling until true.
+An artifact with empty output is ready; a canceled job that was never leased and
+other terminal states are also ready even without an artifact. Older API versions
+do not provide this field.
+
 The built `apps/web/dist/` client uses this same-origin surface directly. When
 installed in WebUI mode, the installer copies only `index.html`, `app.js`,
 `styles.css`, and `config.js`; it does not run npm on the server. Nginx serves
@@ -252,6 +266,7 @@ Response artifacts use `outputEncoding=auto` by default. UTF-8 artifacts are ret
 {
   "jobId": "...",
   "status": "JOB_STATUS_SUCCEEDED",
+  "outputReady": true,
   "stdout": "hello\n",
   "stdoutEncoding": "utf8",
   "stderr": "",

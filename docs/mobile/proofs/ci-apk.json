@@ -1,0 +1,26 @@
+{
+  "sourceCommit": "90d17da1c6b61d5912a4ec5cad9c609371eab856",
+  "ciApkSha256": "f7375a2d77b01272976df230e18997b004d81a632cb4730e5cb86713652553d4",
+  "testedCiApkSha256": "f7375a2d77b01272976df230e18997b004d81a632cb4730e5cb86713652553d4",
+  "localApkSha256": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+  "localApkRole": "Android Studio deployed APK with four passing native tests",
+  "localApkPath": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/apks/Sandkasten-studio-persistence-debug.apk",
+  "allPackagedWebFilesMatchLocalBuild": [
+    "assets/public/assets/brand-icon-Bbc95uN0.png",
+    "assets/public/assets/index-7TpPr4Sl.js",
+    "assets/public/assets/index-DJgWYt1_.css",
+    "assets/public/favicon.png",
+    "assets/public/index.html"
+  ],
+  "nativeBinaryComparison": {
+    "AndroidManifest.xml": false,
+    "classes.dex": true,
+    "classes2.dex": true,
+    "classes3.dex": true,
+    "classes4.dex": true,
+    "classes5.dex": true,
+    "classes6.dex": false,
+    "resources.arsc": true
+  },
+  "runUrl": "https://github.com/dieWehmut/Sandkasten/actions/runs/42761172025"
+}

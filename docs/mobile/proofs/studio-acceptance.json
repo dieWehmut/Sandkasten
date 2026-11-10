@@ -1,0 +1,84 @@
+{
+  "verifiedAt": "2026-11-10T05:25:40.439623+00:00",
+  "studioVersion": "Rabbit 2 | 2026.2.2 Patch 1",
+  "studioBuild": "AI-262.10968.63.2622.16840690",
+  "studioPid": 2650830,
+  "project": "/home/han/project/Sandkasten/apps/mobile/android",
+  "studioReopenedReason": "Previous Studio PID2623010 recorded clean shutdown at13:08:21 before this validation; same existing config/cache/JDK reused.",
+  "ideBuild": "passed",
+  "ideRun": "passed",
+  "jdk": "/home/han/.local/share/codex-dev-tools/java/temurin-21.0.13+9",
+  "sdk": "/home/han/Android/Sdk",
+  "serial": "emulator-5554",
+  "ideApkPath": "/home/han/project/Sandkasten/apps/mobile/android/app/build/intermediates/apk/debug/app-debug.apk",
+  "preservedTestedApk": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/apks/Sandkasten-studio-persistence-debug.apk",
+  "apkSha256": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+  "bytes": 5608026,
+  "installedApkPath": "/data/app/~~7RP464xql2JM5P-wR0SbzQ==/dev.sandkasten.mobile-hUVmm4pIqZakAzsvjlw9kg==/base.apk",
+  "installedSha256": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+  "packagedWebFilesMatched": [
+    "assets/public/assets/brand-icon-Bbc95uN0.png",
+    "assets/public/assets/index-7TpPr4Sl.js",
+    "assets/public/assets/index-DJgWYt1_.css",
+    "assets/public/favicon.png",
+    "assets/public/index.html"
+  ],
+  "nativeTests": {
+    "status": "passed",
+    "tests": 4,
+    "durationSeconds": 41.624,
+    "currentApkTested": true,
+    "testedAppSha256": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+    "testedTestApkSha256": "c020010e6fe876965a262b76c66b107894883dd1f324b5b9ab8505680115d15d",
+    "log": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-native-tests.log",
+    "runner": "adb AndroidJUnitRunner against actual IDE-deployed APK",
+    "newRegression": "Native preference restores sea over intentionally stale amber WebView localStorage during Activity recreation."
+  },
+  "evidence": {
+    "ideLog": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-log/idea.log",
+    "guiBuildClick": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-gui-build-click.log",
+    "guiRunClick": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-gui-run-click.log",
+    "testBuildLog": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-app-test-build.log",
+    "studioBuildRunScreenshot": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-build-run.png",
+    "ideBuildRunLog": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-build-run.log",
+    "nativeTestsLog": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-native-tests.log",
+    "deviceScreenshot": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-device-output.png",
+    "deviceLayout": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-output-layout.json",
+    "outputPreview": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-output-preview.json"
+  },
+  "testApk": {
+    "path": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/apks/Sandkasten-studio-persistence-native-tests.apk",
+    "sha256": "c020010e6fe876965a262b76c66b107894883dd1f324b5b9ab8505680115d15d",
+    "bytes": 578220,
+    "installedSha256": "c020010e6fe876965a262b76c66b107894883dd1f324b5b9ab8505680115d15d"
+  },
+  "appSha256BeforeNativeTests": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+  "lint": {
+    "errors": 0,
+    "warnings": 26,
+    "report": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/studio-persistence-lint.xml"
+  },
+  "appSha256AfterNativeTests": "2bbd3004968ae4f4f708e5ba0f9084c04b611c183d885a7ed1c7673e5d5b0f89",
+  "currentOutputsApk": {
+    "path": "/home/han/project/Sandkasten/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk",
+    "sha256": "e3ff139a2a815400f9a7f408ce84aa22001e66b0a9e9818cd0abf0bc23657d10",
+    "bytes": 5608006,
+    "testScope": "IDE-deployed preserved copy and installed package are the tested artifacts; this output-path artifact is recorded separately."
+  },
+  "uiVerification": {
+    "status": "passed",
+    "theme": "coral",
+    "nativeTheme": "coral",
+    "appearanceReady": true,
+    "project": "Android Python mwa2lako",
+    "output": [
+      "mobile input|arg-value|file-value\n"
+    ],
+    "appPid": "9663",
+    "currentForeground": "topResumedActivity=ActivityRecord{150862786 u0 dev.sandkasten.mobile/.MainActivity t93}",
+    "screenshotVisuallyInspected": true,
+    "inspection": "Sandkasten completed Python task displays full stdout. Coral native bars match the UI background, all four navigation entries and both task buttons are visible.",
+    "existingHistoryJobOnly": true,
+    "noNewJobSubmitted": true
+  }
+}

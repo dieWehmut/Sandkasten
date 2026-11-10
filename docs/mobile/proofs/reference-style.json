@@ -1,0 +1,179 @@
+{
+  "kind": "read-only comparison with current Orchester source; browser screenshots are Sandkasten rendered UI, not a reference screenshot pixel diff",
+  "reference": "/home/han/project/Orchester/apps/mobile/src",
+  "current": "/home/han/project/Sandkasten/apps/mobile/src",
+  "evaluatedAt": "2026-11-10T02:42:14.912Z",
+  "navigation": [
+    "控制台",
+    "任务",
+    "项目",
+    "设置"
+  ],
+  "requiredComparison": [
+    {
+      "selector": ".app-shell",
+      "sameDeclarations": true,
+      "reference": [
+        "max-width:640px",
+        "min-height:100dvh",
+        "margin:auto"
+      ],
+      "current": [
+        "max-width:640px",
+        "min-height:100dvh",
+        "margin:auto"
+      ]
+    },
+    {
+      "selector": ".page-content",
+      "sameDeclarations": true,
+      "reference": [
+        "padding:calc(28px + env(safe-area-inset-top)) 20px\n    calc(112px + env(safe-area-inset-bottom))",
+        "min-height:100dvh"
+      ],
+      "current": [
+        "padding:calc(28px + env(safe-area-inset-top)) 20px\n    calc(112px + env(safe-area-inset-bottom))",
+        "min-height:100dvh"
+      ]
+    },
+    {
+      "selector": ".page-header",
+      "sameDeclarations": true,
+      "reference": [
+        "display:flex",
+        "align-items:center",
+        "gap:14px",
+        "min-height:52px",
+        "margin-bottom:30px"
+      ],
+      "current": [
+        "display:flex",
+        "align-items:center",
+        "gap:14px",
+        "min-height:52px",
+        "margin-bottom:30px"
+      ]
+    },
+    {
+      "selector": ".panel",
+      "sameDeclarations": true,
+      "reference": [
+        "padding:20px"
+      ],
+      "current": [
+        "padding:20px"
+      ]
+    },
+    {
+      "selector": ".list-panel",
+      "sameDeclarations": true,
+      "reference": [
+        "overflow:hidden"
+      ],
+      "current": [
+        "overflow:hidden"
+      ]
+    },
+    {
+      "selector": ".list-row",
+      "sameDeclarations": true,
+      "reference": [
+        "display:flex",
+        "align-items:center",
+        "gap:14px",
+        "width:100%",
+        "padding:22px 18px",
+        "text-align:left"
+      ],
+      "current": [
+        "display:flex",
+        "align-items:center",
+        "gap:14px",
+        "width:100%",
+        "padding:22px 18px",
+        "text-align:left"
+      ]
+    },
+    {
+      "selector": ".bottom-navigation",
+      "sameDeclarations": true,
+      "reference": [
+        "position:fixed",
+        "z-index:10",
+        "bottom:0",
+        "left:50%",
+        "transform:translateX(-50%)",
+        "width:min(100%, 640px)",
+        "display:grid",
+        "grid-template-columns:repeat(4, 1fr)",
+        "background:var(--raised)",
+        "padding:12px 8px calc(12px + env(safe-area-inset-bottom))",
+        "gap:4px"
+      ],
+      "current": [
+        "position:fixed",
+        "z-index:10",
+        "bottom:0",
+        "left:50%",
+        "transform:translateX(-50%)",
+        "width:min(100%, 640px)",
+        "display:grid",
+        "grid-template-columns:repeat(4, 1fr)",
+        "background:var(--raised)",
+        "padding:12px 8px calc(12px + env(safe-area-inset-bottom))",
+        "gap:4px"
+      ]
+    },
+    {
+      "selector": ".nav-indicator",
+      "sameDeclarations": true,
+      "reference": [
+        "display:grid",
+        "place-items:center",
+        "width:58px",
+        "height:32px",
+        "border-radius:22px"
+      ],
+      "current": [
+        "display:grid",
+        "place-items:center",
+        "width:58px",
+        "height:32px",
+        "border-radius:22px"
+      ]
+    },
+    {
+      "selector": ".wide-shell",
+      "sameDeclarations": true,
+      "reference": [
+        "max-width:1120px"
+      ],
+      "current": [
+        "max-width:1120px"
+      ]
+    },
+    {
+      "selector": ".workbench-grid",
+      "sameDeclarations": true,
+      "reference": [
+        "display:grid",
+        "grid-template-columns:repeat(2, minmax(0, 1fr))",
+        "gap:12px",
+        "margin:18px 0 28px"
+      ],
+      "current": [
+        "display:grid",
+        "grid-template-columns:repeat(2, minmax(0, 1fr))",
+        "gap:12px",
+        "margin:18px 0 28px"
+      ]
+    }
+  ],
+  "commonRules": 164,
+  "identicalCommonRules": 164,
+  "changedCommonRules": [],
+  "bottomPickerStylesIdentical": true,
+  "appearanceStylesIdentical": true,
+  "allSixThemeDefinitionsIdentical": true,
+  "success": true
+}

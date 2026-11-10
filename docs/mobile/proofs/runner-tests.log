@@ -1,0 +1,120 @@
+   Compiling tempfile v3.27.0
+   Compiling laeufer-store v0.1.0 (/home/runner/work/Sandkasten/Sandkasten/laeufer/crates/laeufer-store)
+   Compiling laeufer-core v0.1.0 (/home/runner/work/Sandkasten/Sandkasten/laeufer/crates/laeufer-core)
+   Compiling laeufer-sandbox v0.1.0 (/home/runner/work/Sandkasten/Sandkasten/laeufer/crates/laeufer-sandbox)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.51s
+     Running unittests src/lib.rs (laeufer/target/debug/deps/laeufer_core-bcbf4c4c2c235158)
+
+running 18 tests
+test tests::all_statuses_match_known_database_values ... ok
+test tests::cancellation_during_early_phase_transition_finishes_without_execution ... ok
+test tests::cancellation_after_validation_finishes_attempt ... ok
+test tests::cancellation_during_compile_persists_partial_output_and_diagnostics ... ok
+test tests::concurrent_jobs_must_be_positive ... ok
+test tests::database_pool_default_scales_with_concurrency ... ok
+test tests::database_pool_minimum_keeps_room_for_concurrent_jobs ... ok
+test tests::maps_compile_results ... ok
+test tests::cancellation_during_run_persists_compile_and_partial_run_output ... ok
+test tests::cancellation_during_transition_to_run_preserves_compile_result ... ok
+test tests::maps_run_results ... ok
+test tests::max_attempts_must_be_positive ... ok
+test tests::maps_runner_errors_to_terminal_statuses ... ok
+test tests::natural_completion_returns_effective_store_status_and_keeps_output ... ok
+test tests::terminal_reasons_are_stable ... ok
+test tests::rejected_phase_without_database_cancellation_remains_an_error ... ok
+test tests::status_maps_db_and_proto_names ... ok
+test tests::terminal_statuses_match_proto_contract ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (laeufer/target/debug/deps/laeufer_sandbox-3f058d1dfa22aab3)
+
+running 30 tests
+test tests::applies_nofile_rlimit ... ok
+test tests::caps_output ... ok
+test tests::default_child_rlimits_are_conservative ... ok
+test tests::default_config_disables_swap_and_caps_processes ... ok
+test tests::default_cpu_rlimit_tracks_command_budget ... ok
+test tests::describes_isolation_intent_for_plan ... ok
+test tests::detects_dangerous_capabilities ... ok
+test tests::closes_inherited_file_descriptors ... ok
+test tests::explicit_cpu_rlimit_overrides_command_budget ... ok
+test tests::kill_all_waits_for_empty_cgroup ... ok
+test tests::executes_command_and_captures_output ... ok
+test tests::kill_all_writes_cgroup_kill ... ok
+test tests::masks_only_sensitive_proc_files ... ok
+test tests::masks_sensitive_proc_directories_with_empty_source ... ok
+test tests::minimal_dev_nodes_are_limited_to_basic_character_devices ... ok
+test tests::parses_cgroup_member_pids ... ok
+test tests::pids_zero_means_unlimited ... ok
+test tests::prepares_command_cgroup_before_spawn ... ok
+test tests::reads_cgroup_stats ... ok
+test tests::cancellation_preserves_output_and_reaps_descendants ... ok
+test tests::prepares_runner_cgroup_and_enables_controllers ... ok
+test tests::reads_memory_peak_from_cgroup ... ok
+test tests::rootfs_execution_plan_rewrites_host_workspace_paths ... ok
+test tests::reports_missing_command_as_spawn_error ... ok
+test tests::rootfs_preflight_requires_private_namespaces ... ok
+test tests::seccomp_denylist_blocks_network_and_kernel_escape_syscalls ... ok
+test tests::run_seccomp_profile_adds_metadata_mutation_denies ... ok
+test tests::reports_timeout ... ok
+test tests::denies_network_connect_with_seccomp ... ok
+test tests::timeout_reaps_background_descendant_zombies ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/security_blackbox.rs (laeufer/target/debug/deps/security_blackbox-befd4ef7ea43153e)
+
+running 11 tests
+test blocks_privileged_syscalls_with_seccomp ... ignored, requires a privileged Linux runner with writable cgroup v2
+test cancellation_preserves_output_statistics_and_kills_descendants ... ignored, requires a privileged Linux runner with writable cgroup v2
+test denies_network_from_child_namespace ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_cpu_rlimit ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_file_size_rlimit ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_memory_cgroup_limit ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_nofile_rlimit ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_output_limit_and_truncates_stdout ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_pids_cgroup_limit ... ignored, requires a privileged Linux runner with writable cgroup v2
+test enforces_wall_time_and_kills_descendants ... ignored, requires a privileged Linux runner with writable cgroup v2
+test rootfs_hides_host_filesystem ... ignored, requires LAEUFER_SECURITY_ROOTFS and privileged mount/pivot_root support
+
+test result: ok. 0 passed; 0 failed; 11 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (laeufer/target/debug/deps/laeufer_store-f99a1de53e105c3b)
+
+running 8 tests
+test tests::guarded_writes_only_update_active_jobs ... ok
+test tests::duration_millis_saturates_to_i64 ... ok
+test tests::lease_sql_enforces_attempt_dead_letter ... ok
+test tests::attempt_update_sql_persists_terminal_diagnostics ... ok
+test tests::missing_attempt_maps_to_store_error ... ok
+test tests::stale_lease_maps_to_store_error ... ok
+test tests::notification_channels_are_stable ... ok
+test tests::rejects_negative_database_limits ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cancellation_races.rs (laeufer/target/debug/deps/cancellation_races-a17aa25c221174f8)
+
+running 1 test
+test cancellation_wins_finish_races_without_allowing_stale_attempt_writes ... ignored, requires LAEUFER_STORE_TEST_DATABASE_URL for an isolated development Postgres database
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests laeufer_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests laeufer_sandbox
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests laeufer_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

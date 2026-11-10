@@ -1,0 +1,27 @@
+{
+  "click": {
+    "trusted": true,
+    "label": "保存项目"
+  },
+  "writes": [
+    {
+      "key": "sandkasten.projects",
+      "projects": 6
+    }
+  ],
+  "focusedClass": "tonal-button",
+  "adbCommand": "adb -s emulator-5554 shell input tap 292 760",
+  "before": {
+    "focus": "source-editor",
+    "innerHeight": 530,
+    "centerHits": true,
+    "point": [
+      292,
+      760
+    ]
+  },
+  "inputMethodFlags": [
+    "mInputShown=false",
+    "mIsInputViewShown=true mStatusIcon=0"
+  ]
+}

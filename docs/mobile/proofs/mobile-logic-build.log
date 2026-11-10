@@ -1,0 +1,62 @@
+##[group]Run npm ci
+2026-11-10T05:17:40.1662142Z npm ci
+2026-11-10T05:17:40.1662360Z npm test
+2026-11-10T05:17:40.1662564Z npm run build
+2026-11-10T05:17:40.1662787Z npm run sync
+2026-11-10T05:17:40.1719061Z shell: /usr/bin/bash -e {0}
+2026-11-10T05:17:40.1719356Z env:
+2026-11-10T05:17:40.1719676Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+2026-11-10T05:17:40.1720197Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+2026-11-10T05:17:40.1720610Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-11-10T05:17:40.1720918Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-11-10T05:17:40.1721198Z ##[endgroup]
+2026-11-10T05:17:41.9444289Z
+2026-11-10T05:17:41.9445174Z added 175 packages, and audited 176 packages in 2s
+2026-11-10T05:17:41.9445688Z
+2026-11-10T05:17:41.9446056Z 26 packages are looking for funding
+2026-11-10T05:17:41.9446662Z   run `npm fund` for details
+2026-11-10T05:17:41.9455058Z
+2026-11-10T05:17:41.9455434Z found 0 vulnerabilities
+2026-11-10T05:17:42.0943903Z
+2026-11-10T05:17:42.0944494Z > @sandkasten/mobile@0.1.0 test
+2026-11-10T05:17:42.0944890Z > vitest run
+2026-11-10T05:17:42.0945044Z
+2026-11-10T05:17:42.5035271Z
+2026-11-10T05:17:42.5038413Z  RUN  v4.1.12 /home/runner/work/Sandkasten/Sandkasten/apps/mobile
+2026-11-10T05:17:42.5039230Z
+2026-11-10T05:17:43.0520095Z  ✓ test/fleet.test.ts (8 tests) 89ms
+2026-11-10T05:17:43.0750463Z  ✓ test/controller.test.ts (30 tests) 60ms
+2026-11-10T05:17:43.1875703Z  ✓ test/appearance-native.test.ts (10 tests) 176ms
+2026-11-10T05:17:43.3010303Z  ✓ test/client.test.ts (24 tests) 50ms
+2026-11-10T05:17:43.3616927Z  ✓ test/appearance.test.ts (8 tests) 9ms
+2026-11-10T05:17:43.3652702Z
+2026-11-10T05:17:43.3659165Z  Test Files  5 passed (5)
+2026-11-10T05:17:43.3660414Z       Tests  80 passed (80)
+2026-11-10T05:17:43.3661348Z    Start at  05:17:42
+2026-11-10T05:17:43.3662767Z    Duration  849ms (transform 419ms, setup 0ms, import 1.08s, tests 384ms, environment 2ms)
+2026-11-10T05:17:43.3692014Z
+2026-11-10T05:17:43.4808252Z
+2026-11-10T05:17:43.4808959Z > @sandkasten/mobile@0.1.0 build
+2026-11-10T05:17:43.4809539Z > vue-tsc --noEmit && vite build
+2026-11-10T05:17:43.4809807Z
+2026-11-10T05:17:47.0533913Z vite v7.3.8 building client environment for production...
+2026-11-10T05:17:47.1174898Z transforming...
+2026-11-10T05:17:48.1799190Z ✓ 42 modules transformed.
+2026-11-10T05:17:48.3222808Z rendering chunks...
+2026-11-10T05:17:48.3281807Z computing gzip size...
+2026-11-10T05:17:48.3336013Z dist/index.html                        0.51 kB │ gzip:  0.32 kB
+2026-11-10T05:17:48.3337968Z dist/assets/brand-icon-Bbc95uN0.png  356.45 kB
+2026-11-10T05:17:48.3339921Z dist/assets/index-DJgWYt1_.css        22.37 kB │ gzip:  5.13 kB
+2026-11-10T05:17:48.3341947Z dist/assets/index-7TpPr4Sl.js        134.63 kB │ gzip: 50.24 kB
+2026-11-10T05:17:48.3343093Z ✓ built in 1.25s
+2026-11-10T05:17:48.4596469Z
+2026-11-10T05:17:48.4597165Z > @sandkasten/mobile@0.1.0 sync
+2026-11-10T05:17:48.4598080Z > cap sync android
+2026-11-10T05:17:48.4598353Z
+2026-11-10T05:17:48.9149243Z ✔ Copying web assets from dist to android/app/src/main/assets/public in 4.94ms
+2026-11-10T05:17:48.9156890Z ✔ Creating capacitor.config.json in android/app/src/main/assets in 528.56μs
+2026-11-10T05:17:48.9191974Z ✔ copy android in 14.37ms
+2026-11-10T05:17:48.9246752Z ✔ Updating Android plugins in 1.55ms
+2026-11-10T05:17:48.9398646Z ✔ update android in 18.72ms
+2026-11-10T05:17:48.9432242Z [info] Sync finished in 0.044s
+2026-11-10T05:17:48.9714042Z

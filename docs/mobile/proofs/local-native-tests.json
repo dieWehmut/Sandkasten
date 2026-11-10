@@ -1,0 +1,9 @@
+{
+  "scope": "Final mobile output-retry build installed on the local emulator; all four native tests passed and installed base.apk hash matches the build artifact",
+  "appSha256": "db07d75c82e647e5f280a392f1ace11a70ad69aae3b86d64c71d7a6d6b160865",
+  "testApkSha256": "3acedf8f57da1cba737c97d4cd93b52a64791d1ec0e1f28a5beb45af814aa346",
+  "tests": 4,
+  "result": "OK",
+  "device": "Android 16 / API 36 emulator-5554",
+  "seconds": 21.527
+}

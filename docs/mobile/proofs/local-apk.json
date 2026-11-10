@@ -1,0 +1,57 @@
+{
+  "verifiedAt": "2026-11-10T03:18:38.648017+00:00",
+  "artifacts": [
+    {
+      "path": "/home/han/project/Sandkasten/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 5885576,
+      "sha256": "db07d75c82e647e5f280a392f1ace11a70ad69aae3b86d64c71d7a6d6b160865"
+    },
+    {
+      "path": "/home/han/project/Sandkasten/apps/mobile/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+      "bytes": 578078,
+      "sha256": "3acedf8f57da1cba737c97d4cd93b52a64791d1ec0e1f28a5beb45af814aa346"
+    }
+  ],
+  "packagedWebFilesMatched": [
+    "assets/public/assets/brand-icon-Bbc95uN0.png",
+    "assets/public/assets/index-DJgWYt1_.css",
+    "assets/public/assets/index-DnEydInE.js",
+    "assets/public/favicon.png",
+    "assets/public/index.html"
+  ],
+  "lintErrors": 0,
+  "lintWarnings": 26,
+  "buildLog": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/mobile-build.log",
+  "lintXml": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/android-lint.xml",
+  "nativeTests": {
+    "status": "passed",
+    "tests": 4,
+    "testedAppSha256": "db07d75c82e647e5f280a392f1ace11a70ad69aae3b86d64c71d7a6d6b160865",
+    "log": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/native-tests.log",
+    "currentApkTested": true,
+    "serial": "emulator-5554",
+    "apiLevel": "36",
+    "androidVersion": "16",
+    "durationSeconds": 21.527
+  },
+  "currentApkInstalledE2E": {
+    "status": "pending",
+    "reason": "Current APK is installed and passed four native instrumentation tests. Full remote execution E2E awaits final API/runner recovery and verification by root."
+  },
+  "keyboardUi": {
+    "status": "passed_on_prior_apk",
+    "testedAppSha256": "cd446badb2e4dbb66ff43a8e81ab6194b45fd535f35cb4c1e97b5c47d4f06576",
+    "serial": "emulator-5554",
+    "softKeyboardShownBeforeSave": true,
+    "sourceFocusedBeforeSave": true,
+    "buttonsTested": 4,
+    "localSaveTrustedTouch": true,
+    "localProjectStorageWrite": true,
+    "softKeyboardDismissedAfterSave": true,
+    "screenshot": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/keyboard-double-pane-ready.png",
+    "hitcheck": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/keyboard-hitcheck.json",
+    "saveTouch": "/home/han/project/Sandkasten/.sandkasten/mobile-acceptance-20261110/keyboard-save-touch.json",
+    "notes": "Actual ADB taps and page/inner-pane swipes exposed both save and run buttons while IME remained visible. Tapping local save moved focus to the button and dismissed IME. No run button was pressed.",
+    "currentApkTested": false
+  }
+}
