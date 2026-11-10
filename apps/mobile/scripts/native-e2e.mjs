@@ -50,6 +50,14 @@ async function screenshot(name, target) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${name}: horizontal overflow`);
 }
 const nav = name => page.locator('nav[aria-label="主导航"]').getByRole('button', { name, exact: true }).click();
+async function selectTheme(name, id) {
+  await page.locator('.theme-option').filter({ hasText: name }).click();
+  // CDP input acknowledgement can precede the WebView click handler. Wait for
+  // the preference change before sending Android Back or stopping the app.
+  await until(() => page.evaluate(expected =>
+    document.documentElement.dataset.theme === expected &&
+    localStorage.getItem('sandkasten.theme') === expected, id), `theme selected: ${id}`);
+}
 async function createProject(name, language, source, advanced = false, entrypoint = '') {
   await nav('项目');
   await page.getByRole('button', { name: '新建项目', exact: true }).click();
@@ -121,10 +129,10 @@ try {
   await until(() => python.locator('.source-output').allTextContents().then(items => items.join('').includes('before stop')), 'final canceled output');
   assert.ok(!(await python.locator('.source-output').allTextContents()).join('').includes('must not run'));
   await screenshot('stopped-output', python);
-  for (const theme of ['珊瑚', '玫瑰', '海盐', '森林', '靛蓝', '琥珀']) {
+  for (const [theme, id] of [['珊瑚', 'coral'], ['玫瑰', 'rose'], ['海盐', 'sea'], ['森林', 'forest'], ['靛蓝', 'indigo'], ['琥珀', 'amber']]) {
     await nav('设置');
     await page.locator('.list-row').filter({ hasText: '选择你的配色' }).click();
-    await page.locator('.theme-option').filter({ hasText: theme }).click();
+    await selectTheme(theme, id);
     await screenshot(`theme-${theme}`);
     adb('shell', 'input', 'keyevent', '4');
     await until(() => page.locator('h1').innerText().then(text => text === '设置'), 'system back from theme');
@@ -139,10 +147,15 @@ try {
   await screenshot('single-column');
   await nav('设置');
   await page.locator('.list-row').filter({ hasText: '选择你的配色' }).click();
-  await page.locator('.theme-option').filter({ hasText: '珊瑚' }).click();
+  await selectTheme('珊瑚', 'coral');
   adb('shell', 'input', 'keyevent', '4');
   await until(() => page.locator('h1').innerText().then(text => text === '设置'), 'return to settings');
   const before = await page.evaluate(() => localStorage.getItem('sandkasten.panels'));
+  results.beforeRestart = await page.evaluate(() => ({
+    theme: document.documentElement.dataset.theme,
+    savedTheme: localStorage.getItem('sandkasten.theme'),
+    columns: localStorage.getItem('sandkasten.panel-columns'),
+  }));
   await browser.close(); browser = null;
   adb('shell', 'am', 'force-stop', appId);
   adb('shell', 'am', 'start', '-n', `${appId}/.MainActivity`);
