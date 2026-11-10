@@ -38,8 +38,11 @@ async function attach() {
   await until(() => page.evaluate(() => !document.querySelector('.launch-screen')), 'launch presentation');
   assert.equal(await page.evaluate(() => window.Capacitor.isNativePlatform()), true);
 }
-async function screenshot(name) {
-  await page.evaluate(() => window.scrollTo(0, 0));
+async function screenshot(name, target) {
+  if (target) {
+    await target.locator('.workbench-scroll').evaluate(element => { element.scrollTop = 0; });
+    await target.scrollIntoViewIfNeeded();
+  } else await page.evaluate(() => window.scrollTo(0, 0));
   await wait(150);
   const file = `${name}.png`;
   await writeFile(path.join(output, file), execFileSync('adb', ['-s', serial, 'exec-out', 'screencap', '-p']));
@@ -96,12 +99,12 @@ try {
   await run(python);
   await record('stdin, args and uploaded text file', python, '已完成');
   assert.ok((await python.locator('.source-output').innerText()).includes('mobile input|arg-value|file-value'));
-  await screenshot('python-output');
+  await screenshot('python-output', python);
   const go = await createProject(`Android Go ${suffix}`, 'go', 'package main\nfunc main(){ invalidsyntax }\n');
   await run(go);
   await record('real compiler error', go, '编译失败');
   assert.ok((await go.locator('.source-output').innerText()).trim().length > 0);
-  await screenshot('compiler-error');
+  await screenshot('compiler-error', go);
   await python.getByRole('button', { name: '代码', exact: true }).click();
   await python.getByLabel('源代码', { exact: true }).fill('import time\nprint("before stop",flush=True)\ntime.sleep(25)\nprint("must not run")\n');
   await python.getByText('输入、参数与文件', { exact: true }).click();
@@ -111,12 +114,12 @@ try {
   // RUNNING is committed before exec begins. Give the test program time to
   // emit its flushed marker before requesting cancellation.
   await wait(1000);
-  await screenshot('before-stop');
+  await screenshot('before-stop', python);
   await python.getByRole('button', { name: '停止任务', exact: true }).click();
   await record('stop a real running process', python, '已停止');
   await until(() => python.locator('.source-output').allTextContents().then(items => items.join('').includes('before stop')), 'final canceled output');
   assert.ok(!(await python.locator('.source-output').allTextContents()).join('').includes('must not run'));
-  await screenshot('stopped-output');
+  await screenshot('stopped-output', python);
   for (const theme of ['珊瑚', '玫瑰', '海盐', '森林', '靛蓝', '琥珀']) {
     await nav('设置');
     await page.locator('.list-row').filter({ hasText: '选择你的配色' }).click();
@@ -126,7 +129,7 @@ try {
     await until(() => page.locator('h1').innerText().then(text => text === '设置'), 'system back from theme');
     await screenshot(`settings-${theme}`);
     await nav('项目'); await screenshot(`projects-${theme}`);
-    await nav('任务'); await screenshot(`tasks-${theme}`);
+    await nav('任务'); await screenshot(`tasks-${theme}`, python);
     await nav('控制台'); await screenshot(`dashboard-${theme}`);
   }
   await nav('设置');
@@ -152,7 +155,7 @@ try {
   python = page.locator('.workbench').filter({ has: page.getByRole('heading', { name: pythonName, exact: true }) });
   await python.getByRole('button', { name: '输出', exact: true }).click();
   await until(() => python.locator('.source-output').allTextContents().then(items => items.join('').includes('before stop')), 'output restored from real API');
-  await screenshot('restored-after-force-stop');
+  await screenshot('restored-after-force-stop', python);
   results.checks.push({ name: 'Keystore, panel, theme, column and output restoration', status: 'passed' });
   assert.deepEqual(errors, [], 'WebView page errors');
   results.passed = true;
