@@ -61,6 +61,8 @@ adb -s "$MOBILE_E2E_DEVICE" shell getprop ro.build.version.sdk >"$evidence/andro
 sudo -n sh -c 'printf "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control'
 sudo -n mkdir -p "$runner_cgroup_root"
 cat "$runner_cgroup_root/cgroup.controllers" >"$evidence/cgroup-controllers.txt"
+sudo -n sh -c 'id; uname -a; sed -n "/^Cap/p" /proc/self/status; cat /sys/fs/cgroup/cgroup.controllers; cat /sys/fs/cgroup/cgroup.subtree_control' \
+  >"$evidence/privileged-environment.txt" 2>&1
 go_executable="$(command -v go)"
 runtime_path="$(dirname -- "$go_executable"):/usr/local/bin:/usr/bin:/bin"
 # Sandbox children drop to nobody and must traverse the parent work directory.

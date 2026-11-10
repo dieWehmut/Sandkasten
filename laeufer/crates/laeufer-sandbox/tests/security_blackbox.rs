@@ -87,11 +87,16 @@ async fn cancellation_preserves_output_statistics_and_kills_descendants() {
     let ready = plan.cwd.join("ready");
     let sandbox = LinuxSandbox::new(harness.config.clone());
     let (cancel_tx, mut cancel_rx) = watch::channel(false);
-    let task = tokio::spawn(async move { sandbox.execute(&plan, &mut cancel_rx).await });
+    let mut task = tokio::spawn(async move { sandbox.execute(&plan, &mut cancel_rx).await });
 
     tokio::time::timeout(Duration::from_secs(3), async {
         while !ready.exists() {
-            assert!(!task.is_finished(), "command exited before emitting output");
+            if task.is_finished() {
+                panic!(
+                    "command exited before emitting output: {:?}",
+                    (&mut task).await
+                );
+            }
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
