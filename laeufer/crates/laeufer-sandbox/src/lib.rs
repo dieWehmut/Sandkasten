@@ -315,6 +315,7 @@ async fn execute_command(
         limit_tx,
     ));
 
+    let mut canceled = false;
     let status = tokio::select! {
         status = child.wait() => {
             status.map_err(|error| RunnerError::System(format!("failed to wait for child: {error}")))?
@@ -324,16 +325,9 @@ async fn execute_command(
             child.wait().await.map_err(|error| RunnerError::System(format!("failed to wait after output limit: {error}")))?
         }
         _ = wait_for_cancellation(cancel) => {
+            canceled = true;
             terminate_child(&mut child, Some(&cgroup)).await;
-            let _ = child.wait().await;
-            await_stdin(stdin_task).await?;
-            let _ = await_output(stdout_task).await;
-            let _ = await_output(stderr_task).await;
-            cgroup.kill_all_and_wait_empty(child_pid).await?;
-            return Err(RunnerError::Canceled(format!(
-                "command {:?} canceled",
-                plan.program
-            )));
+            child.wait().await.map_err(|error| RunnerError::System(format!("failed to wait after cancellation: {error}")))?
         }
         _ = time::sleep(execution_plan.plan.timeout) => {
             terminate_child(&mut child, Some(&cgroup)).await;
@@ -357,7 +351,7 @@ async fn execute_command(
 
     let wall_time = started.elapsed();
     let cgroup_stats = cgroup.stats();
-    if cgroup_stats.memory_oom_kill_count > 0 {
+    if !canceled && cgroup_stats.memory_oom_kill_count > 0 {
         drop(cgroup);
         return Err(RunnerError::MemoryLimitExceeded(format!(
             "command {:?} exceeded memory cgroup limit",
@@ -366,7 +360,7 @@ async fn execute_command(
     }
     drop(cgroup);
 
-    Ok(JobResult {
+    let result = JobResult {
         stdout: stdout.bytes.into(),
         stderr: stderr.bytes.into(),
         compile_stdout: Default::default(),
@@ -383,7 +377,15 @@ async fn execute_command(
         memory_oom_kill_count: cgroup_stats.memory_oom_kill_count,
         cgroup_path: Some(cgroup_path),
         child_pid,
-    })
+    };
+    if canceled {
+        Err(RunnerError::CanceledWithOutput {
+            message: format!("command {:?} canceled", plan.program),
+            result: Box::new(result),
+        })
+    } else {
+        Ok(result)
+    }
 }
 
 fn enable_child_subreaper() -> Result<(), RunnerError> {
@@ -1788,28 +1790,66 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn cancels_running_command() {
-        let mut plan = shell_plan("sleep 5", 1024);
+    #[cfg(unix)]
+    async fn cancellation_preserves_output_and_reaps_descendants() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let workspace = tempfile::tempdir().expect("workspace");
+        std::fs::set_permissions(workspace.path(), std::fs::Permissions::from_mode(0o777))
+            .expect("workspace is writable by child");
+        let mut plan = shell_plan(
+            "printf 'stdout before stop'; printf 'stderr before stop' >&2; sleep 30 & echo $! > descendant.pid; touch ready; wait",
+            1024,
+        );
+        plan.cwd = workspace.path().to_path_buf();
         plan.timeout = Duration::from_secs(10);
         let cgroup_root = tempfile::tempdir().expect("tempdir");
-        let config = SandboxConfig {
-            require_private_namespaces: false,
-            cgroup_root: cgroup_root.path().to_path_buf(),
-            ..Default::default()
-        };
+        let mut config = sandbox_config_without_namespaces();
+        config.cgroup_root = cgroup_root.path().to_path_buf();
         seed_fake_cgroup(&config.cgroup_root);
         let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
 
         let task =
             tokio::spawn(async move { execute_command(&plan, &config, &mut cancel_rx).await });
-        tokio::time::sleep(Duration::from_millis(20)).await;
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !workspace.path().join("ready").exists() {
+                assert!(
+                    !task.is_finished(),
+                    "command exited before readiness marker"
+                );
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .expect("command emitted output before cancellation");
+        let descendant_pid: u32 = std::fs::read_to_string(workspace.path().join("descendant.pid"))
+            .expect("descendant pid")
+            .trim()
+            .parse()
+            .expect("numeric pid");
+        assert!(std::path::Path::new(&format!("/proc/{descendant_pid}")).exists());
         cancel_tx.send(true).expect("send cancel");
 
-        let err = task
+        let err = tokio::time::timeout(Duration::from_secs(2), task)
             .await
+            .expect("cancellation does not wait for timeout")
             .expect("task joins")
             .expect_err("command is canceled");
-        assert!(matches!(err, RunnerError::Canceled(_)));
+        let RunnerError::CanceledWithOutput { result, .. } = err else {
+            panic!("expected cancellation with output, got {err:?}");
+        };
+        assert_eq!(&result.stdout[..], b"stdout before stop");
+        assert_eq!(&result.stderr[..], b"stderr before stop");
+        assert_eq!(result.signal, Some(libc::SIGKILL));
+        assert!(result.wall_time > Duration::ZERO);
+        assert!(result.wall_time < Duration::from_secs(2));
+        assert!(result.cgroup_path.is_some());
+        let child_pid = result.child_pid.expect("child pid retained");
+        assert!(!std::path::Path::new(&format!("/proc/{child_pid}")).exists());
+        assert!(
+            !std::path::Path::new(&format!("/proc/{descendant_pid}")).exists(),
+            "canceled descendant remains alive or unreaped"
+        );
     }
 
     #[tokio::test]
@@ -2366,10 +2406,16 @@ mod tests {
     }
 
     fn sandbox_config_without_namespaces() -> SandboxConfig {
-        SandboxConfig {
+        let mut config = SandboxConfig {
             require_private_namespaces: false,
             ..Default::default()
+        };
+        // Unprivileged tests share their uid with the developer's other processes.
+        // The production limit is tested with a dedicated child uid in security_blackbox.
+        if unsafe { libc::geteuid() } != 0 {
+            config.child_rlimits.nproc = 4096;
         }
+        config
     }
 
     fn python3_path() -> Option<String> {

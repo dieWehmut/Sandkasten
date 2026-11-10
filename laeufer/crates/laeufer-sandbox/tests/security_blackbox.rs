@@ -75,6 +75,58 @@ async fn enforces_wall_time_and_kills_descendants() {
 
 #[tokio::test]
 #[ignore = "requires a privileged Linux runner with writable cgroup v2"]
+async fn cancellation_preserves_output_statistics_and_kills_descendants() {
+    let harness = SecurityHarness::new();
+    harness.preflight().await;
+    let plan = harness.shell_plan(
+        "printf 'stdout before stop'; printf 'stderr before stop' >&2; sleep 30 & touch ready; wait",
+        4096,
+        Duration::from_secs(10),
+        128 * 1024 * 1024,
+    );
+    let ready = plan.cwd.join("ready");
+    let sandbox = LinuxSandbox::new(harness.config.clone());
+    let (cancel_tx, mut cancel_rx) = watch::channel(false);
+    let task = tokio::spawn(async move { sandbox.execute(&plan, &mut cancel_rx).await });
+
+    tokio::time::timeout(Duration::from_secs(3), async {
+        while !ready.exists() {
+            assert!(!task.is_finished(), "command exited before emitting output");
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("command emitted output before cancellation");
+    cancel_tx.send(true).expect("send cancellation");
+    let err = tokio::time::timeout(Duration::from_secs(2), task)
+        .await
+        .expect("cancellation completes promptly")
+        .expect("execution task joins")
+        .expect_err("command is canceled");
+    let RunnerError::CanceledWithOutput { result, .. } = err else {
+        panic!("expected cancellation with output, got {err:?}");
+    };
+
+    assert_eq!(&result.stdout[..], b"stdout before stop");
+    assert_eq!(&result.stderr[..], b"stderr before stop");
+    assert!(result.signal.is_some(), "{result:?}");
+    assert!(result.wall_time > Duration::ZERO, "{result:?}");
+    assert!(result.wall_time < Duration::from_secs(3), "{result:?}");
+    assert!(result.memory_peak_bytes > 0, "{result:?}");
+    assert!(result.cpu_usage_usec > 0, "{result:?}");
+    assert!(result.pids_peak >= 2, "{result:?}");
+    assert_eq!(result.memory_oom_kill_count, 0, "{result:?}");
+    let child_pid = result.child_pid.expect("host child pid retained");
+    assert!(!Path::new(&format!("/proc/{child_pid}")).exists());
+    let cgroup = result.cgroup_path.as_ref().expect("cgroup path retained");
+    assert!(
+        !Path::new(cgroup).exists(),
+        "canceled cgroup was not emptied and removed"
+    );
+}
+
+#[tokio::test]
+#[ignore = "requires a privileged Linux runner with writable cgroup v2"]
 async fn enforces_memory_cgroup_limit() {
     let harness = SecurityHarness::new();
     harness.preflight().await;
@@ -361,10 +413,25 @@ impl SecurityHarness {
         timeout: Duration,
         memory_limit_bytes: u64,
     ) -> Result<laeufer_core::JobResult, RunnerError> {
+        let plan = self.shell_plan(script, max_output_bytes, timeout, memory_limit_bytes);
+        let (_cancel_tx, mut cancel_rx) = watch::channel(false);
+
+        LinuxSandbox::new(self.config.clone())
+            .execute(&plan, &mut cancel_rx)
+            .await
+    }
+
+    fn shell_plan(
+        &self,
+        script: &str,
+        max_output_bytes: u64,
+        timeout: Duration,
+        memory_limit_bytes: u64,
+    ) -> CommandPlan {
         let cwd = self._tempdir.path().join("workspace");
         fs::create_dir_all(&cwd).expect("workspace");
         make_workspace_writable(&cwd);
-        let plan = CommandPlan {
+        CommandPlan {
             program: "/bin/sh".to_owned(),
             args: vec!["-c".to_owned(), script.to_owned()],
             env: vec![
@@ -378,12 +445,7 @@ impl SecurityHarness {
             cpu_millis: 1000,
             max_output_bytes,
             seccomp_profile: SeccompProfile::Run,
-        };
-        let (_cancel_tx, mut cancel_rx) = watch::channel(false);
-
-        LinuxSandbox::new(self.config.clone())
-            .execute(&plan, &mut cancel_rx)
-            .await
+        }
     }
 }
 

@@ -437,6 +437,11 @@ pub enum RunnerError {
     OutputLimitExceeded(String),
     #[error("canceled: {0}")]
     Canceled(String),
+    #[error("canceled: {message}")]
+    CanceledWithOutput {
+        message: String,
+        result: Box<JobResult>,
+    },
     #[error("storage failed: {0}")]
     Store(String),
     #[error("system error: {0}")]
@@ -504,7 +509,7 @@ pub fn terminal_status_from_error(error: &RunnerError) -> JobStatus {
         RunnerError::TimeLimitExceeded(_) => JobStatus::TimeLimitExceeded,
         RunnerError::MemoryLimitExceeded(_) => JobStatus::MemoryLimitExceeded,
         RunnerError::OutputLimitExceeded(_) => JobStatus::OutputLimitExceeded,
-        RunnerError::Canceled(_) => JobStatus::Canceled,
+        RunnerError::Canceled(_) | RunnerError::CanceledWithOutput { .. } => JobStatus::Canceled,
         RunnerError::Preflight(_) | RunnerError::Store(_) | RunnerError::System(_) => {
             JobStatus::SystemError
         }
@@ -572,6 +577,9 @@ fn terminal_message_from_result(result: &JobResult, status: JobStatus, phase: &s
 }
 
 pub fn terminal_reason_from_result(status: JobStatus, result: &JobResult) -> String {
+    if status == JobStatus::Canceled {
+        return "canceled".to_owned();
+    }
     if status == JobStatus::MemoryLimitExceeded && result.memory_oom_kill_count > 0 {
         return "memory_cgroup_oom".to_owned();
     }
@@ -703,6 +711,17 @@ where
 
     let compile_output = match sandbox.execute(&plan.compile, cancel).await {
         Ok(output) => output,
+        Err(RunnerError::CanceledWithOutput {
+            message,
+            result: output,
+        }) => {
+            result.exit_code = output.exit_code;
+            result.signal = output.signal;
+            result.absorb_compile_output(*output);
+            let message = format!("job canceled during compile: {message}");
+            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
+            return Ok(JobStatus::Canceled);
+        }
         Err(RunnerError::Canceled(message)) => {
             let message = format!("job canceled during compile: {message}");
             finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
@@ -758,6 +777,15 @@ where
 
     let run_output = match sandbox.execute(&plan.run, cancel).await {
         Ok(output) => output,
+        Err(RunnerError::CanceledWithOutput {
+            message,
+            result: output,
+        }) => {
+            result.absorb_run_output(*output);
+            let message = format!("job canceled during run: {message}");
+            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
+            return Ok(JobStatus::Canceled);
+        }
         Err(RunnerError::Canceled(message)) => {
             let message = format!("job canceled during run: {message}");
             finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
@@ -1060,6 +1088,14 @@ mod tests {
             terminal_reason_from_result(JobStatus::TimeLimitExceeded, &JobResult::default()),
             "timeout"
         );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::Canceled, &seccomp),
+            "canceled"
+        );
+        assert_eq!(
+            terminal_reason_from_result(JobStatus::Canceled, &truncated),
+            "canceled"
+        );
     }
 
     #[tokio::test]
@@ -1084,10 +1120,132 @@ mod tests {
         assert_eq!(status, JobStatus::Canceled);
         let finishes = store.finishes.lock().expect("finishes");
         assert_eq!(finishes.len(), 1);
-        assert_eq!(finishes[0].0, job.attempt_id);
-        assert_eq!(finishes[0].1, JobStatus::Canceled);
-        assert_eq!(finishes[0].2, "job canceled while validating");
-        assert_eq!(finishes[0].3, "runner-a");
+        assert_eq!(finishes[0].attempt_id, job.attempt_id);
+        assert_eq!(finishes[0].status, JobStatus::Canceled);
+        assert_eq!(finishes[0].error_message, "job canceled while validating");
+        assert_eq!(finishes[0].runner_id, "runner-a");
+    }
+
+    #[tokio::test]
+    async fn cancellation_during_compile_persists_partial_output_and_diagnostics() {
+        let output = canceled_output();
+        let sandbox = SequenceSandbox(Mutex::new(std::collections::VecDeque::from([Err(
+            RunnerError::CanceledWithOutput {
+                message: "compile stopped".to_owned(),
+                result: Box::new(output.clone()),
+            },
+        )])));
+        let store = RecordingStore::default();
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+
+        let status = execute_job(
+            &store,
+            "runner-a",
+            &TestRuntime,
+            &sandbox,
+            test_job(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect("compile cancellation persists");
+
+        assert_eq!(status, JobStatus::Canceled);
+        let finishes = store.finishes.lock().expect("finishes");
+        assert_eq!(finishes.len(), 1);
+        assert_eq!(finishes[0].status, JobStatus::Canceled);
+        let result = &finishes[0].result;
+        assert_eq!(result.compile_stdout, output.stdout);
+        assert_eq!(result.compile_stderr, output.stderr);
+        assert!(result.stdout.is_empty());
+        assert!(result.stderr.is_empty());
+        assert_eq!(result.wall_time, output.wall_time);
+        assert_eq!(result.memory_peak_bytes, output.memory_peak_bytes);
+        assert_eq!(result.cpu_usage_usec, output.cpu_usage_usec);
+        assert_eq!(result.cpu_throttled_usec, output.cpu_throttled_usec);
+        assert_eq!(result.pids_peak, output.pids_peak);
+        assert_eq!(result.cgroup_path, output.cgroup_path);
+        assert_eq!(result.child_pid, output.child_pid);
+        assert_eq!(result.signal, output.signal);
+        assert_eq!(terminal_reason_from_result(status, result), "canceled");
+        assert!(sandbox.0.lock().expect("outputs").is_empty());
+    }
+
+    #[tokio::test]
+    async fn cancellation_during_run_persists_compile_and_partial_run_output() {
+        let compile = JobResult {
+            stdout: Bytes::from_static(b"compile stdout"),
+            stderr: Bytes::from_static(b"compile stderr"),
+            exit_code: Some(0),
+            wall_time: Duration::from_millis(10),
+            memory_peak_bytes: 8192,
+            cpu_usage_usec: 100,
+            cpu_throttled_usec: 5,
+            pids_peak: 3,
+            ..Default::default()
+        };
+        let output = canceled_output();
+        let sandbox = SequenceSandbox(Mutex::new(std::collections::VecDeque::from([
+            Ok(compile.clone()),
+            Err(RunnerError::CanceledWithOutput {
+                message: "run stopped".to_owned(),
+                result: Box::new(output.clone()),
+            }),
+        ])));
+        let store = RecordingStore::default();
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+
+        let status = execute_job(
+            &store,
+            "runner-a",
+            &TestRuntime,
+            &sandbox,
+            test_job(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect("run cancellation persists");
+
+        assert_eq!(status, JobStatus::Canceled);
+        let finishes = store.finishes.lock().expect("finishes");
+        assert_eq!(finishes.len(), 1);
+        assert_eq!(finishes[0].status, JobStatus::Canceled);
+        let result = &finishes[0].result;
+        assert_eq!(result.compile_stdout, compile.stdout);
+        assert_eq!(result.compile_stderr, compile.stderr);
+        assert_eq!(result.stdout, output.stdout);
+        assert_eq!(result.stderr, output.stderr);
+        assert_eq!(result.wall_time, compile.wall_time + output.wall_time);
+        assert_eq!(result.memory_peak_bytes, compile.memory_peak_bytes);
+        assert_eq!(
+            result.cpu_usage_usec,
+            compile.cpu_usage_usec + output.cpu_usage_usec
+        );
+        assert_eq!(
+            result.cpu_throttled_usec,
+            compile.cpu_throttled_usec + output.cpu_throttled_usec
+        );
+        assert_eq!(result.pids_peak, compile.pids_peak);
+        assert_eq!(result.cgroup_path, output.cgroup_path);
+        assert_eq!(result.child_pid, output.child_pid);
+        assert_eq!(result.signal, output.signal);
+        assert_eq!(terminal_reason_from_result(status, result), "canceled");
+        assert!(sandbox.0.lock().expect("outputs").is_empty());
+    }
+
+    fn canceled_output() -> JobResult {
+        JobResult {
+            stdout: Bytes::from_static(b"stdout before stop"),
+            stderr: Bytes::from_static(b"stderr before stop"),
+            signal: Some(libc::SIGKILL),
+            wall_time: Duration::from_millis(50),
+            memory_peak_bytes: 4096,
+            cpu_usage_usec: 200,
+            cpu_throttled_usec: 10,
+            pids_peak: 2,
+            cgroup_path: Some("/cgroup/canceled".to_owned()),
+            child_pid: Some(123),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -1134,7 +1292,15 @@ mod tests {
 
     #[derive(Default)]
     struct RecordingStore {
-        finishes: Mutex<Vec<(AttemptId, JobStatus, String, String)>>,
+        finishes: Mutex<Vec<RecordedFinish>>,
+    }
+
+    struct RecordedFinish {
+        attempt_id: AttemptId,
+        status: JobStatus,
+        error_message: String,
+        runner_id: String,
+        result: JobResult,
     }
 
     #[async_trait::async_trait]
@@ -1179,20 +1345,72 @@ mod tests {
             attempt_id: AttemptId,
             _job_id: JobId,
             status: JobStatus,
-            _result: JobResult,
+            result: JobResult,
             error_message: &str,
         ) -> Result<(), RunnerError> {
-            self.finishes.lock().expect("finishes").push((
-                attempt_id,
-                status,
-                error_message.to_owned(),
-                runner_id.to_owned(),
-            ));
+            self.finishes
+                .lock()
+                .expect("finishes")
+                .push(RecordedFinish {
+                    attempt_id,
+                    status,
+                    error_message: error_message.to_owned(),
+                    runner_id: runner_id.to_owned(),
+                    result,
+                });
             Ok(())
         }
     }
 
     struct NeverRuntime;
+
+    struct TestRuntime;
+
+    #[async_trait::async_trait]
+    impl LanguageRuntime for TestRuntime {
+        async fn prepare(&self, _job: &Job) -> Result<BuildPlan, RunnerError> {
+            let command = CommandPlan {
+                program: "/bin/true".to_owned(),
+                args: Vec::new(),
+                env: Vec::new(),
+                cwd: PathBuf::from("/"),
+                stdin: Bytes::new(),
+                timeout: Duration::from_secs(1),
+                memory_limit_bytes: 128 * 1024 * 1024,
+                cpu_millis: 1000,
+                max_output_bytes: 1024,
+                seccomp_profile: SeccompProfile::Compile,
+            };
+            Ok(BuildPlan {
+                compile: command.clone(),
+                run: CommandPlan {
+                    seccomp_profile: SeccompProfile::Run,
+                    ..command
+                },
+            })
+        }
+    }
+
+    struct SequenceSandbox(Mutex<std::collections::VecDeque<Result<JobResult, RunnerError>>>);
+
+    #[async_trait::async_trait]
+    impl Sandbox for SequenceSandbox {
+        async fn preflight(&self) -> Result<(), RunnerError> {
+            Ok(())
+        }
+
+        async fn execute(
+            &self,
+            _plan: &CommandPlan,
+            _cancel: &mut CancellationReceiver,
+        ) -> Result<JobResult, RunnerError> {
+            self.0
+                .lock()
+                .expect("outputs")
+                .pop_front()
+                .expect("expected execution")
+        }
+    }
 
     #[async_trait::async_trait]
     impl LanguageRuntime for NeverRuntime {
