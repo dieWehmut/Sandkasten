@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { chromium } from 'playwright-core';
+import { attachAndroidWebView } from './android-webview.mjs';
 
 const serial = process.env.MOBILE_E2E_DEVICE ?? execFileSync('adb', ['devices'], { encoding: 'utf8' }).match(/^(emulator-\d+)\s+device$/m)?.[1];
 assert.ok(serial?.startsWith('emulator-'), 'Select a running emulator with MOBILE_E2E_DEVICE');
@@ -13,7 +13,7 @@ const address = process.env.MOBILE_E2E_ADDRESS ?? 'http://10.0.2.2:8080';
 const token = process.env.MOBILE_E2E_TOKEN ?? '';
 const output = path.resolve(process.env.MOBILE_E2E_OUTPUT ?? '../../.sandkasten/mobile-native-e2e');
 await mkdir(output, { recursive: true });
-const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8' });
+const adb = (...args) => execFileSync('adb', ['-s', serial, ...args], { encoding: 'utf8', timeout: 5000 });
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function until(test, description, timeout = 30000) {
   const end = Date.now() + timeout;
@@ -21,18 +21,16 @@ async function until(test, description, timeout = 30000) {
   throw new Error(`Timed out: ${description}`);
 }
 let browser, page;
-const errors = [], results = { serial, address, checks: [], screenshots: [] };
+const errors = [], results = { serial, address, checks: [], screenshots: [], attachments: [] };
 async function attach() {
-  let socket;
-  await until(async () => {
-    socket = adb('shell', 'cat', '/proc/net/unix').match(/@(webview_devtools_remote[^\s]*)/)?.[1];
-    return !!socket;
-  }, 'WebView debugging socket');
-  adb('forward', 'tcp:19222', `localabstract:${socket}`);
-  // Android WebView cannot manage browser contexts or override downloads.
-  browser = await chromium.connectOverCDP('http://127.0.0.1:19222', { noDefaults: true });
-  await until(() => browser.contexts().some(context => context.pages().length), 'WebView page');
-  page = browser.contexts().flatMap(context => context.pages())[0];
+  try {
+    const attached = await attachAndroidWebView({ adb, appId });
+    browser = attached.browser; page = attached.page;
+    results.attachments.push(attached.diagnostics);
+  } catch (error) {
+    if (error.diagnostics) results.attachments.push(error.diagnostics);
+    throw error;
+  }
   page.on('pageerror', error => errors.push(error.message));
   await page.waitForSelector('nav[aria-label="主导航"]');
   await until(() => page.evaluate(() => !document.querySelector('.launch-screen')), 'launch presentation');
@@ -42,6 +40,8 @@ async function screenshot(name, target) {
   if (target) {
     await target.locator('.workbench-scroll').evaluate(element => { element.scrollTop = 0; });
     await target.scrollIntoViewIfNeeded();
+    const visibleOutput = target.locator('.source-output').filter({ hasText: /\S/ }).first();
+    if (await visibleOutput.count()) await visibleOutput.scrollIntoViewIfNeeded();
   } else await page.evaluate(() => window.scrollTo(0, 0));
   await wait(150);
   const file = `${name}.png`;
