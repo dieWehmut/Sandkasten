@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sandkasten</string>
+    <string name="title_activity_main">Sandkasten</string>
+    <string name="package_name">dev.sandkasten.mobile</string>
+    <string name="custom_url_scheme">dev.sandkasten.mobile</string>
+</resources>
