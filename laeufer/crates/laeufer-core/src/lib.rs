@@ -337,6 +337,8 @@ impl JobResult {
     pub fn absorb_compile_output(&mut self, compile: JobResult) {
         self.compile_stdout = compile.stdout;
         self.compile_stderr = compile.stderr;
+        self.exit_code = compile.exit_code;
+        self.signal = compile.signal;
         self.wall_time += compile.wall_time;
         self.memory_peak_bytes = cmp::max(self.memory_peak_bytes, compile.memory_peak_bytes);
         self.stdout_truncated |= compile.stdout_truncated;
@@ -476,6 +478,8 @@ pub trait JobStore: Send + Sync {
 
     async fn current_status(&self, job_id: JobId) -> Result<Option<JobStatus>, RunnerError>;
 
+    /// Persists the result and returns the effective terminal status, including
+    /// any cancellation that won the race with completion in the store.
     async fn finish(
         &self,
         runner_id: &str,
@@ -484,7 +488,7 @@ pub trait JobStore: Send + Sync {
         status: JobStatus,
         result: JobResult,
         error_message: &str,
-    ) -> Result<(), RunnerError>;
+    ) -> Result<JobStatus, RunnerError>;
 }
 
 #[async_trait]
@@ -656,17 +660,17 @@ where
     let mut result = JobResult::default();
     let attempt_id = job.attempt_id;
 
-    store
-        .update_status(
-            runner_id,
-            attempt_id,
-            job.job_id,
-            JobStatus::Validating,
-            "validating job archive",
-        )
-        .await?;
-    if cancellation_requested(cancel) {
-        finish_canceled(
+    let phase_status = update_status_unless_canceled(
+        store,
+        runner_id,
+        attempt_id,
+        job.job_id,
+        JobStatus::Validating,
+        "validating job archive",
+    )
+    .await?;
+    if phase_status == JobStatus::Canceled || cancellation_requested(cancel) {
+        return finish_canceled(
             store,
             runner_id,
             attempt_id,
@@ -674,20 +678,17 @@ where
             result,
             "job canceled while validating",
         )
-        .await?;
-        return Ok(JobStatus::Canceled);
+        .await;
     }
 
     let plan = match runtime.prepare(&job).await {
         Ok(plan) => plan,
         Err(error) => {
-            let status = terminal_status_from_error(&error);
-            finish_error(store, runner_id, attempt_id, job.job_id, result, error).await?;
-            return Ok(status);
+            return finish_error(store, runner_id, attempt_id, job.job_id, result, error).await;
         }
     };
     if cancellation_requested(cancel) {
-        finish_canceled(
+        return finish_canceled(
             store,
             runner_id,
             attempt_id,
@@ -695,19 +696,29 @@ where
             result,
             "job canceled before compile",
         )
-        .await?;
-        return Ok(JobStatus::Canceled);
+        .await;
     }
 
-    store
-        .update_status(
+    let phase_status = update_status_unless_canceled(
+        store,
+        runner_id,
+        attempt_id,
+        job.job_id,
+        JobStatus::Compiling,
+        "compiling job",
+    )
+    .await?;
+    if phase_status == JobStatus::Canceled || cancellation_requested(cancel) {
+        return finish_canceled(
+            store,
             runner_id,
             attempt_id,
             job.job_id,
-            JobStatus::Compiling,
-            "compiling job",
+            result,
+            "job canceled before compile",
         )
-        .await?;
+        .await;
+    }
 
     let compile_output = match sandbox.execute(&plan.compile, cancel).await {
         Ok(output) => output,
@@ -715,29 +726,18 @@ where
             message,
             result: output,
         }) => {
-            result.exit_code = output.exit_code;
-            result.signal = output.signal;
             result.absorb_compile_output(*output);
             let message = format!("job canceled during compile: {message}");
-            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
-            return Ok(JobStatus::Canceled);
+            return finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message)
+                .await;
         }
         Err(RunnerError::Canceled(message)) => {
             let message = format!("job canceled during compile: {message}");
-            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
-            return Ok(JobStatus::Canceled);
+            return finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message)
+                .await;
         }
         Err(error) => {
-            finish_error(
-                store,
-                runner_id,
-                attempt_id,
-                job.job_id,
-                result,
-                error.clone(),
-            )
-            .await?;
-            return Ok(terminal_status_from_error(&error));
+            return finish_error(store, runner_id, attempt_id, job.job_id, result, error).await;
         }
     };
 
@@ -747,13 +747,12 @@ where
     result.absorb_compile_output(compile_output);
     if let Some(status) = compile_status {
         let message = compile_message.unwrap_or_else(|| "compile failed".to_owned());
-        store
+        return store
             .finish(runner_id, attempt_id, job.job_id, status, result, &message)
-            .await?;
-        return Ok(status);
+            .await;
     }
     if cancellation_requested(cancel) {
-        finish_canceled(
+        return finish_canceled(
             store,
             runner_id,
             attempt_id,
@@ -761,19 +760,29 @@ where
             result,
             "job canceled before run",
         )
-        .await?;
-        return Ok(JobStatus::Canceled);
+        .await;
     }
 
-    store
-        .update_status(
+    let phase_status = update_status_unless_canceled(
+        store,
+        runner_id,
+        attempt_id,
+        job.job_id,
+        JobStatus::Running,
+        "running job",
+    )
+    .await?;
+    if phase_status == JobStatus::Canceled || cancellation_requested(cancel) {
+        return finish_canceled(
+            store,
             runner_id,
             attempt_id,
             job.job_id,
-            JobStatus::Running,
-            "running job",
+            result,
+            "job canceled before run",
         )
-        .await?;
+        .await;
+    }
 
     let run_output = match sandbox.execute(&plan.run, cancel).await {
         Ok(output) => output,
@@ -783,25 +792,16 @@ where
         }) => {
             result.absorb_run_output(*output);
             let message = format!("job canceled during run: {message}");
-            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
-            return Ok(JobStatus::Canceled);
+            return finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message)
+                .await;
         }
         Err(RunnerError::Canceled(message)) => {
             let message = format!("job canceled during run: {message}");
-            finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message).await?;
-            return Ok(JobStatus::Canceled);
+            return finish_canceled(store, runner_id, attempt_id, job.job_id, result, &message)
+                .await;
         }
         Err(error) => {
-            finish_error(
-                store,
-                runner_id,
-                attempt_id,
-                job.job_id,
-                result,
-                error.clone(),
-            )
-            .await?;
-            return Ok(terminal_status_from_error(&error));
+            return finish_error(store, runner_id, attempt_id, job.job_id, result, error).await;
         }
     };
 
@@ -810,9 +810,30 @@ where
     let message = terminal_message_from_run_result(&result, status);
     store
         .finish(runner_id, attempt_id, job.job_id, status, result, &message)
-        .await?;
+        .await
+}
 
-    Ok(status)
+async fn update_status_unless_canceled<S>(
+    store: &S,
+    runner_id: &str,
+    attempt_id: AttemptId,
+    job_id: JobId,
+    status: JobStatus,
+    message: &str,
+) -> Result<JobStatus, RunnerError>
+where
+    S: JobStore + ?Sized,
+{
+    match store
+        .update_status(runner_id, attempt_id, job_id, status, message)
+        .await
+    {
+        Ok(()) => Ok(status),
+        Err(error) => match store.current_status(job_id).await {
+            Ok(Some(JobStatus::Canceled)) => Ok(JobStatus::Canceled),
+            _ => Err(error),
+        },
+    }
 }
 
 fn cancellation_requested(cancel: &CancellationReceiver) -> bool {
@@ -826,7 +847,7 @@ async fn finish_canceled<S>(
     job_id: JobId,
     result: JobResult,
     message: &str,
-) -> Result<(), RunnerError>
+) -> Result<JobStatus, RunnerError>
 where
     S: JobStore + ?Sized,
 {
@@ -849,7 +870,7 @@ async fn finish_error<S>(
     job_id: JobId,
     result: JobResult,
     error: RunnerError,
-) -> Result<(), RunnerError>
+) -> Result<JobStatus, RunnerError>
 where
     S: JobStore + ?Sized,
 {
@@ -1232,6 +1253,144 @@ mod tests {
         assert!(sandbox.0.lock().expect("outputs").is_empty());
     }
 
+    #[tokio::test]
+    async fn cancellation_during_transition_to_run_preserves_compile_result() {
+        let compile = JobResult {
+            stdout: Bytes::from_static(b"compile before stop"),
+            stderr: Bytes::from_static(b"compile diagnostic"),
+            exit_code: Some(0),
+            wall_time: Duration::from_millis(10),
+            memory_peak_bytes: 8192,
+            cpu_usage_usec: 100,
+            pids_peak: 3,
+            ..Default::default()
+        };
+        let sandbox = SequenceSandbox(Mutex::new(std::collections::VecDeque::from([Ok(
+            compile.clone()
+        )])));
+        let store = RecordingStore {
+            rejected_phase: Some(JobStatus::Running),
+            database_status: Some(JobStatus::Canceled),
+            ..Default::default()
+        };
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+
+        let status = execute_job(
+            &store,
+            "runner-a",
+            &TestRuntime,
+            &sandbox,
+            test_job(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect("canceled phase transition finishes");
+
+        assert_eq!(status, JobStatus::Canceled);
+        let finishes = store.finishes.lock().expect("finishes");
+        assert_eq!(finishes.len(), 1);
+        assert_eq!(finishes[0].status, JobStatus::Canceled);
+        assert_eq!(finishes[0].result.compile_stdout, compile.stdout);
+        assert_eq!(finishes[0].result.compile_stderr, compile.stderr);
+        assert_eq!(finishes[0].result.wall_time, compile.wall_time);
+        assert_eq!(finishes[0].result.exit_code, compile.exit_code);
+        assert_eq!(finishes[0].result.signal, compile.signal);
+        assert_eq!(finishes[0].result.cpu_usage_usec, compile.cpu_usage_usec);
+        assert_eq!(
+            finishes[0].result.memory_peak_bytes,
+            compile.memory_peak_bytes
+        );
+        assert!(sandbox.0.lock().expect("outputs").is_empty());
+    }
+
+    #[tokio::test]
+    async fn cancellation_during_early_phase_transition_finishes_without_execution() {
+        for phase in [JobStatus::Validating, JobStatus::Compiling] {
+            let store = RecordingStore {
+                rejected_phase: Some(phase),
+                database_status: Some(JobStatus::Canceled),
+                ..Default::default()
+            };
+            let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+            let status = execute_job(
+                &store,
+                "runner-a",
+                &TestRuntime,
+                &NeverSandbox,
+                test_job(),
+                &mut cancel_rx,
+            )
+            .await
+            .expect("canceled early phase finishes");
+            assert_eq!(status, JobStatus::Canceled);
+            let finishes = store.finishes.lock().expect("finishes");
+            assert_eq!(finishes.len(), 1);
+            assert_eq!(finishes[0].status, JobStatus::Canceled);
+        }
+    }
+
+    #[tokio::test]
+    async fn natural_completion_returns_effective_store_status_and_keeps_output() {
+        let compile = JobResult {
+            exit_code: Some(0),
+            ..Default::default()
+        };
+        let output = JobResult {
+            stdout: Bytes::from_static(b"output before cancel commit"),
+            stderr: Bytes::from_static(b"stderr before cancel commit"),
+            exit_code: Some(0),
+            wall_time: Duration::from_millis(20),
+            ..Default::default()
+        };
+        let sandbox = SequenceSandbox(Mutex::new(std::collections::VecDeque::from([
+            Ok(compile),
+            Ok(output.clone()),
+        ])));
+        let store = RecordingStore {
+            finished_status: Some(JobStatus::Canceled),
+            ..Default::default()
+        };
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+        let status = execute_job(
+            &store,
+            "runner-a",
+            &TestRuntime,
+            &sandbox,
+            test_job(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect("cancel wins during finish");
+        assert_eq!(status, JobStatus::Canceled);
+        let finishes = store.finishes.lock().expect("finishes");
+        assert_eq!(finishes[0].status, JobStatus::Canceled);
+        assert_eq!(finishes[0].result.stdout, output.stdout);
+        assert_eq!(finishes[0].result.stderr, output.stderr);
+        assert_eq!(finishes[0].result.wall_time, output.wall_time);
+    }
+
+    #[tokio::test]
+    async fn rejected_phase_without_database_cancellation_remains_an_error() {
+        let store = RecordingStore {
+            rejected_phase: Some(JobStatus::Validating),
+            database_status: Some(JobStatus::Running),
+            ..Default::default()
+        };
+        let (_cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+        let error = execute_job(
+            &store,
+            "runner-a",
+            &NeverRuntime,
+            &NeverSandbox,
+            test_job(),
+            &mut cancel_rx,
+        )
+        .await
+        .expect_err("stale phase is not a cancellation");
+        assert!(matches!(error, RunnerError::Store(_)));
+        assert!(store.finishes.lock().expect("finishes").is_empty());
+    }
+
     fn canceled_output() -> JobResult {
         JobResult {
             stdout: Bytes::from_static(b"stdout before stop"),
@@ -1293,6 +1452,9 @@ mod tests {
     #[derive(Default)]
     struct RecordingStore {
         finishes: Mutex<Vec<RecordedFinish>>,
+        rejected_phase: Option<JobStatus>,
+        database_status: Option<JobStatus>,
+        finished_status: Option<JobStatus>,
     }
 
     struct RecordedFinish {
@@ -1319,10 +1481,14 @@ mod tests {
             _runner_id: &str,
             _attempt_id: AttemptId,
             _job_id: JobId,
-            _status: JobStatus,
+            status: JobStatus,
             _message: &str,
         ) -> Result<(), RunnerError> {
-            Ok(())
+            if self.rejected_phase == Some(status) {
+                Err(RunnerError::Store("phase update rejected".to_owned()))
+            } else {
+                Ok(())
+            }
         }
 
         async fn renew_lease(
@@ -1336,7 +1502,7 @@ mod tests {
         }
 
         async fn current_status(&self, _job_id: JobId) -> Result<Option<JobStatus>, RunnerError> {
-            Ok(None)
+            Ok(self.database_status)
         }
 
         async fn finish(
@@ -1347,7 +1513,8 @@ mod tests {
             status: JobStatus,
             result: JobResult,
             error_message: &str,
-        ) -> Result<(), RunnerError> {
+        ) -> Result<JobStatus, RunnerError> {
+            let status = self.finished_status.unwrap_or(status);
             self.finishes
                 .lock()
                 .expect("finishes")
@@ -1358,7 +1525,7 @@ mod tests {
                     runner_id: runner_id.to_owned(),
                     result,
                 });
-            Ok(())
+            Ok(status)
         }
     }
 

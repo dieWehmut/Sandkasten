@@ -14,6 +14,7 @@ use tokio::sync::watch;
 
 const JOB_EVENTS_CHANNEL: &str = "sandkasten_job_events";
 const JOB_QUEUE_CHANNEL: &str = "sandkasten_job_queue";
+const CANCELED_BEFORE_FINISH_MESSAGE: &str = "job canceled before results finalized";
 
 const DEAD_LETTER_EXPIRED_ATTEMPTS_SQL: &str = r#"
 WITH expired AS (
@@ -134,8 +135,11 @@ WHERE j.job_id = $1
 
 const FINISH_SQL: &str = r#"
 UPDATE jobs AS j
-SET status = $4::job_status,
-    error_message = $5,
+SET status = CASE WHEN j.status = 'CANCELED'::job_status THEN j.status ELSE $4::job_status END,
+    error_message = CASE
+        WHEN j.status = 'CANCELED'::job_status AND $4::job_status <> 'CANCELED'::job_status THEN $6
+        ELSE $5
+    END,
     lease_expires_at = NULL,
     finished_at = COALESCE(j.finished_at, now())
 WHERE j.job_id = $1
@@ -155,11 +159,9 @@ WHERE j.job_id = $1
           'COMPILING'::job_status,
           'RUNNING'::job_status
       )
-      OR (
-          j.status = 'CANCELED'::job_status
-          AND $4::job_status = 'CANCELED'::job_status
-      )
+      OR j.status = 'CANCELED'::job_status
   )
+RETURNING j.status::text
 "#;
 
 const INSERT_ATTEMPT_SQL: &str = r#"
@@ -450,26 +452,49 @@ impl JobStore for PgJobStore {
         status: JobStatus,
         result: JobResult,
         error_message: &str,
-    ) -> Result<(), RunnerError> {
+    ) -> Result<JobStatus, RunnerError> {
         debug_assert!(status.is_terminal());
 
         let mut tx = self.pool.begin().await.map_err(store_error)?;
-        let update = sqlx::query(FINISH_SQL)
-            .bind(job_id)
-            .bind(runner_id)
-            .bind(attempt_id)
-            .bind(status.as_db_str())
-            .bind(error_message)
-            .execute(&mut *tx)
-            .await
-            .map_err(store_error)?;
-        if update.rows_affected() == 0 {
+        // Serialize completion before taking the snapshot for the attempt guard.
+        // Otherwise two UPDATEs waiting on the same canceled job can both see
+        // the old unfinished attempt and publish its result twice.
+        let locked_job =
+            sqlx::query("SELECT job_id FROM jobs WHERE job_id = $1 AND runner_id = $2 FOR UPDATE")
+                .bind(job_id)
+                .bind(runner_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(store_error)?;
+        if locked_job.is_none() {
             return Err(StoreError::StaleLease {
                 job_id,
                 runner_id: runner_id.to_owned(),
             }
             .into());
         }
+        let status_text: Option<String> = sqlx::query_scalar(FINISH_SQL)
+            .bind(job_id)
+            .bind(runner_id)
+            .bind(attempt_id)
+            .bind(status.as_db_str())
+            .bind(error_message)
+            .bind(CANCELED_BEFORE_FINISH_MESSAGE)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(store_error)?;
+        let status_text = status_text.ok_or_else(|| StoreError::StaleLease {
+            job_id,
+            runner_id: runner_id.to_owned(),
+        })?;
+        let effective_status = JobStatus::try_from(status_text).map_err(StoreError::Status)?;
+        let error_message =
+            if effective_status == JobStatus::Canceled && status != JobStatus::Canceled {
+                CANCELED_BEFORE_FINISH_MESSAGE
+            } else {
+                error_message
+            };
+        let status = effective_status;
 
         sqlx::query(
             r#"
@@ -548,7 +573,7 @@ impl JobStore for PgJobStore {
         )
         .await?;
         tx.commit().await.map_err(store_error)?;
-        Ok(())
+        Ok(status)
     }
 }
 
@@ -856,7 +881,8 @@ mod tests {
         assert!(FINISH_SQL.contains("'COMPILING'::job_status"));
         assert!(FINISH_SQL.contains("'RUNNING'::job_status"));
         assert!(FINISH_SQL.contains("j.status = 'CANCELED'::job_status"));
-        assert!(FINISH_SQL.contains("$4::job_status = 'CANCELED'::job_status"));
+        assert!(FINISH_SQL.contains("THEN j.status ELSE $4::job_status END"));
+        assert!(FINISH_SQL.contains("RETURNING j.status::text"));
     }
 
     #[test]
