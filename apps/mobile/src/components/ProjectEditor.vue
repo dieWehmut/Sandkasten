@@ -25,7 +25,7 @@ function changeLanguage(language: string) {
 }
 </script>
 <template>
-  <div class="form-panel">
+  <div class="project-editor">
     <div class="field-pair">
       <label>项目名称<input v-model="project.name" maxlength="80" required /></label>
       <BottomPicker :model-value="project.language" label="运行时" title="选择运行时" description="选择电脑提供的运行时；已编辑的代码会保留。" icon="code" :options="runtimeOptions" @update:model-value="changeLanguage" />
@@ -33,7 +33,7 @@ function changeLanguage(language: string) {
     <label>源代码<textarea v-model="project.source" class="source-editor" rows="8" placeholder="输入要在电脑运行的源代码" autocapitalize="off" autocomplete="off" spellcheck="false" /></label>
     <details>
       <summary>输入、参数与文件</summary>
-      <div class="form-panel">
+      <div class="project-inputs">
         <label>入口文件<input v-model="project.entrypoint" :placeholder="runtimes.find(r => r.language === project.language)?.default_entrypoint || '使用运行时默认入口'" autocapitalize="off" spellcheck="false" /></label>
         <label>标准输入<textarea v-model="project.stdin" rows="2" placeholder="可选的 stdin" /></label>
         <label>运行参数（JSON 字符串数组）<input v-model="project.args" placeholder='["arg1", "arg2"]' autocapitalize="off" spellcheck="false" /></label>

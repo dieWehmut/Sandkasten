@@ -912,3 +912,52 @@ details[open] summary::before {
 .wide-shell .bottom-navigation {
   width: min(100%, 1120px);
 }
+
+/* Editors already sit inside a padded card; nested form padding wastes the
+   width of each independent workbench, especially when two share a phone. */
+.project-editor,
+.project-inputs {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.project-editor label {
+  min-width: 0;
+  margin-bottom: 0;
+}
+.project-inputs {
+  padding-top: 8px;
+}
+@media (max-width: 767px) {
+  .workbench-grid[data-columns="2"] .project-editor label,
+  .workbench-grid[data-columns="2"] .picker-label {
+    font-size: 12px;
+  }
+  .workbench-grid[data-columns="2"] .picker-trigger {
+    gap: 6px;
+    min-height: 48px;
+    padding: 10px 8px;
+  }
+  .workbench-grid[data-columns="2"] .picker-trigger .picker-trigger-icon,
+  .workbench-grid[data-columns="2"] .picker-trigger .picker-detail {
+    display: none;
+  }
+  .workbench-grid[data-columns="2"] .picker-trigger .picker-value {
+    display: block;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    text-overflow: ellipsis;
+  }
+}
+@media (max-width: 767px) {
+  .workbench-grid[data-columns="2"] .output-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workbench-grid[data-columns="2"] .output-actions button {
+    width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+  }
+}

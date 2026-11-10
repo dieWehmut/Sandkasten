@@ -27,7 +27,7 @@ async function submit() { const job = await control.submit(props.panel.project);
     <div class="workbench-scroll">
       <p v-if="control.error.value" class="error-banner" role="alert">{{ control.error.value }}</p>
       <p v-if="disconnected" class="hint">请在设置中连接这台电脑；代码草稿仍可编辑。</p>
-      <form v-if="mode === 'source'" class="pane-composer form-panel" @submit.prevent="submit">
+      <form v-if="mode === 'source'" class="pane-composer" @submit.prevent="submit">
         <ProjectEditor :project="panel.project" :runtimes="control.runtimes.value" />
         <div class="output-actions"><button type="button" class="tonal-button" @click="$emit('save')"><AppIcon name="file" />保存项目</button><button class="primary-button" :disabled="control.busy.value || disconnected || !panel.project.source.trim()"><AppIcon name="send" />运行</button></div>
         <p class="hint">草稿独立于其他工作栏；保存后可在项目页重新打开。</p>
