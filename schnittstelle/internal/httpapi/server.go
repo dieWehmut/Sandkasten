@@ -780,6 +780,7 @@ type submitResponse struct {
 type jobResponse struct {
 	JobID         string      `json:"jobId"`
 	Status        string      `json:"status"`
+	OutputReady   bool        `json:"outputReady"`
 	Language      string      `json:"language"`
 	Runtime       string      `json:"runtime"`
 	Stdout        string      `json:"stdout"`
@@ -1194,6 +1195,7 @@ func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, e
 	return jobResponse{
 		JobID:         job.GetJobId(),
 		Status:        job.GetStatus().String(),
+		OutputReady:   jobOutputReady(job),
 		Language:      job.GetLanguage(),
 		Runtime:       runtimeVersion,
 		Stdout:        stdout,
@@ -1220,6 +1222,21 @@ func jobResponseFromProto(job *pb.Job, requestedEncoding string) (jobResponse, e
 			PidsPeak:           result.GetPidsPeak(),
 		},
 	}, nil
+}
+
+// Terminal status normally commits together with the final artifact. Cancellation
+// is the exception: it first acknowledges the request and the runner stores output
+// after terminating the process. A never-leased cancellation has no runner to wait
+// for (started_at is set by the lease transaction). Other terminal jobs without an
+// artifact, such as a dead-letter SYSTEM_ERROR, will not receive further output.
+func jobOutputReady(job *pb.Job) bool {
+	if job.GetResult() != nil {
+		return true
+	}
+	if !isTerminal(job.GetStatus()) {
+		return false
+	}
+	return job.GetStatus() != pb.JobStatus_JOB_STATUS_CANCELED || job.GetStartedAt() == ""
 }
 
 func redactArtifact(body []byte) []byte {

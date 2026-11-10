@@ -124,6 +124,7 @@ func TestScanJobMapsResultDiagnostics(t *testing.T) {
 		int64(300),
 		int64(8),
 		int64(1),
+		true,
 	}, &pb.Runtime{Language: "python", Version: "3.11"})
 	if err != nil {
 		t.Fatalf("scanJob() error = %v", err)
@@ -139,6 +140,29 @@ func TestScanJobMapsResultDiagnostics(t *testing.T) {
 	}
 	if !result.GetStdoutTruncated() || result.GetStderrTruncated() {
 		t.Fatalf("truncation = stdout %v stderr %v", result.GetStdoutTruncated(), result.GetStderrTruncated())
+	}
+}
+
+func TestScanJobDistinguishesMissingAndEmptyArtifact(t *testing.T) {
+	for _, hasArtifact := range []bool{false, true} {
+		t.Run(fmt.Sprintf("hasArtifact=%t", hasArtifact), func(t *testing.T) {
+			job, err := scanJob(fakeScanner{
+				"11111111-1111-1111-1111-111111111111", "CANCELED", "python", "3.11", "main.py", `[]`,
+				uint32(1000), uint32(2000), int64(64 * 1024 * 1024), uint32(250), int64(4096), "canceled by client",
+				"2026-06-09T00:00:00Z", "2026-06-09T00:00:01Z", "2026-06-09T00:00:02Z",
+				[]byte{}, []byte{}, []byte{}, []byte{}, sql.NullInt32{}, sql.NullInt32{}, int64(0), int64(0),
+				false, false, int64(0), int64(0), int64(0), int64(0), hasArtifact,
+			}, &pb.Runtime{Language: "python", Version: "3.11"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (job.Result != nil) != hasArtifact {
+				t.Fatalf("Result presence = %t, want %t", job.Result != nil, hasArtifact)
+			}
+			if job.Status != pb.JobStatus_JOB_STATUS_CANCELED || job.StartedAt == "" {
+				t.Fatalf("cancellation lifecycle metadata was lost: %+v", job)
+			}
+		})
 	}
 }
 

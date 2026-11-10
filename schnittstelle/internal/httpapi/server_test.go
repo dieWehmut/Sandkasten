@@ -549,6 +549,45 @@ func TestGetJobReturnsAutoEncodedArtifacts(t *testing.T) {
 	}
 }
 
+func TestGetJobReportsOutputReadiness(t *testing.T) {
+	tests := []struct {
+		name   string
+		job    *pb.Job
+		ready  bool
+		stdout string
+	}{
+		{"running without artifact", &pb.Job{Status: pb.JobStatus_JOB_STATUS_RUNNING, StartedAt: "2026-11-10T00:00:00Z"}, false, ""},
+		{"canceling leased job before output arrives", &pb.Job{Status: pb.JobStatus_JOB_STATUS_CANCELED, StartedAt: "2026-11-10T00:00:00Z"}, false, ""},
+		{"canceling never leased job", &pb.Job{Status: pb.JobStatus_JOB_STATUS_CANCELED}, true, ""},
+		{"canceled job with empty completed artifact", &pb.Job{Status: pb.JobStatus_JOB_STATUS_CANCELED, StartedAt: "2026-11-10T00:00:00Z", Result: &pb.JobResult{}}, true, ""},
+		{"canceled job with final output", &pb.Job{Status: pb.JobStatus_JOB_STATUS_CANCELED, StartedAt: "2026-11-10T00:00:00Z", Result: &pb.JobResult{Stdout: []byte("before stop\n")}}, true, "before stop\n"},
+		{"dead letter has no future artifact", &pb.Job{Status: pb.JobStatus_JOB_STATUS_SYSTEM_ERROR, StartedAt: "2026-11-10T00:00:00Z", ErrorMessage: "maximum attempts exceeded"}, true, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.job.JobId = "job-1"
+			server := New(&fakeService{job: test.job}, "", nil).Handler()
+			rec := httptest.NewRecorder()
+			server.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1", nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			var body map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			// false must be explicit: absence means the server predates this field.
+			ready, present := body["outputReady"]
+			if !present || ready != test.ready {
+				t.Fatalf("outputReady = %v, present = %t, want %t", ready, present, test.ready)
+			}
+			if body["stdout"] != test.stdout {
+				t.Fatalf("stdout = %q, want %q", body["stdout"], test.stdout)
+			}
+		})
+	}
+}
+
 func TestGetJobCanForceBase64Artifacts(t *testing.T) {
 	service := &fakeService{
 		job: &pb.Job{

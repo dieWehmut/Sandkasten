@@ -188,7 +188,8 @@ func (r *Repository) GetJob(ctx context.Context, jobID string) (*pb.Job, error) 
 			COALESCE(a.cpu_usage_usec, 0),
 			COALESCE(a.cpu_throttled_usec, 0),
 			COALESCE(a.pids_peak, 0),
-			COALESCE(a.memory_oom_kill_count, 0)
+			COALESCE(a.memory_oom_kill_count, 0),
+			a.job_id IS NOT NULL
 		FROM jobs j
 		LEFT JOIN job_artifacts a ON a.job_id = j.job_id
 		WHERE j.job_id = $1::uuid
@@ -415,6 +416,7 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 	var cpuThrottledUsec int64
 	var pidsPeak int64
 	var memoryOomKillCount int64
+	var hasArtifact bool
 
 	result := &pb.JobResult{}
 	err := row.Scan(
@@ -447,6 +449,7 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 		&cpuThrottledUsec,
 		&pidsPeak,
 		&memoryOomKillCount,
+		&hasArtifact,
 	)
 	if err != nil {
 		return nil, err
@@ -469,7 +472,12 @@ func scanJob(row scanner, runtime *pb.Runtime) (*pb.Job, error) {
 	result.CpuThrottledUsec = int64ToUint64(cpuThrottledUsec)
 	result.PidsPeak = int64ToUint64(pidsPeak)
 	result.MemoryOomKillCount = int64ToUint64(memoryOomKillCount)
-	job.Result = result
+	// A LEFT JOIN filled with COALESCE values is not an empty, completed
+	// artifact. In particular, cancellation changes status before the runner
+	// finishes terminating the process and writes its final output.
+	if hasArtifact {
+		job.Result = result
+	}
 	job.Runtime = cloneRuntime(runtime)
 	job.Runtime.Language = job.Language
 	job.Runtime.Version = runtimeVersion
