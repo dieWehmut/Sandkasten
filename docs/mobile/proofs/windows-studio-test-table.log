@@ -1,0 +1,22 @@
+TABLE_MODEL rows=6 columns=3 model=com.intellij.ui.treeStructure.treetable.TreeTableModelAdapter bounds=java.awt.Rectangle[x=0,y=0,width=570,height=144] showing=true
+ TABLE_COLUMN 0 name=Tests width=360
+ TABLE_COLUMN 1 name=Duration width=90
+ TABLE_COLUMN 2 name=Sandkasten_Windows_API37 width=120
+ TABLE_CELL row=0 column=0 selected=false rendererText=Test Results, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AggregationRow modelValue=
+ TABLE_CELL row=0 column=1 selected=false rendererText=20 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AggregationRow modelValue=
+ TABLE_CELL row=0 column=2 selected=false rendererText=4/4 valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=4, failed=0, skipped=0, running=0, cancelled=0)
+ TABLE_CELL row=1 column=0 selected=false rendererText=NativeBridgeTest, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AggregationRow modelValue=
+ TABLE_CELL row=1 column=1 selected=false rendererText=20 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AggregationRow modelValue=
+ TABLE_CELL row=1 column=2 selected=false rendererText=4/4 valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=4, failed=0, skipped=0, running=0, cancelled=0)
+ TABLE_CELL row=2 column=0 selected=false rendererText=nativeHttpCanReachCleartextServerWithBearerHeaderWithoutCors, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=2 column=1 selected=false rendererText=5 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=2 column=2 selected=false rendererText=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0) valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0)
+ TABLE_CELL row=3 column=0 selected=false rendererText=systemBackReturnsFromThemeToSettingsWithoutLeavingActivity, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=3 column=1 selected=false rendererText=3 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=3 column=2 selected=false rendererText=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0) valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0)
+ TABLE_CELL row=4 column=0 selected=false rendererText=credentialsSurviveRecreationAndAreEncryptedAtRest, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=4 column=1 selected=false rendererText=5 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=4 column=2 selected=false rendererText=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0) valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0)
+ TABLE_CELL row=5 column=0 selected=false rendererText=themeChangesAllSurfacesAndSurvivesActivityRecreation, test passed valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=5 column=1 selected=false rendererText=5 s valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestResultsRow modelValue=
+ TABLE_CELL row=5 column=2 selected=false rendererText=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0) valueClass=com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResultStats modelValue=AndroidTestResultStats(passed=1, failed=0, skipped=0, running=0, cancelled=0)

@@ -13,13 +13,14 @@
 | 桌面预览与参考样式 | 1280×900，33 项页面/截图检查通过；Orchester 与当前 164 条共有 CSS 规则及六主题定义一致；[桌面结果](proofs/browser-desktop.json)、[参考比较](proofs/reference-style.json) |
 | Go API / Postgres | `go test ./... -count=1` 通过，包含隔离真实 Postgres 的输出就绪契约测试；[日志](proofs/go-tests.log) |
 | Rust 取消修复 | core 18 + store 8 + sandbox 30 项测试通过；实进程 stdout/stderr 保留、进程及后代回收；真实 PostgreSQL 并发取消/完成、旧轮次与重复写入测试通过；workspace check 与 clippy 通过；[测试](proofs/runner-tests.log)、[并发](proofs/runner-postgres-races.log)、[clippy](proofs/runner-clippy.log) |
-| Android 包 | SDK 36 / JDK 21；debug APK、测试 APK 和 lint 构建通过，CI lint 0 errors / 25 warnings，本机 IDE lint 0 errors / 26 warnings；两份包内 5 个 Web 资源与 `dist` 字节一致；[lint](proofs/android-lint.json)、[包身份](proofs/ci-apk.json) |
+| Android 包 | SDK 36 / JDK 21；debug APK、测试 APK 和 lint 构建通过，CI lint 0 errors / 25 warnings，WSL/Linux IDE lint 0 errors / 26 warnings；两份包内 5 个 Web 资源与 `dist` 字节一致；[lint](proofs/android-lint.json)、[包身份](proofs/ci-apk.json) |
 | 原生安装测试 | CLI 构建包 `db07d75c…` 在 Android 16 / API 36 模拟器，Keystore、原生 HTTP bearer、六主题窗口/重建、系统返回四项通过；从设备读取的安装包哈希与构建一致；[记录](proofs/local-native-tests.json)、[日志](proofs/native-tests.log) |
-| 本机 Android Studio | Rabbit 2 / 2026.2.2 Patch 1，工程真实同步、最新源码 IDE Build、Run 安装并启动通过；最终 IDE 安装包 `2bbd3004…` 与设备包哈希一致，四项原生测试通过，41.624 秒，包含旧 Web 缓存被原生主题恢复的回归；[记录](proofs/studio-acceptance.json)、[IDE 日志](proofs/studio-ide.log)、[原生测试](proofs/studio-native-tests.log) |
+| WSL/Linux Android Studio | Rabbit 2 / 2026.2.2 Patch 1，工程真实同步、最新源码 IDE Build、Run 安装并启动通过；IDE 安装包 `2bbd3004…` 与设备包哈希一致，在该安装包上通过 ADB AndroidJUnitRunner 执行四项原生测试，41.624 秒，包含旧 Web 缓存被原生主题恢复的回归；[记录](proofs/studio-acceptance.json)、[IDE 日志](proofs/studio-ide.log)、[原生测试](proofs/studio-native-tests.log) |
+| Windows Android Studio | Windows 11 / Rabbit 2，IDE 同步、Build/Run 构建安装启动通过；Windows Android 17 / API 37 模拟器中从 IDE 运行原生四测，4 passed / 0 failed / 0 skipped，JUnit 22.273 秒；包 `484d281a…` 与设备包哈希一致，Run 面板保留打开；[记录](proofs/windows-studio-acceptance.json)、[JUnit](proofs/windows-native-tests.xml)、[IDE 测试历史](proofs/windows-studio-test-history.xml)、[IDE 日志](proofs/windows-studio-ide.log) |
 | 软键盘与真实触摸 | 同一 CSS 的安装包上，ADB 点击源码并滑动页面/两栏，键盘保持显示时四个保存/运行按钮均命中且完整可见；真实点击保存写入本机项目；[记录](proofs/keyboard-acceptance.json)、[布局](proofs/keyboard-layout.json) |
 | Go 自定义入口 | 最终 API + 本机真实运行器，`tool.go` 和 `cmd/echo.go` 均成功执行并返回精确 stdout，保留路径返回 400；[任务 ID 与结果](proofs/local-custom-go.json) |
 | 本机强退恢复 | CLI 构建包 `db07d75c…` 连续三次强退重启；Keystore 自动连接、58 个真实运行时、选中任务及输出、四工作栏、四导航、珊瑚主题与单栏偏好均恢复；[结果](proofs/local-restarts.json) |
-| 最终包快速强退 | IDE 安装包 `2bbd3004…` 通过实际界面由琥珀切换珊瑚，确认原生保存后立即返回并强退重启，主题、工作栏与布局恢复一致，0 JS 错误；[记录](proofs/studio-theme-restart.json) |
+| WSL/Linux IDE 包快速强退 | IDE 安装包 `2bbd3004…` 通过实际界面由琥珀切换珊瑚，确认原生保存后立即返回并强退重启，主题、工作栏与布局恢复一致，0 JS 错误；[记录](proofs/studio-theme-restart.json) |
 | 真实 cgroup 取消 | 特权 Linux 环境，取消前 stdout/stderr、执行统计、进程及后代回收全部通过，1 passed / 0 ignored；[日志](proofs/privileged-cancellation.log) |
 | 真实安装版 E2E | 最终 CI 全部通过：Python stdin/参数/文件、Go 自定义入口编译错误、停止并保留最终输出、Keystore/主题/单栏/工作栏/输出强退恢复；4 项综合检查、37 张原生截图、0 JS 错误与水平溢出；[安装版结果](proofs/native-e2e.json)、[真实 API 任务](proofs/native-api-jobs.json)、[CI 原生四测](proofs/ci-native-tests.log) |
 
@@ -40,15 +41,36 @@
 
 ![键盘与双栏操作](proofs/native-keyboard.jpg)
 
-本机 Android Studio 的 IDE 构建与安装，以及对应安装包显示的真实 Python 输出：
+WSL/Linux Android Studio 的 IDE 构建与安装，以及对应安装包显示的真实 Python 输出：
 
-![Android Studio 构建与安装](proofs/studio-build-run.jpg)
-![IDE 安装包的真实输出](proofs/studio-output.jpg)
+![WSL/Linux Android Studio 构建与安装](proofs/studio-build-run.jpg)
+![WSL/Linux IDE 安装包的真实输出](proofs/studio-output.jpg)
 
 完整 CI 安装版的六主题与远程执行结果：
 
 ![安装版六主题](proofs/native-six-themes.jpg)
 ![真实运行、编译错误、取消输出和恢复](proofs/native-execution.jpg)
+
+## Windows Studio 独立验收
+
+现有 `studio-acceptance.json`、`studio-ide.log`、`studio-native-tests.log` 和 Studio 截图来自 WSL/Linux 环境，工程路径为 `/home/han/project/Sandkasten/apps/mobile/android`，SDK 为 `/home/han/Android/Sdk`。其中 IDE 执行 Build/Run，原生四测由 ADB AndroidJUnitRunner 执行。
+
+Windows 验收使用 Windows 版 Android Studio，在 Windows 文件系统打开 `apps\mobile\android`。本轮独立工程为 `C:\Users\han\AppData\Local\Temp\Sandkasten-android-studio-20261110-7ef80b2\apps\mobile\android`，SDK 为 `C:\Users\han\AppData\Local\Android\Sdk`，Gradle JDK 为 JDK 21。工程的 `compileSdk` / `targetSdk` 为 36；Windows 当前 API 37 模拟器可作为测试运行设备，结果按实际设备 API 级别记录。
+
+仓库已加入[共享配置](../../apps/mobile/android/.run/Sandkasten%20NativeBridgeTest.run.xml) `Sandkasten NativeBridgeTest`。本轮 Windows Studio 实际加载该配置，模块为 `android.app`，通过 IDE Run 按钮执行 `:app:connectedDebugAndroidTest`；Windows 独立模拟器 `Sandkasten_Windows_API37` / `emulator-5560` 四项全部通过，JUnit 耗时 22.273 秒。JUnit XML、IDE 测试历史、Run 表格中的绿色结果一致；测试涵盖 Keystore 加密与重建、原生 HTTP bearer、系统返回、六主题窗口和旧 Web 缓存恢复。
+
+Windows IDE 构建 APK 的 SHA-256 为 `484d281a24bba213793c58a0a03130c8bc7df4601e57ed254386b9ce094043d9`，设备安装包逐字节一致，5 个 Web 资源与本次 `dist` 一致。测试使用本机 fixture；真实远程执行和取消的证据仍分别来自上述 WSL/Linux 与 CI 验收。
+
+IDE 的 Run 面板保留 `Sandkasten NativeBridgeTest` / `4 passed`。测试运行器完成后会清理安装包，随后用 Windows ADB 重装同一 IDE 测试包并启动，保留模拟器中的 Sandkasten 控制台。工程与原生源码来自 `7ef80b2`，共享运行配置提交为 `4947f40`，本次仅增加 IDE 测试入口与验收记录。
+
+以下是 Windows Studio 当前 Swing 组件的实际画面；测试表格的表头与正文按原始尺寸拼接，完整方法名与结果另保存在[表格记录](proofs/windows-studio-test-table.log)。
+
+![Windows Studio Run 面板](proofs/windows-studio-run.png)
+![Windows Studio 原生四测结果](proofs/windows-studio-tests.png)
+
+对应的 Windows 模拟器[应用画面](proofs/windows-app.png)与[包身份记录](proofs/windows-studio-acceptance.json)单独保存。
+
+配置尚未显示时，在 Project 面板打开 `app/src/androidTest/java/dev/sandkasten/mobile/NativeBridgeTest.java`，点击类名左侧运行箭头运行该测试类。也可在 Run → Edit Configurations 新建 `Android Instrumented Tests`，Module 选择 app 对应模块，Test 选择 Class，类名填写 `dev.sandkasten.mobile.NativeBridgeTest`。
 
 ## 真实服务与复验
 

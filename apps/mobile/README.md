@@ -33,9 +33,17 @@ adb shell am start -n dev.sandkasten.mobile/.MainActivity
 
 ## 本机验证
 
-在 Android Studio 打开 `apps/mobile/android`，Gradle JDK 选择 JDK 21，等待同步完成。选择 `app` 配置和 Android API 36 模拟器，使用 IDE 的 Build 与 Run 按钮构建、安装并启动。测试前运行 `npm run build` 和 `npm run sync`，让 IDE 使用最新 Web 资源。安装后可在四个导航页检查主题、项目、运行输出、系统返回及重启恢复。
+既有 [Studio 验收证据](../../docs/mobile/acceptance.md) 来自 WSL/Linux 版 Android Studio：IDE 完成 Build/Run，安装包上的原生四测由 ADB AndroidJUnitRunner 执行。Windows 版 Android Studio 的 IDE 测试结果单独记录。
 
-Vitest 使用隔离 HTTP/凭据 fixture 覆盖请求契约、多设备与草稿隔离、异步重连、取消输出补取和本机恢复。原生测试使用安装版 WebView 验证 Keystore 加密、凭据重建、HTTP bearer 请求、主题与系统返回：
+Windows 验证时，在 Windows 仓库的 `apps\mobile` 目录运行 `npm ci`、`npm run build` 和 `npm run sync`，然后用 Windows 版 Android Studio 打开该仓库的 `apps\mobile\android`。Gradle JDK 选择 JDK 21，SDK 指向 Windows SDK（通常为 `%LOCALAPPDATA%\Android\Sdk`），安装 Android SDK 36 / Build Tools 36.0.0 并等待同步完成。工程 `compileSdk` / `targetSdk` 为 36；运行设备可选 API 36 或更高，本机现有 Windows API 37 模拟器可用于此项验证。
+
+选择 `app` 配置和对应模拟器，使用 IDE 的 Build 与 Run 按钮构建、安装并启动。安装后可在四个导航页检查主题、项目、运行输出、系统返回及重启恢复。
+
+要让原生测试结果显示在 IDE 中，选择仓库中的[共享配置](android/.run/Sandkasten%20NativeBridgeTest.run.xml) `Sandkasten NativeBridgeTest` 和模拟器，点击 Run，在 Run 面板查看四个测试的测试树和控制台结果。本轮 Windows Studio 在 API 37 模拟器上四项全部通过，结果与截图见[独立验收](../../docs/mobile/acceptance.md#windows-studio-独立验收)。
+
+配置尚未显示时，在 Project 面板打开 `app/src/androidTest/java/dev/sandkasten/mobile/NativeBridgeTest.java`，点击类名左侧绿色运行箭头运行 `NativeBridgeTest`。也可通过 Run → Edit Configurations → 新建 `Android Instrumented Tests`，Module 选择 app 对应模块，Test 选择 Class，填写 `dev.sandkasten.mobile.NativeBridgeTest`。
+
+Vitest 使用隔离 HTTP/凭据 fixture 覆盖请求契约、多设备与草稿隔离、异步重连、取消输出补取和本机恢复。原生测试使用安装版 WebView 验证 Keystore 加密、凭据重建、HTTP bearer 请求、主题与系统返回。以下命令用于 WSL/Linux 的原生命令行验证：
 
 ```bash
 cd apps/mobile

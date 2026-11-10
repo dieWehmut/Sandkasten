@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="dev.sandkasten.mobile.NativeBridgeTest" tests="4" failures="0" errors="0" skipped="0" time="22.273" timestamp="2026-11-10T06:54:16" hostname="localhost">
+  <properties>
+    <property name="device" value="Sandkasten_Windows_API37(AVD) - 17" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="nativeHttpCanReachCleartextServerWithBearerHeaderWithoutCors" classname="dev.sandkasten.mobile.NativeBridgeTest" time="5.332" />
+  <testcase name="systemBackReturnsFromThemeToSettingsWithoutLeavingActivity" classname="dev.sandkasten.mobile.NativeBridgeTest" time="3.845" />
+  <testcase name="credentialsSurviveRecreationAndAreEncryptedAtRest" classname="dev.sandkasten.mobile.NativeBridgeTest" time="5.629" />
+  <testcase name="themeChangesAllSurfacesAndSurvivesActivityRecreation" classname="dev.sandkasten.mobile.NativeBridgeTest" time="5.442" />
+</testsuite>

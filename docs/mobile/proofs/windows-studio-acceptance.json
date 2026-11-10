@@ -1,0 +1,152 @@
+{
+  "date": "2026-11-10",
+  "sourceArchiveCommit": "7ef80b2e5ebda28da23176b4b3183526718a0675",
+  "sharedRunConfigurationCommit": "4947f40af523692c2953107a1ffcfe86e3cd8f63",
+  "project": "C:/Users/han/AppData/Local/Temp/Sandkasten-android-studio-20261110-7ef80b2/apps/mobile/android",
+  "ide": {
+    "os": "Windows 11",
+    "version": "Android Studio Rabbit 2 | 2026.2.2 Patch 1",
+    "build": "AI-262.10968.63.2622.16840690",
+    "bundledJbr": "25.0.4",
+    "pid": 38392
+  },
+  "build": {
+    "jdk": "Temurin 21.0.13+9",
+    "gradle": "8.14.3",
+    "compileSdk": 36,
+    "targetSdk": 36,
+    "ideSyncPassed": true,
+    "ideAppBuildInstallLaunchPassed": true
+  },
+  "device": {
+    "avd": "Sandkasten_Windows_API37",
+    "serial": "emulator-5560",
+    "androidRelease": "17",
+    "api": 37,
+    "emulatorVersion": "37.2.13.0"
+  },
+  "instrumentation": {
+    "origin": "Windows IDE Run button; Gradle Tooling API connectedDebugAndroidTest",
+    "configuration": "Sandkasten NativeBridgeTest",
+    "module": "android.app",
+    "configurationSha256": "cf98207a542a477a456f446a4898fb7c89fbc8bd227c1ad2eac9f4e3a7041fb9",
+    "tests": 4,
+    "passed": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junitSuiteSeconds": 22.273,
+    "timestampUtc": "2026-11-10T06:54:16",
+    "studioHistoryDurationMillis": 20262,
+    "methods": [
+      "nativeHttpCanReachCleartextServerWithBearerHeaderWithoutCors",
+      "systemBackReturnsFromThemeToSettingsWithoutLeavingActivity",
+      "credentialsSurviveRecreationAndAreEncryptedAtRest",
+      "themeChangesAllSurfacesAndSurvivesActivityRecreation"
+    ],
+    "scope": "Keystore, local authenticated HTTP, system back, themes and activity recreation"
+  },
+  "apk": {
+    "applicationId": "dev.sandkasten.mobile",
+    "sha256": "484d281a24bba213793c58a0a03130c8bc7df4601e57ed254386b9ce094043d9",
+    "installedSha256": "484d281a24bba213793c58a0a03130c8bc7df4601e57ed254386b9ce094043d9",
+    "testApkSha256": "b51245db9107bcc3241c5b8113bba6960cc1806ca21cff4dcc83461024b8203b",
+    "size": 5607617,
+    "webAssetsMatchDist": true,
+    "webAssets": [
+      {
+        "path": "assets/brand-icon-Bbc95uN0.png",
+        "sha256": "4b9d5d9b8a98418b1193c3d41af0ba38c3da0d48ef73a53c5d6fb4afce494a9f"
+      },
+      {
+        "path": "assets/index-7TpPr4Sl.js",
+        "sha256": "8d51c3d7abd711f6465d418e48726a7ba4b553743df564dab3f9bae50e2f0cf3"
+      },
+      {
+        "path": "assets/index-DJgWYt1_.css",
+        "sha256": "eeb818e15323c5b9cd1e703226140c059336556ab86c1e0c3716b16d52e57985"
+      },
+      {
+        "path": "favicon.png",
+        "sha256": "5c48b08718de522e601b5a907ed4cd306df764878c6647da79fe35772b813845"
+      },
+      {
+        "path": "index.html",
+        "sha256": "6ff69a968eddad3f0e9afc18418ecd06d2e945fc4e170f23a2ae081840c5c355"
+      }
+    ],
+    "nativeSourcesMatchRepository": true,
+    "nativeSourceFiles": [
+      {
+        "path": "app/src/androidTest/java/dev/sandkasten/mobile/NativeBridgeTest.java",
+        "sha256": "902880bb9c49a4e09b1a9080fd0852d72f164b2c3f30e4c22a8453bfe93e0629"
+      },
+      {
+        "path": "app/src/main/java/dev/sandkasten/mobile/AppearancePlugin.java",
+        "sha256": "e504cad9f0cb9a7685e9f718b9f994db79794e98b16957d4845a5d59a9f2a4bd"
+      },
+      {
+        "path": "app/src/main/java/dev/sandkasten/mobile/CredentialsPlugin.java",
+        "sha256": "bf78a49740c5909bd4ff7610320efb144f6e6675ef44b39dfe3ae3b48560a510"
+      },
+      {
+        "path": "app/src/main/java/dev/sandkasten/mobile/MainActivity.java",
+        "sha256": "a2e86ac64bdeab0e7b652e047fdec89cdfb07ecbcb08017d8f64ceabc58da0b6"
+      }
+    ]
+  },
+  "leftOpen": {
+    "runPanel": "Sandkasten NativeBridgeTest; 4 passed",
+    "application": "Sandkasten console on emulator-5560",
+    "appRestoreAfterTests": "adb install -r -t of identical IDE-built tested APK"
+  },
+  "imageCapture": {
+    "studioFrame": "Actual Windows IDE Swing frame printAll, unmodified",
+    "testTable": "Current Windows IDE Swing table header/body printAll, combined vertically at original sizes",
+    "app": "Windows adb screencap from emulator-5560"
+  },
+  "evidence": [
+    {
+      "path": "windows-native-tests.xml",
+      "sha256": "f815d4b978b40f967a2125f3ab26a3da172601d15a7f847a0df0f76d73c19d86",
+      "bytes": 980
+    },
+    {
+      "path": "windows-studio-test-history.xml",
+      "sha256": "6aef19a6e24a6f2904ad2a8e928d84713d58f638967a4b0ba7edd89780b5db3b",
+      "bytes": 392210
+    },
+    {
+      "path": "windows-studio-test-table.log",
+      "sha256": "15035b5fba6e919e1291568743c5c47575f610e4a0df5b4353457b77e772ad36",
+      "bytes": 4391
+    },
+    {
+      "path": "windows-studio-ide.log",
+      "sha256": "0212b1e00a2a620a92ef0878c5ce32db871361be0f703c4623d0c57170a2da74",
+      "bytes": 13531
+    },
+    {
+      "path": "windows-studio-run.png",
+      "sha256": "863ac086dcfa40167cc01853a9615d71ad5a8c87cf569e81a7e196a20f672d9e",
+      "bytes": 45016
+    },
+    {
+      "path": "windows-studio-tests.png",
+      "sha256": "8c15f275ab57834dcb7f45fabee8b3cb0eb2c34a4c4fc0ba5faada72c4359d4a",
+      "bytes": 16327
+    },
+    {
+      "path": "windows-app.png",
+      "sha256": "49fe3065ddc2b2574e335583f2a464c2b327b074540b4f64069894e5479c4af7",
+      "bytes": 77897
+    }
+  ],
+  "artifactNormalization": {
+    "windowsXml": "CRLF to LF only",
+    "originalWindowsXmlSha256": {
+      "windows-native-tests.xml": "cf5922323dde0107f3b15d6b95b6ce7ca52b6890dbf863c35a2f76c33777e6a4",
+      "windows-studio-test-history.xml": "c9df5de6cff42cefbe63ac2a92dcfb7fc4137b72bd187f606439b2d2222df5e6"
+    }
+  }
+}
