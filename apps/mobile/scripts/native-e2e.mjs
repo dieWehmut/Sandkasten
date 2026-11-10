@@ -50,7 +50,7 @@ async function screenshot(name, target) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${name}: horizontal overflow`);
 }
 const nav = name => page.locator('nav[aria-label="主导航"]').getByRole('button', { name, exact: true }).click();
-async function createProject(name, language, source, advanced = false) {
+async function createProject(name, language, source, advanced = false, entrypoint = '') {
   await nav('项目');
   await page.getByRole('button', { name: '新建项目', exact: true }).click();
   await page.getByLabel('项目名称', { exact: true }).fill(name);
@@ -58,8 +58,9 @@ async function createProject(name, language, source, advanced = false) {
   await page.getByRole('option').filter({ has: page.locator('.picker-option-label', { hasText: new RegExp(`^${language}$`) }) }).click();
   await until(() => page.locator('.picker-overlay[open]').count().then(count => count === 0), 'runtime picker closed');
   await page.getByLabel('源代码', { exact: true }).fill(source);
+  if (advanced || entrypoint) await page.getByText('输入、参数与文件', { exact: true }).click();
+  if (entrypoint) await page.getByLabel('入口文件', { exact: true }).fill(entrypoint);
   if (advanced) {
-    await page.getByText('输入、参数与文件', { exact: true }).click();
     await page.getByLabel('标准输入', { exact: true }).fill('mobile input\n');
     await page.getByLabel('运行参数（JSON 字符串数组）', { exact: true }).fill('["arg-value"]');
     await page.getByRole('button', { name: '添加文本文件', exact: true }).click();
@@ -100,10 +101,10 @@ try {
   await record('stdin, args and uploaded text file', python, '已完成');
   assert.ok((await python.locator('.source-output').innerText()).includes('mobile input|arg-value|file-value'));
   await screenshot('python-output', python);
-  const go = await createProject(`Android Go ${suffix}`, 'go', 'package main\nfunc main(){ invalidsyntax }\n');
+  const go = await createProject(`Android Go ${suffix}`, 'go', 'package main\nfunc main(){ invalidsyntax }\n', false, 'tool.go');
   await run(go);
   await record('real compiler error', go, '编译失败');
-  assert.ok((await go.locator('.source-output').innerText()).trim().length > 0);
+  assert.ok((await go.locator('.source-output').innerText()).includes('invalidsyntax'), 'compiler reads the custom Go entrypoint');
   await screenshot('compiler-error', go);
   await python.getByRole('button', { name: '代码', exact: true }).click();
   await python.getByLabel('源代码', { exact: true }).fill('import time\nprint("before stop",flush=True)\ntime.sleep(25)\nprint("must not run")\n');
