@@ -1,7 +1,10 @@
 import { readonly, ref } from "vue";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
-const nativeAppearance = registerPlugin<{ set(options: { theme: string }): Promise<void> }>("Appearance");
+const nativeAppearance = registerPlugin<{
+  get(): Promise<{ theme: string | null }>;
+  set(options: { theme: string }): Promise<void>;
+}>("Appearance");
 
 export type ThemeId = "coral" | "rose" | "sea" | "forest" | "indigo" | "amber";
 
@@ -164,29 +167,78 @@ function applyTheme(selected: AppearanceTheme) {
   root.style.setProperty("color-scheme", "dark");
   root.setAttribute("data-theme", selected.id);
   document.querySelector?.('meta[name="theme-color"]')?.setAttribute("content", tokens.background);
-  if (Capacitor.isNativePlatform()) {
-    // The native overlay keeps system bars colored even when Capacitor resets them.
-    void nativeAppearance.set({ theme: selected.id }).catch(() => {});
+}
+
+function cacheTheme(selected: AppearanceTheme) {
+  try {
+    localStorage.setItem(STORAGE_KEY, selected.id);
+  } catch {
+    // Android restores from native preferences; browser selection still works.
   }
 }
 
 export function useAppearance() {
+  const native = Capacitor.isNativePlatform();
   const initial = savedTheme();
   const theme = ref<ThemeId>(initial.id);
+  const ready = ref(!native);
+  const error = ref("");
+  let selectionVersion = 0;
   applyTheme(initial);
 
-  function setTheme(id: string) {
-    const selected = THEMES.find((entry) => entry.id === id);
-    if (!selected) return;
-    theme.value = selected.id;
-    applyTheme(selected);
-    try {
-      // Only the appearance preference belongs in browser storage.
-      localStorage.setItem(STORAGE_KEY, selected.id);
-    } catch {
-      // Theme changes still apply when preference storage is unavailable.
+  function markReady(value: boolean) {
+    ready.value = value;
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-appearance-ready", String(value));
     }
   }
+  markReady(!native);
 
-  return { theme: readonly(theme), themes: THEMES, setTheme };
+  async function initialize() {
+    if (!native) return;
+    try {
+      const saved = await nativeAppearance.get();
+      if (selectionVersion !== 0) return;
+      const restored = THEMES.find((entry) => entry.id === saved.theme);
+      const selected = restored ?? initial;
+      // A WebView localStorage write may not survive immediate process death.
+      // Native preferences are authoritative once a theme has been committed.
+      if (!restored) await nativeAppearance.set({ theme: selected.id });
+      if (selectionVersion !== 0) return;
+      theme.value = selected.id;
+      applyTheme(selected);
+      cacheTheme(selected);
+      markReady(true);
+    } catch {
+      if (selectionVersion === 0) error.value = "无法读取已保存的主题，请重新选择";
+    }
+  }
+  const initialized = initialize();
+  let writes = initialized;
+
+  function setTheme(id: string): Promise<void> {
+    const selected = THEMES.find((entry) => entry.id === id);
+    if (!selected) return Promise.resolve();
+    const version = ++selectionVersion;
+    theme.value = selected.id;
+    applyTheme(selected);
+    cacheTheme(selected);
+    error.value = "";
+    markReady(!native);
+    if (!native) return Promise.resolve();
+
+    // Serialize durable writes so an earlier selection cannot overwrite a later
+    // one. Readiness describes the latest selection, never an older completion.
+    writes = writes.then(async () => {
+      try {
+        await nativeAppearance.set({ theme: selected.id });
+        if (version === selectionVersion) markReady(true);
+      } catch {
+        if (version === selectionVersion) error.value = "主题未能保存，请重新选择";
+      }
+    });
+    return writes;
+  }
+
+  return { theme: readonly(theme), themes: THEMES, ready: readonly(ready), error: readonly(error), initialized, setTheme };
 }

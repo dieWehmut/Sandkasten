@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -70,11 +71,28 @@ public class AppearancePlugin extends Plugin {
     @Override public void load() { restore(); }
     @Override protected void handleOnConfigurationChanged(Configuration configuration) { restore(); }
 
+    @PluginMethod public void get(PluginCall call) {
+        try {
+            String theme = getContext().getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString("theme", null);
+            JSObject result = new JSObject();
+            result.put("theme", theme != null && overlay(theme) != 0 ? theme : org.json.JSONObject.NULL);
+            call.resolve(result);
+        } catch (RuntimeException error) { call.reject("Unable to read appearance preference"); }
+    }
+
     @PluginMethod public void set(PluginCall call) {
         String theme = call.getString("theme", "");
         if (overlay(theme) == 0) { call.reject("Unknown theme"); return; }
+        // Capacitor invokes plugin methods on its background handler. Commit
+        // there before acknowledging the selection; apply() can lose the latest
+        // preference when Android force-stops the process immediately afterward.
+        try {
+            if (!getContext().getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putString("theme", theme).commit()) {
+                call.reject("Unable to save appearance preference");
+                return;
+            }
+        } catch (RuntimeException error) { call.reject("Unable to save appearance preference"); return; }
         getBridge().executeOnMainThread(() -> {
-            getContext().getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putString("theme", theme).apply();
             apply(getActivity(), getBridge().getWebView(), theme);
             call.resolve();
         });

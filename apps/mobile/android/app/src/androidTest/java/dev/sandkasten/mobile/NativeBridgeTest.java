@@ -46,6 +46,7 @@ public class NativeBridgeTest {
                 int[] colors = {Color.rgb(27, 17, 14), Color.rgb(26, 17, 23), Color.rgb(14, 24, 26), Color.rgb(17, 24, 17), Color.rgb(18, 19, 30), Color.rgb(27, 22, 12)};
                 for (int index = 0; index < themes.length; index++) {
                     evaluate(app, "document.querySelectorAll('.theme-option')[" + index + "].click()");
+                    awaitAppearanceReady(app);
                     assertEquals(JSONObject.quote(themes[index]), evaluate(app, "document.documentElement.dataset.theme"));
                     awaitNativeBackground(app, colors[index]);
                     // Exercise the exact reset that previously replaced dark insets with white.
@@ -53,18 +54,32 @@ public class NativeBridgeTest {
                     awaitNativeBackground(app, colors[index]);
                 }
                 evaluate(app, "document.querySelectorAll('.theme-option')[2].click()");
+                awaitAppearanceReady(app);
                 assertEquals("\"sea\"", evaluate(app, "document.documentElement.dataset.theme"));
                 assertEquals("\"#0e181a\"", evaluate(app, "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"));
                 assertEquals("\"sea\"", evaluate(app, "localStorage.getItem('sandkasten.theme')"));
+                // Model a WebView disk cache that lagged behind the acknowledged
+                // native commit. Recreating must restore the native preference.
+                evaluate(app, "localStorage.setItem('sandkasten.theme','amber')");
                 app.recreate();
                 awaitBridge(app);
                 assertEquals("\"sea\"", evaluate(app, "document.documentElement.dataset.theme"));
+                assertEquals("\"sea\"", evaluate(app, "localStorage.getItem('sandkasten.theme')"));
                 awaitNativeBackground(app, Color.rgb(14, 24, 26));
             } finally {
                 evaluate(app, previous.equals("null") ? "localStorage.removeItem('sandkasten.theme')" : "localStorage.setItem('sandkasten.theme'," + previous + ")");
                 call(app, "Capacitor.Plugins.Appearance.set({theme:" + initialTheme + "})");
             }
         }
+    }
+
+    private void awaitAppearanceReady(ActivityScenario<MainActivity> app) throws Exception {
+        long deadline = SystemClock.elapsedRealtime() + 10000;
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (evaluate(app, "document.documentElement.dataset.appearanceReady === 'true'").equals("true")) return;
+            Thread.sleep(30);
+        }
+        fail("Theme preference was not durably saved");
     }
 
     private void awaitNativeBackground(ActivityScenario<MainActivity> app, int expected) throws Exception {
@@ -189,7 +204,7 @@ public class NativeBridgeTest {
     private void awaitBridge(ActivityScenario<MainActivity> app) throws Exception {
         long deadline = SystemClock.elapsedRealtime() + 30000;
         while (SystemClock.elapsedRealtime() < deadline) {
-            if (evaluate(app, "Boolean(window.Capacitor?.Plugins?.Credentials && window.Capacitor?.Plugins?.Appearance && window.Capacitor?.Plugins?.CapacitorHttp && document.querySelector('#app')?.textContent && !document.querySelector('.launch-screen'))").equals("true")) return;
+            if (evaluate(app, "Boolean(window.Capacitor?.Plugins?.Credentials && window.Capacitor?.Plugins?.Appearance && window.Capacitor?.Plugins?.CapacitorHttp && document.querySelector('#app')?.textContent && !document.querySelector('.launch-screen') && document.documentElement.dataset.appearanceReady === 'true')").equals("true")) return;
             SystemClock.sleep(100);
         }
         fail("Packaged app did not register its native bridge within 30 seconds");

@@ -17,7 +17,7 @@ import BottomPicker, { type PickerOption } from './components/BottomPicker.vue';
 import brandIcon from './assets/brand-icon.png';
 const fleet = useRemoteFleet();
 const { hosts, panels, projects, error } = fleet;
-const { theme, themes, setTheme } = useAppearance();
+const { theme, themes, setTheme, error: appearanceError } = useAppearance();
 type Tab = 'dashboard' | 'tasks' | 'projects' | 'settings';
 type Screen = Tab | 'devices' | 'appearance' | 'about' | 'editor' | 'output';
 const tab = ref<Tab>('dashboard'), screen = ref<Screen>('dashboard'), heading = ref<HTMLElement>();
@@ -85,6 +85,7 @@ function openJob(host: RemoteHost, job: JobRecord) { outputHost.value = host; ou
         <button v-if="screen === 'dashboard' || screen === 'tasks'" class="text-button header-action" aria-label="刷新所有设备" @click="fleet.refreshHosts"><AppIcon name="refresh" /></button>
       </header>
       <div v-if="error" class="error-banner" role="alert"><p>{{ error }}</p><button class="text-button" aria-label="关闭提示" @click="error = ''">×</button></div>
+      <p v-if="appearanceError && (screen === 'settings' || screen === 'appearance')" class="error-banner" role="alert">{{ appearanceError }}</p>
       <template v-if="screen === 'dashboard'">
         <p class="page-intro">你的电脑与运行任务</p>
         <div v-if="!hosts.length" class="panel empty-state"><AppIcon name="computer" /><p>连接电脑后，在这里查看运行时与远程任务。</p></div>

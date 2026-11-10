@@ -34,6 +34,7 @@ async function attach() {
   page.on('pageerror', error => errors.push(error.message));
   await page.waitForSelector('nav[aria-label="主导航"]');
   await until(() => page.evaluate(() => !document.querySelector('.launch-screen')), 'launch presentation');
+  await until(() => page.evaluate(() => document.documentElement.dataset.appearanceReady === 'true'), 'native theme restored');
   assert.equal(await page.evaluate(() => window.Capacitor.isNativePlatform()), true);
 }
 async function screenshot(name, target) {
@@ -53,8 +54,9 @@ const nav = name => page.locator('nav[aria-label="主导航"]').getByRole('butto
 async function selectTheme(name, id) {
   await page.locator('.theme-option').filter({ hasText: name }).click();
   // CDP input acknowledgement can precede the WebView click handler. Wait for
-  // the preference change before sending Android Back or stopping the app.
+  // the confirmed native preference write before Android Back or force-stop.
   await until(() => page.evaluate(expected =>
+    document.documentElement.dataset.appearanceReady === 'true' &&
     document.documentElement.dataset.theme === expected &&
     localStorage.getItem('sandkasten.theme') === expected, id), `theme selected: ${id}`);
 }
