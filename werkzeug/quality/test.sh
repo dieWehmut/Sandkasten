@@ -88,6 +88,16 @@ if [[ -f "$ROOT/apps/desktop/package.json" ]]; then
   fi
 fi
 
+if [[ -f "$ROOT/apps/mobile/package.json" ]]; then
+  if command -v npm >/dev/null 2>&1; then
+    run_or_fail "Mobile dependency install" bash -c 'cd "$1" && npm ci' bash "$ROOT/apps/mobile"
+    run_or_fail "Mobile remote control tests" bash -c 'cd "$1" && npm test' bash "$ROOT/apps/mobile"
+    run_or_fail "Mobile typecheck and production build" bash -c 'cd "$1" && npm run build' bash "$ROOT/apps/mobile"
+  else
+    missing npm "Install Node.js 22.18+ to build the Android client's web assets."
+  fi
+fi
+
 if [[ -d "$ROOT/pruefung/integration" ]]; then
   if find "$ROOT/pruefung/integration" -type f | grep -q .; then
     printf 'Integration fixtures are present under pruefung/integration; no standalone integration runner is defined yet.\n'
