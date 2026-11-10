@@ -170,3 +170,55 @@ it('restores a terminal history record and waits for server readiness after rest
   scope = effectScope(); control = scope.run(() => useRemoteControl(device))!; await control.connect(); await vi.advanceTimersByTimeAsync(1000);
   expect(control.jobs.value[0]).toMatchObject({ outputReady: true, stdout: 'after restart' }); expect(vi.getTimerCount()).toBe(0);
 });
+it('automatically retries a terminal history output read interrupted during startup', async () => {
+  scope.stop();
+  stored.set(`sandkasten.jobs:${device.address}`, JSON.stringify([{ jobId: 'restored-final', status: 'JOB_STATUS_SUCCEEDED', projectId: 'p', projectName: 'saved', submittedAt: 1 }]));
+  const job = vi.spyOn(RemoteClient.prototype, 'job').mockRejectedValueOnce(new Error('temporary network loss')).mockResolvedValue({ jobId: 'restored-final', status: 'JOB_STATUS_SUCCEEDED', outputReady: true, stdout: 'restored after network recovery' });
+  scope = effectScope(); control = scope.run(() => useRemoteControl(device))!;
+  await control.connect();
+  expect(control.connectionStatus.value).toBe('reconnecting'); expect(control.jobs.value[0].stdout).toBeUndefined();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(job).toHaveBeenCalledTimes(2);
+  expect(control.jobs.value[0]).toMatchObject({ outputReady: true, stdout: 'restored after network recovery' });
+  expect(control.connectionStatus.value).toBe('connected'); expect(control.error.value).toBe(''); expect(vi.getTimerCount()).toBe(0);
+});
+it('restores interrupted terminal reads independently while completing an active cancellation', async () => {
+  scope.stop();
+  stored.set(`sandkasten.jobs:${device.address}`, JSON.stringify([
+    { jobId: 'finished', status: 'JOB_STATUS_SUCCEEDED', projectId: 'p', projectName: 'saved', submittedAt: 1 },
+    { jobId: 'stopped', status: 'JOB_STATUS_CANCELED', projectId: 'p', projectName: 'saved', submittedAt: 2 },
+    { jobId: 'active', status: 'JOB_STATUS_RUNNING', projectId: 'p', projectName: 'saved', submittedAt: 3 },
+  ]));
+  const reads = new Map<string, number>();
+  vi.spyOn(RemoteClient.prototype, 'job').mockImplementation(async id => {
+    const count = (reads.get(id) ?? 0) + 1; reads.set(id, count);
+    if (id !== 'active' && count === 1) throw new Error('temporary network loss');
+    if (id === 'finished') return { jobId: id, status: 'JOB_STATUS_SUCCEEDED', outputReady: true, stdout: 'finished output' };
+    if (id === 'stopped') return { jobId: id, status: 'JOB_STATUS_CANCELED', outputReady: count >= 3, stdout: count >= 3 ? 'restored canceled output' : '' };
+    return count === 1 ? { jobId: id, status: 'JOB_STATUS_RUNNING', outputReady: false } : { jobId: id, status: 'JOB_STATUS_CANCELED', outputReady: count >= 3, stdout: count >= 3 ? 'before active stop' : '' };
+  });
+  vi.spyOn(RemoteClient.prototype, 'cancel').mockResolvedValue({ jobId: 'active', status: 'JOB_STATUS_CANCELED', outputReady: false });
+  scope = effectScope(); control = scope.run(() => useRemoteControl(device))!;
+  await control.connect(); await control.cancel('active'); await vi.advanceTimersByTimeAsync(1000);
+  expect(control.jobs.value.find(job => job.jobId === 'finished')).toMatchObject({ stdout: 'finished output', outputReady: true });
+  expect(control.jobs.value.find(job => job.jobId === 'active')).toMatchObject({ status: 'JOB_STATUS_CANCELED', stdout: 'before active stop', outputReady: true });
+  expect(control.jobs.value.find(job => job.jobId === 'stopped')?.outputReady).toBe(false);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(control.jobs.value.find(job => job.jobId === 'stopped')).toMatchObject({ stdout: 'restored canceled output', outputReady: true });
+  expect([...reads]).toEqual([['finished', 2], ['stopped', 3], ['active', 3]]);
+  expect(control.connectionStatus.value).toBe('connected'); expect(vi.getTimerCount()).toBe(0);
+});
+it.each(['forget', 'dispose'] as const)('stops interrupted terminal history retries after %s', async operation => {
+  scope.stop();
+  stored.set(`sandkasten.jobs:${device.address}`, JSON.stringify([{ jobId: 'pending-restore', status: 'JOB_STATUS_CANCELED', projectId: 'p', projectName: 'saved', submittedAt: 1 }]));
+  const job = vi.spyOn(RemoteClient.prototype, 'job').mockRejectedValue(new Error('offline'));
+  scope = effectScope(); control = scope.run(() => useRemoteControl(device))!;
+  await control.connect(); expect(vi.getTimerCount()).toBe(1);
+  if (operation === 'forget') {
+    await control.forget();
+    expect(stored.has(`sandkasten.jobs:${device.address}`)).toBe(false);
+    expect(credentials.remove).toHaveBeenCalledWith({ key: credentialKey(device.address) });
+  } else scope.stop();
+  await vi.advanceTimersByTimeAsync(3000);
+  expect(job).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(0);
+});

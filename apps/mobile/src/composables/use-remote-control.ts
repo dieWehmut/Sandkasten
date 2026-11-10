@@ -38,6 +38,9 @@ export function useRemoteControl(device: SavedDevice) {
   let client: RemoteClient | null = null, timer: ReturnType<typeof setTimeout> | undefined, generation = 0, pollingGeneration: number | null = null, disposed = false;
   const jobVersions = new Map<string, number>();
   const settlingReads = new Map<string, number>(), settlingStarted = new Set<string>();
+  // A terminal history record still needs its first authoritative output read.
+  // Keep interrupted reads separate from artifact readiness and retry each ID.
+  const retryReads = new Set<string>();
   const historyKey = `sandkasten.jobs:${device.address}`;
   try {
     const data: unknown = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
@@ -79,7 +82,7 @@ export function useRemoteControl(device: SavedDevice) {
   }
   function schedule() {
     clearTimeout(timer);
-    if (!disposed && client && connectionStatus.value !== 'needs_token' && jobs.value.some((j) => !isTerminal(j.status) || settlingReads.has(j.jobId))) timer = setTimeout(() => void refresh(false), 1000);
+    if (!disposed && client && connectionStatus.value !== 'needs_token' && jobs.value.some((j) => !isTerminal(j.status) || settlingReads.has(j.jobId) || retryReads.has(j.jobId))) timer = setTimeout(() => void refresh(false), 1000);
   }
   async function refresh(all = true) {
     const current = client, version = generation;
@@ -87,17 +90,17 @@ export function useRemoteControl(device: SavedDevice) {
     pollingGeneration = version;
     let failed = false;
     try {
-      for (const job of jobs.value.filter((j) => all || !isTerminal(j.status) || settlingReads.has(j.jobId))) {
+      for (const job of jobs.value.filter((j) => all || !isTerminal(j.status) || settlingReads.has(j.jobId) || retryReads.has(j.jobId))) {
         const jobVersion = jobVersions.get(job.jobId) ?? 0;
         try {
           const updated = await current.job(job.jobId);
           if (disposed || version !== generation) return;
-          if (jobVersion === (jobVersions.get(job.jobId) ?? 0)) { apply(updated); settle(updated, true); }
+          if (jobVersion === (jobVersions.get(job.jobId) ?? 0)) { retryReads.delete(job.jobId); apply(updated); settle(updated, true); }
         } catch (cause) {
           if (disposed || version !== generation) return;
           if (jobVersion !== (jobVersions.get(job.jobId) ?? 0)) continue;
-          if (cause instanceof RemoteError && cause.status === 404) { settlingReads.delete(job.jobId); apply({ jobId: job.jobId, status: 'JOB_STATUS_SYSTEM_ERROR', errorMessage: cause.message }); }
-          else { failed = true; failure(cause, pollError); }
+          if (cause instanceof RemoteError && cause.status === 404) { retryReads.delete(job.jobId); settlingReads.delete(job.jobId); apply({ jobId: job.jobId, status: 'JOB_STATUS_SYSTEM_ERROR', errorMessage: cause.message }); }
+          else { retryReads.add(job.jobId); failed = true; failure(cause, pollError); }
         }
       }
       if (!failed) { pollError.value = ''; connectionStatus.value = 'connected'; }
@@ -162,24 +165,24 @@ export function useRemoteControl(device: SavedDevice) {
       try {
         const final = await current.job(jobId);
         if (disposed || version !== generation) return;
-        apply(final); settle(final, true); pollError.value = ''; persist();
+        retryReads.delete(jobId); apply(final); settle(final, true); pollError.value = ''; persist();
       } catch (cause) {
         if (disposed || version !== generation) return;
-        if (cause instanceof RemoteError && cause.status === 404) { settlingReads.delete(jobId); apply({ jobId, status: 'JOB_STATUS_SYSTEM_ERROR', errorMessage: cause.message }); persist(); }
-        else failure(cause, pollError);
+        if (cause instanceof RemoteError && cause.status === 404) { retryReads.delete(jobId); settlingReads.delete(jobId); apply({ jobId, status: 'JOB_STATUS_SYSTEM_ERROR', errorMessage: cause.message }); persist(); }
+        else { retryReads.add(jobId); failure(cause, pollError); }
       } finally { if (!disposed && version === generation) schedule(); }
     });
   }
   function remove(jobId: string) {
     const job = jobs.value.find((j) => j.jobId === jobId);
-    if (job && isTerminal(job.status)) { settlingReads.delete(jobId); jobs.value = jobs.value.filter((j) => j.jobId !== jobId); persist(); }
+    if (job && isTerminal(job.status)) { retryReads.delete(jobId); settlingReads.delete(jobId); jobs.value = jobs.value.filter((j) => j.jobId !== jobId); persist(); }
   }
   async function forget() {
     dispose();
     await credentialOperation(device.address, () => credentials.remove({ key: credentialKey(device.address) }));
     localStorage.removeItem(historyKey);
   }
-  function dispose() { disposed = true; generation++; clearTimeout(timer); client = null; }
+  function dispose() { disposed = true; generation++; clearTimeout(timer); retryReads.clear(); client = null; }
   onScopeDispose(dispose);
   return { connectionStatus, runtimes, jobs, busy, error, actionError, connect, refresh, submit, cancel, remove, forget };
 }
