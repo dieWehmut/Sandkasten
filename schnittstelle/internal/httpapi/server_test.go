@@ -145,6 +145,109 @@ func TestRunGoFromSourceIncludesFiles(t *testing.T) {
 	}
 }
 
+func TestRunGoSourceEntrypointMatchesArchive(t *testing.T) {
+	const source = "package main\nfunc main() {}\n"
+	for _, route := range []string{"/v1/go/run", "/v1/run"} {
+		for _, entrypoint := range []struct {
+			input string
+			want  string
+			file  string
+		}{
+			{input: "", want: ".", file: "main.go"},
+			{input: ".", want: ".", file: "main.go"},
+			{input: "main.go", want: "main.go", file: "main.go"},
+			{input: "tool.go", want: "tool.go", file: "tool.go"},
+			{input: "tool/main.go", want: "tool/main.go", file: "tool/main.go"},
+			{input: "./tool/main.go", want: "tool/main.go", file: "tool/main.go"},
+			{input: `tool\main.go`, want: "tool/main.go", file: "tool/main.go"},
+			{input: " tool/main.go ", want: "tool/main.go", file: "tool/main.go"},
+		} {
+			t.Run(route+"/"+entrypoint.input, func(t *testing.T) {
+				service := &fakeService{}
+				body, err := json.Marshal(runRequest{Language: "go", Source: source, Entrypoint: entrypoint.input, Files: []runFile{{Name: "data.txt", Content: "input file"}}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				rec := httptest.NewRecorder()
+				New(service, "", nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, route, bytes.NewReader(body)))
+				if rec.Code != http.StatusAccepted {
+					t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+				}
+				if service.submitted.GetEntrypoint() != entrypoint.want {
+					t.Fatalf("entrypoint = %q, want %q", service.submitted.GetEntrypoint(), entrypoint.want)
+				}
+				files := readArchiveFiles(t, service.submitted.GetArchiveTargz())
+				if len(files) != 4 || string(files[entrypoint.file]) != source || string(files["data.txt"]) != "input file" || string(files["go.mod"]) != "module example.com/sandkasten/http-run\n\ngo 1.22\n" || string(files["vendor/modules.txt"]) != "# no external module dependencies\n" {
+					t.Fatalf("archive files do not match the source entrypoint and root Go module: %v", mapKeys(files))
+				}
+			})
+		}
+	}
+}
+
+func TestRunGoSourceRejectsFileConflicts(t *testing.T) {
+	for _, test := range []struct{ entrypoint, file string }{
+		{entrypoint: ".", file: "main.go"},
+		{entrypoint: "tool.go", file: "tool.go"},
+		{entrypoint: "tool/main.go", file: "./tool/main.go"},
+		{entrypoint: "tool/main.go", file: "go.mod"},
+		{entrypoint: "tool/main.go", file: "vendor/modules.txt"},
+		{entrypoint: "tool/main.go", file: "tool"},
+		{entrypoint: "tool.go", file: "tool.go/data.txt"},
+		{entrypoint: "tool.go", file: "go.mod/data.txt"},
+		{entrypoint: "tool.go", file: "vendor"},
+	} {
+		t.Run(test.entrypoint+"/"+test.file, func(t *testing.T) {
+			service := &fakeService{}
+			body, err := json.Marshal(runRequest{Language: "go", Source: "package main\nfunc main() {}\n", Entrypoint: test.entrypoint, Files: []runFile{{Name: test.file, Content: "conflicting file"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec := httptest.NewRecorder()
+			New(service, "", nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/go/run", bytes.NewReader(body)))
+			if rec.Code != http.StatusBadRequest || service.submitted != nil {
+				t.Fatalf("status = %d, submitted = %v, body = %s", rec.Code, service.submitted != nil, rec.Body.String())
+			}
+			var response errorResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error != "invalid_request" || !strings.Contains(response.Message, "conflicts with") {
+				t.Fatalf("response = %+v", response)
+			}
+		})
+	}
+}
+
+func TestRunGoSourceRejectsInvalidEntrypoints(t *testing.T) {
+	for _, entrypoint := range []string{
+		"tool", "./tool", "tool/", "go.mod", "vendor", "vendor/modules.txt", "main.py",
+		"go.mod/main.go", "vendor/main.go", "vendor/modules.txt/main.go",
+		"../main.go", "tool/../../main.go", "/tmp/main.go", `\tmp\main.go`, "null\x00.go",
+		".laeufer-bin/main.go", "tool/.laeufer-cache/main.go",
+	} {
+		t.Run(entrypoint, func(t *testing.T) {
+			service := &fakeService{}
+			body, err := json.Marshal(runRequest{Language: "go", Source: "package main\nfunc main() {}\n", Entrypoint: entrypoint})
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec := httptest.NewRecorder()
+			New(service, "", nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/run", bytes.NewReader(body)))
+			if rec.Code != http.StatusBadRequest || service.submitted != nil {
+				t.Fatalf("status = %d, submitted = %v, body = %s", rec.Code, service.submitted != nil, rec.Body.String())
+			}
+			var response errorResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error != "invalid_request" || response.Message == "" {
+				t.Fatalf("response = %+v", response)
+			}
+		})
+	}
+}
+
 func TestRunRejectsUnsafeFileName(t *testing.T) {
 	service := &fakeService{}
 	server := New(service, "", nil).Handler()

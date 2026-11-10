@@ -356,6 +356,13 @@ func (r runRequest) toProto() (*pb.SubmitGoProjectRequest, error) {
 		if entrypoint == "" {
 			entrypoint = defaultEntrypoint(language)
 		}
+		if language == "go" {
+			var err error
+			entrypoint, err = normalizeGoSourceEntrypoint(entrypoint)
+			if err != nil {
+				return nil, err
+			}
+		}
 		generated, err := sourceArchive(language, entrypoint, r.Source, r.Files)
 		if err != nil {
 			return nil, err
@@ -623,7 +630,7 @@ func defaultEntrypoint(language string) string {
 func sourceArchive(language, entrypoint, source string, files []runFile) ([]byte, error) {
 	switch language {
 	case "go":
-		return goSourceArchive(source, files)
+		return goSourceArchive(entrypoint, source, files)
 	case "assembly", "bash", "c", "cangjie", "clojure", "css", "cpp", "csharp", "coq", "crystal", "dart", "elixir", "erlang", "fortran", "fsharp", "gdscript", "gleam", "graphviz", "haskell", "html", "java", "javascript", "julia", "kotlin", "latex", "lean4", "lua", "markdown", "mdx", "mojo", "nextjs", "nextflow", "nim", "octave", "ocaml", "pascal", "perl", "php", "prolog", "python", "qml", "r", "racket", "ruby", "rust", "scala", "scss", "sql", "swift", "tailwindcss", "typst", "typescript", "tsx", "vlang", "vue3", "wdl", "zig":
 		return singleFileArchive(entrypoint, []byte(source), files)
 	default:
@@ -631,12 +638,48 @@ func sourceArchive(language, entrypoint, source string, files []runFile) ([]byte
 	}
 }
 
-func goSourceArchive(source string, files []runFile) ([]byte, error) {
-	return archiveWithRequestFiles([]archiveFile{
+func normalizeGoSourceEntrypoint(entrypoint string) (string, error) {
+	if trimmed := strings.TrimSpace(entrypoint); trimmed == "" || trimmed == "." {
+		return ".", nil
+	}
+	name, err := normalizeRunFileName(entrypoint)
+	if err != nil {
+		return "", err
+	}
+	if path.Ext(name) != ".go" {
+		return "", errors.New("Go source entrypoint must be '.' or a .go file; use archiveTargz for package directory entrypoints")
+	}
+	if root := strings.Split(name, "/")[0]; root == "go.mod" || root == "vendor" {
+		return "", fmt.Errorf("Go source entrypoint %q conflicts with generated module or vendor files", entrypoint)
+	}
+	return name, nil
+}
+
+func goSourceArchive(entrypoint, source string, files []runFile) ([]byte, error) {
+	name, err := normalizeGoSourceEntrypoint(entrypoint)
+	if err != nil {
+		return nil, err
+	}
+	if name == "." {
+		name = "main.go"
+	}
+	merged, err := mergeRequestFiles([]archiveFile{
 		{name: "go.mod", body: []byte("module example.com/sandkasten/http-run\n\ngo 1.22\n")},
-		{name: "main.go", body: []byte(source)},
+		{name: name, body: []byte(source)},
 		{name: "vendor/modules.txt", body: []byte("# no external module dependencies\n")},
 	}, files)
+	if err != nil {
+		return nil, err
+	}
+	// A regular file cannot also be a directory for a nested source/input file.
+	for i, file := range merged {
+		for _, previous := range merged[:i] {
+			if strings.HasPrefix(file.name, previous.name+"/") || strings.HasPrefix(previous.name, file.name+"/") {
+				return nil, fmt.Errorf("file %q conflicts with Go project path %q", file.name, previous.name)
+			}
+		}
+	}
+	return archiveWithFiles(merged)
 }
 
 func singleFileArchive(name string, body []byte, files []runFile) ([]byte, error) {
