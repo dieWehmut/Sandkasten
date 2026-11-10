@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Sandkasten NativeBridgeTest" type="AndroidTestRunConfigurationType" factoryName="Android Instrumented Tests">
+    <module name="android.app" />
+    <option name="ANDROID_TEST_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+    <option name="TESTING_TYPE" value="2" />
+    <option name="CLASS_NAME" value="dev.sandkasten.mobile.NativeBridgeTest" />
+    <option name="PACKAGE_NAME" value="dev.sandkasten.mobile" />
+    <option name="METHOD_NAME" value="" />
+    <option name="INSTRUMENTATION_RUNNER_CLASS" value="androidx.test.runner.AndroidJUnitRunner" />
+    <option name="EXTRA_OPTIONS" value="" />
+    <method v="2">
+      <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>
