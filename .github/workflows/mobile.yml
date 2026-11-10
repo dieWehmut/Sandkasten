@@ -32,14 +32,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Install dependencies and verify mobile logic
         run: |
           npm ci
           npm test
           npm run build
           npm run sync
-      - name: Install Android SDK packages
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build APK and instrumented tests, run lint
         working-directory: apps/mobile/android
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
