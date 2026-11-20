@@ -66,13 +66,47 @@ it('saves source projects explicitly and restores devices, panels, selected jobs
   expect(second.fleet.panels.value[0].project.source).toBe('saved code'); expect(second.fleet.panels.value[0].selectedJobId.value).toBe(job.jobId);
   expect(second.fleet.hosts.value[0].control.jobs.value[0].stdout).toBe('completed while closed');
 });
-it('keeps offline workbench preferences available during reconnect', async () => {
-  const first = mountFleet(); const host = (await connect(first.fleet, 'first'))!;
-  first.fleet.openPanel(host, first.fleet.projects.value[0]); first.unmount(); online = false;
-  const second = mountFleet(); await second.fleet.connectSaved({ address: host.address, name: host.name });
-  expect(second.fleet.panels.value).toHaveLength(1); expect(second.fleet.hosts.value[0].control.connectionStatus.value).toBe('disconnected');
-  online = true; await second.fleet.connectSaved({ address: host.address, name: host.name });
-  expect(second.fleet.panels.value).toHaveLength(1); expect(second.fleet.hosts.value[0].control.connectionStatus.value).toBe('connected');
+it('restores an offline workbench and reconnects automatically to recover its selected output', async () => {
+  const first = mountFleet();
+  const host = (await connect(first.fleet, 'first'))!;
+  const panel = first.fleet.openPanel(host, first.fleet.projects.value[0])!;
+  const job = (await host.control.submit(panel.project))!;
+  panel.selectedJobId.value = job.jobId;
+  running.set(job.jobId, { ...job, status: 'JOB_STATUS_SUCCEEDED', outputReady: true, stdout: 'saved computer output' });
+  await host.control.refresh();
+  await nextTick();
+  first.unmount();
+
+  online = false;
+  const requestsBeforeRestart = requests.length;
+  const { fleet } = mountFleet();
+  await vi.advanceTimersByTimeAsync(0);
+
+  const [restoredPanel] = fleet.panels.value;
+  const [restoredHost] = fleet.hosts.value;
+  expect(restoredPanel).toMatchObject({ hostAddress: host.address, project: { id: panel.project.id } });
+  expect(restoredPanel.selectedJobId.value).toBe(job.jobId);
+  expect(restoredHost.control.jobs.value[0]).toMatchObject({ jobId: job.jobId, status: 'JOB_STATUS_SUCCEEDED' });
+  expect(restoredHost.control.jobs.value[0].stdout).toBeUndefined();
+  expect(restoredHost.control.runtimes.value).toEqual([]);
+
+  const recoveryPaths = () => requests.slice(requestsBeforeRestart).map(({ path }) => path);
+  await vi.advanceTimersByTimeAsync(999);
+  expect(recoveryPaths()).toEqual(['/v1/runtimes']);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(recoveryPaths()).toEqual(['/v1/runtimes', '/v1/runtimes']);
+
+  online = true;
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(recoveryPaths()).toEqual(['/v1/runtimes', '/v1/runtimes']);
+  await vi.advanceTimersByTimeAsync(1);
+
+  expect(recoveryPaths()).toEqual(['/v1/runtimes', '/v1/runtimes', '/v1/runtimes', '/v1/jobs/' + job.jobId]);
+  expect(fleet.panels.value).toEqual([restoredPanel]);
+  expect(restoredPanel.selectedJobId.value).toBe(job.jobId);
+  expect(restoredHost.control.connectionStatus.value).toBe('connected');
+  expect(restoredHost.control.runtimes.value.map(({ language }) => language)).toContain('new-runtime');
+  expect(restoredHost.control.jobs.value[0]).toMatchObject({ jobId: job.jobId, stdout: 'saved computer output' });
 });
 it('forgets one device credentials and panel metadata without touching another', async () => {
   const { fleet } = mountFleet(); const first = (await connect(fleet, 'first'))!, second = (await connect(fleet, 'second'))!;
@@ -81,6 +115,30 @@ it('forgets one device credentials and panel metadata without touching another',
   expect(fleet.hosts.value.map(h => h.name)).toEqual(['second']); expect(fleet.panels.value).toHaveLength(1);
   expect(tokens.has(credentialKey(first.address))).toBe(false); expect(tokens.has(credentialKey(second.address))).toBe(true);
   expect(storage.get('sandkasten.panels')).not.toContain(first.address);
+});
+it('restores workbenches before a slow connection and preserves the user selection when it finishes', async () => {
+  const first = mountFleet();
+  const host = (await connect(first.fleet, 'first'))!;
+  const panel = first.fleet.openPanel(host, first.fleet.projects.value[0])!;
+  panel.selectedJobId.value = 'saved-selection';
+  await nextTick();
+  first.unmount();
+
+  let finish!: (response: Response) => void;
+  vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const { fleet } = mountFleet();
+  expect(fleet.panels.value).toHaveLength(1);
+  const restoredPanel = fleet.panels.value[0];
+  expect(restoredPanel.selectedJobId.value).toBe('saved-selection');
+  restoredPanel.selectedJobId.value = 'new-selection';
+  const connection = fleet.connectSaved(host);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(fleet.hosts.value[0].control.connectionStatus.value).toBe('connecting');
+  finish(Response.json({ runtimes: [{ language: 'go', status: 'active' }] }));
+  await connection;
+  expect(fleet.panels.value).toEqual([restoredPanel]);
+  expect(restoredPanel.selectedJobId.value).toBe('new-selection');
+  expect(JSON.parse(storage.get('sandkasten.panels')!)[0].selectedJobId).toBe('new-selection');
 });
 it('offers the runtime catalog provided by the computer without a fixed language list', async () => {
   const { fleet } = mountFleet(); const host = (await connect(fleet, 'first'))!;

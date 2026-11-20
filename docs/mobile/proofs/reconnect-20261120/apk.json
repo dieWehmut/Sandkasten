@@ -1,0 +1,17 @@
+{
+  "workflowId": 44662380822,
+  "headSha": "e62bb55f3929d6d99d8443ceb482696736377c40",
+  "apkSha256": "6a756a0d05369ec89d9352e8ff27992f9e1ac7042ab3e587f0a18e079f01aef0",
+  "allFiveWebAssetsMatchLocalProductionBuild": true,
+  "nativeExecutionEvidence": [
+    "native-tests.log",
+    "native-e2e.json",
+    "verified-api-jobs.json"
+  ],
+  "scope": "APK downloaded from the successful android job; installed-app tests ran in the same workflow",
+  "testedMergeSha": "c361fd1dcc94b2be5cc0cbaedd8bb3787fe0d9fd",
+  "androidApi": 36,
+  "nativeTestsPassed": 5,
+  "nativeTestDurationSeconds": 37.227,
+  "testApkSha256": "8811b2d7becf3d71fb20705aaec59ec0b513080f4e1e3a004728d015209ce6aa"
+}

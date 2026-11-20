@@ -1,0 +1,310 @@
+{
+  "conclusion": "success",
+  "headSha": "e62bb55f3929d6d99d8443ceb482696736377c40",
+  "jobs": [
+    {
+      "completedAt": "2026-11-20T02:41:54Z",
+      "conclusion": "success",
+      "databaseId": 136043453332,
+      "name": "android",
+      "startedAt": "2026-11-20T02:39:47Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-20T02:39:49Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-20T02:39:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:39:51Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-11-20T02:39:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:39:57Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 3,
+          "startedAt": "2026-11-20T02:39:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:39:57Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-java@v4",
+          "number": 4,
+          "startedAt": "2026-11-20T02:39:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:40:08Z",
+          "conclusion": "success",
+          "name": "Set up Android SDK",
+          "number": 5,
+          "startedAt": "2026-11-20T02:39:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:40:16Z",
+          "conclusion": "success",
+          "name": "Install dependencies and verify mobile logic",
+          "number": 6,
+          "startedAt": "2026-11-20T02:40:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:44Z",
+          "conclusion": "success",
+          "name": "Build APK and instrumented tests, run lint",
+          "number": 7,
+          "startedAt": "2026-11-20T02:40:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:46Z",
+          "conclusion": "success",
+          "name": "Upload debug installation package",
+          "number": 8,
+          "startedAt": "2026-11-20T02:41:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:48Z",
+          "conclusion": "success",
+          "name": "Upload instrumented test package",
+          "number": 9,
+          "startedAt": "2026-11-20T02:41:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:49Z",
+          "conclusion": "success",
+          "name": "Upload Android lint reports",
+          "number": 10,
+          "startedAt": "2026-11-20T02:41:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:49Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-java@v4",
+          "number": 18,
+          "startedAt": "2026-11-20T02:41:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:51Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 19,
+          "startedAt": "2026-11-20T02:41:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:51Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 20,
+          "startedAt": "2026-11-20T02:41:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:41:51Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 21,
+          "startedAt": "2026-11-20T02:41:51Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/dieWehmut/Sandkasten/actions/runs/44662380822/job/136043453332"
+    },
+    {
+      "completedAt": "2026-11-20T02:48:36Z",
+      "conclusion": "success",
+      "databaseId": 136044279390,
+      "name": "Installed Android app with real API and sandbox",
+      "startedAt": "2026-11-20T02:41:56Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-20T02:41:58Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-20T02:41:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:12Z",
+          "conclusion": "success",
+          "name": "Initialize containers",
+          "number": 2,
+          "startedAt": "2026-11-20T02:41:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:13Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 3,
+          "startedAt": "2026-11-20T02:42:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:18Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 4,
+          "startedAt": "2026-11-20T02:42:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:18Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-java@v4",
+          "number": 5,
+          "startedAt": "2026-11-20T02:42:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:24Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-go@v5",
+          "number": 6,
+          "startedAt": "2026-11-20T02:42:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:35Z",
+          "conclusion": "success",
+          "name": "Set up Android SDK",
+          "number": 7,
+          "startedAt": "2026-11-20T02:42:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:36Z",
+          "conclusion": "success",
+          "name": "Download application APK",
+          "number": 8,
+          "startedAt": "2026-11-20T02:42:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:36Z",
+          "conclusion": "success",
+          "name": "Download instrumented test APK",
+          "number": 9,
+          "startedAt": "2026-11-20T02:42:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:42:49Z",
+          "conclusion": "success",
+          "name": "Install native test dependencies",
+          "number": 10,
+          "startedAt": "2026-11-20T02:42:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:43:50Z",
+          "conclusion": "success",
+          "name": "Build the real API and Rust sandbox runner",
+          "number": 11,
+          "startedAt": "2026-11-20T02:42:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:44:19Z",
+          "conclusion": "success",
+          "name": "Verify backend cancellation and output persistence",
+          "number": 12,
+          "startedAt": "2026-11-20T02:43:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:44:19Z",
+          "conclusion": "success",
+          "name": "Enable KVM for the test emulator",
+          "number": 13,
+          "startedAt": "2026-11-20T02:44:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:28Z",
+          "conclusion": "success",
+          "name": "Run installed-app tests against the real sandbox",
+          "number": 14,
+          "startedAt": "2026-11-20T02:44:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:29Z",
+          "conclusion": "success",
+          "name": "Preserve real execution evidence",
+          "number": 15,
+          "startedAt": "2026-11-20T02:48:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:32Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-go@v5",
+          "number": 26,
+          "startedAt": "2026-11-20T02:48:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:32Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-java@v4",
+          "number": 27,
+          "startedAt": "2026-11-20T02:48:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:33Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 28,
+          "startedAt": "2026-11-20T02:48:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:33Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 29,
+          "startedAt": "2026-11-20T02:48:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:33Z",
+          "conclusion": "success",
+          "name": "Stop containers",
+          "number": 30,
+          "startedAt": "2026-11-20T02:48:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-20T02:48:33Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 31,
+          "startedAt": "2026-11-20T02:48:33Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/dieWehmut/Sandkasten/actions/runs/44662380822/job/136044279390"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/dieWehmut/Sandkasten/actions/runs/44662380822"
+}
