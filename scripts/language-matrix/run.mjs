@@ -13,7 +13,14 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 assert.ok(process.env.CONDA_PREFIX, 'Activate the dedicated conda environment before running this matrix');
 assert.match(os.release(), /microsoft.*WSL/i, 'Run the matrix in local WSL');
 assert.ok(process.execPath.startsWith(`${process.env.CONDA_PREFIX}/`), 'Use the Node executable inside the active Conda environment');
-const environment = { platform: process.platform, release: os.release(), hostname: os.hostname(), condaPrefix: process.env.CONDA_PREFIX, node: process.version, nodeExecutable: process.execPath, path: process.env.PATH };
+// WSL can append Windows executables after Linux paths. Some Linux tools (for
+// example Crystal's pkg-config lookup) still probe those paths and fail on a
+// transient Windows mount I/O error, so keep this matrix inside Linux paths.
+const matrixPath = process.env.PATH.split(path.delimiter)
+  .filter((entry) => !/^\/mnt\/[a-z](?:\/|$)/i.test(entry))
+  .join(path.delimiter);
+const matrixEnv = { ...process.env, PATH: matrixPath };
+const environment = { platform: process.platform, release: os.release(), hostname: os.hostname(), condaPrefix: process.env.CONDA_PREFIX, node: process.version, nodeExecutable: process.execPath, path: matrixPath };
 const out = path.resolve(root, process.env.SANDKASTEN_MATRIX_OUTPUT ?? '.sandkasten/language-matrix');
 await mkdir(out, { recursive: true });
 // Invalidate a previous success before detection or execution can be interrupted.
@@ -22,10 +29,10 @@ const selected = (process.env.SANDKASTEN_MATRIX_LANGUAGES ?? Object.keys(FIXTURE
 assert.equal(Object.keys(LOCAL_RUNTIMES).length, 58, 'The canonical matrix must cover 58 languages');
 assert.equal(new Set(selected).size, selected.length, 'Duplicate languages are not allowed');
 assert.deepEqual(Object.keys(FIXTURES).sort(), Object.keys(LOCAL_RUNTIMES).sort());
-const runner = createLocalRunner({ env: process.env, tmpRoot: path.join(out, 'build'), probeTimeoutMs: 15_000 });
+const runner = createLocalRunner({ env: matrixEnv, tmpRoot: path.join(out, 'build'), probeTimeoutMs: 15_000 });
 const detected = await runner.detect();
 for (const entry of detected) {
-  entry.executable = spawnSync('/bin/sh', ['-c', 'command -v "$1"', 'matrix', entry.command], { encoding: 'utf8', env: process.env }).stdout.trim();
+  entry.executable = spawnSync('/bin/sh', ['-c', 'command -v "$1"', 'matrix', entry.command], { encoding: 'utf8', env: matrixEnv }).stdout.trim();
 }
 await writeFile(path.join(out, 'environment.json'), JSON.stringify({ ...environment, detected }, null, 2));
 let browser;
@@ -35,7 +42,7 @@ async function browserFor() {
   const require = createRequire(path.join(root, 'apps/web/package.json'));
   const { chromium } = require('playwright-core');
   const executable = process.env.SANDKASTEN_CHROMIUM ?? '/home/han/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-  browser = await chromium.launch({ executablePath: executable, headless: true, env: { ...process.env, LD_LIBRARY_PATH: `${process.env.CONDA_PREFIX}/lib${process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : ''}` } });
+  browser = await chromium.launch({ executablePath: executable, headless: true, env: { ...matrixEnv, LD_LIBRARY_PATH: `${process.env.CONDA_PREFIX}/lib${process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : ''}` } });
   return browser;
 }
 for (const language of selected) {

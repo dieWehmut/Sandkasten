@@ -3,6 +3,8 @@
 This matrix executes all 58 entries in `LOCAL_RUNTIMES` through the desktop's
 real local runner. It requires WSL and a Node executable inside the active Conda
 prefix. No Docker, remote execution service, or mocked compiler is used.
+The runner removes Windows-mounted `/mnt/<drive>` entries from the child `PATH`
+so Linux compilers do not inspect Windows tools through a transient WSL mount.
 
 ## Re-run the verified local environment
 
