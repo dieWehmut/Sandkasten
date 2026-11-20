@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "viewport": "390x844",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/remote/v1/runtimes",
+      "at": 1795142098566
+    },
+    {
+      "method": "GET",
+      "path": "/remote/v1/runtimes",
+      "at": 1795142101141
+    },
+    {
+      "method": "GET",
+      "path": "/remote/v1/runtimes",
+      "at": 1795142103144
+    },
+    {
+      "method": "GET",
+      "path": "/remote/v1/jobs/saved-job",
+      "at": 1795142103146
+    }
+  ],
+  "errors": [],
+  "noHorizontalOverflow": true,
+  "evidenceScope": "Production-built browser UI with controlled read-only service outage, not installed Android or real sandbox execution"
+}

@@ -1,0 +1,88 @@
+[
+  {
+    "jobId": "f969b161-dd00-4099-9f95-aaf40942e250",
+    "status": "JOB_STATUS_SUCCEEDED",
+    "outputReady": true,
+    "language": "python",
+    "runtime": "system",
+    "stdout": "mobile input|arg-value|file-value\n",
+    "stderr": "",
+    "compileStdout": "",
+    "compileStderr": "",
+    "stdoutEncoding": "utf8",
+    "stderrEncoding": "utf8",
+    "compileStdoutEncoding": "utf8",
+    "compileStderrEncoding": "utf8",
+    "durationMs": 83,
+    "errorMessage": "",
+    "truncated": {
+      "stdout": false,
+      "stderr": false
+    },
+    "diagnostics": {
+      "memoryPeakBytes": 8048640,
+      "memoryOomKillCount": 0,
+      "cpuUsageUsec": 55869,
+      "cpuThrottledUsec": 0,
+      "pidsPeak": 1
+    }
+  },
+  {
+    "jobId": "5d038ef2-0e3b-4bed-8f9b-87fffdade9aa",
+    "status": "JOB_STATUS_COMPILE_FAILED",
+    "outputReady": true,
+    "language": "go",
+    "runtime": "1.25",
+    "stdout": "",
+    "stderr": "",
+    "compileStdout": "",
+    "compileStderr": "# command-line-arguments\n./tool.go:2:14: undefined: invalidsyntax\n",
+    "stdoutEncoding": "utf8",
+    "stderrEncoding": "utf8",
+    "compileStdoutEncoding": "utf8",
+    "compileStderrEncoding": "utf8",
+    "exitCode": 1,
+    "durationMs": 5825,
+    "errorMessage": "compile did not complete successfully",
+    "truncated": {
+      "stdout": false,
+      "stderr": false
+    },
+    "diagnostics": {
+      "memoryPeakBytes": 252948480,
+      "memoryOomKillCount": 0,
+      "cpuUsageUsec": 5708523,
+      "cpuThrottledUsec": 3569278,
+      "pidsPeak": 15
+    }
+  },
+  {
+    "jobId": "4ccd177e-8b3d-4046-931f-ea2260ed5f11",
+    "status": "JOB_STATUS_CANCELED",
+    "outputReady": true,
+    "language": "python",
+    "runtime": "system",
+    "stdout": "before stop\n",
+    "stderr": "",
+    "compileStdout": "",
+    "compileStderr": "",
+    "stdoutEncoding": "utf8",
+    "stderrEncoding": "utf8",
+    "compileStdoutEncoding": "utf8",
+    "compileStderrEncoding": "utf8",
+    "signal": 9,
+    "durationMs": 3418,
+    "errorMessage": "job canceled during run: command \"python3\" canceled",
+    "truncated": {
+      "stdout": false,
+      "stderr": false
+    },
+    "diagnostics": {
+      "memoryPeakBytes": 7544832,
+      "memoryOomKillCount": 0,
+      "cpuUsageUsec": 57289,
+      "cpuThrottledUsec": 0,
+      "pidsPeak": 1
+    }
+  }
+]

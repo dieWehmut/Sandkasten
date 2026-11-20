@@ -1,0 +1,14 @@
+   Compiling bitflags v2.13.0
+   Compiling sqlx-postgres v0.8.6
+   Compiling sqlx-macros-core v0.8.6
+   Compiling sqlx-macros v0.8.6
+   Compiling sqlx v0.8.6
+   Compiling laeufer-store v0.1.0 (/home/runner/work/Sandkasten/Sandkasten/laeufer/crates/laeufer-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.33s
+     Running tests/cancellation_races.rs (laeufer/target/debug/build/laeufer-store/eed85e256e6e5571/out/cancellation_races-eed85e256e6e5571)
+
+running 1 test
+test cancellation_wins_finish_races_without_allowing_stale_attempt_writes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
