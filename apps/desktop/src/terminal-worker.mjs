@@ -15,7 +15,8 @@ const finish = (exitCode) => {
   parentPort.postMessage({ type: 'exit', exitCode });
   // In a Worker this ends this thread and its children, never Electron's main
   // process. It also releases node-pty's otherwise retained conout worker.
-  process.exit(0);
+  // Leave the native onExit callback before shutting down its N-API environment.
+  setImmediate(() => process.exit(0));
 };
 try {
   const terminal = pty.spawn(workerData.file, workerData.args, {
