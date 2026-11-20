@@ -7,17 +7,10 @@ import type { ConnectionState } from '../composables/useRunner';
 import type { Locale, Translator } from '../i18n/locale';
 import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_EDITOR_SETTINGS, DEFAULT_FILE_SETTINGS, DEFAULT_WORKBENCH_SETTINGS, normalizeUserSettings, type EditorSettings, type FileSettings, type UserSettings, type WorkbenchSettings } from '../state/editorSettings';
-import { colorSchemeOptions, type ColorScheme } from '../theme/colorScheme';
+import { DEFAULT_COLOR_SCHEME, colorSchemeOptions, type ColorScheme } from '../theme/colorScheme';
 import LocaleSwitcher from './LocaleSwitcher.vue';
 import DropdownSelect from './DropdownSelect.vue';
 import type { DropdownOption } from './dropdownOptions';
-import brandMark from '../assets/brand-88.png?inline';
-
-// Settings is the get-started page's sibling rather than a second design: the
-// same marked header, 13 px page type, 1.5em section titles and bordered action
-// tiles carry every section, and only the anatomy that has to survive stays the
-// settings editor's — the search field, the theme previews, and the marker that
-// names a setting the user changed.
 const props = defineProps<{
   preference: ThemePreference; theme: Theme; colors: AppearanceColors; colorScheme: ColorScheme;
   locale: Locale; t: Translator; connectionState: ConnectionState; apiEndpoint: string;
@@ -119,7 +112,7 @@ function visibleRows(section: Section): PreferenceRow[] {
 }
 function existingCount(section: Section): number {
   if (section === 'general') return Number(matches(['locale.label'], props.locale !== 'en', 'workbench.language', section)) + Number(matches(['setup.guide'], false, '', section)) + Number(matches(['header.github'], false, '', section));
-  if (section === 'appearance') return Number(matches(['settings.theme', 'settings.system', 'settings.light', 'settings.dark'], props.preference !== 'system', 'workbench.colorTheme', section)) + Number(matches(['header.colorScheme'], props.colorScheme !== 'pink', 'workbench.colorScheme', section)) + colorKeys.filter((key) => matches([`settings.${key}`], Boolean(props.customized?.[key]), `workbench.colorCustomizations.${key}`, section)).length;
+  if (section === 'appearance') return Number(matches(['settings.theme', 'settings.system', 'settings.light', 'settings.dark'], props.preference !== 'system', 'workbench.colorTheme', section)) + Number(matches(['header.colorScheme'], props.colorScheme !== DEFAULT_COLOR_SCHEME, 'workbench.colorScheme', section)) + colorKeys.filter((key) => matches([`settings.${key}`], Boolean(props.customized?.[key]), `workbench.colorCustomizations.${key}`, section)).length;
   if (section === 'connection') return Number(matches(['settings.connectionStatus'], false, '', section)) + Number(matches(['apiEndpoint.title', 'apiEndpoint.label'], Boolean(props.apiEndpoint), 'connection.apiEndpoint', section));
   if (section === 'workbench') return Number(matches(['header.history.show'], false, '', section)) + Number(matches(['header.inspector.show'], false, '', section));
   return 0;
@@ -178,15 +171,8 @@ onMounted(() => heading.value?.focus());
   <section class="settings-view" data-testid="settings-view" :aria-label="t('settings.title')">
     <div class="settings-page">
       <header class="settings-page__header">
-        <img class="settings-page__mark" :src="brandMark" alt="" aria-hidden="true" draggable="false" />
-        <div class="settings-page__heading">
-          <h1 ref="heading" class="settings-page__title" tabindex="-1">{{ t('settings.title') }}</h1>
-          <p class="settings-page__subtitle">{{ t('settings.subtitle') }}</p>
-        </div>
-        <div class="settings-page__actions">
-          <label class="settings-search"><Search :size="16" aria-hidden="true" /><input v-model="search" type="search" :aria-label="t('settings.search')" :placeholder="t('settings.search')" /></label>
-          <button class="settings-back" type="button" data-action="settings-back" @click="emit('back')"><ArrowLeft :size="16" aria-hidden="true" />{{ t('settings.back') }}</button>
-        </div>
+        <button class="settings-back" type="button" data-action="settings-back" @click="emit('back')"><ArrowLeft :size="16" aria-hidden="true" />{{ t('settings.back') }}</button>
+        <label class="settings-search"><Search :size="16" aria-hidden="true" /><input v-model="search" type="search" :aria-label="t('settings.search')" :placeholder="t('settings.search')" /></label>
       </header>
 
       <aside class="settings-sidebar">
@@ -201,7 +187,7 @@ onMounted(() => heading.value?.focus());
       <header class="settings-header">
         <div class="settings-header__row">
           <h1 ref="heading" tabindex="-1">{{ searching || !current ? t('settings.title') : t(`settings.${current.id}`) }}</h1>
-          <label class="settings-search"><Search :size="18" aria-hidden="true" /><input v-model="search" type="search" :aria-label="t('settings.search')" :placeholder="t('settings.search')" /></label>
+
         </div>
         <div class="settings-header__controls"><button type="button" data-action="settings-filter-modified" :aria-pressed="onlyModified" @click="toggleModified">{{ t('settings.modified') }}</button><span v-if="searching && resultCount" role="status">{{ formatMessage('settings.searchResults', { count: resultCount }) }}</span></div>
       </header>
@@ -218,7 +204,7 @@ onMounted(() => heading.value?.focus());
             </fieldset>
             <section v-if="existingCount('appearance') > Number(matches(['settings.theme', 'settings.system', 'settings.light', 'settings.dark'], preference !== 'system', 'workbench.colorTheme', 'appearance'))" class="settings-card" :aria-label="t('settings.colors')">
               <header class="settings-card__header"><div><h2>{{ t(theme === 'light' ? 'settings.lightColors' : 'settings.darkColors') }}</h2><p>{{ t('settings.perTheme') }}</p></div><button type="button" class="settings-text-button" data-action="reset-colors" @click="emit('resetColors')">{{ t('settings.reset') }}</button></header>
-              <div v-if="matches(['header.colorScheme'], colorScheme !== 'pink', 'workbench.colorScheme', 'appearance')" class="settings-row" :class="{ 'settings-row--modified': colorScheme !== 'pink' }"><span :id="'settings-color-scheme-label'">{{ t('header.colorScheme') }}</span><DropdownSelect :model-value="colorScheme" :options="colorSchemeDropdown" :label="t('header.colorScheme')" data-testid="settings-color-scheme" @update:model-value="emit('changeColorScheme', $event as ColorScheme)" /></div>
+              <div v-if="matches(['header.colorScheme'], colorScheme !== DEFAULT_COLOR_SCHEME, 'workbench.colorScheme', 'appearance')" class="settings-row" :class="{ 'settings-row--modified': colorScheme !== DEFAULT_COLOR_SCHEME }"><span :id="'settings-color-scheme-label'">{{ t('header.colorScheme') }}</span><DropdownSelect :model-value="colorScheme" :options="colorSchemeDropdown" :label="t('header.colorScheme')" data-testid="settings-color-scheme" @update:model-value="emit('changeColorScheme', $event as ColorScheme)" /></div>
               <template v-for="key in colorKeys" :key="key"><div v-if="matches([`settings.${key}`], Boolean(customized?.[key]), `workbench.colorCustomizations.${key}`, 'appearance')" class="settings-row" :class="{ 'settings-row--modified': customized?.[key] }"><label :for="`settings-${key}`">{{ t(`settings.${key}`) }}</label><div class="settings-color-control"><input type="color" :value="colors[key]" :aria-label="t(`settings.${key}`)" @input="changeColor(key, ($event.target as HTMLInputElement).value)" /><input :id="`settings-${key}`" :data-color="key" :value="drafts[key]" :aria-invalid="!validColor(drafts[key])" :aria-describedby="!validColor(drafts[key]) ? 'settings-color-error' : undefined" spellcheck="false" maxlength="7" @input="changeColor(key, ($event.target as HTMLInputElement).value)" /></div></div></template>
               <p v-if="colorKeys.some((key) => !validColor(drafts[key]))" id="settings-color-error" class="settings-error" role="alert">{{ t('settings.invalidColor') }}</p><p class="settings-card__note">{{ t('settings.contrast') }}</p>
             </section>

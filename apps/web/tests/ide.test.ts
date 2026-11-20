@@ -470,6 +470,7 @@ describe('workspace explorer', () => {
 
     await wrapper.get('[data-action=ide-new-folder]').trigger('click');
     expect(wrapper.get('[data-testid=ide-inline-create]').attributes('data-parent')).toBe('pkg/deep');
+    expect(wrapper.get('[data-testid=ide-inline-create]').attributes('data-depth')).toBe('1');
 
     await wrapper.get('input[name=folderName]').setValue('nested');
     await wrapper.get('[data-testid=ide-new-folder-form]').trigger('submit');

@@ -1171,6 +1171,10 @@ NGINX
 
 configure_domain() {
   title "域名与 HTTPS 配置 (Nginx 反向代理 + Let's Encrypt)"
+  if [[ "${NONINTERACTIVE:-false}" == true ]]; then
+    info "非交互安装跳过可选域名与 HTTPS 配置。"
+    return 0
+  fi
   if ! confirm "是否现在配置域名与 Nginx 反向代理?" "y"; then
     info "跳过域名配置。API 直接监听 0.0.0.0:${HTTP_PORT}。"
     return

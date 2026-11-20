@@ -8,6 +8,7 @@ type Overrides = Record<Theme, Partial<AppearanceColors>>;
 const STORAGE_KEY = 'sandkasten-appearance';
 const colorKeys: AppearanceColor[] = ['accent', 'background', 'foreground'];
 const fills: Record<ColorScheme, [string, string]> = {
+  blue: ['#005fb8', '#0078d4'],
   pink: ['#f077af', '#f077af'], green: ['#176235', '#63d58a'],
   purple: ['#5b21b6', '#b79bfd'], white: ['#4f4f4f', '#ffffff'], black: ['#000000', '#9a9a9a'],
 };
@@ -74,10 +75,9 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
     }
   } catch { /* Invalid or unavailable preferences fall back to the theme. */ }
   const colors = computed<AppearanceColors>(() => ({
-    // The defaults mirror the pure token surfaces so the settings swatches
-    // preview exactly what the workbench renders.
-    background: theme.value === 'light' ? '#ffffff' : '#000000',
-    foreground: theme.value === 'light' ? '#1a1c1f' : '#f1f2f1',
+    // Match the default surfaces, including the supplied dark VS Code reference.
+    background: theme.value === 'light' ? '#ffffff' : '#121314',
+    foreground: theme.value === 'light' ? '#3b3b3b' : '#bfbfbf',
     accent: fills[scheme.value][theme.value === 'light' ? 0 : 1],
     ...overrides.value[theme.value],
   }));
@@ -105,6 +105,11 @@ export function useAppearance(theme: Readonly<Ref<Theme>>, scheme: Readonly<Ref<
       set('--surface-subtle', mix(background, text, 0.035));
       set('--surface-raised', mix(background, text, 0.015));
       set('--text', text);
+      set('--text-bright', text);
+      set('--git-ignored', readableOn(mix(text, background, 0.3), [background, shaded, soft]));
+      set('--tab-inactive-background', shaded);
+      set('--editor-active-line', mix(background, text, 0.08));
+      set('--control-border', mix(background, text, 0.16));
       // Resolve against whichever surface is harder to read on, so a muted
       // label clears AA on the shaded rows as well as on the plain surface.
       const muted = mix(text, background, 0.25);

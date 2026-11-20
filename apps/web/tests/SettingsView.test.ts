@@ -1,11 +1,17 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, test } from 'vitest';
+import { DEFAULT_COLOR_SCHEME } from '../src/theme/colorScheme';
 import SettingsView from '../src/components/SettingsView.vue';
 import { createTranslator } from '../src/i18n/locale';
 
-const props = { preference: 'system' as const, theme: 'light' as const, colors: { accent: '#f077af', background: '#ffffff', foreground: '#1a1c1f' }, colorScheme: 'pink' as const, locale: 'en' as const, t: createTranslator('en'), connectionState: 'connected' as const, apiEndpoint: '' };
+const props = { preference: 'system' as const, theme: 'light' as const, colors: { accent: '#f077af', background: '#ffffff', foreground: '#1a1c1f' }, colorScheme: DEFAULT_COLOR_SCHEME, locale: 'en' as const, t: createTranslator('en'), connectionState: 'connected' as const, apiEndpoint: '' };
 
 describe('settings view', () => {
+  test('has one settings heading and one search field', () => {
+    const wrapper = mount(SettingsView, { props });
+    expect(wrapper.findAll('input[type="search"]')).toHaveLength(1);
+    expect(wrapper.findAll('h1')).toHaveLength(1);
+  });
   test('chooses a theme, edits validated colors and resets the active theme', async () => {
     const wrapper = mount(SettingsView, { props });
     await wrapper.get('[data-theme-choice="dark"]').trigger('click');

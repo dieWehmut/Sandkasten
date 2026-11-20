@@ -33,10 +33,9 @@ export function shouldOpenExternally(target) {
 }
 
 export const WINDOW_CHROME_THEMES = {
-  // The window chrome follows the pure workbench surfaces: pure white in
-  // light, pure black in dark, so the native title bar never sits on a tint.
-  light: { color: '#ffffff', symbolColor: '#1a1c1f', height: 40 },
-  dark: { color: '#000000', symbolColor: '#f1f1f1', height: 40 },
+  // Match the shared Light Modern / Dark Modern title bar.
+  light: { color: '#f8f8f8', symbolColor: '#1e1e1e', height: 35 },
+  dark: { color: '#191a1b', symbolColor: '#bfbfbf', height: 35 },
 };
 
 export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandkasten', icon = APP_ICON_PATH, platform = process.platform } = {}) {
@@ -52,7 +51,7 @@ export function createWindowOptions({ preloadPath, bundledIndex, title = 'Sandka
     titleBarStyle: 'hidden',
     autoHideMenuBar: true,
     ...(platform === 'darwin'
-      ? { trafficLightPosition: { x: 12, y: 13 } }
+      ? { trafficLightPosition: { x: 12, y: 10 } }
       : { titleBarOverlay: { ...WINDOW_CHROME_THEMES.light } }),
     webPreferences: {
       contextIsolation: true,

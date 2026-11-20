@@ -13,6 +13,16 @@ curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/instal
   && sudo ./sandkasten-install.sh
 ```
 
+For an unattended one-command installation of the core language set:
+
+```sh
+set -o pipefail && curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh \
+  | sudo bash -s -- --mode cli --languages core --non-interactive
+```
+
+Use `--mode webui --languages web --non-interactive` to install the WebUI preset
+instead. Omitting arguments starts the interactive setup.
+
 With no arguments the installer is interactive: it asks for the deployment
 mode (`cli` or `webui`) and then the language selection. The language prompt
 accepts comma- or space-separated names, one-based menu numbers, ranges such

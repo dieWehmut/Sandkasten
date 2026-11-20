@@ -18,14 +18,18 @@
    `editor.lineNumbersMinChars` asks for plus the ten-pixel decoration width, and
    the gutter painted on the editor surface rather than a tinted strip. */
 .source-editor .cm-editor {
+  /* Only .cm-scroller owns scrolling. The minimap plugin enables overflow on
+     this outer shell, which otherwise adds a second pair of scrollbars. */
+  overflow: hidden;
   color: var(--text);
   background: var(--surface);
   font: var(--editor-font-size, 14px)/1.5 var(--font-mono);
 }
 
 .source-editor .cm-editor.cm-focused {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  /* The caret and active line identify editor focus. A perimeter focus ring
+     turns the entire editing surface into a heavy outlined control. */
+  outline: none;
 }
 
 .source-editor .cm-scroller {
@@ -290,32 +294,16 @@
 .source-editor .cm-indent-guides-11 { background-size: calc(11 * var(--indent-step, 4ch)) 100%; }
 .source-editor .cm-indent-guides-12 { background-size: calc(12 * var(--indent-step, 4ch)) 100%; }
 
-/* The line the cursor sits on. The reference does not fill it: `editor.lineHighlightBackground`
-   defaults to **null**, and what is actually visible is `editor.lineHighlightBorder`
-   (`{dark:"#282828", light:"#eeeeee"}`) drawn as a hairline above and below. So the
-   highlight is a pair of rules, not a wash — this had been painting a 3% `--grid-line`
-   fill as well, which is a tint the reference never shows.
-   The gutter is coloured, not filled: `.line-numbers.active-line-number{color:
-   var(--vscode-editorLineNumber-activeForeground)}` only changes the text, whose
-   default is `editorActiveLineNumber.foreground` (`{dark:"#c6c6c6", light:"#0B216F"}`).
-   Giving the gutter a background too — which this stylesheet did — puts a block of
-   colour in the margin that the reference keeps flat.
-   The rule is applied as inset shadows rather than borders because these marks sit
-   inline: a real border would reflow the line.
-   `editor.renderLineHighlightOnlyWhenFocus` defaults to **false**, so the highlight
-   stays visible when the editor loses focus; nothing here is scoped to `:focus`.
-   The background is explicitly cleared rather than simply left unset. CodeMirror's
-   built-in base theme paints `.cm-activeLine` with a pale blue
-   (`rgba(204,238,255,.267)`) and `.cm-activeLineGutter` with a solid one
-   (`rgb(226,242,255)`), and dropping this stylesheet's own fill let those through —
-   a light-theme tint showing up on a dark editor. The reference fills neither. */
+/* The supplied VS Code screenshot uses a quiet solid active-line fill. Override
+   CodeMirror's default blue in both the content and gutter; do not frame the
+   current line with two additional rules. */
 .source-editor .cm-activeLine,
 .source-editor .cm-activeLineGutter {
-  background-color: transparent;
+  background-color: var(--editor-active-line);
 }
 
 .source-editor .cm-activeLine {
-  box-shadow: inset 0 1px var(--border), inset 0 -1px var(--border);
+  box-shadow: none;
 }
 
 .source-editor .cm-activeLineGutter {
@@ -633,14 +621,13 @@
  * the box is restated as the editor's visible height and the canvas is left at
  * the size the plugin gave it.
  *
- * The reference draws the strip flush against the scrollbar with a shadow rather
- * than a rule, so the divider is a border on the inner edge and the width stays
- * the plugin's 120 px (`minimap.size: proportional`, `maxColumn: 120`). */
+ * The minimap shares the editor background in the supplied reference. Its text
+ * and viewport overlay identify the rail without another framed rectangle. */
 .source-editor .cm-minimap-gutter {
   /* Overrides the inline `clientHeight / 4`; the canvas keeps its own height. */
   height: var(--editor-visible-height, 100%) !important;
-  border-left: 1px solid var(--border);
-  background: var(--surface-subtle);
+  border-left: 0;
+  background: var(--surface);
 }
 
 .source-editor .cm-minimap-gutter .cm-minimap-overlay-container {

@@ -630,6 +630,7 @@ onBeforeUnmount(() => {
     <template v-else>
       <RunHistory v-if="layoutMode === 'desktop' && historyOpen" :items="history" :selected-job-id="result?.jobId" @select="emit('selectHistory', $event)" />
       <SourceWorkbench
+        v-show="!settingsOpen"
         :editor-settings="editorSettings"
         :terminal="terminal"
         :panel-visible="panelVisible"

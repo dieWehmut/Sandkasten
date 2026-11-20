@@ -39,14 +39,16 @@ describe('installation guide data', () => {
     expect(command).toContain('werkzeug/install.sh');
     expect(command).toContain(`--mode ${mode}`);
     expect(command).toContain(`--languages ${preset}`);
-    expect(command).not.toContain('--non-interactive');
+    expect(command).toContain('set -o pipefail &&');
+    expect(command).toContain('| sudo bash -s --');
+    expect(command).toContain('--non-interactive');
   });
 
   test('generated commands are accepted by the real installer dry-run parser', () => {
     const entrypoint = resolve(repositoryRoot, 'werkzeug', 'installer', 'entrypoint.sh');
     const entrypointForShell = relative(process.cwd(), entrypoint).replaceAll('\\', '/');
     for (const [mode, preset] of [['cli', 'core'], ['webui', 'web'], ['webui', 'all']] as Array<[InstallMode, RuntimePreset]>) {
-      const match = buildInstallCommand(mode, preset).match(/sudo \.\/sandkasten-install\.sh (.+)$/);
+      const match = buildInstallCommand(mode, preset).match(/\| sudo bash -s -- (.+)$/);
       expect(match).not.toBeNull();
       const args = match?.[1].split(/\s+/) ?? [];
       const output = execFileSync('bash', [entrypointForShell, '--dry-run', ...args, 'install'], { encoding: 'utf8', timeout: 30000 });
@@ -65,6 +67,7 @@ describe('installation guide data', () => {
     const webui = buildOperationalCommands('webui', 'web');
     expect(webui.map((operation) => operation.id)).toContain('domain');
     expect(webui.find((operation) => operation.id === 'verify')?.command).toContain('127.0.0.1/healthz');
+    expect(cli.find((operation) => operation.id === 'status')?.command).toContain('sudo ./sandkasten-install.sh status --mode cli');
   });
 
   test('retains localized step descriptions for the shared list component', () => {
@@ -81,7 +84,7 @@ describe('installation guide data', () => {
 
   test('keeps the bootstrap command public and secret-free', () => {
     expect(INSTALL_BOOTSTRAP_COMMAND).toContain('cdn.jsdelivr.net');
-    expect(INSTALL_BOOTSTRAP_COMMAND).toContain('sudo');
+    expect(INSTALL_BOOTSTRAP_COMMAND).toContain('sudo ./sandkasten-install.sh');
     expect(INSTALL_BOOTSTRAP_COMMAND).not.toMatch(/password|token|secret|Bearer/i);
   });
 

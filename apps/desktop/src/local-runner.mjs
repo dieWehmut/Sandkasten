@@ -57,6 +57,12 @@ export function runtimeForExtension(extension) {
   return '';
 }
 
+// In Electron process.execPath is the desktop executable. Helpers must run its
+// Node mode, otherwise each probe starts another application and renderer tree.
+function nodeHelperEnvironment(command, env) {
+  return command === process.execPath ? { ...env, ELECTRON_RUN_AS_NODE: '1' } : env;
+}
+
 // A toolchain probe that never exits (a broken shim, a stalled WSL relay, an
 // interactive binary) must not block runtime detection: the probe is bounded and
 // a timeout simply reports the runtime as unavailable.
@@ -77,7 +83,7 @@ function settleAvailability(spawnImpl, command, probe, timeoutMs, env) {
     };
     const timer = setTimeout(() => finish(false), timeoutMs);
     try {
-      child = spawnImpl(command, probe, { stdio: 'ignore', windowsHide: true, env });
+      child = spawnImpl(command, probe, { stdio: 'ignore', windowsHide: true, env: nodeHelperEnvironment(command, env) });
     } catch {
       finish(false);
       return;
@@ -109,7 +115,7 @@ function runStep(step, { spawnImpl, cwd, timeoutMs, maxOutputBytes, onSpawn, env
     const stderr = { text: '', bytes: 0, truncated: false };
     let child;
     try {
-      child = spawnImpl(step.command, step.args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+      child = spawnImpl(step.command, step.args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: nodeHelperEnvironment(step.command, env) });
     } catch (error) {
       reject(error);
       return;

@@ -146,6 +146,13 @@ export function useWorkspace(options: WorkspaceOptions = {}): WorkspaceControlle
       return;
     }
     const source = await store.read(path);
+    // A second click can arrive before the first read finishes. Recheck after
+    // the asynchronous boundary so it neither adds a duplicate tab nor replaces
+    // edits made since the first click opened the file.
+    if (files.value.some((file) => file.path === path)) {
+      activePath.value = path;
+      return;
+    }
     files.value = [
       ...files.value,
       { path, name: baseName(path), language: languageForPath(path), source, dirty: false },

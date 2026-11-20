@@ -100,7 +100,7 @@ describe('workbench style boundaries', () => {
 
   test('the integrated title row matches the native overlay and stays draggable except for its controls', () => {
     const workbench = style('workbench.css');
-    expect(workbench).toMatch(/\.workbench-app--integrated \{\s*--header-height: 40px;\s*\}/);
+    expect(workbench).toMatch(/\.workbench-app--integrated \{\s*--header-height: 35px;\s*\}/);
     expect(workbench).toMatch(/\.app-header--integrated \{[^}]*-webkit-app-region: drag;/s);
     expect(workbench).toMatch(/\.app-header--integrated button,[\s\S]*?-webkit-app-region: no-drag;/);
     expect(workbench).toContain('var(--window-controls-inset, 14px)');
@@ -184,8 +184,7 @@ describe('workbench style boundaries', () => {
     expect(tokens).toContain('--vscode-pane-header: 22px');
     expect(ide).toContain('height: var(--vscode-tab-height);');
     expect(ide).toContain('min-height: var(--vscode-pane-header);');
-    expect(ide).toContain('box-shadow: inset 0 var(--vscode-tab-marker) 0 var(--accent-fill);');
-    expect(ide).toMatch(/\.ide-activity__button\[aria-pressed="true"\]::before,\s*\.ide-activity__button:focus-visible::before \{/);
+    expect(ide).toContain('box-shadow: inset 0 1px 0 var(--border);');
     // The collapsed twisty turns a quarter turn, the way VS Code's twisty does.
     expect(ide).toMatch(/\.ide-pane-header__twisty--collapsed \{\s*transform: rotate\(-90deg\);/);
     // The reference marks the pane title's case on a separate rule from the header
@@ -364,9 +363,8 @@ describe('workbench style boundaries', () => {
     for (const selector of ['.ide-search__field', '.ide-breadcrumb-picker']) {
       expect(ide, selector).toMatch(new RegExp(`\\${selector} \\{[^}]*border-radius: var\\(--radius-control\\);`, 's'));
     }
-    // The app-owned radii must survive for our own containers, which have no
-    // reference counterpart to copy.
-    expect(ide).toMatch(/\.ide-main \{[^}]*border-radius: var\(--radius-lg\) var\(--radius-lg\) 0 0;/s);
+    // The editor joins the workbench edge with square corners.
+    expect(ide).toMatch(/\.ide-main \{[^}]*border-radius: 0;/s);
     // No control may fall back to the app-owned ladder.
     expect(ide).not.toMatch(/\.ide-search__field \{[^}]*border-radius: var\(--radius-sm\);/s);
   });
@@ -417,7 +415,7 @@ describe('workbench style boundaries', () => {
     // `.tab.active` sets only background, foreground and box-shadow; the reference
     // never sets a weight on a tab. Under `fit` sizing a bold label widened its own
     // tab, so switching tabs shifted every tab in the strip.
-    expect(ide).toMatch(/\.ide-tab--active \.ide-tab__select \{[^}]*color: var\(--text\);[^}]*\}/s);
+    expect(ide).toMatch(/\.ide-tab--active \.ide-tab__select \{[^}]*color: var\(--text-bright\);[^}]*\}/s);
     expect(ide).not.toMatch(/\.ide-tab--active[^{]*\{[^}]*font-weight/s);
   });
 
@@ -491,25 +489,20 @@ describe('workbench style boundaries', () => {
     const base = style('base.css');
     // The setup and settings pages move focus to their page heading so assistive
     // technology reads it first. That heading is a reading position, not a
-    // control, so the shared rule drops both layers of the control ring instead
+    // control, so the shared rule drops the control outline instead
     // of every page patching its own heading.
-    expect(base).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--accent\);\s*outline-offset: 2px;\s*box-shadow: 0 0 0 4px var\(--focus-ring\);\s*\}/);
+    expect(base).toMatch(/:focus-visible \{\s*outline: 1px solid var\(--accent\);\s*outline-offset: 1px;\s*box-shadow: none;\s*\}/);
     expect(base).toMatch(/h1\[tabindex="-1"\]:focus-visible,\s*h2\[tabindex="-1"\]:focus-visible,\s*h3\[tabindex="-1"\]:focus-visible \{\s*outline: none;\s*box-shadow: none;\s*\}/);
   });
 
   test('never shrinks a control focus ring below the shared one', () => {
     const dropdown = style('dropdown.css');
     const ide = style('ide.css');
-    // The reference has 116 `:focus-visible` rules. Every one either takes the
-    // workbench ring or re-states it at `strokeThickness` (1 px) with an offset;
-    // none lowers a control's ring below the global one. Two of ours did, by
-    // overriding the 2 px + halo ring with a bare 1 px outline, which made a
-    // select and the source-control message field half as visible as every other
-    // control when reached from the keyboard.
+    // Controls retain the shared keyboard outline without adding a second halo.
     expect(dropdown).not.toMatch(/\.dropdown__trigger:focus-visible \{[^}]*outline: 1px/s);
     expect(ide).not.toMatch(/\.scm__message:focus-visible \{[^}]*outline: 1px/s);
     // The offset survives: the select's ring sits outside, the field's inside.
-    expect(dropdown).toMatch(/\.dropdown__trigger:focus-visible \{[^}]*outline-offset: 2px;[^}]*\}/s);
+    expect(dropdown).toMatch(/\.dropdown__trigger:focus-visible \{[^}]*outline-offset: 1px;[^}]*\}/s);
     expect(ide).toMatch(/\.scm__message:focus-visible \{[^}]*outline-offset: -1px;[^}]*\}/s);
   });
 
@@ -544,11 +537,11 @@ describe('workbench style boundaries', () => {
     // The selected tree row is a distinct fill with its own foreground, and the
     // indent guides stay hidden until the row is hovered or selected.
     expect(ide).toMatch(/\.ide-tree__row--active \{[^}]*color: var\(--text\);[^}]*background: var\(--accent-soft\);/s);
-    expect(ide).toMatch(/\.ide-tree__guides i \{[^}]*background: var\(--border\);[^}]*opacity: 0;/s);
-    expect(ide).toMatch(/\.ide-tree__row:hover \.ide-tree__guides i,\s*\.ide-tree__row--active \.ide-tree__guides i \{\s*opacity: 1;/);
+    expect(ide).toMatch(/\.ide-tree__guides i \{[^}]*background: var\(--border\);[^}]*opacity: 0.35;/s);
+    expect(ide).toMatch(/\.ide-tree:hover \.ide-tree__guides i,\s*\.ide-tree__row--active \.ide-tree__guides i \{\s*opacity: 1;/);
     // Every tree label reads at the strong text role: a folder separates itself
     // by its weight, not by a grey the rest of the list does not share.
-    expect(ide).toMatch(/\.ide-tree__row--directory \.ide-tree__toggle \{\s*color: var\(--text\);\s*font-weight: 600;\s*\}/);
+    expect(ide).toMatch(/\.ide-tree__row--directory \.ide-tree__toggle \{\s*color: var\(--text\);\s*font-weight: 400;\s*\}/);
   });
 
   test('keeps the VS Code editor typography and gutter roles', () => {
@@ -562,21 +555,10 @@ describe('workbench style boundaries', () => {
     expect(editor).toMatch(/\.source-editor \.cm-content \{[^}]*line-height: 1\.5;/s);
     expect(editor).toMatch(/\.source-editor \.cm-gutters \{[^}]*border-right: 0;[^}]*background: var\(--surface\);/s);
     expect(editor).toContain('min-width: calc(5ch + 14px);');
-    // `editor.lineHighlightBackground` defaults to null in the reference, so neither
-    // the line nor its gutter is filled. The background is set to `transparent`
-    // rather than omitted: CodeMirror's base theme otherwise paints the active line
-    // pale blue, which shows through on the dark theme.
-    expect(editor).toMatch(/\.source-editor \.cm-activeLine,\s*\.source-editor \.cm-activeLineGutter \{\s*background-color: transparent;/);
-    // The gutter only changes colour, matching
-    // `.line-numbers.active-line-number{color: editorLineNumber-activeForeground}`.
-    // It must not carry a *visible* background of its own: the reference keeps the
-    // margin flat behind the active row, and a fill there reads as a block of colour.
-    // The shared `transparent` rule above is the exception and is what makes the
-    // check meaningful — the gutter has to be reset from CodeMirror's pale blue,
-    // not merely left alone.
+    // The user's selected reference paints the active row without border lines.
+    expect(editor).toMatch(/\.source-editor \.cm-activeLine,\s*\.source-editor \.cm-activeLineGutter \{\s*background-color: var\(--editor-active-line\);/);
+    expect(editor).toMatch(/\.source-editor \.cm-activeLine \{\s*box-shadow: none;/);
     expect(editor).toMatch(/\.source-editor \.cm-activeLineGutter \{\s*color: var\(--text\);\s*\}/);
-    expect(editor).not.toMatch(/\.cm-activeLineGutter \{(?:(?!\})[^}])*background-color: (?!transparent)/);
-    expect(editor).toContain('box-shadow: inset 0 1px var(--border), inset 0 -1px var(--border);');
     // Bracket matching and occurrence highlighting keep the reference's box and
     // fill roles, drawn inline-safe with inset shadows at a specificity that
     // beats CodeMirror's hard-coded theme colours.
@@ -613,20 +595,13 @@ describe('workbench style boundaries', () => {
     expect(welcome).toMatch(/\.editor-welcome__path \{[^}]*text-overflow: ellipsis;/s);
   });
 
-  test('frames the settings screen like the get-started page', () => {
+  test('frames settings with a search header and flat list rows', () => {
     const settings = style('settings.css');
-    // Settings is the welcome page's sibling: the same 13 px/16 px page type, a
-    // 1200 px centred frame whose header carries the product mark, a 2.7em page
-    // title at weight 400, 1.5em section titles, and one action tile per row
-    // (1 px border, 6 px corners, the raised surface). The two roles that stay
-    // the settings editor's own are the search field and the two-pixel marker
-    // on a setting the user changed.
+    // One search header, a compact table of contents, and flat setting rows.
     expect(settings).toMatch(/\.settings-view \{[^}]*font-size: 13px;[^}]*line-height: 16px;/s);
-    expect(settings).toMatch(/\.settings-page \{[^}]*max-width: 1200px;[^}]*grid-template-columns: minmax\(180px, 3fr\) minmax\(0, 8fr\);/s);
-    expect(settings).toMatch(/\.settings-page__title \{[^}]*font-size: 2\.7em;[^}]*font-weight: 400;/s);
-    expect(settings).toMatch(/\.settings-page__subtitle \{[^}]*font-size: 1\.35em;[^}]*font-weight: 400;/s);
+    expect(settings).toMatch(/\.settings-page \{[^}]*max-width: 1200px;[^}]*grid-template-columns: 200px minmax\(0, 1fr\);/s);
     expect(settings).toMatch(/\.settings-card h2 \{[^}]*font-size: 1\.5em;[^}]*font-weight: 400;/s);
-    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 8px 10px;[^}]*border: 1px solid var\(--border\);[^}]*border-radius: 6px;/s);
+    expect(settings).toMatch(/\.settings-row \{[^}]*padding: 8px 10px;[^}]*border: 0;[^}]*border-radius: 0;/s);
     expect(settings).toMatch(/\.settings-row--modified::before \{[^}]*left: 0;[^}]*top: 8px;[^}]*bottom: 8px;[^}]*width: 2px;/s);
     // The settings table of contents is a list, not a column of cards. The reference
     // styles `.monaco-list-row` with no border, radius or fill, dims unselected rows to
@@ -795,7 +770,7 @@ describe('workbench style boundaries', () => {
   });
 });
 
-const SCHEME_NAMES = ['green', 'purple', 'pink', 'white', 'black'] as const;
+const SCHEME_NAMES = ['blue', 'green', 'purple', 'pink', 'white', 'black'] as const;
 
 function schemeBlock(scheme: string, theme: 'light' | 'dark'): string {
   const source = style('schemes.css');
@@ -907,21 +882,19 @@ describe('color scheme palettes', () => {
     expect(schemes).toMatch(/--focus-ring:\s*color-mix\(in srgb, var\(--accent\)/);
   });
 
-  test('renders the canvas, chrome, and raised surfaces in pure black or pure white', () => {
+  test('uses distinct VS Code Modern editor and chrome surfaces', () => {
     const [lightTokens, darkTokens] = style('tokens.css').split(':root[data-theme="dark"]');
-    // The reference asks for a background that is purely black or purely
-    // white, so the neutral surfaces carry no tint at all in either theme.
-    for (const name of ['--canvas', '--chrome']) {
-      expect(token(lightTokens, name), `light ${name}`).toBe('#ffffff');
-      expect(token(darkTokens, name), `dark ${name}`).toBe('#000000');
-    }
+    expect(token(lightTokens, '--surface')).toBe('#ffffff');
+    expect(token(lightTokens, '--chrome')).toBe('#f8f8f8');
+    expect(token(darkTokens, '--surface')).toBe('#121314');
+    expect(token(darkTokens, '--chrome')).toBe('#191a1b');
     // Raised and subtle surfaces stay neutral greys so a panel, row, or
     // hover never borrows a hue from the canvas underneath it.
     for (const name of ['--surface', '--surface-subtle', '--surface-raised']) {
       for (const [theme, block] of [['light', lightTokens], ['dark', darkTokens]] as const) {
         const value = token(block, name);
         const channels = hexToRgb(value);
-        expect(Math.max(...channels) - Math.min(...channels), `${theme} ${name} is neutral`).toBe(0);
+        expect(Math.max(...channels) - Math.min(...channels), `${theme} ${name} is nearly neutral`).toBeLessThanOrEqual(2);
       }
     }
   });

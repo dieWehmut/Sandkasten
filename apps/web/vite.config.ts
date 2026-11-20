@@ -53,6 +53,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Keep jsdom/CodeMirror workers within the local WSL memory budget.
+    maxWorkers: 2,
     environment: 'jsdom',
     setupFiles: ['tests/setup.ts'],
     exclude: [...configDefaults.exclude, 'tests/build-contract.test.mjs', 'tests/serve.test.mjs'],
