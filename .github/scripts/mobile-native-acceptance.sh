@@ -122,7 +122,7 @@ adb -s "$MOBILE_E2E_DEVICE" install -r -t "$apk_dir/app-debug-androidTest.apk"
 adb -s "$MOBILE_E2E_DEVICE" shell am instrument -w \
   dev.sandkasten.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee "$evidence/instrumentation.txt"
 # am instrument may return exit 0 even when a JUnit assertion failed.
-grep -Eq '^OK \(4 tests\)[[:space:]]*$' "$evidence/instrumentation.txt"
+grep -Eq '^OK \(5 tests\)[[:space:]]*$' "$evidence/instrumentation.txt"
 if grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|shortMsg=' "$evidence/instrumentation.txt"; then exit 1; fi
 
 (cd "$task_root/apps/mobile" && npm run test:android-e2e) 2>&1 | tee "$evidence/native-e2e.log"

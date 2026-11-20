@@ -15,6 +15,8 @@ Android 使用 Keystore 的 AES-GCM 密钥加密保存令牌；设备地址、�
 
 Android 主题在原生偏好写入成功后确认保存，启动时从原生偏好恢复，避免快速强退后读到旧 WebView 缓存。保存失败时设置页会提示重新选择。
 
+离线启动时，已保存设备的工作栏和已选任务立即恢复显示；目录连接遇到临时网络故障、HTTP 408/429 或 5xx 时，按 1、2、4、8、16、30 秒间隔自动重试，之后保持最长 30 秒间隔。连接恢复后重新读取历史输出，不重放运行或停止请求。令牌失效、地址错误或本机凭据读取失败需要手动修正；更新令牌、移除设备或关闭应用会结束旧的重试。
+
 ## 构建与安装
 
 要求 Node.js 22.18+、JDK 21、Android SDK 36 / Build Tools 36.0.0。
@@ -42,6 +44,8 @@ Windows 验证时，在 Windows 仓库的 `apps\mobile` 目录运行 `npm ci`、
 要让原生测试结果显示在 IDE 中，选择仓库中的[共享配置](android/.run/Sandkasten%20NativeBridgeTest.run.xml) `Sandkasten NativeBridgeTest` 和模拟器，点击 Run，在 Run 面板查看四个测试的测试树和控制台结果。本轮 Windows Studio 在 API 37 模拟器上四项全部通过，结果与截图见[独立验收](../../docs/mobile/acceptance.md#windows-studio-独立验收)。
 
 配置尚未显示时，在 Project 面板打开 `app/src/androidTest/java/dev/sandkasten/mobile/NativeBridgeTest.java`，点击类名左侧绿色运行箭头运行 `NativeBridgeTest`。也可通过 Run → Edit Configurations → 新建 `Android Instrumented Tests`，Module 选择 app 对应模块，Test 选择 Class，填写 `dev.sandkasten.mobile.NativeBridgeTest`。
+
+另有共享配置 `Sandkasten SavedDeviceReconnectTest`，验证保存设备启动时目录服务暂不可用、工作栏立即恢复、网络恢复后自动补取输出，且不重放任务请求。原有桥接测试四项加上该回归测试共五项；命令行和 CI 运行完整测试包时会一起执行。测试使用模拟器内的独立 HTTP fixture，保留并恢复应用已有的本机设备与项目数据。
 
 Vitest 使用隔离 HTTP/凭据 fixture 覆盖请求契约、多设备与草稿隔离、异步重连、取消输出补取和本机恢复。原生测试使用安装版 WebView 验证 Keystore 加密、凭据重建、HTTP bearer 请求、主题与系统返回。以下命令用于 WSL/Linux 的原生命令行验证：
 
