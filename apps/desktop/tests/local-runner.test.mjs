@@ -227,3 +227,27 @@ test('runtime probes reject a failing version command and inherit the supplied e
   assert.ok((await runner.detect()).every((entry) => !entry.available));
   assert.equal(calls[0].options.env.SANDKASTEN_MATRIX, 'isolated');
 });
+
+test('helper probes use Electron Node mode without changing ordinary tool environments', async () => {
+  const { spawnImpl, calls } = fakeSpawn({});
+  const runner = createLocalRunner({ spawnImpl, env: { ELECTRON_RUN_AS_NODE: '0' } });
+  await runner.detect();
+  const helpers = calls.filter(({ command }) => command === process.execPath);
+  assert.ok(helpers.length > 0);
+  for (const { options } of helpers) assert.equal(options.env.ELECTRON_RUN_AS_NODE, '1');
+  assert.equal(calls.find(({ command }) => command === 'python').options.env.ELECTRON_RUN_AS_NODE, '0');
+});
+
+test('helper compilation and execution both use Electron Node mode', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sandkasten-node-helper-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'main.ts'), 'console.log(42)');
+  const { spawnImpl, calls } = fakeSpawn({});
+  const runner = createLocalRunner({ spawnImpl, tmpRoot: root, env: { ELECTRON_RUN_AS_NODE: '0' } });
+  const result = await runner.run({ jobId: 'helper', language: 'typescript', path: 'main.ts' }, { root });
+  assert.equal(result.status, 'JOB_STATUS_SUCCEEDED');
+  const helpers = calls.filter(({ command }) => command === process.execPath);
+  assert.equal(helpers.length, 2);
+  assert.deepEqual(helpers.map(({ args }) => args[2]), ['build', 'run']);
+  for (const { options } of helpers) assert.equal(options.env.ELECTRON_RUN_AS_NODE, '1');
+});

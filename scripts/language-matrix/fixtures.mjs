@@ -33,7 +33,7 @@ export const FIXTURES = {
   markdown: sample('main.md', '# hello, markdown\n\n```mermaid\ngraph TD; A-->B;\n```', ['<h1>hello, markdown</h1>', '<svg'], 'web'),
   mdx: sample('main.mdx', '# hello, mdx\n\n<strong>{2 + 3}</strong>', ['<h1>hello, mdx</h1>', '<strong>5</strong>'], 'web'),
   mojo: sample('main.mojo', 'def main():\n    print("hello, mojo")', hello('mojo')),
-  nextjs: sample('page.tsx', 'export default async function Page() { return <main>Hello, Next</main>; }', '<main>Hello, Next</main>', 'web'),
+  nextjs: sample('page.tsx', 'import { headers } from "next/headers"; export default async function Page() { const request = await headers(); return <main data-framework={request.get("x-sandkasten-preview")}>Hello, Next</main>; }', ['<main data-framework="next">Hello, Next</main>', '/_next/'], 'web'),
   nextflow: sample('main.nf', 'workflow { println "hello, nextflow" }', hello('nextflow'), 'workflow'),
   nim: sample('main.nim', 'echo "hello, nim"', hello('nim')),
   octave: sample('main.m', 'disp("hello, octave")', hello('octave')),

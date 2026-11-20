@@ -1,8 +1,9 @@
 // Build adapters for languages whose output is a document, module, or project.
 // Every adapter executes its compiler/runtime; none marks registration as success.
+import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdir, readFile, writeFile, copyFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, copyFile, stat, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -13,7 +14,7 @@ const packages = {
   typescript: ['typescript'], markdown: ['markdown-it', 'mermaid', 'jsdom', 'dompurify'],
   mdx: ['@mdx-js/mdx', 'react', 'react-dom/server'],
   tsx: ['esbuild', 'react', 'react-dom/server'],
-  nextjs: ['esbuild', 'next', 'react', 'react-dom/server'],
+  nextjs: ['next', 'react', 'react-dom/server'],
   vue3: ['esbuild', 'vue', '@vue/compiler-sfc', '@vue/server-renderer'],
 };
 const output = executable ? path.dirname(executable) : '';
@@ -46,9 +47,38 @@ async function renderReact(entry, kind) {
   if (typeof Component !== 'function') throw new Error(`${kind} must export a component function`);
   let element;
   if (Component.constructor.name === 'AsyncFunction') element = await Component({ params: {}, searchParams: {} });
-  else element = React.createElement(Component, kind === 'nextjs' ? { params: {}, searchParams: {} } : {});
+  else element = React.createElement(Component);
   const body = renderToStaticMarkup(element);
-  return kind === 'nextjs' ? `<!doctype html><html><body>${body}</body></html>` : body;
+  return body;
+}
+// A real Next App Router request supplies framework contexts (headers, cookies,
+// server components), which rendering the page directly with React cannot do.
+async function renderNext(entry) {
+  const project = path.join(output, 'next');
+  await mkdir(path.join(project, 'app'), { recursive: true });
+  const modules = path.dirname(path.dirname(require.resolve('next/package.json')));
+  await symlink(modules, path.join(project, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  await writeFile(path.join(project, 'package.json'), JSON.stringify({ private: true }));
+  await writeFile(path.join(project, 'next.config.js'), `module.exports = { devIndicators: false, experimental: { workerThreads: true }, webpack(config) { config.resolve.modules.push(${JSON.stringify(modules)}); return config; } };`);
+  await writeFile(path.join(project, 'app', 'layout.jsx'), 'export default function Layout({children}) { return <html><body>{children}</body></html>; }');
+  await writeFile(path.join(project, 'app', 'page.jsx'), `export { default } from ${JSON.stringify(entry)}; export * from ${JSON.stringify(entry)};`);
+  process.env.NEXT_TELEMETRY_DISABLED = '1';
+  const app = require('next')({ dev: true, dir: project, hostname: '127.0.0.1' });
+  let server;
+  try {
+    await app.prepare();
+    const handler = app.getRequestHandler();
+    server = createServer((request, response) => { void handler(request, response); });
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/`, { headers: { 'x-sandkasten-preview': 'next' } });
+    const html = await response.text();
+    if (!response.ok) throw new Error(`Next.js returned HTTP ${response.status}\n${html}`);
+    return html;
+  } finally {
+    server?.closeAllConnections();
+    if (server?.listening) await new Promise((resolve) => server.close(resolve));
+    await app.close();
+  }
 }
 async function renderMarkdown(source) {
   const MarkdownIt = require('markdown-it');
@@ -106,8 +136,10 @@ async function build() {
     const { renderToStaticMarkup } = require('react-dom/server');
     const module = await evaluate(source, { ...require('react/jsx-runtime'), useMDXComponents: () => ({}) });
     rendered = renderToStaticMarkup(React.createElement(module.default));
-  } else if (language === 'tsx' || language === 'nextjs') {
+  } else if (language === 'tsx') {
     rendered = await renderReact(file, language);
+  } else if (language === 'nextjs') {
+    rendered = await renderNext(file);
   } else if (language === 'vue3') {
     const { parse, compileScript, compileTemplate, rewriteDefault } = require('@vue/compiler-sfc');
     const { descriptor, errors } = parse(source, { filename: file });
@@ -154,7 +186,7 @@ async function build() {
     const project = path.join(output, 'gleam');
     await mkdir(path.join(project, 'src'), { recursive: true });
     await copyFile(file, path.join(project, 'src', 'main.gleam'));
-    await writeFile(path.join(project, 'gleam.toml'), 'name = "sandkasten_local"\nversion = "1.0.0"\ntarget = "erlang"\n[dependencies]\ngleam_stdlib = "1.0.3"\n');
+    await writeFile(path.join(project, 'gleam.toml'), 'name = "sandkasten_local"\nversion = "1.0.0"\ntarget = "erlang"\n[dependencies]\ngleam_stdlib = "== 0.62.0"\n');
     await execute('gleam', ['build', '--no-print-progress'], { cwd: project });
     return;
   } else if (language === 'latex') {
@@ -192,7 +224,7 @@ async function run() {
     const result = JSON.parse(await readFile(outputs, 'utf8'));
     for (const key of Object.keys(result.outputs ?? {}).sort()) process.stdout.write(String(result.outputs[key]) + '\n');
   } else if (language === 'qml') {
-    const result = await execute('qml', ['--headless', file], { env: { QT_QPA_PLATFORM: 'offscreen' } });
+    const result = await execute('qml', ['-platform', 'offscreen', file], { env: { QT_QPA_PLATFORM: 'offscreen' } });
     process.stdout.write(result.stdout); process.stdout.write(result.stderr.replace(/^qml: /gm, ''));
   } else if (['graphviz', 'typst', 'latex'].includes(language)) {
     process.stdout.write(await readFile(`${executable}.svg`, 'utf8'));
@@ -204,10 +236,16 @@ async function run() {
 try {
   if (phase === 'probe') {
     for (const name of packages[language] ?? []) require.resolve(name);
-  } else if (phase === 'build') await build();
+  } else if (phase === 'build') {
+    await build();
+    // Next's dev compiler retains tracing/watch handles after app.close(). This
+    // disposable helper owns them; all HTTP connections and artifacts are done.
+    if (language === 'nextjs') process.stdout.write('', () => process.exit(0));
+  }
   else if (phase === 'run') await run();
   else throw new Error(`Unknown phase: ${phase}`);
 } catch (error) {
   console.error(error instanceof Error ? error.stack : error);
   process.exitCode = 1;
+  if (language === 'nextjs' && phase === 'build') process.stderr.write('', () => process.exit(1));
 }
