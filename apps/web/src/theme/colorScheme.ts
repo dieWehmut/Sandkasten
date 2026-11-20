@@ -1,11 +1,11 @@
 /**
  * Color schemes for the workbench.
  *
- * Pink is the first-visit accent for the neutral workbench. Existing saved
+ * VS Code blue is the first-visit accent for the workbench. Existing saved
  * choices still take precedence, and only explicit choices are persisted.
  */
 
-export const COLOR_SCHEMES = ['green', 'purple', 'pink', 'white', 'black'] as const;
+export const COLOR_SCHEMES = ['blue', 'green', 'purple', 'pink', 'white', 'black'] as const;
 
 export type ColorScheme = typeof COLOR_SCHEMES[number];
 export type ColorSchemeTone = 'chromatic' | 'monochrome';
@@ -17,9 +17,10 @@ export interface ColorSchemeOption {
   tone: ColorSchemeTone;
 }
 
-export const DEFAULT_COLOR_SCHEME: ColorScheme = 'pink';
+export const DEFAULT_COLOR_SCHEME: ColorScheme = 'blue';
 
 export const colorSchemeOptions: readonly ColorSchemeOption[] = [
+  { id: 'blue', preview: '#0078d4', tone: 'chromatic' },
   { id: 'green', preview: '#23834a', tone: 'chromatic' },
   { id: 'purple', preview: '#7c3aed', tone: 'chromatic' },
   { id: 'pink', preview: '#f077af', tone: 'chromatic' },

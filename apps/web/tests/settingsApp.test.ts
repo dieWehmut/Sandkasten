@@ -15,6 +15,11 @@ beforeEach(() => {
 
 test.each([1440, 390])('settings preserves the editor instance and applies persistent theme changes at width %i', async (width) => {
   const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(min-width: 1200px)' ? window.innerWidth >= 1200 : query === '(max-width: 767px)' ? window.innerWidth <= 767 : false,
+    media: query, addEventListener() {}, removeEventListener() {},
+  })) as typeof window.matchMedia;
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   const wrapper = mount(App, { attachTo: document.body });
   try {
@@ -27,6 +32,7 @@ test.each([1440, 390])('settings preserves the editor instance and applies persi
     const editorInstance = editor.vm.$;
     await wrapper.get('[data-action="open-settings"]').trigger('click');
     expect(wrapper.get('[data-testid="settings-view"]').isVisible()).toBe(true);
+    expect(wrapper.getComponent(SourceEditor).isVisible()).toBe(false);
     // The settings page opens inside the editor group, so the workbench — and with
     // it the activity bar and side bar — stays on screen beside it.
     expect(wrapper.get('[data-testid="workbench-shell"]').isVisible()).toBe(true);
@@ -47,6 +53,7 @@ test.each([1440, 390])('settings preserves the editor instance and applies persi
     expect(wrapper.get('[data-testid="workbench-shell"]').isVisible()).toBe(true);
   } finally {
     wrapper.unmount();
+    window.matchMedia = previousMatchMedia;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     document.documentElement.removeAttribute('style');
   }
@@ -54,6 +61,11 @@ test.each([1440, 390])('settings preserves the editor instance and applies persi
 
 test.each([1440, 390])('persistent editor settings reach the mounted source editor at width %i', async (width) => {
   const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(min-width: 1200px)' ? window.innerWidth >= 1200 : query === '(max-width: 767px)' ? window.innerWidth <= 767 : false,
+    media: query, addEventListener() {}, removeEventListener() {},
+  })) as typeof window.matchMedia;
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   const wrapper = mount(App, { attachTo: document.body });
   try {
@@ -70,12 +82,18 @@ test.each([1440, 390])('persistent editor settings reach the mounted source edit
     await wrapper.get('[data-action="settings-back"]').trigger('click');
   } finally {
     wrapper.unmount();
+    window.matchMedia = previousMatchMedia;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
   }
 });
 
 test('workbench visibility preferences change the actual layout and survive reopening', async () => {
   const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(min-width: 1200px)' ? window.innerWidth >= 1200 : query === '(max-width: 767px)' ? window.innerWidth <= 767 : false,
+    media: query, addEventListener() {}, removeEventListener() {},
+  })) as typeof window.matchMedia;
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   let wrapper = mount(App, { attachTo: document.body });
   try {
@@ -94,6 +112,7 @@ test('workbench visibility preferences change the actual layout and survive reop
     expect(wrapper.find('.ide-panel').exists()).toBe(false);
   } finally {
     wrapper.unmount();
+    window.matchMedia = previousMatchMedia;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
   }
 });

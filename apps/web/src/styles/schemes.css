@@ -26,8 +26,28 @@
  * keep its reference hue while small labels still have enough contrast.
  */
 
-/* Pink also covers the first paint, before the saved preference is applied. */
+/* VS Code Light Modern / Dark Modern defaults. Text accents and button fills
+   are separate roles: dark-mode links are light blue, buttons stay #0078d4. */
 :root,
+:root[data-color-scheme="blue"] {
+  --accent: #005fb8;
+  --accent-strong: #005fb8;
+  --on-accent-strong: #ffffff;
+  --accent-soft: #e8e8e8;
+  --accent-fill: #005fb8;
+  --on-accent: #ffffff;
+}
+
+:root[data-theme="dark"],
+:root[data-theme="dark"][data-color-scheme="blue"] {
+  --accent: #4daafc;
+  --accent-strong: #4daafc;
+  --on-accent-strong: #181818;
+  --accent-soft: #2c2d2e;
+  --accent-fill: #0078d4;
+  --on-accent: #ffffff;
+}
+
 :root[data-color-scheme="pink"] {
   --accent: #b12a69;
   --accent-strong: #a5215e;
@@ -37,7 +57,6 @@
   --on-accent: #1a1c1f;
 }
 
-:root[data-theme="dark"],
 :root[data-theme="dark"][data-color-scheme="pink"] {
   --accent: #f077af;
   --accent-strong: #ffa4cd;

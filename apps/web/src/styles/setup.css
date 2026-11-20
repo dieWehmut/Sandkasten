@@ -4,7 +4,7 @@
   min-width: 0;
   margin-inline: auto;
   gap: 24px;
-  padding: 48px;
+  padding: 32px;
   overflow-x: clip;
 }
 
@@ -25,7 +25,7 @@
 }
 
 .setup-welcome__toolbar .locale-switcher button {
-  min-height: 34px;
+  min-height: 26px;
   padding-inline: 10px;
 }
 
@@ -41,23 +41,24 @@
 
 .setup-welcome__intro h1 {
   margin: 4px 0 8px;
-  font-size: 3rem;
+  font-size: 28px;
   line-height: 1.1;
 }
 
 .setup-welcome__intro > p:last-child {
   margin: 0;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 13px;
 }
 
 .setup-guide {
   display: grid;
   min-width: 0;
   gap: 20px;
-  padding: 30px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  padding: 20px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -84,7 +85,7 @@
   margin: 0;
   padding: 12px 14px;
   border: 1px solid var(--warning);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   color: var(--warning);
   background: var(--warning-soft);
 }
@@ -127,12 +128,12 @@
 .setup-choice {
   display: flex;
   min-width: 0;
-  min-height: 42px;
+  min-height: 28px;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   cursor: pointer;
   background: var(--surface-raised);
 }
@@ -174,7 +175,7 @@
   overflow-x: auto;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background: var(--canvas);
 }
 
@@ -186,7 +187,7 @@
 
 .copy-command button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 28px;
   align-items: center;
   gap: 7px;
   padding: 7px 11px;
@@ -267,7 +268,7 @@
 }
 
 .setup-welcome__actions button {
-  min-height: 42px;
+  min-height: 28px;
   padding: 8px 18px;
   border-color: var(--accent-strong);
   color: var(--on-accent-strong);

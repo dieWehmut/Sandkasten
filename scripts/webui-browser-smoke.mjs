@@ -359,7 +359,7 @@ async function inspectColorScheme(page, viewportName) {
   };
 
   await picker.locator('[data-dropdown-trigger]').click();
-  assert.equal(await picker.locator('[role="option"]').count(), 5, viewportName + ' settings must expose five schemes');
+  assert.equal(await picker.locator('[role="option"]').count(), 6, viewportName + ' settings must expose six schemes');
   await page.keyboard.press('Escape');
 
   await choose('purple');
@@ -374,8 +374,8 @@ async function inspectColorScheme(page, viewportName) {
     '#7c3aed',
     viewportName + ' scheme did not change the accent token',
   );
-  await choose('green');
-  await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'green');
+  await choose('blue');
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-color-scheme') === 'blue');
   await page.locator('[data-action="settings-back"]').click();
   await page.locator('[data-testid="settings-view"]').waitFor({ state: 'hidden', timeout: 3000 });
 }

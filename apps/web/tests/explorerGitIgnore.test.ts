@@ -72,8 +72,8 @@ describe('explorer marks git-ignored entries', () => {
     const tokens = await import('node:fs/promises').then((fs) => fs.readFile('src/styles/tokens.css', 'utf8'));
     const occurrences = tokens.match(/--git-ignored:\s*#([0-9a-f]{6})/gi) ?? [];
     expect(occurrences).toHaveLength(2);
-    // The reference's own values: #8E8E90 light, #8C8C8C dark.
+    // Ignored text remains distinct but readable on the current reference palette.
     expect(occurrences.join(' ').toLowerCase()).toContain('#8e8e90');
-    expect(occurrences.join(' ').toLowerCase()).toContain('#8c8c8c');
+    expect(occurrences.join(' ').toLowerCase()).toContain('#a0a0a0');
   });
 });

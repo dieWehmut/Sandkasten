@@ -16,6 +16,7 @@ export interface OperationalCommand {
 
 const INSTALL_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh';
 const DOWNLOAD_INSTALLER = `curl -fsSL ${INSTALL_SCRIPT_URL} -o sandkasten-install.sh && chmod +x sandkasten-install.sh`;
+const STREAM_INSTALLER = `curl -fsSL ${INSTALL_SCRIPT_URL} | sudo bash -s --`;
 
 export const INSTALL_BOOTSTRAP_COMMAND = `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh`;
 
@@ -65,11 +66,11 @@ export const INSTALL_STEPS: readonly InstallStep[] = [
 ] as const;
 
 export function buildInstallCommand(mode: InstallMode, preset: RuntimePreset): string {
-  return `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh --mode ${mode} --languages ${preset}`;
+  return `${STREAM_INSTALLER} --mode ${mode} --languages ${preset} --non-interactive`;
 }
 
 export function buildOperationalCommands(mode: InstallMode, preset: RuntimePreset): readonly OperationalCommand[] {
-  const wrapper = (action: string) => `sudo ./sandkasten-install.sh ${action} --mode ${mode}`;
+  const wrapper = (action: string) => `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh ${action} --mode ${mode}`;
   const apiOrigin = mode === 'webui' ? 'http://127.0.0.1' : 'http://127.0.0.1:8080';
   return [
     { id: 'repository', command: `git clone https://github.com/dieWehmut/Sandkasten.git && cd Sandkasten && sudo ./werkzeug/install.sh --mode ${mode} --languages ${preset}`, modes: ['cli', 'webui'] },

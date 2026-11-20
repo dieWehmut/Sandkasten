@@ -25,7 +25,7 @@
   width: min(26rem, 92vw);
   padding: 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-dialog);
   background: var(--surface);
   box-shadow: var(--shadow-sheet);
 }

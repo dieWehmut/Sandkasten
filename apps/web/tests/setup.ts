@@ -42,4 +42,9 @@ if (typeof Range !== 'undefined') {
   }
 }
 
+// jsdom does not scroll a layout viewport; browser smoke checks the real behavior.
+if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 export {};

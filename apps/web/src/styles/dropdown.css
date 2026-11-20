@@ -17,7 +17,7 @@
   width: 100%;
   min-height: 24px;
   padding: 2px 23px 2px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm, 4px);
   background: var(--surface-subtle);
   color: var(--text);
@@ -35,13 +35,8 @@
 }
 
 .dropdown__trigger:focus-visible {
-  /* The reference has 116 `:focus-visible` rules and every one of them either
-     takes the global ring or re-states it at `strokeThickness` (1 px) *with* an
-     offset — none shrinks a control's ring below the global one. This rule used
-     to override the app's two-layer ring with a single 1 px outline, so the
-     keyboard ring on a select was half the width and lost its halo. Only the
-     offset is set here; the outline and halo come from the global rule. */
-  outline-offset: 2px;
+  /* Share the single, crisp keyboard-focus outline with other controls. */
+  outline-offset: 1px;
 }
 
 .dropdown--open .dropdown__trigger {

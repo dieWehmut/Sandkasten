@@ -30,16 +30,16 @@ function createRoot() {
 }
 
 describe('color scheme catalog', () => {
-  test('exposes the five supported schemes', () => {
-    expect(COLOR_SCHEME_IDS).toEqual(['green', 'purple', 'pink', 'white', 'black']);
+  test('exposes the six supported schemes', () => {
+    expect(COLOR_SCHEME_IDS).toEqual(['blue', 'green', 'purple', 'pink', 'white', 'black']);
   });
 
   test('recognizes only supported scheme values', () => {
     expect(isColorScheme('green')).toBe(true);
     expect(isColorScheme('purple')).toBe(true);
-    expect(isColorScheme('blue')).toBe(false);
+    expect(isColorScheme('blue')).toBe(true);
     expect(isColorScheme(null)).toBe(false);
-    expect(resolveColorScheme('nope')).toBe('pink');
+    expect(resolveColorScheme('nope')).toBe('blue');
     expect(resolveColorScheme('pink')).toBe('pink');
   });
 
@@ -51,15 +51,15 @@ describe('color scheme catalog', () => {
 });
 
 describe('useColorScheme', () => {
-  test('applies pink on a first visit without persisting it', () => {
+  test('applies VS Code blue on a first visit without persisting it', () => {
     const root = createRoot();
     const storage = createStorage();
 
     const controller = useColorScheme({ root, storage });
 
-    expect(controller.colorScheme.value).toBe('pink');
+    expect(controller.colorScheme.value).toBe('blue');
     expect(controller.hasExplicitPreference.value).toBe(false);
-    expect(root.attributes.get('data-color-scheme')).toBe('pink');
+    expect(root.attributes.get('data-color-scheme')).toBe('blue');
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
@@ -79,13 +79,13 @@ describe('useColorScheme', () => {
     expect(storage.setItem).toHaveBeenCalledWith(COLOR_SCHEME_STORAGE_KEY, 'black');
   });
 
-  test('ignores unsupported stored values and falls back to pink', () => {
+  test('ignores unsupported stored values and falls back to blue', () => {
     const root = createRoot();
     const storage = createStorage('chartreuse');
 
     const controller = useColorScheme({ root, storage });
 
-    expect(controller.colorScheme.value).toBe('pink');
+    expect(controller.colorScheme.value).toBe('blue');
     expect(controller.hasExplicitPreference.value).toBe(false);
     expect(storage.setItem).not.toHaveBeenCalled();
   });
@@ -108,6 +108,6 @@ describe('useColorScheme', () => {
 
   test('exposes the ordered scheme list for the picker', () => {
     const controller = useColorScheme({ root: createRoot(), storage: createStorage() });
-    expect(controller.options.value).toEqual(['green', 'purple', 'pink', 'white', 'black']);
+    expect(controller.options.value).toEqual(['blue', 'green', 'purple', 'pink', 'white', 'black']);
   });
 });

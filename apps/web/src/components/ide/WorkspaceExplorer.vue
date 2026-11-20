@@ -130,7 +130,7 @@ const inlineInsertAt = computed<number>(() => {
   // A compacted chain shows its children under the row that stands for the
   // whole chain, so a target inside the chain lands after that row.
   const index = rows.value.findIndex((row) => row.node.type === 'directory'
-    && (row.container?.path ?? row.node.path) === parent);
+    && (row.chain?.includes(parent) || row.node.path === parent));
   return index === -1 ? 0 : index + 1;
 });
 
@@ -144,9 +144,12 @@ interface DisplayRow extends Row { create?: 'file' | 'folder' }
 const displayRows = computed<DisplayRow[]>(() => {
   if (!inlineRowVisible.value || !createTarget.value) return rows.value;
   const output: DisplayRow[] = [...rows.value];
+  // Use the visible parent after compact-folder folding, not the number of
+  // filesystem segments. The real parent path still owns the create request.
+  const parentRow = inlineInsertAt.value > 0 ? rows.value[inlineInsertAt.value - 1] : undefined;
   output.splice(inlineInsertAt.value, 0, {
     node: { path: `${createTarget.value.parent}#create`, name: '', type: 'file' },
-    depth: createTarget.value.depth,
+    depth: parentRow ? parentRow.depth + 1 : 0,
     create: createKind.value,
   });
   return output;
@@ -440,7 +443,7 @@ watch(() => [props.creating, props.creatingFolder], ([creating, creatingFolder],
           </span>
           <button type="button" class="ide-tree__open" :data-action="`ide-open-${row.node.path}`" @click="emit('select', row.node.path)">
             <FileIcon :path="row.node.path" :name="row.node.name" :theme="iconTheme" :size="14" />
-            <span class="ide-tree__name">{{ row.node.name }}</span>
+            <span class="ide-tree__name" :title="row.node.path">{{ row.node.name }}</span>
             <span v-if="dirtyPaths.includes(row.node.path)" class="ide-tree__dirty" :aria-label="t('ide.tabs.unsaved')">*</span>
           </button>
           <button

@@ -9,24 +9,56 @@ imitate the VS Code interface *in detail*, so this design fixes the reference
 metrics region by region, records what the workbench does today, and turns the
 remaining differences into an ordered, testable plan.
 
-## Status
+## Current revision — 2026-11-06
 
-The plan below ran from the status strip to the editor and back: every region of
-the reference screenshot is either implemented with the measured geometry and the
-workbench's own colours, or recorded as having no counterpart (with the reason).
-The tables name their evidence level, four audits re-checked the result against
-the reference and the built distribution (row heights, rendered contrast in all
-ten theme × scheme combinations, overlay clamping at three viewports, and entry
-point coverage), the editor now carries the reference's indentation guides as
-well, and both panes finally resize on a sash with the reference's defaults and
-limits rather than sitting at an app-owned fixed size. The tab strip also answers
-a right-click with the reference's own menu instead of nothing.
+The user's two attached screenshots now define the visual target. This revision
+supersedes the older Dark Modern colors and bold directory labels below.
 
-Two areas stay bounded rather than delivered, both recorded in the candidate list
-with the reason: the desktop shell's surfaces (integrated terminal, native menus,
-real title bar), which this environment cannot drive, and features that need an
-engine Sandkasten does not have (sticky scroll needs a scope tracker, an outline
-needs a symbol source, workspace-wide search needs an index).
+- Dark editor `#121314`, chrome `#191a1b`, quiet separators `#2a2b2c`, selected
+  rows `#2c2d2e`, and a solid active line `#242526` match sampled reference pixels.
+- Folder and file labels use 13 px regular text on 22 px rows. Ignored file
+  icons keep their original colors; ignored text remains readable and selected
+  filenames use the stronger foreground. Deep trees scroll horizontally rather
+  than reducing a filename to a few visible characters.
+- New-file inputs retain room for a filename in a narrow sidebar. Their visual
+  depth follows compacted tree rows while creation uses the real directory path.
+- Editor focus uses the caret and active line; controls keep a single thin
+  keyboard outline. Tabs, breadcrumbs, minimap and execution status no longer
+  stack unnecessary frames or bright selection rules.
+- Double-clicking a file during an asynchronous read opens only one editor tab
+  and preserves any edits made while the second read finishes.
+
+Verification artifacts for this revision are in
+`/home/han/.cache/sandkasten-ui-20261106/`. The screenshot comparison normalizes
+2546×1435 reference pixels to 1273×718 and compares with the 1273×753 Electron
+window after cropping its 35 px title row. The execution toolbar, run history and
+status actions remain Sandkasten features. Light theme and narrow/sidebar/mobile
+layouts retain working controls and are checked separately.
+
+## Previous revision — 2026-11-04
+
+
+The current request makes VS Code the reference for the complete UI and removes
+its top-left app image. This revision supersedes the earlier brand-colour,
+pure-white/pure-black and welcome-style settings decisions recorded below.
+
+- The default now uses Light Modern / Dark Modern neutral surfaces, blue buttons
+  and native UI fonts. Existing explicit colour choices remain available.
+- Browser and Electron title rows are 35 px; neither renders the top-left image.
+- Editor groups have square edges. Runtime actions use a compact toolbar.
+- Settings has one search field, one heading, a 22 px section list and flat rows.
+  Compact layouts hide the editor/output while settings is open without losing
+  the editor instance or unsaved text.
+- The setup walkthrough and dialogs use the same control and spacing tokens.
+- Desktop checks now run in real Electron on WSLg, including native menus and
+  title chrome. Browser evidence covers 1440×900, 1024×768 and 390×844 in both themes.
+
+Local evidence is under `.sandkasten/ui-verification/` and
+`.sandkasten/desktop-ui-verification/`. The separately executed 58-language matrix
+is under `.sandkasten/language-matrix-final-verified-20261104/`; its runner and
+reproduction commands are documented in `scripts/language-matrix/README.md`.
+The historical audit rounds below retain their original measurements; where they
+conflict with this revision, current source and these fresh artifacts take precedence.
 
 ## Sources of truth
 
@@ -37,16 +69,11 @@ needs a symbol source, workspace-wide search needs an index).
 | The reference screenshot supplied with the request (VS Code with Git Graph, Live Server, and other extensions) | Which items exist on a real, extension-heavy status bar |
 | `apps/web/src/styles/*.css` and `apps/web/src/components/**` | What Sandkasten renders today |
 
-Two rules keep this from becoming a clone:
-
-1. **Geometry is copied, colour is not.** Sandkasten keeps its own tokens
-   (`--chrome`, `--surface`, `--text*`, `--accent*`) so all five colour schemes
-   and both themes keep working and stay WCAG-AA checked. Roles are matched
-   (chrome vs editor surface vs accent), never the hex values of Dark Modern.
-2. **The classic workbench is the target.** The installed build also ships the
-   "modern UI" floating-card overrides (`--modern-ui-floating-card-*`); the
-   reference screenshot shows the classic layout, so that is what these numbers
-   describe.
+The geometry follows the classic workbench. Default colours now follow the
+[official Light Modern theme](https://github.com/microsoft/vscode/blob/main/extensions/theme-defaults/themes/light_modern.json)
+and [Dark Modern theme](https://github.com/microsoft/vscode/blob/main/extensions/theme-defaults/themes/dark_modern.json).
+Shared semantic tokens preserve optional custom colours; they no longer require
+brand colours for first-time users.
 
 ## Measured reference metrics
 
@@ -83,7 +110,7 @@ rows name theirs where it is not obvious:
 
 | Property | VS Code |
 | --- | --- |
-| Row height | 35 px native custom title bar; Sandkasten's integrated row is 40 px to match the Windows overlay |
+| Row height | 35 px native custom title bar; Sandkasten's browser and integrated rows are 35 px, matching the native overlay |
 | Line height | `line-height: 22px` |
 | Sections | left / centre (`width: 60%`, `max-width: fit-content`) / right (`width: 20%`), centre always horizontally centred |
 | Drag | one absolutely positioned drag region covers the row; every control opts out |

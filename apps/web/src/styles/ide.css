@@ -107,13 +107,14 @@
 .ide-activity__button {
   position: relative;
   display: grid;
-  width: var(--vscode-activity-item);
+  width: calc(var(--vscode-activity-item) - 8px);
+  margin-inline: 4px;
   height: var(--vscode-activity-item);
   flex: 0 0 var(--vscode-activity-item);
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 5px;
   color: var(--text-muted);
   background: transparent;
 }
@@ -131,18 +132,6 @@
 .ide-activity__button[aria-pressed="true"] {
   color: var(--text);
   background: var(--surface-subtle);
-}
-
-/* VS Code shows the lane marker for the checked item and for keyboard focus. */
-.ide-activity__button[aria-pressed="true"]::before,
-.ide-activity__button:focus-visible::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: var(--vscode-activity-marker);
-  background: var(--accent-fill);
 }
 
 .ide-activity__button--footer {
@@ -541,15 +530,24 @@
 }
 
 .ide-tree__create-form input {
-  min-width: 0;
+  /* Let the tree scroll horizontally at its minimum sidebar width instead of
+     crushing a deeply nested filename down to one or two characters. */
+  min-width: 10ch;
+  width: 0;
   min-height: 22px;
   flex: 1 1 auto;
   padding: 1px 6px;
-  border: 1px solid var(--focus);
-  border-radius: 4px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   background: var(--canvas);
+}
+
+.ide-tree__create-form input:focus-visible {
+  /* The input's accent border is already its keyboard focus indicator. */
+  outline: none;
+  box-shadow: none;
 }
 
 .ide-tree__create-form button {
@@ -773,6 +771,13 @@
   list-style: none;
 }
 
+/* A deep branch must keep its filenames readable even when the sidebar is
+   narrow. The tree owns horizontal scrolling instead of shrinking a leaf to
+   a couple of characters after the indentation and action slots. */
+.ide-tree > li {
+  min-width: max-content;
+}
+
 /* Tree rows keep the VS Code roles apart: hovering paints the quiet list hover,
    while the selected row gets the stronger selection fill and its own
    foreground, so the open file never reads as a hover. */
@@ -785,7 +790,7 @@
   min-height: 22px;
   margin-inline: 4px;
   padding-right: 4px;
-  border-radius: 6px;
+  border-radius: 3px;
   /* Neither `.monaco-list-row` nor `.monaco-tl-contents` nor the row's
      `.monaco-icon-label` sets a font-size in the reference, so a file row inherits
      the workbench's `fontSize-body1` — 13 px. Ours inherited the app's 14 px body
@@ -818,10 +823,10 @@
   bottom: 0;
   width: 1px;
   background: var(--border);
-  opacity: 0;
+  opacity: 0.35;
 }
 
-.ide-tree__row:hover .ide-tree__guides i,
+.ide-tree:hover .ide-tree__guides i,
 .ide-tree__row--active .ide-tree__guides i {
   opacity: 1;
 }
@@ -831,24 +836,25 @@
   display: flex;
   min-width: 0;
   min-height: 22px;
+  height: 22px;
+  width: auto;
   flex: 1 1 auto;
   align-items: center;
   gap: 6px;
   padding: 0 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 3px;
   color: var(--text);
-  font-size: 12px;
+  font-size: inherit;
   text-align: left;
   background: transparent;
 }
 
-/* Every label in the tree reads at the strong text role: a folder differs from
-   a file by its weight, not by a grey it does not share with the rest of the
-   list. */
+/* Every label in the tree reads at the strong text role: folder and file labels use the same
+   regular weight; their icons and chevrons distinguish them. */
 .ide-tree__row--directory .ide-tree__toggle {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Direct-child only: the file mark owns its own tone, so the faint-gray
@@ -874,8 +880,7 @@
 
 /* Git-ignored entries stay in the tree — the reference's
    `"explorer.excludeGitIgnore"` defaults to false — and are tinted with
-   `gitDecoration.ignoredResourceForeground` instead: #8C8C8C in the dark default
-   theme, #8E8E90 in the light one. The tint replaces the normal text colour
+   `gitDecoration.ignoredResourceForeground` with sufficient contrast on both themes. The tint replaces the normal text colour
    rather than dimming the whole row, so the icon keeps its own file hue and the
    row stays selectable and hoverable like any other. */
 .ide-tree__row--ignored .ide-tree__name,
@@ -885,15 +890,19 @@
 
 .ide-tree__row--ignored .file-icon,
 .ide-tree__row--ignored svg {
-  opacity: 0.55;
+  opacity: 1;
 }
 
 /* The row action stays inside the row's 22 px line, the way the reference keeps a
    list row's actions; a taller button would stretch the whole row. */
 .ide-tree__remove {
   height: 22px;
+  position: absolute;
+  right: 4px;
+  width: 22px;
   flex: 0 0 auto;
   opacity: 0;
+  visibility: hidden;
 }
 
 /* The row action is hidden until it is wanted, which is how the reference keeps
@@ -906,18 +915,24 @@
 .ide-tree__row--active .ide-tree__remove,
 .ide-tree__remove:focus-visible {
   opacity: 1;
+  visibility: visible;
 }
+
+.ide-tree__row--active .ide-tree__name { color: var(--text-bright); }
+.ide-tree__open { padding-left: 26px; }
+.ide-tree__row:hover .ide-tree__open,
+.ide-tree__row--active .ide-tree__open,
+.ide-tree__row:focus-within .ide-tree__open { margin-right: 24px; }
+.ide-tree__row:focus-within .ide-tree__remove { opacity: 1; visibility: visible; }
 
 .ide-main {
   display: flex;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  margin-right: 8px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -943,10 +958,10 @@
   flex: 0 0 auto;
   align-items: stretch;
   gap: 0;
-  padding: 0 8px;
+  padding: 0;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
-  background: var(--chrome);
+  background: var(--tab-inactive-background);
   /* VS Code hides the tab strip's scrollbar; the strip still scrolls sideways. */
   scrollbar-width: none;
 }
@@ -1009,7 +1024,8 @@
 
 .ide-tab--active {
   border-right-color: transparent;
-  box-shadow: inset 0 var(--vscode-tab-marker) 0 var(--accent-fill);
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 1px 0 var(--border);
   background: var(--surface);
 }
 
@@ -1040,7 +1056,7 @@
    bold: the reference never sets a weight on a tab, and under `fit` sizing a
    heavier label widened its own tab, so switching tabs shifted the whole strip. */
 .ide-tab--active .ide-tab__select {
-  color: var(--text);
+  color: var(--text-bright);
 }
 
 .ide-tab__name {
@@ -1094,10 +1110,11 @@
   display: flex;
   min-width: 0;
   flex: 0 0 auto;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 10px;
+  min-height: 35px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -1121,7 +1138,7 @@
 .ide-backend__label {
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -1129,8 +1146,8 @@
 /* The toolbar's controls are one height, so the backend picker and the run button
    line up on their baselines. */
 .ide-backend .dropdown__trigger {
-  min-height: 32px;
-  padding: 4px 26px 4px 8px;
+  min-height: 26px;
+  padding: 2px 26px 2px 8px;
   font-size: 12px;
 }
 
@@ -1141,12 +1158,31 @@
 
 .ide-save {
   display: inline-flex;
-  min-height: 32px;
+  min-height: 26px;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 2px 8px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.ide-toolbar .runtime-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-toolbar .runtime-select .dropdown {
+  min-width: 130px;
+}
+
+.ide-toolbar .runtime-select .dropdown__trigger,
+.ide-toolbar .run-controls button {
+  min-height: 26px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .ide-editor {
@@ -1238,7 +1274,7 @@
   padding: 0 4px;
   overflow: hidden;
   border-top: 1px solid var(--border);
-  background: var(--accent-soft);
+  background: var(--chrome);
   color: var(--text);
   /* The reference's status bar sets height 22 px and font size 12 px, so the bar
      is one 22 px line of 12 px type rather than a fractional size that rounds to
@@ -1318,7 +1354,7 @@ button.ide-status__item:focus-visible {
 
 .ide-status__item--dirty {
   color: var(--warning);
-  font-weight: 650;
+  font-weight: 400;
 }
 
 .ide-status__item[data-state="success"] {
@@ -1354,7 +1390,7 @@ button.ide-status__item:focus-visible {
   border-radius: 0;
   color: var(--on-accent);
   background: var(--accent-fill);
-  font-weight: 650;
+  font-weight: 400;
 }
 
 .ide-status__spinner {
@@ -1537,7 +1573,6 @@ button.ide-status__item:focus-visible {
   gap: 1px;
   overflow-x: auto;
   padding: 0 10px;
-  border-bottom: 1px solid var(--border);
   background: var(--surface);
   scrollbar-width: none;
   white-space: nowrap;
