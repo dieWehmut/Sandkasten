@@ -36,10 +36,13 @@ export function useRemoteFleet() {
     if (connecting.has(address)) return connecting.get(address)!;
     const task = (async () => {
       let host = hosts.value.find((h) => h.address === address);
-      if (!host) { host = spawn({ ...device, address }); hosts.value = [...hosts.value, host]; }
-      await host.control.connect();
+      if (!host) {
+        host = spawn({ ...device, address });
+        hosts.value = [...hosts.value, host];
+        restore(host);
+      }
+      await host.control.connect(undefined, readDevices().some((saved) => saved.address === address));
       if (disposed || !hosts.value.includes(host)) return null;
-      restore(host);
       return host;
     })().finally(() => connecting.delete(address));
     connecting.set(address, task);
@@ -97,7 +100,7 @@ export function useRemoteFleet() {
     hosts.value = hosts.value.filter((h) => h !== host); persistDevices();
     await host.control.forget(); host.scope.stop();
   }
-  async function refreshHosts() { await Promise.all(hosts.value.map((h) => h.control.connectionStatus.value === 'connected' || h.control.connectionStatus.value === 'reconnecting' ? h.control.refresh() : h.control.connect())); }
+  async function refreshHosts() { await Promise.all(hosts.value.map((h) => h.control.connectionStatus.value === 'connected' || h.control.connectionStatus.value === 'reconnecting' ? h.control.refresh() : connectSaved(h))); }
   function saveProject(project: Project) {
     const clone = JSON.parse(JSON.stringify(project)) as Project;
     const index = projects.value.findIndex((p) => p.id === clone.id);

@@ -7,6 +7,13 @@ import type { Project } from '../projects';
 export interface SavedDevice { address: string; name: string }
 export interface JobRecord extends Job { projectId: string; projectName: string; submittedAt: number }
 export const credentialKey = (address: string) => `sandkasten.token:${address}`;
+const initialReconnectDelay = 1000;
+const maxReconnectDelay = 30_000;
+
+function canRetryConnection(cause: unknown) {
+  return !(cause instanceof RemoteError) || cause.status === 408 || cause.status === 429 || cause.status >= 500;
+}
+
 // Serialize credential reads/writes for an address across replacement controllers.
 // A late save must finish before a forget deletes it, and a new connection must
 // read after that deletion rather than resurrecting the old token.
@@ -36,6 +43,9 @@ export function useRemoteControl(device: SavedDevice) {
   const runtimes = ref<Runtime[]>([]), jobs = ref<JobRecord[]>([]), actionError = ref(''), pollError = ref('');
   const pending = ref(0), busy = computed(() => pending.value > 0), error = computed(() => actionError.value || pollError.value);
   let client: RemoteClient | null = null, timer: ReturnType<typeof setTimeout> | undefined, generation = 0, pollingGeneration: number | null = null, disposed = false;
+  let connectionAttempt: Promise<boolean> | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let reconnectDelay = initialReconnectDelay;
   const jobVersions = new Map<string, number>();
   const settlingReads = new Map<string, number>(), settlingStarted = new Set<string>();
   // A terminal history record still needs its first authoritative output read.
@@ -108,15 +118,39 @@ export function useRemoteControl(device: SavedDevice) {
       persist();
     } finally { if (pollingGeneration === version) pollingGeneration = null; if (version === generation) schedule(); }
   }
-  async function connect(token?: string) {
+  function connect(token?: string, retrySaved = false) {
+    if (disposed) return Promise.resolve(false);
+    // Repeated refresh taps share the current handshake. A replacement token
+    // starts a new generation and takes precedence over a saved-token retry.
+    if (token === undefined && connectionAttempt) return connectionAttempt;
+    reconnectDelay = initialReconnectDelay;
+    return startConnection(token, retrySaved && token === undefined);
+  }
+  function startConnection(token: string | undefined, retrySaved: boolean) {
+    const attempt = openConnection(token, retrySaved).finally(() => {
+      if (connectionAttempt === attempt) connectionAttempt = undefined;
+    });
+    connectionAttempt = attempt;
+    return attempt;
+  }
+  function scheduleReconnect() {
+    // Only catalog reads for an already saved device retry automatically.
+    // Submissions and credential operations always require explicit action.
+    reconnectTimer = setTimeout(() => void startConnection(undefined, true), reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
+  }
+  async function openConnection(token: string | undefined, retrySaved: boolean) {
     const version = ++generation;
-    clearTimeout(timer); client = null; actionError.value = ''; pollError.value = ''; connectionStatus.value = 'connecting';
+    clearTimeout(timer); clearTimeout(reconnectTimer); client = null; actionError.value = ''; pollError.value = ''; connectionStatus.value = 'connecting';
     pending.value++;
+    let checkingCatalog = false;
     try {
       const saved = token ?? (await credentialOperation(device.address, () => credentials.get({ key: credentialKey(device.address) }))).value ?? '';
       if (disposed || version !== generation) return false;
       const next = new RemoteClient(device.address, saved);
+      checkingCatalog = true;
       const catalog = await next.runtimes();
+      checkingCatalog = false;
       if (disposed || version !== generation) return false;
       if (token !== undefined) {
         await credentialOperation(device.address, async () => {
@@ -127,10 +161,15 @@ export function useRemoteControl(device: SavedDevice) {
         if (disposed || version !== generation) return false;
       }
       client = next; runtimes.value = catalog; connectionStatus.value = 'connected';
+      reconnectDelay = initialReconnectDelay;
       await refresh();
       return !disposed && version === generation;
     } catch (cause) {
-      if (!disposed && version === generation) { failure(cause); if (String(connectionStatus.value) !== 'needs_token') connectionStatus.value = 'disconnected'; }
+      if (!disposed && version === generation) {
+        failure(cause);
+        if (String(connectionStatus.value) !== 'needs_token') connectionStatus.value = 'disconnected';
+        if (retrySaved && checkingCatalog && canRetryConnection(cause)) scheduleReconnect();
+      }
       return false;
     } finally { pending.value--; }
   }
@@ -182,7 +221,7 @@ export function useRemoteControl(device: SavedDevice) {
     await credentialOperation(device.address, () => credentials.remove({ key: credentialKey(device.address) }));
     localStorage.removeItem(historyKey);
   }
-  function dispose() { disposed = true; generation++; clearTimeout(timer); retryReads.clear(); client = null; }
+  function dispose() { disposed = true; generation++; clearTimeout(timer); clearTimeout(reconnectTimer); retryReads.clear(); client = null; }
   onScopeDispose(dispose);
   return { connectionStatus, runtimes, jobs, busy, error, actionError, connect, refresh, submit, cancel, remove, forget };
 }

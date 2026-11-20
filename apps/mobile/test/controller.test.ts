@@ -222,3 +222,108 @@ it.each(['forget', 'dispose'] as const)('stops interrupted terminal history retr
   await vi.advanceTimersByTimeAsync(3000);
   expect(job).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(0);
 });
+
+it('backs off saved-device retries to 30 seconds and recovers without any active jobs', async () => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValue(new Error('offline'));
+  await control.connect(undefined, true);
+  expect(control.connectionStatus.value).toBe('disconnected');
+  expect(control.busy.value).toBe(false);
+  expect(catalog).toHaveBeenCalledTimes(1);
+  for (const [index, delay] of [1000, 2000, 4000, 8000, 16000, 30000, 30000].entries()) {
+    await vi.advanceTimersByTimeAsync(delay - 1);
+    expect(catalog).toHaveBeenCalledTimes(index + 1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(catalog).toHaveBeenCalledTimes(index + 2);
+    expect(vi.getTimerCount()).toBe(1);
+  }
+  catalog.mockResolvedValue([{ language: 'python', status: 'ready' }]);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(control.connectionStatus.value).toBe('connected');
+  expect(control.runtimes.value).toEqual([{ language: 'python', status: 'ready' }]);
+  expect(control.error.value).toBe('');
+  expect(control.busy.value).toBe(false);
+  expect(vi.getTimerCount()).toBe(0);
+  expect(credentials.set).not.toHaveBeenCalled();
+});
+
+it.each([408, 429, 500, 503])('retries a saved-device connection after transient HTTP %s', async status => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValueOnce(new RemoteError(status, 'temporarily unavailable'));
+  await control.connect(undefined, true);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(catalog).toHaveBeenCalledTimes(2);
+  expect(control.connectionStatus.value).toBe('connected');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it.each([401, 403, 404])('requires manual correction after connection HTTP %s', async status => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValue(new RemoteError(status, 'check credentials or address'));
+  await control.connect(undefined, true);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(catalog).toHaveBeenCalledTimes(1);
+  expect(control.connectionStatus.value).toBe(status === 401 ? 'needs_token' : 'disconnected');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('does not retry a failed credential read or save', async () => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes);
+  vi.mocked(credentials.get).mockRejectedValue(new Error('keystore unavailable'));
+  await control.connect(undefined, true);
+  expect(control.error.value).toBe('keystore unavailable');
+  expect(catalog).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+
+  vi.mocked(credentials.set).mockRejectedValue(new Error('cannot save token'));
+  await control.connect('replacement');
+  expect(control.error.value).toBe('cannot save token');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('does not silently retry an unsaved connection with older credentials', async () => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValue(new Error('offline'));
+  await control.connect('new-token', true);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(catalog).toHaveBeenCalledTimes(1);
+  expect(credentials.get).not.toHaveBeenCalled();
+  expect(credentials.set).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('shares a pending saved connection and cancels its retry when a token is replaced', async () => {
+  let fail!: (reason: Error) => void;
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }));
+  const connection = control.connect(undefined, true);
+  expect(control.connect(undefined, true)).toBe(connection);
+  for (let i = 0; i < 10 && !fail; i++) await Promise.resolve();
+  await control.connect('replacement');
+  fail(new Error('late offline result'));
+  await connection;
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(catalog).toHaveBeenCalledTimes(2);
+  expect(control.connectionStatus.value).toBe('connected');
+  expect(control.error.value).toBe('');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('replaces a scheduled saved retry immediately when new credentials are provided', async () => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValueOnce(new Error('offline'));
+  await control.connect(undefined, true);
+  expect(vi.getTimerCount()).toBe(1);
+  await control.connect('replacement');
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(catalog).toHaveBeenCalledTimes(2);
+  expect(credentials.set).toHaveBeenCalledWith({ key: credentialKey(device.address), value: 'replacement' });
+  expect(control.connectionStatus.value).toBe('connected');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it.each(['forget', 'dispose'] as const)('cancels saved-device reconnect attempts after %s', async operation => {
+  const catalog = vi.mocked(RemoteClient.prototype.runtimes).mockRejectedValue(new Error('offline'));
+  await control.connect(undefined, true);
+  expect(vi.getTimerCount()).toBe(1);
+  if (operation === 'forget') await control.forget(); else scope.stop();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(catalog).toHaveBeenCalledTimes(1);
+  expect(vi.getTimerCount()).toBe(0);
+  expect(await control.connect(undefined, true)).toBe(false);
+  expect(catalog).toHaveBeenCalledTimes(1);
+});
