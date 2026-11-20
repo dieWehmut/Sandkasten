@@ -92,13 +92,21 @@ origin，不包含 `/Sandkasten/` 路径）。
 
 ### 免克隆一键部署(推荐)
 
-在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行一行命令即可(脚本会自动安装 git 并克隆源码到 `/opt/sandkasten/src`):
+在一台 Debian / Ubuntu (x86_64) 主机上,以 root 运行以下命令即可(脚本会自动安装依赖并获取源码):
 
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
-或先克隆再运行:
+无交互安装核心语言时,也可以使用一条命令完成配置:
+
+```bash
+set -o pipefail && curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh | sudo bash -s -- --mode cli --languages core --non-interactive
+```
+
+WebUI 部署可将参数改为 `--mode webui --languages web --non-interactive`;第一条命令会进入交互式部署。
+
+也可以先克隆再运行:
 
 ```bash
 git clone https://github.com/dieWehmut/Sandkasten.git

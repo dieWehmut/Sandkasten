@@ -96,6 +96,14 @@ Debian / Ubuntu (x86_64) ホスト上で、root として 1 行のコマンド�
 curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
+コア言語を非対話でセットアップする場合は、インストーラーを Bash に直接渡す 1 行コマンドも使えます:
+
+```bash
+set -o pipefail && curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh | sudo bash -s -- --mode cli --languages core --non-interactive
+```
+
+WebUI のプリセットには `--mode webui --languages web --non-interactive` を指定します。上のファイル保存コマンドは対話式セットアップを開始します。
+
 または、先にクローンしてから実行します:
 
 ```bash

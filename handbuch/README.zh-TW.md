@@ -95,6 +95,14 @@ GitHub Pages 由 `.github/workflows/pages.yml` 自動發布。首次啟用時，
 curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh -o sandkasten-install.sh && chmod +x sandkasten-install.sh && sudo ./sandkasten-install.sh
 ```
 
+若要無互動安裝核心語言,也可直接用一行指令完成 Linux 設定:
+
+```bash
+set -o pipefail && curl -fsSL https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh | sudo bash -s -- --mode cli --languages core --non-interactive
+```
+
+安裝 WebUI 可改用 `--mode webui --languages web`;上方下載檔案的指令則會進入互動式設定。
+
 或先克隆再執行:
 
 ```bash

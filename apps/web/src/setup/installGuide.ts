@@ -16,7 +16,7 @@ export interface OperationalCommand {
 
 const INSTALL_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/dieWehmut/Sandkasten@main/werkzeug/install.sh';
 const DOWNLOAD_INSTALLER = `curl -fsSL ${INSTALL_SCRIPT_URL} -o sandkasten-install.sh && chmod +x sandkasten-install.sh`;
-const STREAM_INSTALLER = `curl -fsSL ${INSTALL_SCRIPT_URL} | sudo bash -s --`;
+const STREAM_INSTALLER = `set -o pipefail && curl -fsSL ${INSTALL_SCRIPT_URL} | sudo bash -s --`;
 
 export const INSTALL_BOOTSTRAP_COMMAND = `${DOWNLOAD_INSTALLER} && sudo ./sandkasten-install.sh`;
 

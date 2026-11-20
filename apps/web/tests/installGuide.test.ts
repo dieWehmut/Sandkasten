@@ -39,6 +39,7 @@ describe('installation guide data', () => {
     expect(command).toContain('werkzeug/install.sh');
     expect(command).toContain(`--mode ${mode}`);
     expect(command).toContain(`--languages ${preset}`);
+    expect(command).toContain('set -o pipefail &&');
     expect(command).toContain('| sudo bash -s --');
     expect(command).toContain('--non-interactive');
   });

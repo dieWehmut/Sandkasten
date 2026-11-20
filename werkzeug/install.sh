@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
+if [[ -n "$SCRIPT_SOURCE" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+else
+  # `curl ... | sudo bash -s -- ...` has no source file path. Use the current
+  # checkout fast path when run from either the repository root or werkzeug/;
+  # otherwise the normal bootstrap stages a coherent snapshot into a temp dir.
+  if [[ -f "$PWD/werkzeug/installer/entrypoint.sh" ]]; then
+    SCRIPT_DIR="$PWD/werkzeug"
+  else
+    SCRIPT_DIR="$PWD"
+  fi
+fi
 
 # Keep repository checkouts on the normal modular installer path. A downloaded
 # copy of this file has no sibling modules, so stage the same files remotely.

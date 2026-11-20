@@ -143,6 +143,14 @@ assert_eq "$comma_status" 2 "legacy empty CSV token"
 assert_eq "$leading_zero_status" 2 "legacy invalid leading-zero number"
 assert_eq "$huge_range_status" 2 "legacy huge language range"
 
+# Piped non-interactive installs have no terminal to answer an optional domain
+# prompt. Keep the service usable on its direct API address and leave reverse
+# proxy/TLS configuration to the explicit `domain` subcommand.
+NONINTERACTIVE=true
+domain_output="$(configure_domain)"
+assert_contains "$domain_output" "跳过可选域名与 HTTPS 配置" "non-interactive optional domain setup"
+NONINTERACTIVE=false
+
 retry_file="$(mktemp)"
 printf '0\n' >"$retry_file"
 ask() {

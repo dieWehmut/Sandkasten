@@ -41,6 +41,25 @@ bootstrap_output="$(
 )"
 assert_eq "$bootstrap_output" $'mode=webui\nlanguages=python\ncommand=install' "standalone bootstrap"
 
+# One-line non-interactive Linux setup may pipe the wrapper directly to Bash.
+# In that invocation BASH_SOURCE has no filesystem path, so the wrapper must
+# still stage its modules and forward the requested options.
+piped_output="$(
+  cd "$TMP_DIR/standalone"
+  SANDKASTEN_INSTALL_BASE_URL="file://$fixture" \
+    bash -s -- --dry-run --mode cli --languages core install \
+    < "$ROOT_DIR/werkzeug/install.sh"
+)"
+assert_eq "$piped_output" $'mode=cli\nlanguages=go,bash,c,css,cpp,html,java,javascript,lua,php,python,ruby,rust,sql,typescript\ncommand=install' \
+  "piped standalone bootstrap"
+
+checkout_pipe_output="$(
+  cd "$ROOT_DIR"
+  bash -s -- --dry-run --mode cli --languages go install < "$ROOT_DIR/werkzeug/install.sh"
+)"
+assert_eq "$checkout_pipe_output" $'mode=cli\nlanguages=go\ncommand=install' \
+  "piped checkout fast path"
+
 bootstrap_only_output="$(
   SANDKASTEN_INSTALL_BASE_URL="file://$fixture" \
     SANDKASTEN_BOOTSTRAP_TEST=1 \
