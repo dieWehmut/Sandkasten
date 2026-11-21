@@ -127,6 +127,20 @@ it('rechecks the catalog on manual refresh for an idle device and recovers after
   expect(host.control.runtimes.value).toEqual(runtimes);
   expect(requests.map(({ path }) => path)).toEqual(['/v1/runtimes', '/v1/runtimes', '/v1/runtimes']);
 });
+it('refreshes the catalog and known output without resubmitting a running job', async () => {
+  const { fleet } = mountFleet();
+  const host = (await connect(fleet, 'first'))!;
+  const job = (await host.control.submit(fleet.projects.value[0]))!;
+  runtimes = [{ language: 'ruby', status: 'active' }];
+  running.set(job.jobId, { ...job, status: 'JOB_STATUS_SUCCEEDED', stdout: 'finished remotely', outputReady: true });
+
+  await fleet.refreshHosts();
+
+  expect(host.control.runtimes.value).toEqual(runtimes);
+  expect(host.control.jobs.value).toHaveLength(1);
+  expect(host.control.jobs.value[0]).toMatchObject({ jobId: job.jobId, status: 'JOB_STATUS_SUCCEEDED', stdout: 'finished remotely' });
+  expect(requests.map(({ path }) => path)).toEqual(['/v1/runtimes', '/v1/run', '/v1/runtimes', '/v1/jobs/' + job.jobId]);
+});
 it('forgets one device credentials and panel metadata without touching another', async () => {
   const { fleet } = mountFleet(); const first = (await connect(fleet, 'first'))!, second = (await connect(fleet, 'second'))!;
   fleet.openPanel(first, fleet.projects.value[0]); fleet.openPanel(second, fleet.projects.value[0]);
