@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { selectTheme } from './e2e-theme.mjs';
 import { verifyTrayUpdate } from './e2e-tray-update.mjs';
+import { dropdownOptionState, selectDropdown } from './e2e-dropdown.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -119,7 +120,7 @@ async function main() {
     }
     await page.waitForSelector('[data-testid="workbench-shell"]', { timeout: 30_000 });
     // The window hides its native title bar, so the renderer owns the whole
-    // title row: the five application menus, the composed window title, and
+    // title row: the four application menus, the composed window title, and
     // the native menu popup that opens below the clicked button.
     {
       await page.waitForSelector('[data-testid="desktop-menu"]', { timeout: 20_000 });
@@ -151,6 +152,8 @@ async function main() {
     // The reduced title row moved the theme control into the settings screen,
     // so each theme is chosen through the real appearance previews.
     const ensureTheme = (theme) => selectTheme(page, theme);
+    // Geometry and neutral-surface checks use a known theme on every host.
+    await ensureTheme('light');
 
     // The reduced title row removed the header's setup, locale, history,
     // inspector, and theme controls. Each one must still be reachable: the
@@ -324,7 +327,7 @@ async function main() {
         sessions: document.querySelectorAll('.terminal-pane').length,
       }));
 
-      // The surfaces are pure: the canvas, chrome, and sidebar carry no tint.
+      // The canvas and chrome retain the workbench's neutral light surfaces.
       views.pureSurfaces = await page.evaluate(() => {
         const read = (selector) => document.querySelector(selector)?.style?.backgroundColor ?? '';
         return {
@@ -338,7 +341,8 @@ async function main() {
       // it; the terminal panel the hand-off opened stays closed the same way.
       await page.click('[data-activity="explorer"]');
       await page.waitForSelector('[data-path="hello.py"]', { timeout: 15_000 });
-      await page.click('[data-action="ide-tab-close-pkg/util.py"]').catch(() => undefined);
+      await page.click('[data-action="ide-close-pkg/util.py"]');
+      await page.waitForSelector('[data-action="ide-tab-pkg/util.py"]', { state: 'detached' });
     }
 
     await page.click('[data-path="hello.py"] .ide-tree__open');
@@ -358,9 +362,10 @@ async function main() {
     // The isolated backend must be offered only when WSL2 can actually create
     // the namespaces, and a run through it must execute the file in the sandbox.
     checks.isolationStatus = await page.evaluate(() => window.sandkastenDesktop?.isolated?.detect?.() ?? null);
-    checks.isolatedOptionDisabled = await page.getAttribute('[data-testid="ide-backend-select"] option[value="isolated"]', 'disabled') !== null;
+    checks.isolatedOptionDisabled = (await dropdownOptionState(page, '[data-testid="ide-backend-select"]', 'isolated')).disabled;
+    assert.equal(checks.isolatedOptionDisabled, !checks.isolationStatus?.available, 'the isolated backend availability must match its native probe');
     if (checks.isolationStatus?.available) {
-      await page.selectOption('[data-testid="ide-backend-select"]', 'isolated');
+      await selectDropdown(page, '[data-testid="ide-backend-select"]', 'isolated');
       await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'isolated', null, { timeout: 10_000 });
       await page.click('[data-path="sandboxed.py"] .ide-tree__open');
       await page.waitForSelector('[data-action="ide-tab-sandboxed.py"]');
@@ -369,7 +374,10 @@ async function main() {
       checks.isolatedRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
       checks.isolatedRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
       checks.isolatedRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
-      await page.selectOption('[data-testid="ide-backend-select"]', 'local');
+      assert.match(checks.isolatedRunOutput, /E2E-ISOLATED-RUN-OK True/);
+      assert.match(checks.isolatedRunOutput, /E2E-NETWORK-BLOCKED/);
+      assert.ok(!checks.isolatedRunOutput.includes('E2E-NETWORK-OPEN'));
+      await selectDropdown(page, '[data-testid="ide-backend-select"]', 'local');
       await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'local', null, { timeout: 10_000 });
       await page.click('[data-path="hello.py"] .ide-tree__open');
       await page.waitForSelector('[data-action="ide-tab-hello.py"]');
@@ -559,7 +567,7 @@ async function main() {
     });
     await page.waitForTimeout(400);
 
-    // Pink is the default accent; nothing may randomize it on a fresh start.
+    // VS Code blue is the default accent; a fresh start must preserve it.
     await page.evaluate(() => window.localStorage.removeItem('sandkasten-color-scheme'));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="workbench-shell"]');
@@ -692,8 +700,8 @@ async function main() {
     assert.equal(checks.minimumWindow?.statusVisible, true);
     assert.equal(checks.minimumWindow?.documentBounded, true);
     // The sidebar resource manager: each view renders real data, the commit
-    // round-trips, the remote entry reaches the terminal, and the surfaces are
-    // pure black or pure white.
+    // round-trips, the remote entry reaches the terminal, and the neutral
+    // editor/chrome surfaces match the Light Modern workbench.
     assert.deepEqual(checks.sidebarViews?.explorerHeader, [
       'ide-new-file', 'ide-new-folder', 'ide-refresh-tree', 'ide-collapse-folders', 'ide-collapse-sidebar',
     ]);
@@ -723,13 +731,17 @@ async function main() {
     assert.ok(checks.sidebarViews?.remoteHandoff?.sessions > 0, 'the hand-off must open a real terminal session');
     assert.deepEqual(checks.sidebarViews?.pureSurfaces, {
       body: 'rgb(255, 255, 255)',
-      activity: 'rgb(255, 255, 255)',
-      sidebar: 'rgb(255, 255, 255)',
+      activity: 'rgb(248, 248, 248)',
+      sidebar: 'rgb(248, 248, 248)',
     });
-    assert.equal(checks.colorScheme, 'pink');
+    assert.equal(checks.colorScheme, 'blue');
+    assert.deepEqual(checks.defaultAccentByTheme, {
+      light: { accent: '#005fb8', strong: '#005fb8', canvas: '#ffffff' },
+      dark: { accent: '#4daafc', strong: '#4daafc', canvas: '#121314' },
+    });
     assert.equal(checks.storedColorScheme, null);
     assert.equal(checks.titleRow?.headerIntegrated, true);
-    assert.equal(checks.titleRow?.headerHeight, 40);
+    assert.equal(checks.titleRow?.headerHeight, 35);
     assert.equal(checks.titleRow?.dragRegion, 'drag');
     assert.equal(checks.titleRow?.menus.length, 4);
     assert.equal(checks.titleRowMenu?.expanded, true);
@@ -762,7 +774,7 @@ async function main() {
     assert.deepEqual(checks.settings?.themes, ['system', 'light', 'dark']);
     assert.deepEqual(checks.settings?.colors, ['accent', 'background', 'foreground']);
     assert.equal(checks.settings?.search, true);
-    for (const section of ['general', 'appearance', 'connection', 'workbench']) {
+    for (const section of ['general', 'appearance', 'editor', 'files', 'connection', 'workbench']) {
       assert.ok(checks.settings?.sections.includes(section), 'settings must keep the ' + section + ' section');
     }
     assert.equal(checks.settingsSetupGuide, true);

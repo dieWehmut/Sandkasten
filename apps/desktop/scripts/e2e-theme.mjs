@@ -8,6 +8,7 @@ export async function selectTheme(page, theme) {
   if ((await page.getAttribute('html', 'data-theme')) === theme) return;
   await page.click('[data-action="open-settings"]');
   await page.waitForSelector('[data-testid="settings-view"]');
+  await page.click('[data-section="appearance"]');
   await page.click(`[data-theme-choice="${theme}"]`);
   await page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, theme, { timeout: 5_000 });
   await page.click('[data-action="settings-back"]');

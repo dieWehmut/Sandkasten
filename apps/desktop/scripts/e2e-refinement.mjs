@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyTerminal } from './e2e-terminal.mjs';
 import { selectTheme } from './e2e-theme.mjs';
+import { selectDropdown } from './e2e-dropdown.mjs';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(appRoot, '..', '..');
@@ -80,7 +81,8 @@ try {
   await page.click('[data-testid="setup-dismiss"]');
   await resize(1440, 900);
   await page.waitForSelector('[data-testid="ide-backend-select"]');
-  await page.selectOption('[data-testid="ide-backend-select"]', 'api');
+  await selectDropdown(page, '[data-testid="ide-backend-select"]', 'api');
+  await page.waitForFunction(() => document.querySelector('[data-testid="ide-status-bar"]')?.dataset.backend === 'api');
   assert.equal(await page.locator('.connection-error').count(), 0, 'the failed runtime connection must not add a banner');
   await page.click('[data-action="open-settings"]');
   await page.waitForSelector('[data-testid="settings-view"]');
