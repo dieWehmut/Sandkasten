@@ -100,7 +100,10 @@ export function useRemoteFleet() {
     hosts.value = hosts.value.filter((h) => h !== host); persistDevices();
     await host.control.forget(); host.scope.stop();
   }
-  async function refreshHosts() { await Promise.all(hosts.value.map((h) => h.control.connectionStatus.value === 'connected' || h.control.connectionStatus.value === 'reconnecting' ? h.control.refresh() : connectSaved(h))); }
+  async function refreshHosts() {
+    // Probe idle computers as well as ones with jobs, and replace a stale runtime catalog.
+    await Promise.all(hosts.value.map(connectSaved));
+  }
   function saveProject(project: Project) {
     const clone = JSON.parse(JSON.stringify(project)) as Project;
     const index = projects.value.findIndex((p) => p.id === clone.id);

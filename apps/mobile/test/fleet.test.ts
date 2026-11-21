@@ -2,12 +2,12 @@ import { createRenderer, nextTick } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useRemoteFleet } from '../src/composables/use-remote-fleet';
 import { credentials } from '../src/credentials';
-import type { Job } from '../src/client';
+import type { Job, Runtime } from '../src/client';
 import { credentialKey } from '../src/composables/use-remote-control';
 type RenderNode = { parent?: RenderNode };
 const renderer = createRenderer<RenderNode, RenderNode>({ insert: (node, parent) => { node.parent = parent; }, remove: node => { delete node.parent; }, createElement: () => ({}), createText: () => ({}), createComment: () => ({}), setText: () => {}, setElementText: () => {}, parentNode: node => node.parent ?? null, nextSibling: () => null, patchProp: () => {} });
 let storage: Map<string, string>, tokens: Map<string, string>, requests: { address: string; path: string; body: Record<string, unknown> }[], mounted: { unmount: () => void }[];
-let running: Map<string, Job>, online: boolean, sequence: number;
+let running: Map<string, Job>, online: boolean, sequence: number, runtimes: Runtime[];
 function mountFleet() {
   let fleet!: ReturnType<typeof useRemoteFleet>;
   const app = renderer.createApp({ setup() { fleet = useRemoteFleet(); return () => null; } });
@@ -15,6 +15,7 @@ function mountFleet() {
 }
 beforeEach(() => {
   vi.useFakeTimers(); storage = new Map(); tokens = new Map(); requests = []; mounted = []; running = new Map(); online = true; sequence = 0;
+  runtimes = [{ language: 'go', status: 'active', default_entrypoint: 'main.go' }, { language: 'python', status: 'active' }, { language: 'new-runtime', status: 'active' }];
   vi.stubGlobal('localStorage', { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v), removeItem: (k: string) => storage.delete(k) });
   vi.spyOn(credentials, 'get').mockImplementation(async ({ key }) => ({ value: tokens.get(key) ?? null }));
   vi.spyOn(credentials, 'set').mockImplementation(async ({ key, value }) => { tokens.set(key, value); });
@@ -24,7 +25,7 @@ beforeEach(() => {
     requests.push({ address: url.origin, path: url.pathname, body });
     if (!online) throw new Error('offline');
     if ((init.headers as Record<string, string>).Authorization !== `Bearer ${url.hostname}-token`) return new Response(JSON.stringify({ message: 'bad token' }), { status: 401 });
-    if (url.pathname === '/v1/runtimes') return Response.json({ runtimes: [{ language: 'go', status: 'active', default_entrypoint: 'main.go' }, { language: 'python', status: 'active' }, { language: 'new-runtime', status: 'active' }] });
+    if (url.pathname === '/v1/runtimes') return Response.json({ runtimes });
     if (url.pathname === '/v1/run') { const job = { jobId: `${url.hostname}-${++sequence}`, status: 'JOB_STATUS_RUNNING', language: body.language }; running.set(job.jobId, job); return Response.json(job, { status: 202 }); }
     const id = url.pathname.split('/')[3]; const job = running.get(id);
     if (!job) return Response.json({ message: 'not found' }, { status: 404 });
@@ -107,6 +108,38 @@ it('restores an offline workbench and reconnects automatically to recover its se
   expect(restoredHost.control.connectionStatus.value).toBe('connected');
   expect(restoredHost.control.runtimes.value.map(({ language }) => language)).toContain('new-runtime');
   expect(restoredHost.control.jobs.value[0]).toMatchObject({ jobId: job.jobId, stdout: 'saved computer output' });
+});
+it('rechecks the catalog on manual refresh for an idle device and recovers after an outage', async () => {
+  const { fleet } = mountFleet();
+  const host = (await connect(fleet, 'first'))!;
+  expect(host.control.connectionStatus.value).toBe('connected');
+  expect(host.control.jobs.value).toEqual([]);
+
+  online = false;
+  await fleet.refreshHosts();
+  expect(host.control.connectionStatus.value).toBe('disconnected');
+  expect(requests.map(({ path }) => path)).toEqual(['/v1/runtimes', '/v1/runtimes']);
+
+  online = true;
+  runtimes = [{ language: 'ruby', status: 'active' }];
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(host.control.connectionStatus.value).toBe('connected');
+  expect(host.control.runtimes.value).toEqual(runtimes);
+  expect(requests.map(({ path }) => path)).toEqual(['/v1/runtimes', '/v1/runtimes', '/v1/runtimes']);
+});
+it('refreshes the catalog and known output without resubmitting a running job', async () => {
+  const { fleet } = mountFleet();
+  const host = (await connect(fleet, 'first'))!;
+  const job = (await host.control.submit(fleet.projects.value[0]))!;
+  runtimes = [{ language: 'ruby', status: 'active' }];
+  running.set(job.jobId, { ...job, status: 'JOB_STATUS_SUCCEEDED', stdout: 'finished remotely', outputReady: true });
+
+  await fleet.refreshHosts();
+
+  expect(host.control.runtimes.value).toEqual(runtimes);
+  expect(host.control.jobs.value).toHaveLength(1);
+  expect(host.control.jobs.value[0]).toMatchObject({ jobId: job.jobId, status: 'JOB_STATUS_SUCCEEDED', stdout: 'finished remotely' });
+  expect(requests.map(({ path }) => path)).toEqual(['/v1/runtimes', '/v1/run', '/v1/runtimes', '/v1/jobs/' + job.jobId]);
 });
 it('forgets one device credentials and panel metadata without touching another', async () => {
   const { fleet } = mountFleet(); const first = (await connect(fleet, 'first'))!, second = (await connect(fleet, 'second'))!;
