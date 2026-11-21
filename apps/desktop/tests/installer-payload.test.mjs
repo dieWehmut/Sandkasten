@@ -45,6 +45,28 @@ test('accepts a payload the bundled nsis7z plugin can decode', () => {
   assert.deepEqual(inspectInstallerPayloads([entries]), { payloads: 1, problems: [] });
 });
 
+test('accepts required entries listed with POSIX or mixed separators', () => {
+  for (const posixNames of [true, false]) {
+    const paths = completeEntries.map(([name, method], index) => [
+      posixNames || index === 2 ? name.replaceAll('\\', '/') : name,
+      method,
+    ]);
+    const entries = parseSevenZipListing(listing(paths), 'C:\\build\\Sandkasten-0.1.0-Setup.exe');
+    assert.deepEqual(inspectInstallerPayloads([entries]), { payloads: 1, problems: [] });
+  }
+});
+
+test('keeps detecting missing and undecodable entries with POSIX separators', () => {
+  const paths = completeEntries
+    .filter(([name]) => !name.endsWith('index.html'))
+    .map(([name, method]) => [name.replaceAll('\\', '/'), name === 'Sandkasten.exe' ? 'ARM64 LZMA2:20' : method]);
+  const entries = parseSevenZipListing(listing(paths), 'C:\\build\\Sandkasten-0.1.0-Setup.exe');
+  assert.deepEqual(inspectInstallerPayloads([entries]).problems, [
+    { index: 0, kind: 'undecodable', names: ['Sandkasten.exe'] },
+    { index: 0, kind: 'missing', names: ['resources\\web-dist\\index.html'] },
+  ]);
+});
+
 test('rejects ARM64-filtered entries the bundled plugin would silently skip', () => {
   const broken = [
     ['Sandkasten.exe', 'ARM64 LZMA2:20'],

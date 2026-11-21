@@ -49,7 +49,8 @@ export function inspectInstallerPayloads(payloads) {
   const problems = [];
   payloads.forEach((entries, index) => {
     const undecodable = entries.filter((entry) => UNDECODABLE_FILTER.test(entry.method));
-    const names = entries.map((entry) => entry.name);
+    // 7-Zip uses the host's path separator when listing archive entries.
+    const names = entries.map((entry) => entry.name.replaceAll('/', '\\'));
     const missing = REQUIRED_INSTALLER_ENTRIES.filter((required) => !names.includes(required));
     if (undecodable.length > 0) {
       problems.push({ index, kind: 'undecodable', names: undecodable.map((entry) => entry.name) });
