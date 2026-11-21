@@ -13,7 +13,7 @@ import { languageForPath } from '../src/editor/language';
 import { ancestorPaths, breadcrumbSegments } from '../src/editor/breadcrumbs';
 import { windowTitle } from '../src/editor/windowTitle';
 import { SCRATCH_FILE_NAME, SCRATCH_FILE_SOURCE, WORKSPACE_STORAGE_KEY } from '../src/services/workspaceStore';
-import type { DesktopBridge } from '../src/services/desktopBridge';
+import type { DesktopBridge, IsolationStatus } from '../src/services/desktopBridge';
 import type { Runtime } from '../src/services/sandkastenApi';
 import { SETUP_WELCOME_STORAGE_KEY } from '../src/composables/useSetupWelcome';
 import { chooseDropdown, dropdownRow, dropdownValue, openDropdown } from './dropdownHelpers';
@@ -748,6 +748,30 @@ describe('desktop workbench', () => {
   afterEach(() => {
     delete (window as unknown as { sandkastenDesktop?: DesktopBridge }).sandkastenDesktop;
     window.localStorage.clear();
+  });
+
+  test('makes local execution ready while optional isolation detection is pending', async () => {
+    let finishIsolation!: (value: IsolationStatus) => void;
+    const isolation = new Promise<IsolationStatus>((resolve) => { finishIsolation = resolve; });
+    const bridge = stubBridge();
+    bridge.isolated!.detect = vi.fn(() => isolation);
+    installBridge(bridge);
+    const wrapper = mount(App);
+    await flushPromises();
+
+    try {
+      expect(bridge.isolated!.detect).toHaveBeenCalledOnce();
+      expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('local');
+      await wrapper.get('[data-action="run-source"]').trigger('click');
+      await flushPromises();
+      expect(bridge.runner.run).toHaveBeenCalledOnce();
+      await chooseDropdown(wrapper, '[data-testid="ide-backend-select"]', 'api');
+    } finally {
+      finishIsolation({ available: true, distro: 'Ubuntu-22.04', pidIsolated: true, networkBlocked: true });
+    }
+    await flushPromises();
+    expect(wrapper.get('[data-testid="ide-status-bar"]').attributes('data-backend')).toBe('api');
+    expect(bridge.runner.detect).toHaveBeenCalledOnce();
   });
 
   test('renders the editor-first shell with explorer, tabs, panel, and status bar', async () => {

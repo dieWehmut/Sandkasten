@@ -870,6 +870,11 @@ watch(layout.mode, (mode, previousMode) => {
 
 watch(source, (value) => { runner.setSource(value); });
 watch(language, (value) => { if (value) runner.setLanguage(value); });
+// Local tools are ready before the optional WSL probe finishes. Select the
+// initial backend once, so a late isolation result cannot undo a user choice.
+watch(local.runtimes, (runtimes) => {
+  if (runtimes.some((runtime) => runtime.available)) backend.value = 'local';
+}, { once: true });
 watch(documentTitle, (value) => { document.title = value; }, { immediate: true });
 watch(() => workspace.activePath.value, () => { cursor.value = { line: 1, column: 1 }; });
 watch([theme.theme, colorScheme.colorScheme, appearance.colors], () => { void nextTick(() => terminal?.syncTheme()); });
@@ -886,7 +891,6 @@ onMounted(() => {
     await workspace.initialize();
     if (!bridge) return;
     await local.load();
-    if (local.runtimes.value.some((runtime) => runtime.available)) backend.value = 'local';
   })();
 });
 
