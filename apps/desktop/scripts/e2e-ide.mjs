@@ -83,6 +83,8 @@ async function main() {
   ].join('\n'));
   const gitRun = (...args) => spawnSync('git', ['-c', 'user.email=e2e@sandkasten.local', '-c', 'user.name=E2E Run', ...args], { cwd: workspace, stdio: 'ignore' });
   gitRun('init', '--initial-branch=main');
+  gitRun('config', '--local', 'user.name', 'E2E Run');
+  gitRun('config', '--local', 'user.email', 'e2e@sandkasten.local');
   gitRun('add', '.');
   gitRun('commit', '-m', 'e2e: first commit');
   await writeFile(path.join(workspace, 'notes.md'), '# notes\nchanged by the fixture\n');
@@ -108,6 +110,8 @@ async function main() {
   let failure;
   try {
     const page = await app.firstWindow();
+    const waitForOutput = (marker, timeout) => page.waitForFunction((text) =>
+      Array.from(document.querySelectorAll('.output-viewer pre')).some((node) => node.textContent?.includes(text)), marker, { timeout });
     const consoleMessages = [];
     page.on('console', (message) => consoleMessages.push(`${message.type()}: ${message.text()}`));
     page.on('pageerror', (error) => consoleMessages.push(`pageerror: ${error.message}`));
@@ -296,8 +300,11 @@ async function main() {
       views.sourceControlCommitEnabled = !(await page.locator('[data-action="source-control-commit"]').isDisabled());
       views.sourceControlStaged = await page.evaluate(() => Array.from(document.querySelectorAll('[data-group="staged"] [data-change]')).map((node) => node.getAttribute('data-change')));
       await page.click('[data-action="source-control-commit"]');
-      await page.waitForFunction(() => document.querySelector('[data-testid="source-control"] [data-commit]')?.getAttribute('data-commit') !== null
-        && document.querySelector('[data-testid="source-control-count"]')?.textContent?.includes('0'), null, { timeout: 20_000 });
+      await page.waitForFunction(() => document.querySelector('[data-testid="source-control-error"]') !== null
+        || (document.querySelector('[data-testid="source-control-clean"]') !== null
+          && Array.from(document.querySelectorAll('[data-commit]')).some((node) => node.textContent?.includes('e2e: commit the fixture change'))), null, { timeout: 20_000 });
+      assert.equal(await page.locator('[data-testid="source-control-error"]').count(), 0,
+        (await page.locator('[data-testid="source-control-error"]').allTextContents()).join('\n'));
       views.sourceControlCommitted = await page.evaluate(() => ({
         history: Array.from(document.querySelectorAll('[data-commit]')).map((node) => node.textContent?.trim() ?? ''),
         clean: document.querySelector('[data-testid="source-control-clean"]') !== null,
@@ -354,7 +361,7 @@ async function main() {
     checks.editorText = (await page.locator('.cm-content').innerText()).trim();
 
     await page.click('[data-action="run-source"]');
-    await page.waitForFunction(() => document.body.innerText.includes('E2E-LOCAL-RUN-OK'), null, { timeout: 30_000 });
+    await waitForOutput('E2E-LOCAL-RUN-OK', 30_000);
     checks.localRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
     checks.localRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
     checks.localRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
@@ -370,7 +377,7 @@ async function main() {
       await page.click('[data-path="sandboxed.py"] .ide-tree__open');
       await page.waitForSelector('[data-action="ide-tab-sandboxed.py"]');
       await page.click('[data-action="run-source"]');
-      await page.waitForFunction(() => document.body.innerText.includes('E2E-ISOLATED-RUN-OK'), null, { timeout: 180_000 });
+      await waitForOutput('E2E-ISOLATED-RUN-OK', 180_000);
       checks.isolatedRunOutput = (await page.locator('.output-viewer pre').first().innerText()).trim();
       checks.isolatedRunPhase = (await page.locator('[data-testid="ide-status-phase"]').innerText()).trim();
       checks.isolatedRunBackendBadge = (await page.locator('.ide-status__badge').innerText()).trim();
@@ -530,7 +537,7 @@ async function main() {
     });
 
     await page.click('[data-action="run-source"]');
-    await page.waitForFunction(() => document.body.innerText.includes('line 199'), null, { timeout: 30_000 });
+    await waitForOutput('line 199', 30_000);
     checks.panelScrollable = await page.evaluate(() => {
       const panel = document.querySelector('.ide-panel');
       return Boolean(panel) && panel.scrollHeight > panel.clientHeight;
@@ -581,7 +588,7 @@ async function main() {
       checks.defaultAccentByTheme[theme] = await page.evaluate(() => ({
         accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
         strong: getComputedStyle(document.documentElement).getPropertyValue('--accent-strong').trim(),
-        canvas: getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim(),
+        canvas: getComputedStyle(document.body).backgroundColor,
       }));
     }
     checks.storedColorScheme = await page.evaluate(() => window.localStorage.getItem('sandkasten-color-scheme'));
@@ -736,8 +743,8 @@ async function main() {
     });
     assert.equal(checks.colorScheme, 'blue');
     assert.deepEqual(checks.defaultAccentByTheme, {
-      light: { accent: '#005fb8', strong: '#005fb8', canvas: '#ffffff' },
-      dark: { accent: '#4daafc', strong: '#4daafc', canvas: '#121314' },
+      light: { accent: '#005fb8', strong: '#005fb8', canvas: 'rgb(255, 255, 255)' },
+      dark: { accent: '#4daafc', strong: '#4daafc', canvas: 'rgb(18, 19, 20)' },
     });
     assert.equal(checks.storedColorScheme, null);
     assert.equal(checks.titleRow?.headerIntegrated, true);
